@@ -1,0 +1,20 @@
+name: P20.9 Interpretation Diagnostic
+
+on:
+  push:
+    branches: [feature/p20-9-interpretation-analysis]
+  pull_request:
+    branches: [feature/p20-9-interpretation-analysis]
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Run P20.9 acceptance suite
+        run: python -m pytest -q tests/research/test_interpretation.py
