@@ -194,3 +194,5 @@ def test_artifact_identity_changes_when_research_content_changes() -> None:
         reproducibility=repro(),
     )
     assert first.artifact_id != second.artifact_id
+
+# P19.3 validation trigger: preserve test semantics while forcing a PR synchronization event.
