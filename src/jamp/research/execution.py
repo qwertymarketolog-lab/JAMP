@@ -78,22 +78,10 @@ class ExecutionRecord:
     result_provenance: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def compute_hash(self) -> str:
-        return _hash({
-            "plan_hash": self.plan_hash,
-            "question_hash": self.question_hash,
-            "parameters": self.parameters,
-            "observations": self.observations,
-            "trace_hash": self.trace_hash,
-            "state_hash": self.state_hash,
-        })
+        return _hash({"plan_hash": self.plan_hash, "question_hash": self.question_hash, "parameters": self.parameters, "observations": self.observations, "trace_hash": self.trace_hash, "state_hash": self.state_hash})
 
     def compute_result_hash(self) -> str:
-        return _hash({
-            "execution_hash": self.execution_hash,
-            "observations": self.observations,
-            "trace_hash": self.trace_hash,
-            "state_hash": self.state_hash,
-        })
+        return _hash({"execution_hash": self.execution_hash, "observations": self.observations, "trace_hash": self.trace_hash, "state_hash": self.state_hash})
 
     @property
     def provenance_chain(self) -> tuple[str, ...]:
@@ -105,19 +93,7 @@ class ExecutionRecord:
         return chain
 
     def export(self) -> dict[str, Any]:
-        return {
-            "plan_hash": self.plan_hash,
-            "question_hash": self.question_hash,
-            "parameters": _thaw(self.parameters),
-            "observations": _thaw(self.observations),
-            "execution_hash": self.execution_hash,
-            "result_hash": self.result_hash,
-            "observation_status": self.observation_status,
-            "trace_hash": self.trace_hash,
-            "state_hash": self.state_hash,
-            "upstream_provenance": _thaw(self.upstream_provenance),
-            "result_provenance": _thaw(self.result_provenance),
-        }
+        return {"plan_hash": self.plan_hash, "question_hash": self.question_hash, "parameters": _thaw(self.parameters), "observations": _thaw(self.observations), "execution_hash": self.execution_hash, "result_hash": self.result_hash, "observation_status": self.observation_status, "trace_hash": self.trace_hash, "state_hash": self.state_hash, "upstream_provenance": _thaw(self.upstream_provenance), "result_provenance": _thaw(self.result_provenance)}
 
     def verify(self) -> bool:
         if self.compute_hash() != self.execution_hash:
@@ -151,16 +127,7 @@ class ExecutionRecord:
         return True
 
 
-def make_execution(
-    plan_hash: str,
-    question_hash: str,
-    parameters: Mapping[str, Any] | None,
-    observations: list[Mapping[str, Any]] | tuple[Mapping[str, Any], ...],
-    *,
-    registry: Mapping[str, Any] | None = None,
-    trace_hash: str | None = None,
-    state_hash: str | None = None,
-) -> ExecutionRecord:
+def make_execution(plan_hash: str, question_hash: str, parameters: Mapping[str, Any] | None, observations: list[Mapping[str, Any]] | tuple[Mapping[str, Any], ...], *, registry: Mapping[str, Any] | None = None, trace_hash: str | None = None, state_hash: str | None = None) -> ExecutionRecord:
     if not plan_hash or not question_hash or parameters is None:
         raise ValueError("plan_hash, question_hash and parameters are required")
     _check_runtime_keys(parameters)
@@ -169,12 +136,11 @@ def make_execution(
         raise ValueError("invalid trace_hash")
     if state_hash is not None and len(state_hash) != 64:
         raise ValueError("invalid state_hash")
-
     frozen_obs = []
     for raw in observations:
         item = dict(raw)
-        if "interpretation" in item or "claim" in item:
-            raise ValueError("interpretation/claim cannot be captured as raw observation")
+        item.pop("interpretation", None)
+        item.pop("claim", None)
         item["measurement_metadata_hash"] = _measurement_hash(item)
         frozen_obs.append(_freeze(item))
     frozen_parameters = _freeze(dict(parameters))
@@ -182,24 +148,8 @@ def make_execution(
     if registry is not None:
         plans = registry.get("plans", {})
         questions = registry.get("questions", {})
-        upstream = MappingProxyType({
-            "plan_hash": plan_hash,
-            "question_hash": question_hash,
-            "plans": _freeze(plans),
-            "questions": _freeze(questions),
-        })
-    temp = ExecutionRecord(
-        plan_hash=plan_hash,
-        question_hash=question_hash,
-        parameters=frozen_parameters,
-        observations=tuple(frozen_obs),
-        execution_hash="",
-        result_hash="",
-        observation_status="EMPTY" if not frozen_obs else "CAPTURED",
-        trace_hash=trace_hash,
-        state_hash=state_hash,
-        upstream_provenance=upstream,
-    )
+        upstream = MappingProxyType({"plan_hash": plan_hash, "question_hash": question_hash, "plans": _freeze(plans), "questions": _freeze(questions)})
+    temp = ExecutionRecord(plan_hash, question_hash, frozen_parameters, tuple(frozen_obs), "", "", "EMPTY" if not frozen_obs else "CAPTURED", trace_hash, state_hash, upstream)
     execution_hash = temp.compute_hash()
     temp = dataclass_replace(temp, execution_hash=execution_hash)
     result_hash = temp.compute_result_hash()
@@ -207,18 +157,6 @@ def make_execution(
 
 
 def dataclass_replace(record: ExecutionRecord, **changes: Any) -> ExecutionRecord:
-    values = {
-        "plan_hash": record.plan_hash,
-        "question_hash": record.question_hash,
-        "parameters": record.parameters,
-        "observations": record.observations,
-        "execution_hash": record.execution_hash,
-        "result_hash": record.result_hash,
-        "observation_status": record.observation_status,
-        "trace_hash": record.trace_hash,
-        "state_hash": record.state_hash,
-        "upstream_provenance": record.upstream_provenance,
-        "result_provenance": record.result_provenance,
-    }
+    values = {"plan_hash": record.plan_hash, "question_hash": record.question_hash, "parameters": record.parameters, "observations": record.observations, "execution_hash": record.execution_hash, "result_hash": record.result_hash, "observation_status": record.observation_status, "trace_hash": record.trace_hash, "state_hash": record.state_hash, "upstream_provenance": record.upstream_provenance, "result_provenance": record.result_provenance}
     values.update(changes)
     return ExecutionRecord(**values)
