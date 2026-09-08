@@ -1,0 +1,26 @@
+name: P20.6 Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p20-6-research-question-engine
+  pull_request:
+    branches:
+      - feature/p20-6-research-question-engine
+
+jobs:
+  p20-6:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Run P20.6 34-gate suite
+        run: python -m pytest -q tests/research/test_question_engine.py
