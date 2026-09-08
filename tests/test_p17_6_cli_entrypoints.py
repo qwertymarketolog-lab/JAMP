@@ -19,10 +19,14 @@ def test_closed_loop_export_verify_and_render(tmp_path) -> None:
             "--generations",
             "4",
         ],
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if export.returncode:
+        print("P17.6 CLI stdout:\n" + export.stdout)
+        print("P17.6 CLI stderr:\n" + export.stderr)
+    assert export.returncode == 0, "P17.6 closed-loop CLI failed; see captured stdout/stderr above"
     assert report_path.exists()
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert len(report["generations"]) == 4
