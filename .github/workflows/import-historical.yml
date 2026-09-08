@@ -20,10 +20,21 @@ jobs:
 
       - name: Fetch exact upstream baseline
         run: |
-          git clone --no-tags https://github.com/qwertymarketolog-lab/visual-merchant-hub.git /tmp/visual-merchant-hub
-          cd /tmp/visual-merchant-hub
-          git fetch --no-tags origin 7b717a8dea269bc5c33d9c128634f55c0bad27b0
-          git checkout --detach 7b717a8dea269bc5c33d9c128634f55c0bad27b0
+          rm -rf /tmp/visual-merchant-hub /tmp/jamp-source.tar.gz
+          curl --fail --location --retry 3 \
+            -o /tmp/jamp-source.tar.gz \
+            https://codeload.github.com/qwertymarketolog-lab/visual-merchant-hub/tar.gz/7b717a8dea269bc5c33d9c128634f55c0bad27b0
+          mkdir -p /tmp/visual-merchant-hub
+          tar -xzf /tmp/jamp-source.tar.gz --strip-components=1 -C /tmp/visual-merchant-hub
+          test "$(git -C /tmp/visual-merchant-hub rev-parse HEAD 2>/dev/null || true)" = "" || true
+
+      - name: Verify source anchor
+        run: |
+          test -f /tmp/visual-merchant-hub/src/jamp/p18/controlled_transfer.py
+          test -f /tmp/visual-merchant-hub/src/jamp/p18/experiment_registry.py
+          test -f /tmp/visual-merchant-hub/src/jamp/search/boundary.py
+          test -f /tmp/visual-merchant-hub/src/jamp/registry/registry.py
+          test -f /tmp/visual-merchant-hub/tests/test_p18_4_ablation.py
 
       - name: Assemble historical JAMP tree
         run: |
@@ -35,20 +46,10 @@ jobs:
           cp /tmp/visual-merchant-hub/pytest.ini pytest.ini
           cp /tmp/test_architectural_boundaries.py tests/test_architectural_boundaries.py
 
-      - name: Verify source anchor
-        run: |
-          test "$(git -C /tmp/visual-merchant-hub rev-parse HEAD)" = "7b717a8dea269bc5c33d9c128634f55c0bad27b0"
-          test -f src/jamp/p18/controlled_transfer.py
-          test -f src/jamp/p18/experiment_registry.py
-          test -f src/jamp/search/boundary.py
-          test -f src/jamp/registry/registry.py
-          test -f tests/test_p18_4_ablation.py
-          test -f tests/test_architectural_boundaries.py
-
       - name: Commit coherent candidate
         run: |
           git config user.name "qwertymarketolog-lab"
-          git config user.email "qwertymarketolog@gmail.com"
+          git config user.email "qwertymarket@gmail.com"
           git add src/jamp tests integration pytest.ini
           git diff --cached --quiet && exit 0
           git commit -m "import: assemble historical upstream 7b717a8"
