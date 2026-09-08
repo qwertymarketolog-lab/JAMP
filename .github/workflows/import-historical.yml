@@ -18,39 +18,126 @@ jobs:
           fetch-depth: 0
           ref: import/jamp-from-visual-merchant-hub
 
-      - name: Fetch exact upstream baseline
+      - name: Synchronize exact Git objects from historical source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: qwertymarketolog-lab/visual-merchant-hub
+          SOURCE_SHA: 7b717a8dea269bc5c33d9c128634f55c0bad27b0
+          TARGET_REPO: qwertymarketolog-lab/JAMP
         run: |
-          rm -rf /tmp/visual-merchant-hub /tmp/jamp-source.tar.gz
-          curl --fail --location --retry 3 \
-            -o /tmp/jamp-source.tar.gz \
-            https://codeload.github.com/qwertymarketolog-lab/visual-merchant-hub/tar.gz/7b717a8dea269bc5c33d9c128634f55c0bad27b0
-          mkdir -p /tmp/visual-merchant-hub
-          tar -xzf /tmp/jamp-source.tar.gz --strip-components=1 -C /tmp/visual-merchant-hub
-          test "$(git -C /tmp/visual-merchant-hub rev-parse HEAD 2>/dev/null || true)" = "" || true
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          import subprocess
 
-      - name: Verify source anchor
-        run: |
-          test -f /tmp/visual-merchant-hub/src/jamp/p18/controlled_transfer.py
-          test -f /tmp/visual-merchant-hub/src/jamp/p18/experiment_registry.py
-          test -f /tmp/visual-merchant-hub/src/jamp/search/boundary.py
-          test -f /tmp/visual-merchant-hub/src/jamp/registry/registry.py
-          test -f /tmp/visual-merchant-hub/tests/test_p18_4_ablation.py
+          source_repo = os.environ["SOURCE_REPO"]
+          source_sha = os.environ["SOURCE_SHA"]
+          target_repo = os.environ["TARGET_REPO"]
+          token = os.environ["GH_TOKEN"]
 
-      - name: Assemble historical JAMP tree
-        run: |
-          cp tests/test_architectural_boundaries.py /tmp/test_architectural_boundaries.py
-          rm -rf src/jamp tests integration pytest.ini
-          cp -a /tmp/visual-merchant-hub/src/jamp src/jamp
-          cp -a /tmp/visual-merchant-hub/tests tests
-          cp -a /tmp/visual-merchant-hub/integration integration
-          cp /tmp/visual-merchant-hub/pytest.ini pytest.ini
-          cp /tmp/test_architectural_boundaries.py tests/test_architectural_boundaries.py
+          def gh_api(method, path, data=None):
+              cmd = ["gh", "api", "--method", method, "-H", "Accept: application/vnd.github+json"]
+              payload = None
+              if data is not None:
+                  payload = json.dumps(data)
+                  cmd += ["--input", "-"]
+              cmd += [path]
+              proc = subprocess.run(cmd, input=payload, text=True, capture_output=True,
+                                    env={**os.environ, "GH_TOKEN": token})
+              if proc.returncode != 0:
+                  raise SystemExit(f"GitHub API {method} {path} failed:\n{proc.stderr}")
+              return json.loads(proc.stdout)
 
-      - name: Commit coherent candidate
+          tree = gh_api("GET", f"repos/{source_repo}/git/trees/{source_sha}?recursive=1")
+          if tree.get("truncated"):
+              raise SystemExit("Historical source tree is truncated; refusing partial import")
+
+          prefixes = ("src/jamp/", "tests/", "integration/")
+          selected = [item for item in tree["tree"] if item["type"] == "blob" and
+                      (item["path"].startswith(prefixes) or item["path"] == "pytest.ini")]
+
+          required = {
+              "src/jamp/p18/controlled_transfer.py",
+              "src/jamp/p18/experiment_registry.py",
+              "src/jamp/search/boundary.py",
+              "src/jamp/registry/registry.py",
+              "tests/test_p18_4_ablation.py",
+              "pytest.ini",
+          }
+          missing = sorted(required - {x["path"] for x in selected})
+          if missing:
+              raise SystemExit(f"Historical source incomplete; missing: {missing}")
+
+          boundary = subprocess.run(
+              ["git", "show", "HEAD:tests/test_architectural_boundaries.py"],
+              check=True, capture_output=True,
+          ).stdout
+
+          entries = []
+          for item in selected:
+              blob = gh_api("GET", f"repos/{source_repo}/git/blobs/{item['sha']}")
+              raw = base64.b64decode(blob["content"])
+              created = gh_api("POST", f"repos/{target_repo}/git/blobs", {
+                  "content": base64.b64encode(raw).decode("ascii"),
+                  "encoding": "base64",
+              })
+              entries.append({"path": item["path"], "mode": item["mode"], "type": "blob", "sha": created["sha"]})
+
+          created_boundary = gh_api("POST", f"repos/{target_repo}/git/blobs", {
+              "content": base64.b64encode(boundary).decode("ascii"),
+              "encoding": "base64",
+          })
+          entries.append({"path": "tests/test_architectural_boundaries.py", "mode": "100644", "type": "blob", "sha": created_boundary["sha"]})
+          entries.sort(key=lambda x: x["path"])
+
+          parent = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+          parent_commit = gh_api("GET", f"repos/{target_repo}/git/commits/{parent}")
+          new_tree = gh_api("POST", f"repos/{target_repo}/git/trees", {
+              "base_tree": parent_commit["tree"]["sha"],
+              "tree": entries,
+          })
+          candidate = gh_api("POST", f"repos/{target_repo}/git/commits", {
+              "message": "import: assemble historical upstream 7b717a8",
+              "tree": new_tree["sha"],
+              "parents": [parent],
+          })
+          gh_api("PATCH", f"repos/{target_repo}/git/refs/heads/import/jamp-from-visual-merchant-hub", {
+              "sha": candidate["sha"],
+              "force": False,
+          })
+
+          print(f"HISTORICAL_SOURCE_SHA={source_sha}")
+          print(f"IMPORTED_FILES={len(selected)}")
+          print(f"CANDIDATE_COMMIT={candidate['sha']}")
+          print(f"CANDIDATE_TREE={new_tree['sha']}")
+          PY
+
+      - name: Verify assembled candidate
         run: |
-          git config user.name "qwertymarketolog-lab"
-          git config user.email "qwertymarket@gmail.com"
-          git add src/jamp tests integration pytest.ini
-          git diff --cached --quiet && exit 0
-          git commit -m "import: assemble historical upstream 7b717a8"
-          git push origin HEAD:import/jamp-from-visual-merchant-hub
+          test -f src/jamp/domain/causal.py
+          test -f src/jamp/engine/evaluate.py
+          test -f src/jamp/engine/commit.py
+          test -f src/jamp/p17/dynamic_policy.py
+          test -f src/jamp/p18/controlled_transfer.py
+          test -f src/jamp/p18/experiment_registry.py
+          test -f src/jamp/p18/task_family_isolation.py
+          test -f src/jamp/registry/registry.py
+          test -f src/jamp/search/boundary.py
+          test -f tests/test_p18_4_ablation.py
+          test -f tests/test_architectural_boundaries.py
+          test -f integration/test_adversarial_e2e.py
+          test -f pytest.ini
+
+      - name: Run historical Python 3.11 suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Execute full suite with P18.4 telemetry
+        run: |
+          pytest -q
+          pytest -q tests/test_p18_4_ablation.py
