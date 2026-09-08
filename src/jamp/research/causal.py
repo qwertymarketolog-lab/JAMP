@@ -26,6 +26,10 @@ class CausalCycleError(CausalStructureError):
     """Raised when the supplied event pool is cyclic."""
 
 
+class CausalIntegrityError(CausalStructureError):
+    """Raised when an event's immutable identity no longer matches its content."""
+
+
 def _freeze_payload(value: Any) -> Any:
     if isinstance(value, dict):
         return MappingProxyType({key: _freeze_payload(value[key]) for key in sorted(value)})
@@ -72,16 +76,20 @@ class CausalEvent:
         object.__setattr__(self, "parent_ids", parents)
         frozen_payload = _freeze_payload(dict(self.payload))
         object.__setattr__(self, "payload", frozen_payload)
-        # State identity remains separate: event_id is derived only from
-        # transition structure and canonical payload, while state_hash anchors
-        # the transition to P19.1's immutable state fingerprint.
+        object.__setattr__(self, "event_id", self._compute_event_id())
+
+    def _compute_event_id(self) -> str:
         identity = {
             "event_type": self.event_type,
             "sequence": self.sequence,
             "parent_ids": list(self.parent_ids),
             "payload": _thaw_payload(self.payload),
         }
-        object.__setattr__(self, "event_id", hashlib.sha256(canonical_bytes(identity)).hexdigest())
+        return hashlib.sha256(canonical_bytes(identity)).hexdigest()
+
+    def verify_integrity(self) -> bool:
+        """Return whether event_id still matches the event's current content."""
+        return self.event_id == self._compute_event_id()
 
     def canonical_payload(self) -> bytes:
         """Return the canonical bytes used for this event's payload."""
@@ -92,6 +100,8 @@ def validate_event_pool(events: Sequence[CausalEvent]) -> dict[str, CausalEvent]
     """Validate IDs and parent references before graph operations."""
     pool: dict[str, CausalEvent] = {}
     for event in events:
+        if not event.verify_integrity():
+            raise CausalIntegrityError(f"event_id integrity failure: {event.event_id}")
         if event.event_id in pool:
             raise CausalStructureError(f"duplicate event_id: {event.event_id}")
         pool[event.event_id] = event
@@ -150,5 +160,4 @@ def topological_order(events: Sequence[CausalEvent]) -> tuple[CausalEvent, ...]:
     return tuple(result)
 
 
-# Explicit alias for callers that prefer the domain terminology.
 sort_causal_order = topological_order
