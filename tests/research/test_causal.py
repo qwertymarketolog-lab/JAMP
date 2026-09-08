@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +16,7 @@ from jamp.research.causal import (
     CausalIntegrityError,
     CausalStructureError,
     MissingParentError,
+    _assert_acyclic,
     sort_causal_order,
     validate_event_pool,
 )
@@ -87,12 +89,12 @@ def test_gate_08_missing_parent_is_rejected() -> None:
 
 
 def test_gate_09_cycles_are_rejected() -> None:
-    first = make_event(sequence=1)
-    second = make_event(sequence=2)
-    object.__setattr__(first, "parent_ids", (second.event_id,))
-    object.__setattr__(second, "parent_ids", (first.event_id,))
+    first_id = "1" * 64
+    second_id = "2" * 64
+    first = SimpleNamespace(event_id=first_id, parent_ids=(second_id,))
+    second = SimpleNamespace(event_id=second_id, parent_ids=(first_id,))
     with pytest.raises(CausalCycleError):
-        sort_causal_order([first, second])
+        _assert_acyclic({first_id: first, second_id: second})
 
 
 def test_gate_10_dag_order_respects_all_parents() -> None:
