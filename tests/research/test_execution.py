@@ -82,10 +82,10 @@ def test_gate_19_raw_observation_distinguished_from_interpretation():
     assert e.observations[0]["value"] == 1 and "interpretation" not in e.observations[0]
 
 def test_gate_20_observations_immutable():
-    with pytest.raises(TypeError): make_execution("p", "q", {}, [{"value": 1}]).observations[0].__setitem__("value", 2)
+    with pytest.raises((TypeError, AttributeError)): make_execution("p", "q", {}, [{"value": 1}]).observations[0].__setitem__("value", 2)
 
 def test_gate_21_parameters_immutable():
-    with pytest.raises(TypeError): make_execution("p", "q", {"x": 1}, []).parameters.__setitem__("x", 2)
+    with pytest.raises((TypeError, AttributeError)): make_execution("p", "q", {"x": 1}, []).parameters.__setitem__("x", 2)
 
 def test_gate_22_candidate_outcomes_not_facts():
     assert make_execution("p", "q", {"candidate_outcomes": ["yes"]}, [{"value": "no"}]).observations[0]["value"] == "no"
