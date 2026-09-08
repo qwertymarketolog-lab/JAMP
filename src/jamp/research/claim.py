@@ -178,12 +178,14 @@ def _verify_exported_derived_evidence(registry: ArtifactRegistry, ref: str, payl
             _hash(leaf["trace_hash"], "trace_hash")
 
 
-def evaluate_claim(evidence: Sequence[DerivedEvidence], premises: Sequence[Any], inference_rule: str) -> ClaimStatus:
+def evaluate_claim(evidence: Sequence[DerivedEvidence] | DerivedEvidence, premises: Sequence[Any], inference_rule: str) -> ClaimStatus:
     """Evaluate explicit evidence deterministically; this function is pure."""
     if not inference_rule:
         raise ClaimRuleError("inference_rule must be explicit")
     if inference_rule not in _RULES:
         raise ClaimRuleError(f"unsupported inference_rule: {inference_rule!r}")
+    if isinstance(evidence, DerivedEvidence):
+        evidence = (evidence,)
     premises_frozen = _validate_premises(premises)
     if inference_rule == "PREMISE_CONJUNCTION":
         if not premises_frozen:
@@ -252,17 +254,18 @@ class Claim:
         if inference_rule is not None and inference_rule != self.inference_rule:
             raise ClaimIntegrityError("inference rule substitution detected")
         proven = {}
+        stored_evidence = self.provenance.get("evidence", {})
         for ref in self.evidence_refs:
-            if ref in registry.snapshot():
-                key, prov = _verify_evidence(registry, ref)
-            else:
-                payload = self.provenance.get("evidence", {}).get(ref)
-                if not isinstance(payload, Mapping):
-                    raise ClaimIntegrityError("evidence is not verifiable")
+            payload = stored_evidence.get(ref)
+            if isinstance(payload, Mapping) and "derived_evidence_hash" in payload:
                 _verify_exported_derived_evidence(registry, ref, payload)
-                key, prov = ref, payload["provenance"]
-            proven[key] = prov
-        if self.provenance.get("evidence") != proven:
+                proven[ref] = payload
+            elif ref in registry.snapshot():
+                key, prov = _verify_evidence(registry, ref)
+                proven[key] = prov
+            else:
+                raise ClaimIntegrityError("evidence is not verifiable")
+        if stored_evidence != proven:
             raise ClaimIntegrityError("provenance mismatch")
         expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.status)
         if expected != self.claim_hash:
