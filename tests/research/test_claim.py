@@ -1,7 +1,7 @@
 """P20.4 acceptance and adversarial contract: Hypothesis & Claim Verification.
 
-Test-first contract.  All 30 gates remain unchanged; this fixture uses the
-actual P19.4 ResearchResult field name ``result_payload``.
+Test-first contract. All 30 gates remain unchanged; fixtures use the actual
+P19.4 ResearchResult API and the P20.3 recursive provenance structure.
 """
 
 from dataclasses import FrozenInstanceError
@@ -50,10 +50,7 @@ def _registry(*seeds: str) -> ArtifactRegistry:
 
 def _evidence(registry: ArtifactRegistry, seed: str = "a", *, polarity: str = "SUPPORTED"):
     result_hash = next(h for h in registry.snapshot() if registry.get(h).provenance["source"] == "test" and registry.get(h).result_payload["label"] == seed)
-    return derive_evidence(
-        registry, [result_hash], "OBSERVATION", "1", {},
-        {"polarity": polarity, "value": registry.get(result_hash).result_payload["value"]},
-    )
+    return derive_evidence(registry, [result_hash], "OBSERVATION", "1", {}, {"polarity": polarity, "value": registry.get(result_hash).result_payload["value"]})
 
 
 def _claim(registry: ArtifactRegistry, *, statement: str = "A", evidence=None, premises=(), status=None):
@@ -61,16 +58,7 @@ def _claim(registry: ArtifactRegistry, *, statement: str = "A", evidence=None, p
         evidence = [_evidence(registry)]
     if status is None:
         status = evaluate_claim(evidence, premises, "EVIDENCE_STATUS")
-    return make_claim(
-        registry,
-        statement=statement,
-        claim_type="HYPOTHESIS",
-        premises=premises,
-        evidence=evidence,
-        inference_rule="EVIDENCE_STATUS",
-        rule_version="1",
-        status=status,
-    )
+    return make_claim(registry, statement=statement, claim_type="HYPOTHESIS", premises=premises, evidence=evidence, inference_rule="EVIDENCE_STATUS", rule_version="1", status=status)
 
 
 def test_01_schema_validity():
@@ -93,10 +81,7 @@ def test_02_structural_immutability():
 def test_03_valid_claim_hash():
     registry = _registry("a")
     claim = _claim(registry)
-    assert claim.claim_hash == compute_claim_hash(
-        claim.claim_type, claim.statement, claim.premises,
-        claim.evidence_refs, claim.inference_rule, claim.rule_version, claim.status,
-    )
+    assert claim.claim_hash == compute_claim_hash(claim.claim_type, claim.statement, claim.premises, claim.evidence_refs, claim.inference_rule, claim.rule_version, claim.status)
 
 
 def test_04_deterministic_hash_computation():
@@ -163,7 +148,8 @@ def test_13_recursive_source_provenance_preserved():
     composition = compose_results(registry, hashes)
     evidence = derive_evidence(registry, [composition], "AGGREGATION", "1", {}, {"polarity": "SUPPORTED"})
     claim = _claim(registry, evidence=[evidence])
-    leaf = claim.provenance["evidence"][evidence.derived_evidence_hash]["provenance"]["sources"][composition.composition_hash]["leaves"]
+    source = claim.provenance["evidence"][evidence.derived_evidence_hash]["sources"][composition.composition_hash]
+    leaf = source["leaves"]
     assert len(leaf) == len(hashes)
     assert all(item["trace_hash"] for item in leaf)
 
