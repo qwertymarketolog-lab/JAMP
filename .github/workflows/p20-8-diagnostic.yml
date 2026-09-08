@@ -17,4 +17,6 @@ jobs:
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
       - name: Run P20.8 acceptance suite
+        env:
+          PYTHONPATH: src
         run: python -m pytest -q tests/research/test_execution.py
