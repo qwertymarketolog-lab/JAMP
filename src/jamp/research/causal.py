@@ -67,16 +67,18 @@ class CausalEvent:
             raise CausalStructureError("parent_ids must not contain duplicates")
         if any(not isinstance(parent, str) or not parent for parent in parents):
             raise CausalStructureError("parent_ids must contain non-empty strings")
+        if not isinstance(self.payload, Mapping):
+            raise CausalStructureError("payload must be a mapping")
         object.__setattr__(self, "parent_ids", parents)
         frozen_payload = _freeze_payload(dict(self.payload))
-        if not isinstance(frozen_payload, Mapping):
-            raise CausalStructureError("payload must be a mapping")
         object.__setattr__(self, "payload", frozen_payload)
+        # State identity remains separate: event_id is derived only from
+        # transition structure and canonical payload, while state_hash anchors
+        # the transition to P19.1's immutable state fingerprint.
         identity = {
             "event_type": self.event_type,
             "sequence": self.sequence,
             "parent_ids": list(self.parent_ids),
-            "state_hash": self.state_hash,
             "payload": _thaw_payload(self.payload),
         }
         object.__setattr__(self, "event_id", hashlib.sha256(canonical_bytes(identity)).hexdigest())
