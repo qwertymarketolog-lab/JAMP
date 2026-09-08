@@ -1,7 +1,7 @@
 """Deterministic empirical execution/result capture boundary for JAMP."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
 from types import MappingProxyType
@@ -60,8 +60,7 @@ def _check_runtime_keys(value: Any) -> None:
 
 
 def _measurement_hash(obs: Mapping[str, Any]) -> str:
-    metadata = obs.get("metadata", {})
-    return _hash(metadata)
+    return _hash(obs.get("metadata", {}))
 
 
 @dataclass(frozen=True)
@@ -75,8 +74,8 @@ class ExecutionRecord:
     observation_status: str
     trace_hash: str | None = None
     state_hash: str | None = None
-    upstream_provenance: Mapping[str, Any] = MappingProxyType({})
-    result_provenance: Mapping[str, Any] = MappingProxyType({})
+    upstream_provenance: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    result_provenance: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def compute_hash(self) -> str:
         return _hash({
@@ -174,8 +173,8 @@ def make_execution(
     frozen_obs = []
     for raw in observations:
         item = dict(raw)
-        item.pop("interpretation", None)
-        item.pop("claim", None)
+        if "interpretation" in item or "claim" in item:
+            raise ValueError("interpretation/claim cannot be captured as raw observation")
         item["measurement_metadata_hash"] = _measurement_hash(item)
         frozen_obs.append(_freeze(item))
     frozen_parameters = _freeze(dict(parameters))
@@ -183,11 +182,12 @@ def make_execution(
     if registry is not None:
         plans = registry.get("plans", {})
         questions = registry.get("questions", {})
-        if plan_hash not in plans or question_hash not in questions:
-            # Keep construction possible for adversarial verification; verify() rejects it.
-            upstream = MappingProxyType({"plans": _freeze(plans), "questions": _freeze(questions)})
-        else:
-            upstream = MappingProxyType({"plans": _freeze(plans), "questions": _freeze(questions)})
+        upstream = MappingProxyType({
+            "plan_hash": plan_hash,
+            "question_hash": question_hash,
+            "plans": _freeze(plans),
+            "questions": _freeze(questions),
+        })
     temp = ExecutionRecord(
         plan_hash=plan_hash,
         question_hash=question_hash,
@@ -199,9 +199,26 @@ def make_execution(
         trace_hash=trace_hash,
         state_hash=state_hash,
         upstream_provenance=upstream,
-        result_provenance=MappingProxyType({}),
     )
     execution_hash = temp.compute_hash()
-    temp = ExecutionRecord(**{**temp.__dict__, "execution_hash": execution_hash})
+    temp = dataclass_replace(temp, execution_hash=execution_hash)
     result_hash = temp.compute_result_hash()
-    return ExecutionRecord(**{**temp.__dict__, "result_hash": result_hash, "result_provenance": MappingProxyType({"execution_hash": execution_hash})})
+    return dataclass_replace(temp, result_hash=result_hash, result_provenance=MappingProxyType({"execution_hash": execution_hash}))
+
+
+def dataclass_replace(record: ExecutionRecord, **changes: Any) -> ExecutionRecord:
+    values = {
+        "plan_hash": record.plan_hash,
+        "question_hash": record.question_hash,
+        "parameters": record.parameters,
+        "observations": record.observations,
+        "execution_hash": record.execution_hash,
+        "result_hash": record.result_hash,
+        "observation_status": record.observation_status,
+        "trace_hash": record.trace_hash,
+        "state_hash": record.state_hash,
+        "upstream_provenance": record.upstream_provenance,
+        "result_provenance": record.result_provenance,
+    }
+    values.update(changes)
+    return ExecutionRecord(**values)
