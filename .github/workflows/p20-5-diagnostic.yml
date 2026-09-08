@@ -1,0 +1,22 @@
+name: P20.5 Hypothesis Lifecycle Diagnostic
+
+on:
+  push:
+    branches: [feature/p20-5-hypothesis-lifecycle]
+  workflow_dispatch:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Run P20.5 32-gate contract
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_hypothesis_lifecycle.py
