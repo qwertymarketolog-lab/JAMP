@@ -12,7 +12,7 @@ jobs:
   assemble:
     # The candidate commit created below triggers this workflow again; that second
     # invocation must not recursively assemble another candidate.
-    if: ${{ !startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
+    if: "${{ !startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target branch
