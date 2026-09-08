@@ -77,6 +77,27 @@ def _freeze_records(
     return tuple(frozen)
 
 
+def _freeze_reproducibility(
+    metadata: Mapping[str, Any], *, event_ids: set[str], state_hash: str
+) -> Mapping[str, Any]:
+    if not isinstance(metadata, Mapping):
+        raise ResearchArtifactError("reproducibility must be a mapping")
+    data = dict(metadata)
+    provenance = [key for key in _PROVENANCE_KEYS if key in data]
+    if len(provenance) != 1:
+        raise ResearchArtifactError(
+            "reproducibility must contain exactly one provenance key: event_id or state_hash"
+        )
+    if "event_id" in data:
+        if not isinstance(data["event_id"], str) or data["event_id"] not in event_ids:
+            raise ResearchArtifactError("reproducibility references an unknown event_id")
+    else:
+        _require_hash(data["state_hash"], "reproducibility.state_hash")
+        if data["state_hash"] != state_hash:
+            raise ResearchArtifactError("reproducibility.state_hash must match the artifact state_hash")
+    return _freeze(data)
+
+
 @dataclass(frozen=True, slots=True)
 class ResearchArtifact:
     """Immutable top-level research record composed from P19.1 and P19.2."""
@@ -127,10 +148,11 @@ class ResearchArtifact:
             "outcomes",
             _freeze_records(self.outcomes, name="outcomes", event_ids=event_ids, state_hash=state_hash),
         )
-        if not isinstance(self.reproducibility, Mapping):
-            raise ResearchArtifactError("reproducibility must be a mapping")
-        frozen_repro = _freeze(dict(self.reproducibility))
-        object.__setattr__(self, "reproducibility", frozen_repro)
+        object.__setattr__(
+            self,
+            "reproducibility",
+            _freeze_reproducibility(self.reproducibility, event_ids=event_ids, state_hash=state_hash),
+        )
 
         artifact_id = hashlib.sha256(canonical_bytes(self.to_dict())).hexdigest()
         object.__setattr__(self, "artifact_id", artifact_id)
