@@ -12,6 +12,7 @@ from jamp.research.canonical import replay_hash
 from jamp.research.causal import (
     CausalCycleError,
     CausalEvent,
+    CausalIntegrityError,
     CausalStructureError,
     MissingParentError,
     sort_causal_order,
@@ -123,4 +124,29 @@ def test_gate_12_research_module_isolation() -> None:
     forbidden = ("jamp.domain", "Registry", "CommitManager", "commit_manager", "registry")
     assert not any(token in source for token in forbidden)
     assert "from .canonical import canonical_bytes" in source
-    assert hashlib.sha256(b"JAMP-P19.2").hexdigest()  # stdlib-only crypto dependency is available
+    assert hashlib.sha256(b"JAMP-P19.2").hexdigest()
+
+
+def test_gate_13_event_type_tamper_breaks_identity_verification() -> None:
+    event = make_event(sequence=4, payload={"x": 1})
+    object.__setattr__(event, "event_type", "tampered")
+    assert event.verify_integrity() is False
+    with pytest.raises(CausalIntegrityError):
+        validate_event_pool([event])
+
+
+def test_gate_14_parent_tamper_breaks_identity_verification() -> None:
+    parent = make_event(sequence=0, payload={"root": True})
+    child = CausalEvent("observation", 1, (parent.event_id,), replay_hash({"state": 1}), {"value": 1})
+    object.__setattr__(child, "parent_ids", ("f" * 64,))
+    assert child.verify_integrity() is False
+    with pytest.raises(CausalIntegrityError):
+        validate_event_pool([parent, child])
+
+
+def test_gate_15_payload_tamper_breaks_identity_verification() -> None:
+    event = make_event(sequence=5, payload={"x": {"y": 1}})
+    object.__setattr__(event, "payload", {"x": {"y": 2}})
+    assert event.verify_integrity() is False
+    with pytest.raises(CausalIntegrityError):
+        validate_event_pool([event])
