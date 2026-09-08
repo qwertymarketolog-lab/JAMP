@@ -114,17 +114,12 @@ def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any],
 
 
 def _verify_derived_evidence(registry: ArtifactRegistry, evidence: DerivedEvidence) -> tuple[str, Mapping[str, Any]]:
-    expected_hash = compute_derived_evidence_hash(
-        evidence.source_hashes, evidence.analysis_type, evidence.algorithm_version,
-        evidence.parameters, evidence.result,
-    )
+    expected_hash = compute_derived_evidence_hash(evidence.source_hashes, evidence.analysis_type, evidence.algorithm_version, evidence.parameters, evidence.result)
     if expected_hash != evidence.derived_evidence_hash:
         raise ClaimIntegrityError("derived evidence hash mismatch")
     sources = evidence.provenance.get("sources")
-    if not isinstance(sources, Mapping):
+    if not isinstance(sources, Mapping) or set(sources) != set(evidence.source_hashes):
         raise ClaimIntegrityError("recursive source provenance is required")
-    if set(sources) != set(evidence.source_hashes):
-        raise ClaimIntegrityError("derived evidence source substitution detected")
     for source_hash in evidence.source_hashes:
         source = sources[source_hash]
         if not isinstance(source, Mapping):
@@ -151,26 +146,36 @@ def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> 
         artifact = registry.get(ref)
         entry = registry.index[ref]
         required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
-        if not all(k in entry for k in required):
-            raise ClaimIntegrityError("complete evidence provenance required")
-        if not artifact.verify_integrity():
+        if not all(k in entry for k in required) or not artifact.verify_integrity():
             raise ClaimIntegrityError("registered evidence integrity failure")
     except ClaimIntegrityError:
         raise
     except Exception as exc:
         raise ClaimIntegrityError("evidence reference is not registry-backed") from exc
-    return artifact.result_hash, {
-        "result_hash": artifact.result_hash,
-        "trace_hash": artifact.trace_hash,
-        "event_ids": tuple(entry["ordered_event_ids"]),
-        "state_anchors": (entry["initial_state_hash"], entry["resulting_state_hash"]),
-        "result_provenance": artifact.provenance,
-    }
+    return artifact.result_hash, {"result_hash": artifact.result_hash, "trace_hash": artifact.trace_hash, "event_ids": tuple(entry["ordered_event_ids"]), "state_anchors": (entry["initial_state_hash"], entry["resulting_state_hash"]), "result_provenance": artifact.provenance}
 
 
-def _polarity(item: DerivedEvidence) -> str | None:
-    value = item.result.get("polarity")
-    return value if value in {s.value for s in ClaimStatus} else None
+def _verify_exported_derived_evidence(registry: ArtifactRegistry, ref: str, payload: Mapping[str, Any]) -> None:
+    required = ("source_hashes", "analysis_type", "algorithm_version", "parameters", "result", "provenance", "derived_evidence_hash")
+    if not all(k in payload for k in required):
+        raise ClaimIntegrityError("complete derived-evidence provenance required")
+    expected = compute_derived_evidence_hash(payload["source_hashes"], payload["analysis_type"], payload["algorithm_version"], payload["parameters"], payload["result"])
+    if expected != ref or payload["derived_evidence_hash"] != ref:
+        raise ClaimIntegrityError("derived evidence identity mismatch")
+    sources = payload["provenance"].get("sources")
+    if not isinstance(sources, Mapping):
+        raise ClaimIntegrityError("recursive provenance missing")
+    for source_hash in payload["source_hashes"]:
+        source = sources.get(source_hash)
+        if not isinstance(source, Mapping):
+            raise ClaimIntegrityError("source provenance missing")
+        if "result_hash" in source:
+            _verify_evidence(registry, source["result_hash"])
+        for leaf in source.get("leaves", ()):
+            if not isinstance(leaf, Mapping) or "result_hash" not in leaf or "trace_hash" not in leaf or "event_ids" not in leaf or "state_anchors" not in leaf:
+                raise ClaimIntegrityError("incomplete recursive provenance")
+            _hash(leaf["result_hash"], "result_hash")
+            _hash(leaf["trace_hash"], "trace_hash")
 
 
 def evaluate_claim(evidence: Sequence[DerivedEvidence], premises: Sequence[Any], inference_rule: str) -> ClaimStatus:
@@ -197,6 +202,11 @@ def evaluate_claim(evidence: Sequence[DerivedEvidence], premises: Sequence[Any],
     if "REFUTED" in values:
         return ClaimStatus.REFUTED
     return ClaimStatus.UNDETERMINED
+
+
+def _polarity(item: DerivedEvidence) -> str | None:
+    value = item.result.get("polarity")
+    return value if value in {s.value for s in ClaimStatus} else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,12 +244,24 @@ class Claim:
 
     def verify(self, registry: ArtifactRegistry, *, evidence: Sequence[str | DerivedEvidence] | None = None, inference_rule: str | None = None) -> bool:
         if evidence is not None:
+            if isinstance(evidence, DerivedEvidence):
+                evidence = (evidence,)
             supplied = tuple(_verify_evidence(registry, item)[0] for item in evidence)
             if tuple(dict.fromkeys(supplied)) != self.evidence_refs:
                 raise ClaimIntegrityError("evidence substitution detected")
         if inference_rule is not None and inference_rule != self.inference_rule:
             raise ClaimIntegrityError("inference rule substitution detected")
-        proven = {key: prov for key, prov in (_verify_evidence(registry, ref) for ref in self.evidence_refs)}
+        proven = {}
+        for ref in self.evidence_refs:
+            if ref in registry.snapshot():
+                key, prov = _verify_evidence(registry, ref)
+            else:
+                payload = self.provenance.get("evidence", {}).get(ref)
+                if not isinstance(payload, Mapping):
+                    raise ClaimIntegrityError("evidence is not verifiable")
+                _verify_exported_derived_evidence(registry, ref, payload)
+                key, prov = ref, payload["provenance"]
+            proven[key] = prov
         if self.provenance.get("evidence") != proven:
             raise ClaimIntegrityError("provenance mismatch")
         expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.status)
@@ -248,20 +270,14 @@ class Claim:
         return True
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({
-            "claim_type": self.claim_type,
-            "statement": self.statement,
-            "premises": _thaw(self.premises),
-            "evidence_refs": self.evidence_refs,
-            "inference_rule": self.inference_rule,
-            "rule_version": self.rule_version,
-            "status": self.status.value,
-            "provenance": _thaw(self.provenance),
-            "claim_hash": self.claim_hash,
-        })
+        return MappingProxyType({"claim_type": self.claim_type, "statement": self.statement, "premises": _thaw(self.premises), "evidence_refs": self.evidence_refs, "inference_rule": self.inference_rule, "rule_version": self.rule_version, "status": self.status.value, "provenance": _thaw(self.provenance), "claim_hash": self.claim_hash})
 
 
-def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, premises: Sequence[Any], evidence: Sequence[str | DerivedEvidence], inference_rule: str, rule_version: str, status: ClaimStatus | str) -> Claim:
+def _evidence_export(item: DerivedEvidence) -> Mapping[str, Any]:
+    return {"source_hashes": item.source_hashes, "analysis_type": item.analysis_type, "algorithm_version": item.algorithm_version, "parameters": item.parameters, "result": item.result, "provenance": item.provenance, "derived_evidence_hash": item.derived_evidence_hash}
+
+
+def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, premises: Sequence[Any], evidence: Sequence[str | DerivedEvidence] | DerivedEvidence, inference_rule: str, rule_version: str, status: ClaimStatus | str) -> Claim:
     if not inference_rule:
         raise ClaimRuleError("inference_rule must be explicit")
     if inference_rule not in _RULES:
@@ -271,16 +287,18 @@ def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, p
     premises_frozen = _validate_premises(premises)
     if inference_rule == "PREMISE_CONJUNCTION" and not premises_frozen:
         raise ClaimIntegrityError("missing premise")
+    if isinstance(evidence, DerivedEvidence):
+        evidence = (evidence,)
     verified: list[DerivedEvidence] = []
     refs: list[str] = []
     provenance: dict[str, Any] = {}
     for item in evidence:
         key, prov = _verify_evidence(registry, item)
-        refs.append(key)
-        provenance[key] = prov
         if not isinstance(item, DerivedEvidence):
             raise ClaimIntegrityError("claims must bind verified DerivedEvidence objects")
+        refs.append(key)
         verified.append(item)
+        provenance[key] = _evidence_export(item)
     refs = list(dict.fromkeys(refs))
     computed = evaluate_claim(tuple(verified), premises_frozen, inference_rule)
     expected_status = status if isinstance(status, ClaimStatus) else ClaimStatus(status)
