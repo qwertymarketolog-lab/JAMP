@@ -23,4 +23,6 @@ jobs:
       - name: Install test dependency
         run: python -m pip install pytest
       - name: Run P20.6 34-gate suite
+        env:
+          PYTHONPATH: src
         run: python -m pytest -q tests/research/test_question_engine.py
