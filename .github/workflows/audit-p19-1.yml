@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - 'research/p19-1-canonical-replay-hash'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
