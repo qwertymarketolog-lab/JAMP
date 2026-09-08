@@ -130,7 +130,7 @@ def test_p18_4_baseline_authorization_enabled_blocks_foreign_authority():
     authorization = _authorization(source, source_family=FAMILY_C)
     projection = _projection(source, authorization)
 
-    with pytest.raises(PermissionError):
+    with pytest.raises(ValueError, match="authorization source family does not own source pattern"):
         _gateway().transfer(
             source_pattern=source,
             authorization=authorization,
