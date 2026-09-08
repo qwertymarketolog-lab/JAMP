@@ -14,7 +14,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from .canonical import canonical_bytes
-from .derivation import DerivedEvidence
+from .derivation import DerivedEvidence, compute_derived_evidence_hash
 from .registry import ArtifactRegistry
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -113,13 +113,39 @@ def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any],
     return hashlib.sha256(canonical_bytes(material)).hexdigest()
 
 
+def _verify_derived_evidence(registry: ArtifactRegistry, evidence: DerivedEvidence) -> tuple[str, Mapping[str, Any]]:
+    expected_hash = compute_derived_evidence_hash(
+        evidence.source_hashes, evidence.analysis_type, evidence.algorithm_version,
+        evidence.parameters, evidence.result,
+    )
+    if expected_hash != evidence.derived_evidence_hash:
+        raise ClaimIntegrityError("derived evidence hash mismatch")
+    sources = evidence.provenance.get("sources")
+    if not isinstance(sources, Mapping):
+        raise ClaimIntegrityError("recursive source provenance is required")
+    if set(sources) != set(evidence.source_hashes):
+        raise ClaimIntegrityError("derived evidence source substitution detected")
+    for source_hash in evidence.source_hashes:
+        source = sources[source_hash]
+        if not isinstance(source, Mapping):
+            raise ClaimIntegrityError("invalid source provenance")
+        if "result_hash" in source:
+            _verify_evidence(registry, source["result_hash"])
+        if "leaves" in source:
+            for leaf in source["leaves"]:
+                if not isinstance(leaf, Mapping):
+                    raise ClaimIntegrityError("invalid recursive provenance leaf")
+                for field in ("result_hash", "trace_hash"):
+                    _hash(leaf[field], field)
+                for field in ("event_ids", "state_anchors"):
+                    if field not in leaf:
+                        raise ClaimIntegrityError("incomplete recursive provenance")
+    return evidence.derived_evidence_hash, evidence.provenance
+
+
 def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> tuple[str, Mapping[str, Any]]:
     if isinstance(ref, DerivedEvidence):
-        try:
-            ref.verify(registry)
-        except Exception as exc:
-            raise ClaimIntegrityError("derived evidence failed verification") from exc
-        return ref.derived_evidence_hash, ref.provenance
+        return _verify_derived_evidence(registry, ref)
     _hash(ref, "evidence_ref")
     try:
         artifact = registry.get(ref)
@@ -127,6 +153,8 @@ def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> 
         required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
         if not all(k in entry for k in required):
             raise ClaimIntegrityError("complete evidence provenance required")
+        if not artifact.verify_integrity():
+            raise ClaimIntegrityError("registered evidence integrity failure")
     except ClaimIntegrityError:
         raise
     except Exception as exc:
@@ -205,9 +233,10 @@ class Claim:
             raise ClaimIntegrityError("claim_hash does not match content")
 
     def verify(self, registry: ArtifactRegistry, *, evidence: Sequence[str | DerivedEvidence] | None = None, inference_rule: str | None = None) -> bool:
-        supplied = self.evidence_refs if evidence is None else tuple(_verify_evidence(registry, x)[0] for x in evidence)
-        if tuple(dict.fromkeys(supplied)) != self.evidence_refs:
-            raise ClaimIntegrityError("evidence substitution detected")
+        if evidence is not None:
+            supplied = tuple(_verify_evidence(registry, item)[0] for item in evidence)
+            if tuple(dict.fromkeys(supplied)) != self.evidence_refs:
+                raise ClaimIntegrityError("evidence substitution detected")
         if inference_rule is not None and inference_rule != self.inference_rule:
             raise ClaimIntegrityError("inference rule substitution detected")
         proven = {key: prov for key, prov in (_verify_evidence(registry, ref) for ref in self.evidence_refs)}
