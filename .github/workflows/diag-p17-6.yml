@@ -29,3 +29,5 @@ jobs:
         env:
           PYTHONPATH: src
         run: pytest -q
+
+# diagnostic push trigger: full-suite telemetry
