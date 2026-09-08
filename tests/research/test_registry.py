@@ -8,13 +8,13 @@ from types import MappingProxyType
 
 import pytest
 
-from jamp.research.replay import ReplayTrace
+from jamp.research.replay import ReplayTrace, compute_trace_hash
 from jamp.research.result import compute_result_hash, project_result
 from jamp.research.registry import ArtifactRegistry, RegistryIntegrityError
 
 
-TRACE_HASH = "a" * 64
 STATE_HASH = "b" * 64
+TRACE_HASH = compute_trace_hash(STATE_HASH, (), STATE_HASH)
 RESULT_HASH = "c" * 64
 
 
