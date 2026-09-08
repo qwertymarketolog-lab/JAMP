@@ -21,7 +21,6 @@ from jamp.research.question_engine import (
     resolve_question,
 )
 
-
 H1 = "1" * 64
 H2 = "2" * 64
 H3 = "3" * 64
@@ -42,13 +41,7 @@ class Evidence:
         return True
 
     def export(self):
-        return {
-            "result_hash": self.result_hash,
-            "trace_hash": self.trace_hash,
-            "event_ids": self.event_ids,
-            "state_anchors": self.state_anchors,
-            "status": self.status,
-        }
+        return {"result_hash": self.result_hash, "trace_hash": self.trace_hash, "event_ids": self.event_ids, "state_anchors": self.state_anchors, "status": self.status}
 
 
 class Registry:
@@ -78,11 +71,7 @@ class Claim:
         return True
 
     def export(self):
-        return {
-            "claim_hash": self.claim_hash,
-            "evidence_refs": self.evidence_refs,
-            "status": self.status,
-        }
+        return {"claim_hash": self.claim_hash, "evidence_refs": self.evidence_refs, "status": self.status}
 
 
 class Hypothesis:
@@ -95,11 +84,7 @@ class Hypothesis:
         return True
 
     def export(self):
-        return {
-            "hypothesis_hash": self.hypothesis_hash,
-            "parent_hypothesis_hash": self.parent_hypothesis_hash,
-            "status": self.status,
-        }
+        return {"hypothesis_hash": self.hypothesis_hash, "parent_hypothesis_hash": self.parent_hypothesis_hash, "status": self.status}
 
 
 def question(*, evidence=(), claims=(), hypotheses=(), status=QuestionStatus.UNRESOLVED, formulation="Why does X occur?", question_type=QuestionType.EXPLANATORY, context=None, constraints=None, parent_question_hash=None):
@@ -119,7 +104,6 @@ def question(*, evidence=(), claims=(), hypotheses=(), status=QuestionStatus.UNR
 
 
 # 01 schema validity
-
 def test_gate_01_schema_validity():
     q = question()
     assert isinstance(q, ResearchQuestion)
@@ -127,7 +111,6 @@ def test_gate_01_schema_validity():
 
 
 # 02 immutable question record
-
 def test_gate_02_immutable_question_record():
     q = question()
     with pytest.raises((AttributeError, TypeError)):
@@ -135,7 +118,6 @@ def test_gate_02_immutable_question_record():
 
 
 # 03 valid question_hash
-
 def test_gate_03_valid_question_hash():
     q = question()
     assert len(q.question_hash) == 64
@@ -144,7 +126,6 @@ def test_gate_03_valid_question_hash():
 
 
 # 04 deterministic hash computation
-
 def test_gate_04_deterministic_hash_computation():
     a = question(context={"b": 2, "a": 1}, constraints={"z": [2, 1], "a": "x"})
     b = question(context={"a": 1, "b": 2}, constraints={"a": "x", "z": [2, 1]})
@@ -152,13 +133,11 @@ def test_gate_04_deterministic_hash_computation():
 
 
 # 05 self verification
-
 def test_gate_05_self_verification():
     assert question().verify() is True
 
 
 # 06 canonical formulation
-
 def test_gate_06_canonical_formulation():
     q = question(formulation="  Why   does\n X   occur?  ")
     assert q.formulation == "Why does X occur?"
@@ -166,36 +145,30 @@ def test_gate_06_canonical_formulation():
 
 
 # 07 explicit question type
-
 def test_gate_07_explicit_question_type():
     with pytest.raises((QuestionIntegrityError, ValueError, TypeError)):
         make_question(Registry(), formulation="X?", question_type="", context={}, constraints={})
 
 
 # 08 valid question status
-
 def test_gate_08_valid_question_status():
     with pytest.raises((QuestionIntegrityError, ValueError, TypeError)):
         make_question(Registry(), formulation="X?", question_type=QuestionType.EXPLANATORY, context={}, constraints={}, status="NOT_A_STATUS")
 
 
 # 09 only registered evidence
-
 def test_gate_09_only_registered_evidence():
     q = question(evidence=(H1,))
     assert q.evidence_hashes == (H1,)
 
 
 # 10 unknown evidence rejected
-
 def test_gate_10_unknown_evidence_rejected():
-    registry = Registry()
     with pytest.raises(QuestionIntegrityError):
-        make_question(registry, formulation="X?", question_type=QuestionType.EXPLANATORY, context={}, constraints={}, evidence_hashes=(H1,))
+        make_question(Registry(), formulation="X?", question_type=QuestionType.EXPLANATORY, context={}, constraints={}, evidence_hashes=(H1,))
 
 
 # 11 evidence integrity verified
-
 def test_gate_11_evidence_integrity_verified():
     bad = Evidence(H1)
     bad.verify_integrity = lambda: False
@@ -204,7 +177,6 @@ def test_gate_11_evidence_integrity_verified():
 
 
 # 12 claim integrity verified
-
 def test_gate_12_claim_integrity_verified():
     class BadClaim(Claim):
         def verify(self, registry):
@@ -216,7 +188,6 @@ def test_gate_12_claim_integrity_verified():
 
 
 # 13 evidence/claim substitution rejected
-
 def test_gate_13_evidence_claim_substitution_rejected():
     registry = Registry(Evidence(H1), Evidence(H2))
     claim = Claim(C1, (H1,), "SUPPORTED")
@@ -225,16 +196,15 @@ def test_gate_13_evidence_claim_substitution_rejected():
 
 
 # 14 evidence tampering detected
-
 def test_gate_14_evidence_tampering_detected():
     q = question(evidence=(H1,))
-    q.export()["evidence_hashes"] = (H2,)
-    with pytest.raises((TypeError, KeyError)):
-        q.export()["evidence_hashes"]
+    exported = dict(q.export())
+    exported["evidence_hashes"] = (H2,)
+    with pytest.raises(QuestionIntegrityError):
+        ResearchQuestion.from_export(exported)
 
 
 # 15 complete provenance preserved
-
 def test_gate_15_complete_provenance_preserved():
     q = question(evidence=(H1,))
     assert q.provenance[H1]["result_hash"] == H1
@@ -244,7 +214,6 @@ def test_gate_15_complete_provenance_preserved():
 
 
 # 16 recursive provenance preserved
-
 def test_gate_16_recursive_provenance_preserved():
     q = question(evidence=(H1,))
     exported = q.export()
@@ -254,7 +223,6 @@ def test_gate_16_recursive_provenance_preserved():
 
 
 # 17 unanswered question detected
-
 def test_gate_17_unanswered_question_detected():
     q = question()
     assert q.status is QuestionStatus.UNRESOLVED
@@ -262,7 +230,6 @@ def test_gate_17_unanswered_question_detected():
 
 
 # 18 evidence gap detected
-
 def test_gate_18_evidence_gap_detected():
     q = question(status=QuestionStatus.GAP, constraints={"required_evidence": (H1,)})
     assert q.status is QuestionStatus.GAP
@@ -270,7 +237,6 @@ def test_gate_18_evidence_gap_detected():
 
 
 # 19 conflicting evidence detected
-
 def test_gate_19_conflicting_evidence_detected():
     registry = Registry(Evidence(H1, status="SUPPORTED"), Evidence(H2, status="REFUTED"))
     q = make_question(registry, formulation="Is X true?", question_type=QuestionType.COMPARATIVE, context={}, constraints={}, evidence_hashes=(H1, H2))
@@ -278,7 +244,6 @@ def test_gate_19_conflicting_evidence_detected():
 
 
 # 20 sufficient evidence -> ANSWERED
-
 def test_gate_20_sufficient_evidence_answered():
     q = question(evidence=(H1,))
     answered = resolve_question(q, evidence_statuses={H1: "SUPPORTED"})
@@ -286,7 +251,6 @@ def test_gate_20_sufficient_evidence_answered():
 
 
 # 21 insufficient evidence != ANSWERED
-
 def test_gate_21_insufficient_evidence_not_answered():
     q = question()
     resolved = resolve_question(q, evidence_statuses={})
@@ -294,7 +258,6 @@ def test_gate_21_insufficient_evidence_not_answered():
 
 
 # 22 contradictory claims cannot silently collapse
-
 def test_gate_22_contradictory_claims_cannot_silently_collapse():
     registry = Registry(Evidence(H1), Evidence(H2))
     c1 = Claim(C1, (H1,), "SUPPORTED")
@@ -305,7 +268,6 @@ def test_gate_22_contradictory_claims_cannot_silently_collapse():
 
 
 # 23 deterministic resolution classification
-
 def test_gate_23_deterministic_resolution_classification():
     q1 = question(evidence=(H1,))
     q2 = question(evidence=(H1,))
@@ -314,7 +276,6 @@ def test_gate_23_deterministic_resolution_classification():
 
 
 # 24 resolution explanation is provenance-addressed
-
 def test_gate_24_resolution_explanation_is_provenance_addressed():
     q = question(evidence=(H1,))
     assert q.resolution["explanation_refs"] == (H1,)
@@ -322,7 +283,6 @@ def test_gate_24_resolution_explanation_is_provenance_addressed():
 
 
 # 25 hypothesis references preserved
-
 def test_gate_25_hypothesis_references_preserved():
     h = Hypothesis(H1)
     q = question(hypotheses=(h,))
@@ -330,7 +290,6 @@ def test_gate_25_hypothesis_references_preserved():
 
 
 # 26 question->hypothesis linkage integrity
-
 def test_gate_26_question_hypothesis_linkage_integrity():
     h = Hypothesis(H1)
     q = question(hypotheses=(h,))
@@ -340,7 +299,6 @@ def test_gate_26_question_hypothesis_linkage_integrity():
 
 
 # 27 descendant question lineage preserved
-
 def test_gate_27_descendant_question_lineage_preserved():
     parent = question()
     child = question(parent_question_hash=parent.question_hash)
@@ -349,7 +307,6 @@ def test_gate_27_descendant_question_lineage_preserved():
 
 
 # 28 ancestor cannot be rewritten
-
 def test_gate_28_ancestor_cannot_be_rewritten():
     parent = question(formulation="Original question?")
     child = question(parent_question_hash=parent.question_hash, formulation="Refined question?")
@@ -359,7 +316,6 @@ def test_gate_28_ancestor_cannot_be_rewritten():
 
 
 # 29 cyclic research lineage rejected
-
 def test_gate_29_cyclic_research_lineage_rejected():
     parent = question()
     with pytest.raises(QuestionIntegrityError):
@@ -367,7 +323,6 @@ def test_gate_29_cyclic_research_lineage_rejected():
 
 
 # 30 question payload tampering detected
-
 def test_gate_30_question_payload_tampering_detected():
     q = question()
     exported = dict(q.export())
@@ -377,7 +332,6 @@ def test_gate_30_question_payload_tampering_detected():
 
 
 # 31 evidence substitution attack rejected
-
 def test_gate_31_evidence_substitution_attack_rejected():
     q = question(evidence=(H1,))
     with pytest.raises(QuestionIntegrityError):
@@ -385,22 +339,15 @@ def test_gate_31_evidence_substitution_attack_rejected():
 
 
 # 32 runtime metadata injection rejected
-@pytest.mark.parametrize("key", ["timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"])
-def test_gate_32_runtime_metadata_injection_rejected(key):
-    with pytest.raises(QuestionIntegrityError):
-        question(context={key: "forbidden"})
+def test_gate_32_runtime_metadata_injection_rejected():
+    for key in ("timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"):
+        with pytest.raises(QuestionIntegrityError):
+            question(context={key: "forbidden"})
 
 
 # 33 cross-runtime byte-identical reproduction
-
 def test_gate_33_cross_runtime_byte_identical_reproduction():
-    kwargs = dict(
-        formulation="  Why   does X occur? ",
-        question_type=QuestionType.EXPLANATORY,
-        context={"b": [2, 1], "a": {"z": 3, "x": 4}},
-        constraints={"scope": "test"},
-        evidence_hashes=(H1,),
-    )
+    kwargs = dict(formulation="  Why   does X occur? ", question_type=QuestionType.EXPLANATORY, context={"b": [2, 1], "a": {"z": 3, "x": 4}}, constraints={"scope": "test"}, evidence_hashes=(H1,))
     first = compute_question_hash(**kwargs)
     second = compute_question_hash(**kwargs)
     assert first == second
@@ -408,7 +355,6 @@ def test_gate_33_cross_runtime_byte_identical_reproduction():
 
 
 # 34 zero IO/network/jamp.domain contamination
-
 def test_gate_34_zero_io_network_domain_contamination():
     import jamp.research.question_engine as module
     assert "jamp.domain" not in module.__dict__.get("__file__", "")
