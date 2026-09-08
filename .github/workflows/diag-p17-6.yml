@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip pytest
 
-      - name: Run targeted P17.6 diagnostic
+      - name: Run full candidate suite
         env:
           PYTHONPATH: src
-        run: pytest -q tests/test_p17_6_cli_entrypoints.py
+        run: pytest -q
