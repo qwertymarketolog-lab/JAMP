@@ -94,7 +94,6 @@ def compute_hypothesis_hash(
     status: str | HypothesisStatus,
     transition_history: Sequence[Mapping[str, Any]],
 ) -> str:
-    """Return the deterministic identity of a hypothesis record."""
     formulation = _canonical_formulation(formulation)
     if hypothesis_type not in _HYPOTHESIS_TYPES:
         raise HypothesisIntegrityError("invalid hypothesis_type")
@@ -120,6 +119,14 @@ def compute_hypothesis_hash(
     return hashlib.sha256(canonical_bytes(material)).hexdigest()
 
 
+def _validate_transition_reason(reason: Mapping[str, Any]) -> None:
+    if not isinstance(reason, Mapping) or not reason:
+        raise HypothesisTransitionError("transition reason is required")
+    for key in ("claim_hash", "evidence_hash"):
+        if key in reason:
+            _hash(reason[key], key)
+
+
 def _validate_transition_history(history: Sequence[Mapping[str, Any]], current: HypothesisStatus) -> tuple[Any, ...]:
     frozen = tuple(_freeze(x) for x in history)
     expected = HypothesisStatus.ACTIVE
@@ -136,7 +143,10 @@ def _validate_transition_history(history: Sequence[Mapping[str, Any]], current: 
             raise HypothesisIntegrityError("invalid transition history")
         if not isinstance(transition["reason"], Mapping) or not transition["reason"]:
             raise HypothesisIntegrityError("transition reason is required")
-        _validate_transition_reason(transition["reason"])
+        try:
+            _validate_transition_reason(transition["reason"])
+        except HypothesisTransitionError as exc:
+            raise HypothesisIntegrityError(str(exc)) from exc
         _hash(transition["transition_hash"], "transition_hash")
         material = {k: _thaw(transition[k]) for k in ("from_status", "to_status", "reason")}
         expected_hash = hashlib.sha256(canonical_bytes(material)).hexdigest()
@@ -146,18 +156,6 @@ def _validate_transition_history(history: Sequence[Mapping[str, Any]], current: 
     if expected != current:
         raise HypothesisIntegrityError("status/history mismatch")
     return frozen
-
-
-def _validate_transition_reason(reason: Mapping[str, Any]) -> None:
-    if not isinstance(reason, Mapping) or not reason:
-        raise HypothesisTransitionError("transition reason is required")
-    linked = False
-    for key in ("claim_hash", "evidence_hash"):
-        if key in reason:
-            _hash(reason[key], key)
-            linked = True
-    if not linked:
-        raise HypothesisTransitionError("transition reason must link a claim_hash or evidence_hash")
 
 
 def compute_transition_hash(from_status: str | HypothesisStatus, to_status: str | HypothesisStatus, reason: Mapping[str, Any]) -> str:
@@ -197,10 +195,7 @@ class HypothesisRecord:
             status = self.status if isinstance(self.status, HypothesisStatus) else HypothesisStatus(self.status)
         except (ValueError, TypeError) as exc:
             raise HypothesisIntegrityError("invalid status") from exc
-        try:
-            history = _validate_transition_history(self.transition_history, status)
-        except HypothesisTransitionError as exc:
-            raise HypothesisIntegrityError(str(exc)) from exc
+        history = _validate_transition_history(self.transition_history, status)
         object.__setattr__(self, "formulation", formulation)
         object.__setattr__(self, "source", source)
         object.__setattr__(self, "claim_hashes", claims)
@@ -234,13 +229,16 @@ class HypothesisRecord:
                 raise HypothesisIntegrityError("registry is required for evidence verification")
             for evidence_hash in self.evidence_hashes:
                 try:
-                    registry.verify(evidence_hash)
+                    artifact = registry.get(evidence_hash)
                     entry = registry.index[evidence_hash]
-                    if entry.get("trace_hash") != registry.get(evidence_hash).trace_hash:
+                    required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
+                    if not all(k in entry for k in required):
+                        raise HypothesisIntegrityError("registered evidence provenance is incomplete")
+                    if entry["trace_hash"] != artifact.trace_hash:
                         raise HypothesisIntegrityError("evidence provenance index mismatch")
-                except (KeyError, RegistryIntegrityError, Exception) as exc:
-                    if isinstance(exc, HypothesisIntegrityError):
-                        raise
+                except HypothesisIntegrityError:
+                    raise
+                except (KeyError, RegistryIntegrityError) as exc:
                     raise HypothesisIntegrityError("evidence is not registry-backed or is tampered") from exc
         if claims is not None:
             supplied = tuple(dict.fromkeys(c.claim_hash for c in claims))
@@ -259,7 +257,7 @@ class HypothesisRecord:
         return True
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({
+        return {
             "hypothesis_id": self.hypothesis_id,
             "hypothesis_hash": self.hypothesis_hash,
             "formulation": self.formulation,
@@ -270,15 +268,18 @@ class HypothesisRecord:
             "evidence_hashes": self.evidence_hashes,
             "status": self.status.value,
             "transition_history": _thaw(self.transition_history),
-        })
+        }
 
 
 def make_hypothesis(
     *, formulation: str, hypothesis_type: str, source: Mapping[str, Any],
     parent: HypothesisRecord | None = None,
+    parent_hypothesis_hash: str | None = None,
     claim_hashes: Sequence[str] = (), evidence_hashes: Sequence[str] = (),
 ) -> HypothesisRecord:
-    parent_hash = parent.hypothesis_hash if parent is not None else None
+    if parent is not None and parent_hypothesis_hash is not None:
+        raise HypothesisTransitionError("parent and parent_hypothesis_hash are mutually exclusive")
+    parent_hash = parent.hypothesis_hash if parent is not None else parent_hypothesis_hash
     if parent is not None and parent.status not in {HypothesisStatus.REFUTED, HypothesisStatus.REVISED}:
         raise HypothesisTransitionError("descendant requires a refuted or revised parent")
     history: tuple[Mapping[str, Any], ...] = ()
