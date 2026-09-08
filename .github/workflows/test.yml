@@ -1,0 +1,52 @@
+name: Run Pytest
+
+on:
+  push:
+    branches:
+      - main
+      - 'import/**'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest pytest-mock
+    - name: Run architectural boundary validation
+      env:
+        PYTHONPATH: src
+      run: |
+        pytest -q tests/test_architectural_boundaries.py
+    - name: Run full test suite
+      env:
+        PYTHONPATH: src
+      run: |
+        pytest -q
+    - name: Generate empirical P17.6 report
+      env:
+        PYTHONPATH: src
+      run: |
+        python -m jamp.p17.closed_loop --export-report experiment_report.json --generations 4
+        python -m jamp.p17.experiment_report --verify experiment_report.json
+        python -m jamp.p17.experiment_report --render experiment_report.json
+    - name: Upload empirical P17.6 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: p17-6-experiment-report
+        path: experiment_report.json
+        if-no-files-found: error
