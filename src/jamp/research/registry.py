@@ -11,9 +11,9 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from .canonical import canonical_bytes
+from .canonical import canonical_bytes as _canonical_bytes
 from .replay import ReplayTrace, compute_trace_hash
-from .result import ResearchResult, compute_result_hash
+from .result import ResearchResult
 
 
 class RegistryError(ValueError):
@@ -189,4 +189,4 @@ class ArtifactRegistry:
 
     def canonical_bytes(self) -> bytes:
         """Return canonical bytes for the complete deterministic registry state."""
-        return canonical_bytes(self.export())
+        return _canonical_bytes(self.export())
