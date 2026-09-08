@@ -1,8 +1,7 @@
 """P20.4 acceptance and adversarial contract: Hypothesis & Claim Verification.
 
-Test-first contract.  The implementation is intentionally absent at the
-initial contract commit; every gate below must become independently green
-under the isolated P20.4 diagnostic workflow.
+Test-first contract.  All 30 gates remain unchanged; this fixture uses the
+actual P19.4 ResearchResult field name ``result_payload``.
 """
 
 from dataclasses import FrozenInstanceError
@@ -11,7 +10,7 @@ import pytest
 
 from jamp.research.canonical import replay_hash
 from jamp.research.composition import compose_results
-from jamp.research.derivation import DerivationIntegrityError, derive_evidence
+from jamp.research.derivation import derive_evidence
 from jamp.research.registry import ArtifactRegistry
 from jamp.research.replay import ReplayTrace, compute_trace_hash
 from jamp.research.result import ResearchResult, compute_result_hash
@@ -50,10 +49,10 @@ def _registry(*seeds: str) -> ArtifactRegistry:
 
 
 def _evidence(registry: ArtifactRegistry, seed: str = "a", *, polarity: str = "SUPPORTED"):
-    result_hash = next(h for h in registry.snapshot() if registry.get(h).provenance["source"] == "test" and registry.get(h).payload["label"] == seed)
+    result_hash = next(h for h in registry.snapshot() if registry.get(h).provenance["source"] == "test" and registry.get(h).result_payload["label"] == seed)
     return derive_evidence(
         registry, [result_hash], "OBSERVATION", "1", {},
-        {"polarity": polarity, "value": registry.get(result_hash).payload["value"]},
+        {"polarity": polarity, "value": registry.get(result_hash).result_payload["value"]},
     )
 
 
@@ -164,7 +163,7 @@ def test_13_recursive_source_provenance_preserved():
     composition = compose_results(registry, hashes)
     evidence = derive_evidence(registry, [composition], "AGGREGATION", "1", {}, {"polarity": "SUPPORTED"})
     claim = _claim(registry, evidence=[evidence])
-    leaf = claim.provenance["evidence"][evidence.derived_evidence_hash]["leaves"]
+    leaf = claim.provenance["evidence"][evidence.derived_evidence_hash]["provenance"]["sources"][composition.composition_hash]["leaves"]
     assert len(leaf) == len(hashes)
     assert all(item["trace_hash"] for item in leaf)
 
