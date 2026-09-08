@@ -234,7 +234,7 @@ def test_gate_24_cross_runtime_deterministic_reproduction():
     artifact = compose_results(registry, [first.result_hash, second.result_hash], semantics={"mode": "meta"})
     material = {
         "result_hashes": list(artifact.result_hashes),
-        "semantics": artifact.semantics,
+        "semantics": {key: value for key, value in artifact.semantics.items()},
     }
     expected = hashlib.sha256(canonical_bytes(material)).hexdigest()
     assert artifact.composition_hash == expected
