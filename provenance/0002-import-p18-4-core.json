@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "record_id": "0002-import-p18-4-core",
+  "kind": "historical-source-import",
+  "source": {
+    "repository": "qwertymarketolog-lab/visual-merchant-hub",
+    "branch": "feature/p18-4-ablation-target",
+    "commit_sha": "7b717a8dea269bc5c33d9c128634f55c0bad27b0",
+    "role": "upstream historical baseline",
+    "generation_claim": false
+  },
+  "target": {
+    "repository": "qwertymarketolog-lab/JAMP",
+    "branch": "import/jamp-from-visual-merchant-hub",
+    "import_status": "pending"
+  },
+  "scope": {
+    "included": [
+      "src/jamp/",
+      "tests/",
+      "pytest.ini",
+      ".github/workflows/test.yml"
+    ],
+    "excluded": [
+      "React/Vite frontend",
+      "commercial UI components",
+      "frontend assets and build configuration"
+    ]
+  },
+  "verification": {
+    "required": [
+      "AST architectural boundary validation",
+      "Python 3.11 pytest full suite",
+      "P18.4 causal ablation telemetry",
+      "artifact upload verification"
+    ],
+    "green_policy": "Do not promote P18.4 or overall telemetry to GREEN without a verified GitHub Actions run whose head_sha matches the imported commit."
+  },
+  "notes": [
+    "This record preserves the historical upstream anchor and does not claim that the source SHA was generated locally.",
+    "Production P18.4 guardrail code must remain unchanged during import validation."
+  ]
+}
