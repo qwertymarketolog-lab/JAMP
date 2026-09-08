@@ -5,7 +5,6 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from jamp.research.canonical import replay_hash
-from jamp.research.composition import compose_results
 from jamp.research.derivation import (
     DerivationIntegrityError,
     derive_evidence,
@@ -102,7 +101,7 @@ def test_08_unknown_source_rejected():
 def test_09_source_integrity_verified():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
-    registry._artifacts[h] = registry._artifacts[h].__class__(registry._artifacts[h].result, None)
+    object.__setattr__(registry._artifacts[h].result, "result_hash", "0" * 64)
     with pytest.raises(DerivationIntegrityError):
         derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
 
