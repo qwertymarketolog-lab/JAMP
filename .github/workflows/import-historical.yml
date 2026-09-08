@@ -1,0 +1,56 @@
+name: Assemble Historical JAMP Tree
+
+on:
+  push:
+    branches:
+      - 'import/jamp-from-visual-merchant-hub'
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    if: ${{ !startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: import/jamp-from-visual-merchant-hub
+
+      - name: Fetch exact upstream baseline
+        run: |
+          git clone --no-tags https://github.com/qwertymarketolog-lab/visual-merchant-hub.git /tmp/visual-merchant-hub
+          cd /tmp/visual-merchant-hub
+          git fetch --no-tags origin 7b717a8dea269bc5c33d9c128634f55c0bad27b0
+          git checkout --detach 7b717a8dea269bc5c33d9c128634f55c0bad27b0
+
+      - name: Assemble historical JAMP tree
+        run: |
+          cp tests/test_architectural_boundaries.py /tmp/test_architectural_boundaries.py
+          rm -rf src/jamp tests integration pytest.ini
+          cp -a /tmp/visual-merchant-hub/src/jamp src/jamp
+          cp -a /tmp/visual-merchant-hub/tests tests
+          cp -a /tmp/visual-merchant-hub/integration integration
+          cp /tmp/visual-merchant-hub/pytest.ini pytest.ini
+          cp /tmp/test_architectural_boundaries.py tests/test_architectural_boundaries.py
+
+      - name: Verify source anchor
+        run: |
+          test "$(git -C /tmp/visual-merchant-hub rev-parse HEAD)" = "7b717a8dea269bc5c33d9c128634f55c0bad27b0"
+          test -f src/jamp/p18/controlled_transfer.py
+          test -f src/jamp/p18/experiment_registry.py
+          test -f src/jamp/search/boundary.py
+          test -f src/jamp/registry/registry.py
+          test -f tests/test_p18_4_ablation.py
+          test -f tests/test_architectural_boundaries.py
+
+      - name: Commit coherent candidate
+        run: |
+          git config user.name "qwertymarketolog-lab"
+          git config user.email "qwertymarketolog@gmail.com"
+          git add src/jamp tests integration pytest.ini
+          git diff --cached --quiet && exit 0
+          git commit -m "import: assemble historical upstream 7b717a8"
+          git push origin HEAD:import/jamp-from-visual-merchant-hub
