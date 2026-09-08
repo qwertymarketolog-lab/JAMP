@@ -23,7 +23,8 @@ jobs:
 
       - name: Assemble exact historical tree atomically
         env:
-          GH_TOKEN: ${{ secrets.VMH_READ_PAT }}
+          UPSTREAM_TOKEN: ${{ secrets.VMH_READ_PAT }}
+          TARGET_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_REPO: qwertymarketolog-lab/visual-merchant-hub
           SOURCE_SHA: 7b717a8dea269bc5c33d9c128634f55c0bad27b0
           TARGET_REPO: qwertymarketolog-lab/JAMP
@@ -37,12 +38,15 @@ jobs:
           source_repo = os.environ["SOURCE_REPO"]
           source_sha = os.environ["SOURCE_SHA"]
           target_repo = os.environ["TARGET_REPO"]
-          token = os.environ["GH_TOKEN"]
+          upstream_token = os.environ["UPSTREAM_TOKEN"]
+          target_token = os.environ["TARGET_TOKEN"]
 
-          if not token:
+          if not upstream_token:
               raise SystemExit("VMH_READ_PAT is not available")
+          if not target_token:
+              raise SystemExit("GITHUB_TOKEN is not available")
 
-          def gh_api(method, path, data=None):
+          def gh_api(method, path, token, data=None):
               cmd = ["gh", "api", "--method", method,
                      "-H", "Accept: application/vnd.github+json"]
               payload = None
@@ -64,6 +68,7 @@ jobs:
           tree = gh_api(
               "GET",
               f"repos/{source_repo}/git/trees/{source_sha}?recursive=1",
+              upstream_token,
           )
           if tree.get("truncated"):
               raise SystemExit(
@@ -107,7 +112,8 @@ jobs:
           entries = []
           for item in selected:
               blob = gh_api(
-                  "GET", f"repos/{source_repo}/git/blobs/{item['sha']}"
+                  "GET", f"repos/{source_repo}/git/blobs/{item['sha']}",
+                  upstream_token,
               )
               raw = base64.b64decode(blob["content"])
               content = raw.decode("utf-8")
@@ -133,10 +139,12 @@ jobs:
               check=True, capture_output=True, text=True,
           ).stdout.strip()
           parent_commit = gh_api(
-              "GET", f"repos/{target_repo}/git/commits/{parent}"
+              "GET", f"repos/{target_repo}/git/commits/{parent}",
+              target_token,
           )
           new_tree = gh_api(
               "POST", f"repos/{target_repo}/git/trees",
+              target_token,
               {
                   "base_tree": parent_commit["tree"]["sha"],
                   "tree": entries,
@@ -147,7 +155,8 @@ jobs:
           if new_tree.get("truncated"):
               raise SystemExit("Candidate tree is truncated; refusing commit")
           candidate_tree = gh_api(
-              "GET", f"repos/{target_repo}/git/trees/{new_tree['sha']}?recursive=1"
+              "GET", f"repos/{target_repo}/git/trees/{new_tree['sha']}?recursive=1",
+              target_token,
           )
           if candidate_tree.get("truncated"):
               raise SystemExit("Candidate tree verification is truncated")
@@ -160,6 +169,7 @@ jobs:
           # 3. Exactly one candidate commit, parent = current migration HEAD.
           candidate = gh_api(
               "POST", f"repos/{target_repo}/git/commits",
+              target_token,
               {
                   "message": "import: assemble historical upstream 7b717a8",
                   "tree": new_tree["sha"],
@@ -171,6 +181,7 @@ jobs:
           gh_api(
               "PATCH",
               f"repos/{target_repo}/git/refs/heads/import/jamp-from-visual-merchant-hub",
+              target_token,
               {"sha": candidate["sha"], "force": False},
           )
 
