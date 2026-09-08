@@ -110,9 +110,10 @@ def test_10_complete_provenance_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert artifact.provenance[h]["trace_hash"] == registry.get(h).trace_hash
-    assert artifact.provenance[h]["event_ids"]
-    assert artifact.provenance[h]["state_anchors"]
+    source = artifact.provenance["sources"][h]
+    assert source["trace_hash"] == registry.get(h).trace_hash
+    assert source["event_ids"]
+    assert source["state_anchors"]
 
 
 def test_11_result_hash_preserved():
@@ -120,27 +121,28 @@ def test_11_result_hash_preserved():
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
     assert h in artifact.source_hashes
+    assert artifact.provenance["sources"][h]["result_hash"] == h
 
 
 def test_12_trace_hash_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert artifact.provenance[h]["trace_hash"] == registry.get(h).trace_hash
+    assert artifact.provenance["sources"][h]["trace_hash"] == registry.get(h).trace_hash
 
 
 def test_13_event_identity_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert tuple(artifact.provenance[h]["event_ids"]) == registry.index[h]["ordered_event_ids"]
+    assert tuple(artifact.provenance["sources"][h]["event_ids"]) == registry.index[h]["ordered_event_ids"]
 
 
 def test_14_state_anchors_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert tuple(artifact.provenance[h]["state_anchors"]) == (registry.index[h]["initial_state_hash"], registry.index[h]["resulting_state_hash"])
+    assert tuple(artifact.provenance["sources"][h]["state_anchors"]) == (registry.index[h]["initial_state_hash"], registry.index[h]["resulting_state_hash"])
 
 
 def test_15_registry_tampering_detected():
