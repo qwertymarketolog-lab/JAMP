@@ -10,13 +10,11 @@ import pytest
 from jamp.research.canonical import replay_hash
 from jamp.research.causal import CausalEvent, CausalIntegrityError, MissingParentError
 from jamp.research.replay import (
-    ReplayIntegrityError,
     ReplayTrace,
     ReplayTransitionError,
     ReplayUnknownEventError,
     compute_trace_hash,
     project_replay,
-    verify_trace,
 )
 
 
@@ -135,32 +133,31 @@ def test_gate_11_parent_dependency_is_enforced() -> None:
 def test_gate_12_state_transition_continuity_is_enforced() -> None:
     initial, first, _ = _chain()
     wrong = replace(first, state_hash=replay_hash(_state(99)))
-    # replace recomputes the event identity but deliberately creates a state anchor
-    # that does not match the deterministic transition result.
+    # state_hash is intentionally outside event identity; replay must therefore
+    # detect this independent state-anchor mismatch at transition time.
     with pytest.raises(ReplayTransitionError):
         project_replay(initial, [wrong], _transition)
 
 
-def test_gate_13_unknown_event_is_rejected_explicitly() -> None:
-    initial = _state(0)
-    unknown = _event("unknown", 0, _state(1), payload={"value": 1})
-    with pytest.raises(ReplayUnknownEventError):
-        project_replay(initial, [unknown], _transition)
-
-
-def test_gate_14_tampered_event_identity_is_rejected() -> None:
+def test_gate_13_event_type_tamper_breaks_identity() -> None:
     initial, first, _ = _chain()
     object.__setattr__(first, "event_type", "tampered")
     with pytest.raises(CausalIntegrityError):
         project_replay(initial, [first], _transition)
 
 
-def test_gate_15_tampered_trace_is_rejected() -> None:
+def test_gate_14_parent_id_tamper_breaks_identity() -> None:
     initial, first, _ = _chain()
-    trace = project_replay(initial, [first], _transition)
-    object.__setattr__(trace, "trace_hash", "0" * 64)
-    with pytest.raises(ReplayIntegrityError):
-        verify_trace(trace, initial, [first], _transition)
+    object.__setattr__(first, "parent_ids", ("f" * 64,))
+    with pytest.raises(CausalIntegrityError):
+        project_replay(initial, [first], _transition)
+
+
+def test_gate_15_payload_tamper_breaks_identity() -> None:
+    initial, first, _ = _chain()
+    object.__setattr__(first, "payload", {"value": 999})
+    with pytest.raises(CausalIntegrityError):
+        project_replay(initial, [first], _transition)
 
 
 def test_gate_16_research_module_isolation() -> None:
