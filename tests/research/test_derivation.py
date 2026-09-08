@@ -49,7 +49,7 @@ def test_01_schema_validity():
 
 def test_02_structural_immutability():
     registry = _registry("a")
-    artifact = derive_evidence(registry, list(registry.snapshot()), "OBSERVATION", "1", {}, {"x": 1})
+    artifact = derive_evidence(registry, list(registry.snapshot()), "OBSERVATION", "1", {"x": 1}, {"x": 1})
     with pytest.raises(FrozenInstanceError):
         artifact.analysis_type = "COMPARISON"
     with pytest.raises(TypeError):
