@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Mapping
 
 import pytest
 
@@ -47,8 +48,8 @@ def test_gate_01_result_schema() -> None:
     assert isinstance(result, ResearchResult)
     assert isinstance(result.trace_hash, str)
     assert isinstance(result.result_type, str)
-    assert isinstance(result.result_payload, dict)
-    assert isinstance(result.provenance, dict)
+    assert isinstance(result.result_payload, Mapping)
+    assert isinstance(result.provenance, Mapping)
     assert isinstance(result.result_hash, str) and len(result.result_hash) == 64
 
 
