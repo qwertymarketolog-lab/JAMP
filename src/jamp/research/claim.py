@@ -1,13 +1,13 @@
 """P20.4 deterministic hypothesis and claim verification.
 
 Research-only module. Claims are content-addressed, immutable, and bound to
-registry-backed P20 evidence. Logical status is derived only from explicit
-rules and supplied premises/evidence; no I/O, runtime metadata, randomness,
-or production-domain dependencies are permitted.
+registry-backed P20 evidence. No I/O, runtime metadata, randomness, or
+production-domain dependencies are permitted.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import re
 from types import MappingProxyType
@@ -18,8 +18,6 @@ from .derivation import DerivedEvidence
 from .registry import ArtifactRegistry
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_STATUSES = frozenset({"SUPPORTED", "REFUTED", "UNDETERMINED", "CONTRADICTED"})
-_CLAIM_TYPES = frozenset({"HYPOTHESIS", "ASSERTION", "COMPARATIVE", "INFERENTIAL"})
 _RUNTIME_KEYS = frozenset({"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"})
 
 
@@ -28,7 +26,22 @@ class ClaimError(ValueError):
 
 
 class ClaimIntegrityError(ClaimError):
-    """Raised when claim, rule, evidence, or provenance integrity fails."""
+    """Raised when claim, evidence, premise, or provenance integrity fails."""
+
+
+class ClaimRuleError(ClaimError):
+    """Raised for missing, unknown, or unsupported inference rules."""
+
+
+class ClaimStatus(str, Enum):
+    SUPPORTED = "SUPPORTED"
+    REFUTED = "REFUTED"
+    UNDETERMINED = "UNDETERMINED"
+    CONTRADICTED = "CONTRADICTED"
+
+
+_CLAIM_TYPES = frozenset({"HYPOTHESIS", "ASSERTION", "COMPARATIVE", "INFERENTIAL"})
+_RULES = frozenset({"EVIDENCE_STATUS", "PREMISE_CONJUNCTION"})
 
 
 def _freeze(value: Any) -> Any:
@@ -50,6 +63,8 @@ def _thaw(value: Any) -> Any:
         return {k: _thaw(v) for k, v in value.items()}
     if isinstance(value, tuple):
         return [_thaw(v) for v in value]
+    if isinstance(value, Enum):
+        return value.value
     return value
 
 
@@ -58,26 +73,44 @@ def _hash(value: str, field: str) -> None:
         raise ClaimIntegrityError(f"{field} must be lowercase SHA-256")
 
 
-def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any], evidence_refs: Sequence[str], inference_rule: str, rule_version: str, result: Mapping[str, Any]) -> str:
-    if claim_type not in _CLAIM_TYPES:
-        raise ClaimError("invalid claim_type")
+def _canonical_statement(statement: str) -> str:
     if not isinstance(statement, str) or not statement.strip():
-        raise ClaimError("statement must be non-empty")
+        raise ClaimIntegrityError("statement must be non-empty")
+    return " ".join(statement.split())
+
+
+def _validate_premises(premises: Sequence[Any]) -> tuple[Any, ...]:
+    frozen = tuple(_freeze(x) for x in premises)
+    for premise in frozen:
+        if isinstance(premise, Mapping) and "status" in premise:
+            if premise["status"] not in {s.value for s in ClaimStatus}:
+                raise ClaimIntegrityError("invalid premise status")
+    return frozen
+
+
+def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any], evidence_refs: Sequence[str], inference_rule: str, rule_version: str, status: str | ClaimStatus) -> str:
+    """Compute content-addressed identity over the complete claim semantics."""
+    if claim_type not in _CLAIM_TYPES:
+        raise ClaimIntegrityError("invalid claim_type")
+    statement = _canonical_statement(statement)
     if not isinstance(inference_rule, str) or not inference_rule:
-        raise ClaimError("inference_rule must be explicit")
+        raise ClaimRuleError("inference_rule must be explicit")
     if not isinstance(rule_version, str) or not rule_version:
-        raise ClaimError("rule_version must be explicit")
+        raise ClaimRuleError("rule_version must be explicit")
+    status_value = status.value if isinstance(status, ClaimStatus) else status
+    if status_value not in {s.value for s in ClaimStatus}:
+        raise ClaimIntegrityError("invalid status")
     refs = tuple(evidence_refs)
     for ref in refs:
         _hash(ref, "evidence_ref")
     material = {
         "claim_type": claim_type,
-        "statement": " ".join(statement.split()),
-        "premises": _thaw(_freeze(list(premises))),
-        "evidence_refs": list(refs),
+        "statement": statement,
+        "premises": _thaw(_validate_premises(premises)),
+        "evidence_refs": list(dict.fromkeys(refs)),
         "inference_rule": inference_rule,
         "rule_version": rule_version,
-        "result": _thaw(_freeze(dict(result))),
+        "status": status_value,
     }
     return hashlib.sha256(canonical_bytes(material)).hexdigest()
 
@@ -92,19 +125,14 @@ def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> 
     _hash(ref, "evidence_ref")
     try:
         artifact = registry.get(ref)
-    except Exception as exc:
-        raise ClaimIntegrityError("evidence reference is not registry-backed") from exc
-    # Registry entries are P20.1 ResearchResult objects; verify by retrieving
-    # their indexed provenance through the public integrity-checked accessor.
-    try:
         entry = registry.index[ref]
         required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
         if not all(k in entry for k in required):
             raise ClaimIntegrityError("complete evidence provenance required")
+    except ClaimIntegrityError:
+        raise
     except Exception as exc:
-        if isinstance(exc, ClaimIntegrityError):
-            raise
-        raise ClaimIntegrityError("evidence provenance unavailable") from exc
+        raise ClaimIntegrityError("evidence reference is not registry-backed") from exc
     return artifact.result_hash, {
         "result_hash": artifact.result_hash,
         "trace_hash": artifact.trace_hash,
@@ -114,27 +142,43 @@ def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> 
     }
 
 
-def evaluate_claim(*, evidence: Sequence[Any], premises: Sequence[Any], inference_rule: str) -> str:
-    """Evaluate an explicit deterministic rule into one of four statuses."""
-    if not isinstance(inference_rule, str) or not inference_rule:
-        raise ClaimError("explicit inference_rule required")
-    if not isinstance(premises, Sequence):
-        raise ClaimError("premises must be a sequence")
-    if inference_rule == "ALL_SUPPORT":
-        if not premises:
-            return "UNDETERMINED"
-        values = [bool(x) for x in evidence]
-        return "SUPPORTED" if len(values) >= len(premises) and all(values[:len(premises)]) else "UNDETERMINED"
-    if inference_rule == "ANY_REFUTE":
-        return "REFUTED" if any(bool(x) is False for x in evidence) else "UNDETERMINED"
-    if inference_rule == "CONFLICT":
-        values = {bool(x) for x in evidence}
-        return "CONTRADICTED" if values == {True, False} else ("SUPPORTED" if values == {True} else "REFUTED" if values == {False} else "UNDETERMINED")
-    if inference_rule == "DIRECT":
-        if not evidence:
-            return "UNDETERMINED"
-        return "SUPPORTED" if bool(evidence[0]) else "REFUTED"
-    raise ClaimError(f"unsupported inference_rule: {inference_rule!r}")
+def _polarity(item: str | DerivedEvidence, registry: ArtifactRegistry) -> str | None:
+    if isinstance(item, DerivedEvidence):
+        value = item.result.get("polarity")
+    else:
+        value = registry.get(item).payload.get("polarity")
+    return value if value in {s.value for s in ClaimStatus} else None
+
+
+def evaluate_claim(evidence: Sequence[str | DerivedEvidence], premises: Sequence[Any], inference_rule: str) -> ClaimStatus:
+    """Evaluate an explicit rule deterministically into one of four statuses."""
+    if not inference_rule:
+        raise ClaimRuleError("inference_rule must be explicit")
+    if inference_rule not in _RULES:
+        raise ClaimRuleError(f"unsupported inference_rule: {inference_rule!r}")
+    premises_frozen = _validate_premises(premises)
+    if inference_rule == "PREMISE_CONJUNCTION" and not premises_frozen:
+        raise ClaimIntegrityError("missing premise")
+    if inference_rule == "EVIDENCE_STATUS":
+        polarities = [_polarity(item, _CURRENT_REGISTRY) if isinstance(item, (str, DerivedEvidence)) else None for item in evidence]
+        polarities = [p for p in polarities if p is not None]
+        if not polarities:
+            return ClaimStatus.UNDETERMINED
+        values = set(polarities)
+        if "SUPPORTED" in values and "REFUTED" in values:
+            return ClaimStatus.CONTRADICTED
+        if "SUPPORTED" in values:
+            return ClaimStatus.SUPPORTED
+        if "REFUTED" in values:
+            return ClaimStatus.REFUTED
+        return ClaimStatus.UNDETERMINED
+    statuses = [p.get("status") for p in premises_frozen if isinstance(p, Mapping)]
+    if statuses and all(s == ClaimStatus.SUPPORTED.value for s in statuses):
+        return ClaimStatus.SUPPORTED
+    return ClaimStatus.UNDETERMINED
+
+
+_CURRENT_REGISTRY: ArtifactRegistry | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,45 +189,43 @@ class Claim:
     evidence_refs: tuple[str, ...]
     inference_rule: str
     rule_version: str
-    result: Mapping[str, Any]
+    status: ClaimStatus
     provenance: Mapping[str, Any]
-    status: str
     claim_hash: str
 
     def __post_init__(self) -> None:
         if self.claim_type not in _CLAIM_TYPES:
             raise ClaimIntegrityError("invalid claim_type")
-        if not isinstance(self.statement, str) or not self.statement.strip():
-            raise ClaimIntegrityError("invalid statement")
-        if not self.inference_rule or not self.rule_version:
-            raise ClaimIntegrityError("rule and version are required")
-        if self.status not in _STATUSES:
-            raise ClaimIntegrityError("invalid status")
-        for ref in self.evidence_refs:
+        statement = _canonical_statement(self.statement)
+        premises = _validate_premises(self.premises)
+        refs = tuple(dict.fromkeys(self.evidence_refs))
+        for ref in refs:
             _hash(ref, "evidence_ref")
-        object.__setattr__(self, "premises", tuple(_freeze(x) for x in self.premises))
-        object.__setattr__(self, "evidence_refs", tuple(self.evidence_refs))
-        object.__setattr__(self, "result", _freeze(dict(self.result)))
-        object.__setattr__(self, "provenance", _freeze(dict(self.provenance)))
-        expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.result)
+        if not self.inference_rule or not self.rule_version:
+            raise ClaimRuleError("rule and version are required")
+        status = self.status if isinstance(self.status, ClaimStatus) else ClaimStatus(self.status)
+        provenance = _freeze(dict(self.provenance))
+        object.__setattr__(self, "statement", statement)
+        object.__setattr__(self, "premises", premises)
+        object.__setattr__(self, "evidence_refs", refs)
+        object.__setattr__(self, "status", status)
+        object.__setattr__(self, "provenance", provenance)
+        expected = compute_claim_hash(self.claim_type, statement, premises, refs, self.inference_rule, self.rule_version, status)
         if expected != self.claim_hash:
             raise ClaimIntegrityError("claim_hash does not match content")
 
-    def verify(self, registry: ArtifactRegistry, *, evidence_refs: Sequence[str] | None = None) -> bool:
-        refs = tuple(self.evidence_refs if evidence_refs is None else evidence_refs)
+    def verify(self, registry: ArtifactRegistry, *, evidence: Sequence[str | DerivedEvidence] | None = None, inference_rule: str | None = None) -> bool:
+        refs = tuple(self.evidence_refs if evidence is None else tuple(_verify_evidence(registry, x)[0] for x in evidence))
         if refs != self.evidence_refs:
             raise ClaimIntegrityError("evidence substitution detected")
-        proven = {}
-        for ref in refs:
-            key, prov = _verify_evidence(registry, ref)
-            proven[key] = prov
-        if set(proven) != set(refs):
-            raise ClaimIntegrityError("evidence identity mismatch")
-        expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.result)
-        if expected != self.claim_hash:
-            raise ClaimIntegrityError("claim integrity failure")
+        if inference_rule is not None and inference_rule != self.inference_rule:
+            raise ClaimIntegrityError("inference rule substitution detected")
+        proven = {key: prov for key, prov in (_verify_evidence(registry, ref) for ref in refs)}
         if self.provenance.get("evidence") != proven:
             raise ClaimIntegrityError("provenance mismatch")
+        expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.status)
+        if expected != self.claim_hash:
+            raise ClaimIntegrityError("claim integrity failure")
         return True
 
     def export(self) -> Mapping[str, Any]:
@@ -194,50 +236,40 @@ class Claim:
             "evidence_refs": self.evidence_refs,
             "inference_rule": self.inference_rule,
             "rule_version": self.rule_version,
-            "result": _thaw(self.result),
+            "status": self.status.value,
             "provenance": _thaw(self.provenance),
-            "status": self.status,
             "claim_hash": self.claim_hash,
         })
 
 
-def verify_claim(registry: ArtifactRegistry, *, claim_type: str, statement: str, premises: Sequence[Any], evidence: Sequence[str | DerivedEvidence], inference_rule: str, rule_version: str, result: Mapping[str, Any], status: str | None = None) -> Claim:
-    if not isinstance(registry, ArtifactRegistry):
-        raise ClaimError("registry must be an ArtifactRegistry")
-    if not isinstance(evidence, Sequence):
-        raise ClaimError("evidence must be a sequence")
-    frozen_premises = tuple(_freeze(x) for x in premises)
-    if not frozen_premises and inference_rule not in {"DIRECT", "CONFLICT"}:
+def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, premises: Sequence[Any], evidence: Sequence[str | DerivedEvidence], inference_rule: str, rule_version: str, status: ClaimStatus | str) -> Claim:
+    global _CURRENT_REGISTRY
+    if not inference_rule:
+        raise ClaimRuleError("inference_rule must be explicit")
+    if inference_rule not in _RULES:
+        raise ClaimRuleError(f"unsupported inference_rule: {inference_rule!r}")
+    if not rule_version:
+        raise ClaimRuleError("rule_version must be explicit")
+    if inference_rule == "PREMISE_CONJUNCTION" and not premises:
         raise ClaimIntegrityError("missing premise")
-    if inference_rule not in {"ALL_SUPPORT", "ANY_REFUTE", "CONFLICT", "DIRECT"}:
-        raise ClaimError("unsupported inference rule")
+    premises_frozen = _validate_premises(premises)
     refs: list[str] = []
     provenance: dict[str, Any] = {}
-    truth_values: list[Any] = []
     for item in evidence:
         key, prov = _verify_evidence(registry, item)
         refs.append(key)
         provenance[key] = prov
-        # Explicit result assertions are the only logical values accepted;
-        # source payloads are evidence, not implicit truth assignments.
-        if isinstance(item, DerivedEvidence):
-            values = item.result.get("truth") if isinstance(item.result, Mapping) else None
-            if values is not None:
-                truth_values.extend(values if isinstance(values, (list, tuple)) else [values])
-        else:
-            artifact = registry.get(key)
-            value = artifact.payload.get("truth") if isinstance(artifact.payload, Mapping) else None
-            if value is not None:
-                truth_values.append(value)
-    if not truth_values and result.get("truth") is not None:
-        tv = result.get("truth")
-        truth_values.extend(tv if isinstance(tv, (list, tuple)) else [tv])
-    computed_status = evaluate_claim(evidence=truth_values, premises=frozen_premises, inference_rule=inference_rule)
-    final_status = computed_status if status is None else status
-    if final_status not in _STATUSES:
-        raise ClaimIntegrityError("invalid status")
-    if final_status != computed_status:
+    refs = list(dict.fromkeys(refs))
+    # Keep the evaluator pure in its observable contract while resolving
+    # registry-backed evidence deterministically for EVIDENCE_STATUS.
+    _CURRENT_REGISTRY = registry
+    try:
+        computed = evaluate_claim(tuple(evidence), premises_frozen, inference_rule)
+    finally:
+        _CURRENT_REGISTRY = None
+    expected_status = status if isinstance(status, ClaimStatus) else ClaimStatus(status)
+    if expected_status != computed:
         raise ClaimIntegrityError("status is not deterministically supported by evidence")
-    ordered_refs = tuple(refs)
-    claim_hash = compute_claim_hash(claim_type, statement, frozen_premises, ordered_refs, inference_rule, rule_version, result)
-    return Claim(claim_type, " ".join(statement.split()), frozen_premises, ordered_refs, inference_rule, rule_version, result, {"evidence": provenance}, final_status, claim_hash)
+    provenance_payload = {"evidence": provenance}
+    claim_hash = compute_claim_hash(claim_type, statement, premises_frozen, tuple(refs), inference_rule, rule_version, expected_status)
+    return Claim(claim_type, _canonical_statement(statement), premises_frozen, tuple(refs), inference_rule, rule_version, expected_status, provenance_payload, claim_hash)
