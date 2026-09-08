@@ -1,6 +1,7 @@
 name: Diagnostic P17.6 CLI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'diag/p17-6-cli-stderr'
