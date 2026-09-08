@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import importlib.util
+import inspect
 
 import pytest
 
@@ -157,16 +157,18 @@ def test_gate_16_invalid_provenance_rejected() -> None:
 
 
 def test_gate_17_runtime_contamination_excluded_from_hash() -> None:
-    a = make_result(provenance=PROVENANCE)
-    b = make_result(provenance=PROVENANCE)
-    assert a.result_hash == b.result_hash
-    assert not any(key in a.provenance for key in ("timestamp", "uuid", "memory_address", "environment", "local_path"))
+    contaminated = {**PROVENANCE, "timestamp": "2026-09-08T21:46:07Z"}
+    with pytest.raises(ResultProvenanceError):
+        make_result(provenance=contaminated)
+    clean_a = make_result(provenance=PROVENANCE)
+    clean_b = make_result(provenance={"version": "1", "operation": "measurement", "source": "experiment"})
+    assert clean_a.result_hash == clean_b.result_hash
 
 
 def test_gate_18_research_isolation() -> None:
-    spec = importlib.util.find_spec("jamp.domain")
-    assert spec is not None  # production package exists independently
-    source = importlib.util.find_spec("jamp.research.result")
-    assert source is not None
-    module = __import__("jamp.research.result", fromlist=["*"])
-    assert "jamp.domain" not in module.__dict__.get("__builtins__", {})
+    source = inspect.getsource(__import__("jamp.research.result", fromlist=["*"]))
+    assert "jamp.domain" not in source
+    assert "import socket" not in source
+    assert "import requests" not in source
+    assert "import sqlite3" not in source
+    assert "open(" not in source
