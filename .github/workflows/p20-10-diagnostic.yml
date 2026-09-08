@@ -21,3 +21,5 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -q tests/research/test_consensus.py
+
+# Final independent verification trigger.
