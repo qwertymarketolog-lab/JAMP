@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from jamp.research.canonical import replay_hash
+from jamp.research.composition import compose_results
 from jamp.research.derivation import (
     DerivationIntegrityError,
     derive_evidence,
@@ -45,6 +46,8 @@ def test_01_schema_validity():
     artifact = derive_evidence(registry, [next(iter(registry.snapshot()))], "OBSERVATION", "1", {}, {"x": 1})
     assert artifact.analysis_type == "OBSERVATION"
     assert artifact.algorithm_version == "1"
+    inference = derive_evidence(registry, list(registry.snapshot()), "INFERENCE", "1", {"premises": ["p1"]}, {"x": 1})
+    assert inference.analysis_type == "INFERENCE"
 
 
 def test_02_structural_immutability():
@@ -107,13 +110,16 @@ def test_09_source_integrity_verified():
 
 
 def test_10_complete_provenance_preserved():
-    registry = _registry("a")
-    h = next(iter(registry.snapshot()))
-    artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    source = artifact.provenance["sources"][h]
-    assert source["trace_hash"] == registry.get(h).trace_hash
+    registry = _registry("a", "b")
+    hashes = list(registry.snapshot())
+    artifact = derive_evidence(registry, hashes[:1], "OBSERVATION", "1", {}, {"x": 1})
+    source = artifact.provenance["sources"][hashes[0]]
+    assert source["trace_hash"] == registry.get(hashes[0]).trace_hash
     assert source["event_ids"]
     assert source["state_anchors"]
+    composition = compose_results(registry, hashes)
+    derived = derive_evidence(registry, [composition], "AGGREGATION", "1", {}, {"n": 2})
+    assert derived.provenance["sources"][composition.composition_hash]["result_hashes"] == composition.result_hashes
 
 
 def test_11_result_hash_preserved():
