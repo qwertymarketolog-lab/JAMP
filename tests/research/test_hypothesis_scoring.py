@@ -10,6 +10,7 @@ from jamp.research import canonical, evidence, hypothesis_formation, hypothesis_
 _ONE_HASH = canonical.replay_hash("one")
 _TWO_HASH = canonical.replay_hash("two")
 _THREE_HASH = canonical.replay_hash("three")
+_EMPTY_GRAPH_HASH = "acf2fa576acb702442f9d0101673354c398db67315c066ca48be8db8e0d2c75b"
 
 
 def _fixture():
@@ -19,7 +20,7 @@ def _fixture():
     hypothesis = hypothesis_formation.Hypothesis(
         (record_one.evidence_hash,), _THREE_HASH, "proposition", 0
     )
-    graph = lineage_graph.LineageGraph(())
+    graph = lineage_graph.LineageGraph((), _EMPTY_GRAPH_HASH)
     return ledger, hypothesis, graph
 
 
