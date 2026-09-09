@@ -50,10 +50,10 @@ def test_score_requires_valid_evidence_backing():
 
 
 def test_empty_ledger_is_zero_evidence_boundary():
+    ledger, hypothesis, graph = _fixture()
     empty = evidence.build_evidence_ledger(())
     assert empty.records == ()
-    with pytest.raises(ValueError, match="evidence"):
-        hypothesis_formation.Hypothesis((), _THREE_HASH, "empty", 0)
+    assert scoring.score_hypothesis(hypothesis, empty, graph) == 0.0
 
 
 def test_duplicate_evidence_references_cannot_inflate_support():
@@ -136,13 +136,32 @@ def test_serialization_equivalent_inputs_score_identically():
     )
 
 
-def test_score_is_non_interfering_between_hypotheses():
+def test_independent_evidence_extension_is_monotone():
     ledger, hypothesis, graph = _fixture()
     baseline = scoring.score_hypothesis(hypothesis, ledger, graph)
-    concurrent = hypothesis_formation.Hypothesis(
-        (ledger.records[1].evidence_hash,), _THREE_HASH, "concurrent", 1
+    extended = hypothesis_formation.Hypothesis(
+        tuple(record.evidence_hash for record in ledger.records),
+        _THREE_HASH,
+        hypothesis.proposition,
+        hypothesis.sequence,
     )
-    assert concurrent.hypothesis_hash != hypothesis.hypothesis_hash
+    extended_score = scoring.score_hypothesis(extended, ledger, graph)
+    assert ledger.records[0].source_hash != ledger.records[1].source_hash
+    assert extended_score >= baseline
+
+
+def test_score_is_non_interfering_with_competing_sibling_context():
+    ledger, hypothesis, graph = _fixture()
+    baseline_ledger = evidence.build_evidence_ledger((ledger.records[0],))
+    baseline = scoring.score_hypothesis(hypothesis, baseline_ledger, graph)
+
+    sibling = hypothesis_formation.Hypothesis(
+        (ledger.records[1].evidence_hash,), _THREE_HASH, "competing sibling", 1
+    )
+    concurrent = scoring.score_hypothesis(sibling, ledger, graph)
+
+    assert sibling.hypothesis_hash != hypothesis.hypothesis_hash
+    assert concurrent != baseline
     assert scoring.score_hypothesis(hypothesis, ledger, graph) == baseline
 
 
