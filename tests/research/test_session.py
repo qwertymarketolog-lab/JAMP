@@ -8,13 +8,9 @@ import hashlib
 import importlib
 import inspect
 import json
-import os
-import socket
-from dataclasses import FrozenInstanceError, is_dataclass
-from types import MappingProxyType
+from dataclasses import FrozenInstanceError
 
 import pytest
-
 
 MODULE = "jamp.research.session"
 
@@ -23,23 +19,12 @@ def _load():
     return importlib.import_module(MODULE)
 
 
-def _api():
-    mod = _load()
-    return mod, getattr(mod, "ResearchSession"), getattr(mod, "SessionArtifact")
-
-
 def _artifact(kind, value):
-    _, Artifact, _ = _api() if False else (None, None, None)
-    # Filled by implementation-compatible helper below after import.
-    mod = _load()
-    cls = getattr(mod, "SessionArtifact")
-    return cls(kind=kind, artifact_hash=value)
+    return _load().SessionArtifact(kind=kind, artifact_hash=value)
 
 
 def _session(artifacts=None, metadata=None, status="OPEN"):
-    mod = _load()
-    cls = mod.ResearchSession
-    return cls.create(
+    return _load().ResearchSession.create(
         metadata={} if metadata is None else metadata,
         artifacts=[] if artifacts is None else artifacts,
         status=status,
@@ -91,10 +76,11 @@ def test_gate_07_explicit_object_indexes():
         _artifact("execution", _hash("e")),
         _artifact("result", _hash("r")),
         _artifact("interpretation", _hash("i")),
+        _artifact("claim", _hash("cl")),
         _artifact("consensus", _hash("c")),
         _artifact("revision", _hash("v")),
     ])
-    assert set(s.indexes) == {"question", "plan", "execution", "result", "interpretation", "consensus", "revision"}
+    assert set(s.indexes) == {"question", "plan", "execution", "result", "interpretation", "claim", "consensus", "revision"}
 
 
 def test_gate_08_valid_status():
@@ -141,7 +127,8 @@ def test_gate_15_interpretation_binding():
 
 
 def test_gate_16_consensus_binding():
-    s = _session([_artifact("consensus", _hash("c"))])
+    s = _session([_artifact("claim", _hash("cl")), _artifact("consensus", _hash("c"))])
+    assert s.indexes["claim"] == (_hash("cl"),)
     assert s.indexes["consensus"] == (_hash("c"),)
 
 
@@ -194,13 +181,17 @@ def test_gate_24_unordered_permutation_independent():
 def test_gate_25_complete_provenance_preserved():
     q, p, e, r = (_hash(x) for x in ("q", "p", "e", "r"))
     s = _session([_artifact("question", q), _artifact("plan", p), _artifact("execution", e), _artifact("result", r)])
-    assert s.provenance() == {"question": (q,), "plan": (p,), "execution": (e,), "result": (r,)}
+    assert s.provenance()["question"] == (q,)
+    assert s.provenance()["plan"] == (p,)
+    assert s.provenance()["execution"] == (e,)
+    assert s.provenance()["result"] == (r,)
 
 
 def test_gate_26_recursive_provenance_preserved():
     s = _session([_artifact("result", _hash("r"))])
     chain = s.provenance_chain(_hash("r"))
     assert chain["result"] == _hash("r")
+    assert chain["session"] == s.session_hash
 
 
 def test_gate_27_historical_objects_never_mutated():
