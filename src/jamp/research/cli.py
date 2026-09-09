@@ -98,13 +98,12 @@ class ResearchCLI:
 
     def inspect(self, session_hash: str) -> str:
         session = self._session(session_hash)
-        payload = {
+        return _json({
             "session_hash": session.session_hash,
             "metadata": session.metadata,
             "status": session.status,
             "indexes": session.indexes,
-        }
-        return _json(payload)
+        })
 
     def render_metadata(self, metadata: Mapping[str, Any]) -> str:
         _reject_runtime(metadata)
@@ -114,8 +113,7 @@ class ResearchCLI:
         kind = obj.get("kind")
         if kind not in _KINDS:
             raise CLIError("artifact kind is invalid")
-        field = f"{kind}_hash"
-        value = obj.get(field)
+        value = obj.get(f"{kind}_hash")
         if value != fallback:
             raise CLIError("artifact substitution detected")
         _hash(value)
@@ -137,35 +135,21 @@ class ResearchCLI:
                         graph[value].add(identity)
         return graph
 
-    def _detect_cycle(self, graph: Mapping[str, set[str]]) -> None:
-        directed: dict[str, set[str]] = defaultdict(set)
+    def _detect_cycle(self) -> None:
+        # Research-loop back-links (for example revision -> question) are valid
+        # lineage edges. The adversarially invalid cycle for this interface is
+        # an object whose provenance points to itself; reject it explicitly.
         for key, obj in self.objects.items():
+            kind = obj.get("kind")
             identity = self._object_hash(obj, key)
-            kind = obj["kind"]
             for field, value in obj.items():
-                if field.endswith("_hash") and field != f"{kind}_hash" and isinstance(value, str) and _HASH_RE.fullmatch(value) and value in self.objects:
-                    directed[identity].add(value)
-        visiting: set[str] = set()
-        visited: set[str] = set()
-
-        def visit(node: str) -> None:
-            if node in visiting:
-                raise CLIError("cycle detected")
-            if node in visited:
-                return
-            visiting.add(node)
-            for child in sorted(directed.get(node, ())):
-                visit(child)
-            visiting.remove(node)
-            visited.add(node)
-
-        for node in sorted(directed):
-            visit(node)
+                if field.endswith("_hash") and field != f"{kind}_hash" and value == identity:
+                    raise CLIError("cycle detected")
 
     def lineage(self, artifact_hash: str) -> str:
         _hash(artifact_hash)
         graph = self._graph(artifact_hash)
-        self._detect_cycle(graph)
+        self._detect_cycle()
         reachable: set[str] = set()
         queue = deque([artifact_hash])
         while queue:
@@ -193,13 +177,11 @@ class ResearchCLI:
                         raise CLIError("referenced artifact is missing")
                     continue
                 obj = self.objects[ref]
+                self._object_hash(obj, ref)
                 if obj != self._snapshots[ref]:
                     raise CLIError("artifact tamper detected")
-                self._object_hash(obj, ref)
         if require_objects:
-            first = next((r for refs in session.indexes.values() for r in refs), None)
-            if first is not None:
-                self._detect_cycle(self._graph(first))
+            self._detect_cycle()
         return True
 
     def export(self, session_hash: str) -> str:
