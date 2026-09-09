@@ -1,0 +1,23 @@
+name: P21.4 Full-Chain Adversarial Diagnostic
+
+on:
+  push:
+    branches: [feature/p21-4-full-chain-adversarial]
+  pull_request:
+    branches: [feature/p21-4-full-chain-adversarial]
+
+jobs:
+  p21-4:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Run P21.4 acceptance and adversarial gates
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_full_chain_adversarial.py

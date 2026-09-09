@@ -1,0 +1,26 @@
+name: P21.3 CLI Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p21-3-cli-lineage
+  pull_request:
+    branches:
+      - feature/p21-3-cli-lineage
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Run P21.3 acceptance suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_cli.py

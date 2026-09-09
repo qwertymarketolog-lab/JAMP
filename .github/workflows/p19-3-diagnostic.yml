@@ -1,0 +1,27 @@
+name: P19.3 Replay Projection Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p19-3-replay-projection
+  workflow_dispatch:
+
+jobs:
+  replay-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+      - name: Run P19.3 acceptance gates
+        env:
+          PYTHONPATH: src
+        run: pytest -q tests/research/test_replay.py

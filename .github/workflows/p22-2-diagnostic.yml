@@ -1,0 +1,32 @@
+name: P22.2 Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p22-2-candidate-generation
+  pull_request:
+    branches:
+      - feature/p22-2-candidate-generation
+
+jobs:
+  p22-2-diagnostic:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONPATH: src
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Run P22.2 contract gates
+        run: python -m pytest -q tests/research/test_candidate_generator.py

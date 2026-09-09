@@ -1,0 +1,27 @@
+name: P21.1 Research Runtime Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p21-1-research-runtime
+  pull_request:
+    branches:
+      - feature/p21-1-research-runtime
+  workflow_dispatch:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run P21.1 acceptance suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_runtime.py

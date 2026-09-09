@@ -1,0 +1,22 @@
+name: P20.8 Diagnostic
+
+on:
+  pull_request:
+    branches: [feature/p20-8-experiment-execution]
+  push:
+    branches: [feature/p20-8-experiment-execution]
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run P20.8 acceptance suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_execution.py

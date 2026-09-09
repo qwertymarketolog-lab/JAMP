@@ -1,0 +1,23 @@
+name: P20.10 Claim Consensus Diagnostic
+
+on:
+  push:
+    branches: [feature/p20-10-claim-consensus]
+  pull_request:
+    branches: [feature/p20-10-claim-consensus]
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Run P20.10 acceptance suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_consensus.py
