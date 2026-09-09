@@ -1,0 +1,59 @@
+name: P22.8 Contract Provenance Audit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  provenance-audit:
+    runs-on: ubuntu-24.04
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONPATH: src
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.16"
+
+      - name: Install pytest
+        run: python -m pip install --upgrade pytest
+
+      - name: Extract historical contract
+        run: |
+          set -euo pipefail
+          git fetch origin b08794bc9971271c2431439f6318bbfada6a485f
+          HIST_FILE=$(git ls-tree -r --name-only b08794bc9971271c2431439f6318bbfada6a485f | grep -E 'test_hypothesis(_formation)?\.py$' | head -n 1)
+          test -n "$HIST_FILE"
+          echo "Resolved historical contract path: $HIST_FILE"
+          git show "b08794bc9971271c2431439f6318bbfada6a485f:${HIST_FILE}" > /tmp/historical_contract.py
+
+      - name: Collect and compare exact nodes
+        run: |
+          set -euo pipefail
+          python -m pytest --collect-only -q /tmp/historical_contract.py | grep '::' | sort > /tmp/nodes_historical.txt
+          python -m pytest --collect-only -q tests/research/test_hypothesis_formation.py | grep '::' | sort > /tmp/nodes_current.txt
+          HISTORICAL_COUNT=$(wc -l < /tmp/nodes_historical.txt | tr -d ' ')
+          CURRENT_COUNT=$(wc -l < /tmp/nodes_current.txt | tr -d ' ')
+          comm -23 /tmp/nodes_historical.txt /tmp/nodes_current.txt > /tmp/missing_items.txt
+          comm -13 /tmp/nodes_historical.txt /tmp/nodes_current.txt > /tmp/added_items.txt
+          MISSING_COUNT=$(wc -l < /tmp/missing_items.txt | tr -d ' ')
+          ADDED_COUNT=$(wc -l < /tmp/added_items.txt | tr -d ' ')
+          echo "=================================================="
+          echo "P22.8 PROVENANCE AUDIT TELEMETRY"
+          echo "=================================================="
+          echo "HISTORICAL_NODE_COUNT=${HISTORICAL_COUNT}"
+          echo "CURRENT_NODE_COUNT=${CURRENT_COUNT}"
+          echo "MISSING_NODE_COUNT=${MISSING_COUNT}"
+          echo "ADDED_NODE_COUNT=${ADDED_COUNT}"
+          echo "=================================================="
+          echo "MISSING ITEMS MAP:"
+          cat /tmp/missing_items.txt
+          echo "=================================================="
+          echo "ADDED ITEMS MAP:"
+          cat /tmp/added_items.txt
+          echo "=================================================="
