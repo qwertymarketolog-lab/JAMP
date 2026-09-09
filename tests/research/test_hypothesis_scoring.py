@@ -10,7 +10,6 @@ from jamp.research import canonical, evidence, hypothesis_formation, hypothesis_
 _ONE_HASH = canonical.replay_hash("one")
 _TWO_HASH = canonical.replay_hash("two")
 _THREE_HASH = canonical.replay_hash("three")
-_EMPTY_GRAPH_HASH = "acf2fa576acb702442f9d0101673354c398db67315c066ca48be8db8e0d2c75b"
 
 
 def _fixture():
@@ -20,7 +19,7 @@ def _fixture():
     hypothesis = hypothesis_formation.Hypothesis(
         (record_one.evidence_hash,), _THREE_HASH, "proposition", 0
     )
-    graph = lineage_graph.LineageGraph((), _EMPTY_GRAPH_HASH)
+    graph = lineage_graph.build_lineage_graph((lineage_graph.LineageNode(_THREE_HASH, ()),))
     return ledger, hypothesis, graph
 
 
@@ -75,7 +74,7 @@ def test_tampered_ledger_is_rejected():
 
 def test_tampered_lineage_is_rejected():
     ledger, hypothesis, _ = _fixture()
-    bad_node = lineage_graph.LineageNode(_THREE_HASH, (_ONE_HASH,), 0)
+    bad_node = lineage_graph.LineageNode(_THREE_HASH, (_ONE_HASH,))
     bad_graph = lineage_graph.LineageGraph((bad_node,))
     with pytest.raises(ValueError):
         scoring.score_hypothesis(hypothesis, ledger, bad_graph)
