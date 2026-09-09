@@ -1,57 +1,164 @@
-"""P22.9 hypothesis scoring contract.
+"""P22.9 deterministic hypothesis scoring contract.
 
 Contract-first diagnostic: this module intentionally targets an absent
-implementation.  The tests define the deterministic scoring boundary,
-evidence requirement, and multi-criteria aggregation surface.
+implementation. Scoring is structural support derived from a validated
+hypothesis, evidence ledger, and lineage graph.
 """
+
+import os
 
 import pytest
 
+from jamp.research import evidence
+from jamp.research import hypothesis_formation
 from jamp.research import hypothesis_scoring as scoring
+from jamp.research import lineage_graph
+
+_ZERO_HASH = "0" * 64
+_ONE_HASH = "1" * 64
+_TWO_HASH = "2" * 64
+_THREE_HASH = "3" * 64
 
 
+def _fixture():
+    records = (
+        evidence.EvidenceRecord(_ONE_HASH, _TWO_HASH, _THREE_HASH, 0),
+        evidence.EvidenceRecord(_TWO_HASH, _THREE_HASH, _THREE_HASH, 1),
+    )
+    ledger = evidence.build_evidence_ledger(records)
+    hypothesis = hypothesis_formation.Hypothesis(
+        (records[0].evidence_hash,), _THREE_HASH, "test proposition", 0
+    )
+    root = lineage_graph.LineageNode(_ZERO_HASH, ())
+    state = lineage_graph.LineageNode(_THREE_HASH, (_ZERO_HASH,))
+    graph = lineage_graph.build_lineage_graph((root, state))
+    return ledger, hypothesis, graph
 
-def test_score_is_normalized_at_lower_boundary():
-    assert scoring.score_hypothesis(criteria=(0.0,)) == 0.0
+
+def test_score_is_bounded():
+    ledger, hypothesis, graph = _fixture()
+    assert 0.0 <= scoring.score_hypothesis(hypothesis, ledger, graph) <= 1.0
 
 
-def test_score_is_normalized_at_upper_boundary():
-    assert scoring.score_hypothesis(criteria=(1.0,)) == 1.0
-
-
-@pytest.mark.parametrize("value", [-1.0, 1.000001, 2.0])
-def test_score_rejects_out_of_bounds(value):
-    with pytest.raises(ValueError):
-        scoring.score_hypothesis(criteria=(value,))
-
-
-def test_score_requires_evidence_backing():
+def test_score_requires_valid_evidence_backing():
+    ledger, _, graph = _fixture()
+    missing = hypothesis_formation.Hypothesis(
+        ("4" * 64,), _THREE_HASH, "test proposition", 0
+    )
     with pytest.raises(ValueError, match="evidence"):
-        scoring.score_hypothesis(criteria=(0.5,), evidence_refs=())
+        scoring.score_hypothesis(missing, ledger, graph)
 
 
-def test_score_accepts_evidence_backed_hypothesis():
-    assert scoring.score_hypothesis(
-        criteria=(0.5,), evidence_refs=("evidence-hash",)
-    ) == 0.5
+def test_empty_ledger_is_zero_evidence_boundary():
+    empty = evidence.build_evidence_ledger(())
+    assert empty.records == ()
+    with pytest.raises(ValueError, match="evidence"):
+        hypothesis_formation.Hypothesis((), _THREE_HASH, "empty", 0)
 
 
-def test_multi_criteria_aggregation_is_deterministic():
-    assert scoring.score_hypothesis(
-        criteria=(0.2, 0.4, 0.8), evidence_refs=("evidence-hash",)
-    ) == pytest.approx((0.2 + 0.4 + 0.8) / 3.0)
+def test_duplicate_evidence_references_cannot_inflate_support():
+    ledger, hypothesis, graph = _fixture()
+    duplicate = hypothesis_formation.Hypothesis.__new__(hypothesis_formation.Hypothesis)
+    object.__setattr__(duplicate, "evidence_refs", (hypothesis.evidence_refs[0],) * 2)
+    object.__setattr__(duplicate, "state_hash", hypothesis.state_hash)
+    object.__setattr__(duplicate, "proposition", hypothesis.proposition)
+    object.__setattr__(duplicate, "sequence", hypothesis.sequence)
+    object.__setattr__(duplicate, "hypothesis_hash", hypothesis.hypothesis_hash)
+    with pytest.raises(ValueError, match="duplicate"):
+        scoring.score_hypothesis(duplicate, ledger, graph)
 
 
-def test_multi_criteria_requires_each_value_in_range():
+def test_tampered_ledger_is_rejected():
+    ledger, hypothesis, graph = _fixture()
+    object.__setattr__(ledger.records[0], "source_hash", _ZERO_HASH)
     with pytest.raises(ValueError):
-        scoring.score_hypothesis(
-            criteria=(0.2, 1.1, 0.8), evidence_refs=("evidence-hash",)
-        )
+        scoring.score_hypothesis(hypothesis, ledger, graph)
 
 
-def test_scoring_is_repeatable():
-    kwargs = {"criteria": (0.25, 0.75), "evidence_refs": ("evidence-hash",)}
-    assert scoring.score_hypothesis(**kwargs) == scoring.score_hypothesis(**kwargs)
+def test_tampered_lineage_is_rejected():
+    ledger, hypothesis, graph = _fixture()
+    object.__setattr__(graph, "graph_hash", _ONE_HASH)
+    with pytest.raises(ValueError):
+        scoring.score_hypothesis(hypothesis, ledger, graph)
+
+
+def test_invalid_provenance_cannot_produce_positive_support():
+    ledger, hypothesis, graph = _fixture()
+    object.__setattr__(hypothesis, "state_hash", _ZERO_HASH)
+    with pytest.raises(ValueError):
+        scoring.score_hypothesis(hypothesis, ledger, graph)
+
+
+def test_scoring_is_deterministic():
+    ledger, hypothesis, graph = _fixture()
+    first = scoring.score_hypothesis(hypothesis, ledger, graph)
+    second = scoring.score_hypothesis(hypothesis, ledger, graph)
+    assert first == second
+
+
+def test_scoring_is_environment_invariant(monkeypatch):
+    ledger, hypothesis, graph = _fixture()
+    monkeypatch.setenv("PYTHONHASHSEED", "random")
+    monkeypatch.setenv("JAMP_P22_9_FORBIDDEN", "one")
+    first = scoring.score_hypothesis(hypothesis, ledger, graph)
+    monkeypatch.setenv("JAMP_P22_9_FORBIDDEN", "two")
+    assert scoring.score_hypothesis(hypothesis, ledger, graph) == first
+
+
+def test_scoring_does_not_depend_on_process_environment(monkeypatch):
+    ledger, hypothesis, graph = _fixture()
+    monkeypatch.setattr(os, "environ", {"JAMP_P22_9_FORBIDDEN": "1"})
+    first = scoring.score_hypothesis(hypothesis, ledger, graph)
+    monkeypatch.setattr(os, "environ", {"JAMP_P22_9_FORBIDDEN": "2"})
+    assert scoring.score_hypothesis(hypothesis, ledger, graph) == first
+
+
+def test_serialization_equivalent_inputs_score_identically():
+    ledger, hypothesis, graph = _fixture()
+    ledger_copy = evidence.EvidenceLedger(
+        tuple(
+            evidence.EvidenceRecord(r.source_hash, r.payload_hash, r.state_hash, r.sequence)
+            for r in ledger.records
+        ),
+        ledger.ledger_hash,
+    )
+    hypothesis_copy = hypothesis_formation.Hypothesis(
+        tuple(hypothesis.export()["evidence_refs"]),
+        hypothesis.state_hash,
+        hypothesis.proposition,
+        hypothesis.sequence,
+    )
+    graph_copy = lineage_graph.build_lineage_graph(
+        tuple(lineage_graph.LineageNode(n.node_hash, n.parents) for n in graph.nodes)
+    )
+    assert scoring.score_hypothesis(hypothesis, ledger, graph) == scoring.score_hypothesis(
+        hypothesis_copy, ledger_copy, graph_copy
+    )
+
+
+def test_score_is_non_interfering_between_hypotheses():
+    ledger, hypothesis, graph = _fixture()
+    baseline = scoring.score_hypothesis(hypothesis, ledger, graph)
+    concurrent = hypothesis_formation.Hypothesis(
+        (ledger.records[1].evidence_hash,), _THREE_HASH, "concurrent", 1
+    )
+    assert concurrent.hypothesis_hash != hypothesis.hypothesis_hash
+    assert scoring.score_hypothesis(hypothesis, ledger, graph) == baseline
+
+
+def test_score_does_not_depend_on_object_identity():
+    ledger, hypothesis, graph = _fixture()
+    other_ledger, other_hypothesis, other_graph = _fixture()
+    assert scoring.score_hypothesis(hypothesis, ledger, graph) == scoring.score_hypothesis(
+        other_hypothesis, other_ledger, other_graph
+    )
+
+
+def test_score_is_read_only():
+    ledger, hypothesis, graph = _fixture()
+    before = (ledger.export(), hypothesis.export(), graph.export())
+    scoring.score_hypothesis(hypothesis, ledger, graph)
+    assert (ledger.export(), hypothesis.export(), graph.export()) == before
 
 
 def test_public_boundary_is_explicit():
