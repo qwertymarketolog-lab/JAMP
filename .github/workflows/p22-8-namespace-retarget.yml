@@ -1,0 +1,32 @@
+name: P22.8 namespace retarget
+on:
+  push:
+    branches:
+      - feature/p22-8-hypothesis-formation
+permissions:
+  contents: write
+jobs:
+  retarget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Retarget contract import
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("tests/research/test_hypothesis_formation.py")
+          s = p.read_text(encoding="utf-8")
+          old = "from jamp.research import hypothesis\n"
+          new = "from jamp.research import hypothesis_formation as hypothesis\n"
+          if old not in s:
+              raise SystemExit("expected legacy import line not found")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+          PY
+          rm .github/workflows/p22-8-namespace-retarget.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/research/test_hypothesis_formation.py .github/workflows/p22-8-namespace-retarget.yml
+          git commit -m "P22.8: retarget contract to isolated hypothesis_formation namespace"
+          git push origin HEAD:feature/p22-8-hypothesis-formation
