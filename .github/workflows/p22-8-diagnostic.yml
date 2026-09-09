@@ -1,0 +1,24 @@
+name: P22.8 Hypothesis Formation Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p22-8-hypothesis-formation
+
+jobs:
+  p22-8-diagnostic:
+    runs-on: ubuntu-24.04
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONPATH: src
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Run isolated P22.8 contract
+        run: python -m pytest -q tests/research/test_hypothesis_formation.py
