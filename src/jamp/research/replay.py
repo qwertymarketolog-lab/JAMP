@@ -187,16 +187,7 @@ def verify_replay(graph: LineageGraph, result: ReplayResult) -> bool:
     return True
 
 
-__all__ = (
-    "ReplayError",
-    "ReplayIntegrityError",
-    "ReplayTransitionError",
-    "ReplayUnknownEventError",
-    "ReplayTrace",
-    "compute_trace_hash",
-    "project_replay",
-    "verify_trace",
-    "ReplayResult",
-    "replay_state",
-    "verify_replay",
-)
+# Keep the P22.6 public export contract exact; compatibility symbols remain
+# importable for historical P19/P20 research modules without being advertised
+# as part of the current state-replay API.
+__all__ = ("ReplayResult", "replay_state", "verify_replay")
