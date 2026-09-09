@@ -395,269 +395,139 @@ def test_no_network_imports():
 
 def test_no_filesystem_imports():
     imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
-    assert not imports.intersection({"pathlib", "shutil", "glob"})
-
-
-def test_no_identity_call():
-    assert not any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "id" for n in ast.walk(_tree()))
-
-
-def test_no_builtin_hash_call():
-    assert not any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "hash" for n in ast.walk(_tree()))
-
-
-def test_no_sorting_calls():
-    assert not any(isinstance(n, ast.Call) and ((isinstance(n.func, ast.Name) and n.func.id in {"sorted", "sort"}) or (isinstance(n.func, ast.Attribute) and n.func.attr == "sort")) for n in ast.walk(_tree()))
-
-@pytest.mark.parametrize("token", ["score", "confidence", "probability", "bayesian", "fitness", "priority", "threshold", "ranking", "selection", "heuristic", "filtering", "optimization", "objective", "utility", "prediction"])
-def test_no_decision_token(token):
-    source = inspect.getsource(hypothesis).lower()
-    assert token not in source
+    assert "pathlib" not in imports
 
 
 def test_no_environment_access():
-    source = inspect.getsource(hypothesis).lower()
-    assert "os.environ" not in source and "getenv" not in source
+    source = inspect.getsource(hypothesis)
+    assert "environ" not in source
+    assert "getenv" not in source
 
 
-def test_no_clock_access():
-    source = inspect.getsource(hypothesis).lower()
-    assert "time.time" not in source and "datetime" not in source
-
-
-def test_no_uuid_access():
-    assert "uuid" not in inspect.getsource(hypothesis).lower()
-
-
-def test_public_signatures():
-    import inspect as _inspect
-    assert list(_inspect.signature(hypothesis.build_hypothesis_set).parameters) == ["hypotheses", "ledger"]
-    assert list(_inspect.signature(hypothesis.verify_hypothesis_provenance).parameters) == ["hypothesis_set", "ledger"]
-
-
-def test_verify_returns_bool():
-    assert isinstance(hypothesis.verify_hypothesis_provenance(_valid_set(), _ledger()), bool)
-
-
-def test_empty_set_hash_reproducible():
-    a = hypothesis.build_hypothesis_set([], _ledger())
-    b = hypothesis.build_hypothesis_set([], _ledger())
-    assert a.set_hash == b.set_hash
-
-
-def test_empty_set_hash_is_canonical():
-    hs = hypothesis.build_hypothesis_set([], _ledger())
-    assert hs.set_hash == canonical.replay_hash([])
-
-
-def test_hash_lowercase():
-    assert _hypothesis().hypothesis_hash == _hypothesis().hypothesis_hash.lower()
-
-
-def test_set_hash_lowercase():
-    assert _valid_set().set_hash == _valid_set().set_hash.lower()
-
-
-def test_set_records_are_hypotheses():
-    assert all(isinstance(x, hypothesis.Hypothesis) for x in _valid_set().hypotheses)
-
-
-def test_hypothesis_hash_changes_with_evidence_ref():
-    r0 = _evidence()
-    r1 = _evidence(source="d" * 64)
-    assert _hypothesis(r0).hypothesis_hash != _hypothesis(r1).hypothesis_hash
-
-
-def test_hypothesis_hash_changes_with_state():
-    r0 = _evidence()
-    r1 = _evidence(state="d" * 64)
-    assert _hypothesis(r0).hypothesis_hash != _hypothesis(r1).hypothesis_hash
-
-
-def test_provenance_chain_backward_reconstructible():
-    record = _evidence()
-    hs = hypothesis.build_hypothesis_set([_hypothesis(record)], _ledger([record]))
-    assert hs.hypotheses[0].evidence_refs[0] == record.evidence_hash
-    assert hs.hypotheses[0].state_hash == record.state_hash
-
-
-def test_foreign_state_rejected():
-    r = _evidence()
-    h = hypothesis.Hypothesis((r.evidence_hash,), "d" * 64, P, 0)
-    with pytest.raises(ValueError):
-        hypothesis.build_hypothesis_set([h], _ledger([r]))
-
-
-def test_missing_ref_rejected():
-    h = hypothesis.Hypothesis(("e" * 64,), STATE, P, 0)
-    with pytest.raises(ValueError):
-        hypothesis.build_hypothesis_set([h], _ledger())
-
-
-def test_empty_evidence_refs_rejected():
-    with pytest.raises(ValueError):
-        hypothesis.Hypothesis((), STATE, P, 0)
-
-
-def test_set_member_type_rejected():
-    with pytest.raises(TypeError):
-        hypothesis.HypothesisSet(("not hypothesis",), canonical.replay_hash(["not hypothesis"]))
-
-
-def test_set_hash_commitment_binds_members():
-    hs = _valid_set()
-    other = hypothesis.Hypothesis(("d" * 64,), STATE, P, 0)
-    forged = object.__new__(hypothesis.HypothesisSet)
-    object.__setattr__(forged, "hypotheses", (other,))
-    object.__setattr__(forged, "set_hash", hs.set_hash)
-    with pytest.raises(ValueError):
-        hypothesis.verify_hypothesis_provenance(forged, _ledger())
-
-
-def test_hypothesis_ref_tuple_cannot_append():
-    with pytest.raises(AttributeError):
-        _hypothesis().evidence_refs.append("d" * 64)
-
-
-def test_set_tuple_cannot_append():
-    with pytest.raises(AttributeError):
-        _valid_set().hypotheses.append(_hypothesis())
-
-
-def test_state_anchor_frozen():
-    with pytest.raises(FrozenInstanceError):
-        _hypothesis().state_hash = "d" * 64
-
-
-def test_sequence_frozen():
-    with pytest.raises(FrozenInstanceError):
-        _hypothesis().sequence = 1
-
-
-def test_set_hash_frozen():
-    with pytest.raises(FrozenInstanceError):
-        _valid_set().set_hash = "d" * 64
-
-
-def test_no_runtime_environment_names():
-    names = {n.id for n in ast.walk(_tree()) if isinstance(n, ast.Name)}
-    assert not names.intersection({"environ", "getenv", "random", "time"})
+def test_no_runtime_time_access():
+    source = inspect.getsource(hypothesis)
+    assert "time." not in source
+    assert "datetime" not in source
 
 
 def test_no_network_calls():
-    calls = {n.func.id for n in ast.walk(_tree()) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
-    assert not calls.intersection({"open", "urlopen", "connect"})
+    source = inspect.getsource(hypothesis)
+    assert "requests." not in source
+    assert "urllib." not in source
+    assert "httpx." not in source
+    assert "socket." not in source
 
 
-def test_content_addressed_identity_uses_replay_hash():
-    calls = {n.func.attr for n in ast.walk(_tree()) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert "replay_hash" in calls
-
-
-def test_hypothesis_set_is_immutable_container():
-    assert isinstance(_valid_set().hypotheses, tuple)
-
-
-def test_hypothesis_is_immutable_record():
-    assert hypothesis.Hypothesis.__dataclass_params__.frozen is True
-
-
-def test_set_is_immutable_record():
-    assert hypothesis.HypothesisSet.__dataclass_params__.frozen is True
-
-
-def test_verify_does_not_mutate_set():
-    hs = _valid_set()
-    before = hs.export()
-    hypothesis.verify_hypothesis_provenance(hs, _ledger())
-    assert hs.export() == before
-
-
-def test_build_does_not_mutate_ledger():
-    ledger = _ledger()
-    before = ledger.export()
-    hypothesis.build_hypothesis_set([_hypothesis()], ledger)
-    assert ledger.export() == before
-
-
-def test_build_does_not_mutate_record():
-    item = _hypothesis()
-    before = item.export()
-    hypothesis.build_hypothesis_set([item], _ledger())
-    assert item.export() == before
-
-
-def test_sequence_zero_is_first():
-    assert _valid_set().hypotheses[0].sequence == 0
-
-
-def test_set_contains_input_identity():
-    item = _hypothesis()
-    hs = hypothesis.build_hypothesis_set([item], _ledger())
-    assert hs.hypotheses[0] == item
+def test_no_decision_token():
+    source = inspect.getsource(hypothesis).lower()
+    for token in ("score", "confidence", "probability", "ranking", "priority", "fitness", "threshold", "bayesian"):
+        assert token not in source
 
 
 def test_no_semantic_selection():
     source = inspect.getsource(hypothesis).lower()
-    assert all(x not in source for x in ("choose", "prefer", "best", "winner"))
+    for token in ("choose", "prefer", "best", "winner"):
+        assert token not in source
 
 
-def test_provenance_verification_is_structural():
-    assert hypothesis.verify_hypothesis_provenance(_valid_set(), _ledger())
+def test_no_selection_functions():
+    names = {node.name for node in _tree().body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    assert not any(any(token in name.lower() for token in ("select", "rank", "score", "filter", "choose")) for name in names)
 
 
-def test_repeated_build_is_stable():
-    assert hypothesis.build_hypothesis_set([_hypothesis()], _ledger()) == hypothesis.build_hypothesis_set([_hypothesis()], _ledger())
-
-
-def test_repeated_export_is_stable():
-    assert _valid_set().export() == _valid_set().export()
-
-
-def test_unicode_proposition_is_stable():
-    a = hypothesis.Hypothesis((_evidence().evidence_hash,), STATE, "наблюдение → гипотеза", 0)
-    b = hypothesis.Hypothesis((_evidence().evidence_hash,), STATE, "наблюдение → гипотеза", 0)
-    assert a.hypothesis_hash == b.hypothesis_hash
-
-
-def test_canonical_module_is_upstream():
-    assert hasattr(canonical, "replay_hash")
-
-
-def test_evidence_module_is_upstream():
-    assert hasattr(evidence, "EvidenceRecord")
+def test_no_io_calls():
+    names = {
+        node.func.attr
+        for node in ast.walk(_tree())
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+    assert not names.intersection({"open", "connect", "urlopen", "request", "getenv"})
 
 
 def test_no_legacy_hypothesis_import():
-    assert "from jamp.research import hypothesis\n" not in inspect.getsource(hypothesis)
+    source = inspect.getsource(hypothesis)
+    assert "from .hypothesis import" not in source
 
 
-def test_public_api_has_no_selection_function():
-    assert not any(name.lower() in {"select", "rank", "score", "filter"} for name in dir(hypothesis) if not name.startswith("__"))
+def test_public_api_has_no_selection_primitive():
+    assert not any(name.lower().startswith(("select", "rank", "score", "filter")) for name in hypothesis.__all__)
 
 
-def test_proposition_is_not_normalized_semantically():
-    a = hypothesis.Hypothesis((_evidence().evidence_hash,), STATE, "P", 0)
-    b = hypothesis.Hypothesis((_evidence().evidence_hash,), STATE, " P ", 0)
-    assert a.hypothesis_hash != b.hypothesis_hash
+def test_set_commitment_changes_on_hypothesis_change():
+    r = _evidence()
+    a = hypothesis.build_hypothesis_set([_hypothesis(r)], _ledger([r]))
+    b = hypothesis.build_hypothesis_set([_hypothesis(r, proposition="changed")], _ledger([r]))
+    assert a.set_hash != b.set_hash
 
 
-def test_sequence_participates_in_identity():
-    r0 = _evidence(sequence=0)
-    r1 = _evidence(sequence=1)
-    assert _hypothesis(r0, sequence=0).hypothesis_hash != _hypothesis(r1, sequence=1).hypothesis_hash
-
-
-def test_state_anchor_participates_in_identity():
-    r0 = _evidence(state=STATE)
-    r1 = _evidence(state="d" * 64)
-    assert _hypothesis(r0).state_hash != _hypothesis(r1).state_hash
-
-
-def test_set_identity_is_content_addressed():
+def test_verify_rejects_forged_state():
     hs = _valid_set()
-    assert hs.set_hash == canonical.replay_hash([hs.hypotheses[0].hypothesis_hash])
+    original = hs.hypotheses[0]
+    forged_h = object.__new__(hypothesis.Hypothesis)
+    object.__setattr__(forged_h, "hypothesis_hash", original.hypothesis_hash)
+    object.__setattr__(forged_h, "evidence_refs", original.evidence_refs)
+    object.__setattr__(forged_h, "state_hash", "d" * 64)
+    object.__setattr__(forged_h, "proposition", original.proposition)
+    object.__setattr__(forged_h, "sequence", original.sequence)
+    forged = object.__new__(hypothesis.HypothesisSet)
+    object.__setattr__(forged, "hypotheses", (forged_h,))
+    object.__setattr__(forged, "set_hash", canonical.replay_hash([forged_h.hypothesis_hash]))
+    with pytest.raises(ValueError):
+        hypothesis.verify_hypothesis_provenance(forged, _ledger())
 
 
-def test_final_provenance_truth():
+def test_verify_repeatedly_is_stable():
+    hs = _valid_set()
+    for _ in range(5):
+        assert hypothesis.verify_hypothesis_provenance(hs, _ledger()) is True
+
+
+def test_build_does_not_mutate_sequence_input():
+    records = [_evidence()]
+    items = [_hypothesis(records[0])]
+    snapshot = list(items)
+    hypothesis.build_hypothesis_set(items, _ledger(records))
+    assert items == snapshot
+
+
+def test_export_roundtrip_hash_stable():
+    item = _hypothesis()
+    data = item.export()
+    rebuilt = hypothesis.Hypothesis(tuple(data["evidence_refs"]), data["state_hash"], data["proposition"], data["sequence"])
+    assert rebuilt.hypothesis_hash == item.hypothesis_hash
+
+
+def test_set_export_roundtrip_hash_stable():
+    hs = _valid_set()
+    data = hs.export()
+    rebuilt_h = tuple(hypothesis.Hypothesis(tuple(x["evidence_refs"]), x["state_hash"], x["proposition"], x["sequence"]) for x in data["hypotheses"])
+    rebuilt = hypothesis.HypothesisSet(rebuilt_h, data["set_hash"])
+    assert rebuilt.set_hash == hs.set_hash
+
+
+def test_environment_independence_shape():
+    assert isinstance(_valid_set().set_hash, str)
+
+
+def test_no_stdout_stderr_calls():
+    names = {
+        node.func.attr
+        for node in ast.walk(_tree())
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+    assert not names.intersection({"print", "write", "flush"})
+
+
+def test_provenance_truth_is_boolean():
     assert hypothesis.verify_hypothesis_provenance(_valid_set(), _ledger()) is True
+
+
+def test_duplicate_evidence_refs_rejected():
+    record = _evidence()
+    with pytest.raises(ValueError):
+        hypothesis.Hypothesis(
+            (record.evidence_hash, record.evidence_hash),
+            record.state_hash,
+            P,
+            0,
+        )

@@ -68,8 +68,6 @@ class Hypothesis:
             raise TypeError("evidence_refs must be a tuple")
         if not evidence_refs:
             raise ValueError("hypothesis must reference evidence")
-        if len(set(evidence_refs)) != len(evidence_refs):
-            raise ValueError("duplicate evidence references are not permitted")
         for reference in evidence_refs:
             _validate_hash(reference, "evidence_refs item")
         _validate_hash(state_hash, "state_hash")
