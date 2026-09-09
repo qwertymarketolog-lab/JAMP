@@ -1,6 +1,9 @@
 name: P22.8 Contract Provenance Audit
 
 on:
+  push:
+    branches:
+      - feature/p22-8-hypothesis-formation
   workflow_dispatch:
 
 jobs:
