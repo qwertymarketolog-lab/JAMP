@@ -1,13 +1,12 @@
 """P21.3 deterministic presentation, inspection, verification and lineage layer.
 
-The module owns no scientific semantics and performs no I/O.  Callers inject
+The module owns no scientific semantics and performs no I/O. Callers inject
 already-resolved immutable sessions and content-addressed object exports.
 """
 from __future__ import annotations
 
 import argparse
 import copy
-import hashlib
 import json
 import re
 from collections import defaultdict, deque
@@ -29,9 +28,17 @@ def _hash(value: str) -> None:
         raise CLIError("invalid content-addressed hash")
 
 
+def _plain(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, tuple):
+        return [_plain(v) for v in value]
+    return value
+
+
 def _json(value: Any) -> str:
     try:
-        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return json.dumps(_plain(value), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     except (TypeError, ValueError) as exc:
         raise CLIError("object is not canonically serializable") from exc
 
@@ -104,13 +111,15 @@ class ResearchCLI:
         return _json(metadata)
 
     def _object_hash(self, obj: Mapping[str, Any], fallback: str) -> str:
-        for key in ("question_hash", "plan_hash", "execution_hash", "result_hash", "interpretation_hash", "claim_hash", "consensus_hash", "revision_hash"):
-            if key in obj:
-                value = obj[key]
-                if value != fallback:
-                    raise CLIError("artifact substitution detected")
-                return value
-        raise CLIError("artifact has no content-addressed identity")
+        kind = obj.get("kind")
+        if kind not in _KINDS:
+            raise CLIError("artifact kind is invalid")
+        field = f"{kind}_hash"
+        value = obj.get(field)
+        if value != fallback:
+            raise CLIError("artifact substitution detected")
+        _hash(value)
+        return value
 
     def _graph(self, target_hash: str) -> dict[str, set[str]]:
         _hash(target_hash)
@@ -122,19 +131,19 @@ class ResearchCLI:
             identity = self._object_hash(obj, key)
             graph.setdefault(identity, set())
             for field, value in obj.items():
-                if field.endswith("_hash") and field != "artifact_hash":
-                    if isinstance(value, str) and _HASH_RE.fullmatch(value):
-                        if value in self.objects:
-                            graph[identity].add(value)
-                            graph[value].add(identity)
+                if field.endswith("_hash") and field != "artifact_hash" and field != f"{obj.get('kind')}_hash":
+                    if isinstance(value, str) and _HASH_RE.fullmatch(value) and value in self.objects:
+                        graph[identity].add(value)
+                        graph[value].add(identity)
         return graph
 
     def _detect_cycle(self, graph: Mapping[str, set[str]]) -> None:
         directed: dict[str, set[str]] = defaultdict(set)
         for key, obj in self.objects.items():
             identity = self._object_hash(obj, key)
+            kind = obj["kind"]
             for field, value in obj.items():
-                if field.endswith("_hash") and field != "artifact_hash" and isinstance(value, str) and _HASH_RE.fullmatch(value) and value in self.objects:
+                if field.endswith("_hash") and field != f"{kind}_hash" and isinstance(value, str) and _HASH_RE.fullmatch(value) and value in self.objects:
                     directed[identity].add(value)
         visiting: set[str] = set()
         visited: set[str] = set()
@@ -172,12 +181,8 @@ class ResearchCLI:
         return "\n".join(ordered)
 
     def _refs_for_kind(self, kind: str) -> tuple[str, ...]:
-        refs = []
         suffix = f"{kind}_hash"
-        for key, obj in self.objects.items():
-            if obj.get(suffix) == key:
-                refs.append(key)
-        return tuple(sorted(refs))
+        return tuple(sorted(key for key, obj in self.objects.items() if obj.get(suffix) == key and obj.get("kind") == kind))
 
     def verify(self, session_hash: str, *, require_objects: bool = False) -> bool:
         session = self._session(session_hash)
@@ -192,12 +197,13 @@ class ResearchCLI:
                     raise CLIError("artifact tamper detected")
                 self._object_hash(obj, ref)
         if require_objects:
-            self._detect_cycle(self._graph(next(iter((r for refs in session.indexes.values() for r in refs)), session.session_hash)))
+            first = next((r for refs in session.indexes.values() for r in refs), None)
+            if first is not None:
+                self._detect_cycle(self._graph(first))
         return True
 
     def export(self, session_hash: str) -> str:
-        session = self._session(session_hash)
-        return session.export()
+        return self._session(session_hash).export()
 
 
 def main(argv: Sequence[str] | None = None, *, cli: ResearchCLI | None = None) -> int:
