@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from .canonical import replay_hash
+from . import canonical
 from .evidence import EvidenceLedger, EvidenceRecord, verify_evidence
 
 __all__ = (
@@ -35,7 +35,7 @@ def _hypothesis_digest(
     proposition: str,
     sequence: int,
 ) -> str:
-    return replay_hash(
+    return canonical.replay_hash(
         {
             "evidence_refs": list(evidence_refs),
             "proposition": proposition,
@@ -46,7 +46,7 @@ def _hypothesis_digest(
 
 
 def _set_digest(hypotheses: tuple["Hypothesis", ...]) -> str:
-    return replay_hash([item.hypothesis_hash for item in hypotheses])
+    return canonical.replay_hash([item.hypothesis_hash for item in hypotheses])
 
 
 @dataclass(frozen=True, init=False)
@@ -66,6 +66,8 @@ class Hypothesis:
     ) -> None:
         if not isinstance(evidence_refs, tuple):
             raise TypeError("evidence_refs must be a tuple")
+        if not evidence_refs:
+            raise ValueError("hypothesis must reference evidence")
         for reference in evidence_refs:
             _validate_hash(reference, "evidence_refs item")
         _validate_hash(state_hash, "state_hash")
@@ -144,8 +146,6 @@ def build_hypothesis_set(
         if item.hypothesis_hash in hashes:
             raise ValueError("duplicate hypothesis records are not permitted")
         hashes.add(item.hypothesis_hash)
-        if not item.evidence_refs:
-            raise ValueError("hypothesis must reference evidence")
         for reference in item.evidence_refs:
             record = evidence_by_hash.get(reference)
             if record is None:
@@ -154,10 +154,10 @@ def build_hypothesis_set(
                 raise ValueError("hypothesis state grounding mismatch")
         by_sequence[item.sequence] = item
 
-    canonical = tuple(item for item in by_sequence if item is not None)
-    if len(canonical) != len(materialized):
+    canonical_hypotheses = tuple(item for item in by_sequence if item is not None)
+    if len(canonical_hypotheses) != len(materialized):
         raise ValueError("hypothesis sequences must be contiguous from zero")
-    return HypothesisSet(canonical, _set_digest(canonical))
+    return HypothesisSet(canonical_hypotheses, _set_digest(canonical_hypotheses))
 
 
 def verify_hypothesis_provenance(
@@ -180,8 +180,6 @@ def verify_hypothesis_provenance(
         )
         if item.hypothesis_hash != expected_hash:
             raise ValueError("hypothesis integrity mismatch")
-        if not item.evidence_refs:
-            raise ValueError("hypothesis must reference evidence")
         for reference in item.evidence_refs:
             record = evidence_by_hash.get(reference)
             if record is None:
