@@ -16,7 +16,7 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONHASHSEED: "0"
-      PYTHONPATH: .
+      PYTHONPATH: src
     steps:
       - name: Checkout exact branch commit
         uses: actions/checkout@v4
