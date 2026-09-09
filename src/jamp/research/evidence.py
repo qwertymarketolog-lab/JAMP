@@ -1,12 +1,12 @@
 """P22.7 deterministic evidence provenance primitives.
 
 Evidence records bind an immutable source/payload observation to a structural
-state identity.  The ledger is content-addressed and intentionally contains
-no decision, ranking, scoring, filtering, confidence, or environment logic.
+state identity. The ledger is content-addressed and intentionally contains no
+decision, ranking, scoring, filtering, confidence, or environment logic.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 from collections.abc import Sequence
@@ -42,59 +42,66 @@ def _canonical_bytes(value: object) -> bytes:
 def _evidence_hash(
     source_hash: str, payload_hash: str, state_hash: str, sequence: int
 ) -> str:
-    data = {
-        "payload_hash": payload_hash,
-        "sequence": sequence,
-        "source_hash": source_hash,
-        "state_hash": state_hash,
-    }
-    return hashlib.sha256(_canonical_bytes(data)).hexdigest()
+    return hashlib.sha256(
+        _canonical_bytes(
+            {
+                "payload_hash": payload_hash,
+                "sequence": sequence,
+                "source_hash": source_hash,
+                "state_hash": state_hash,
+            }
+        )
+    ).hexdigest()
 
 
 def _ledger_hash(evidence_hashes: Sequence[str]) -> str:
     return hashlib.sha256(_canonical_bytes(list(evidence_hashes))).hexdigest()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class EvidenceRecord:
-    """Immutable content-addressed evidence bound to one state."""
-
-    evidence_hash: str
-    state_hash: str
-    payload_hash: str
+    evidence_hash: str = field(init=False)
     source_hash: str
+    payload_hash: str
+    state_hash: str
     sequence: int
 
-    def __post_init__(self) -> None:
-        _validate_hash(self.evidence_hash, "evidence_hash")
-        _validate_hash(self.state_hash, "state_hash")
-        _validate_hash(self.payload_hash, "payload_hash")
-        _validate_hash(self.source_hash, "source_hash")
-        if isinstance(self.sequence, bool) or not isinstance(self.sequence, int):
+    def __init__(
+        self,
+        source_hash: str,
+        payload_hash: str,
+        state_hash: str,
+        sequence: int,
+    ) -> None:
+        _validate_hash(source_hash, "source_hash")
+        _validate_hash(payload_hash, "payload_hash")
+        _validate_hash(state_hash, "state_hash")
+        if isinstance(sequence, bool) or not isinstance(sequence, int):
             raise TypeError("sequence must be an integer")
-        if self.sequence < 0:
+        if sequence < 0:
             raise ValueError("sequence must be non-negative")
-        expected = _evidence_hash(
-            self.source_hash, self.payload_hash, self.state_hash, self.sequence
+        object.__setattr__(self, "source_hash", source_hash)
+        object.__setattr__(self, "payload_hash", payload_hash)
+        object.__setattr__(self, "state_hash", state_hash)
+        object.__setattr__(self, "sequence", sequence)
+        object.__setattr__(
+            self,
+            "evidence_hash",
+            _evidence_hash(source_hash, payload_hash, state_hash, sequence),
         )
-        if self.evidence_hash != expected:
-            raise ValueError("evidence_hash does not match record content")
 
     def export(self) -> dict[str, object]:
-        """Return a detached structural representation."""
         return {
             "evidence_hash": self.evidence_hash,
-            "state_hash": self.state_hash,
-            "payload_hash": self.payload_hash,
             "source_hash": self.source_hash,
+            "payload_hash": self.payload_hash,
+            "state_hash": self.state_hash,
             "sequence": self.sequence,
         }
 
 
 @dataclass(frozen=True)
 class EvidenceLedger:
-    """Immutable ordered evidence ledger with a cryptographic commitment."""
-
     records: tuple[EvidenceRecord, ...]
     ledger_hash: str
 
@@ -102,12 +109,13 @@ class EvidenceLedger:
         if not isinstance(self.records, tuple):
             raise TypeError("records must be a tuple")
         _validate_hash(self.ledger_hash, "ledger_hash")
+        if any(not isinstance(record, EvidenceRecord) for record in self.records):
+            raise TypeError("records must contain only EvidenceRecord instances")
         expected = _ledger_hash([record.evidence_hash for record in self.records])
         if self.ledger_hash != expected:
             raise ValueError("ledger_hash does not match records")
 
     def export(self) -> dict[str, object]:
-        """Return a detached structural representation."""
         return {
             "records": [record.export() for record in self.records],
             "ledger_hash": self.ledger_hash,
@@ -115,26 +123,28 @@ class EvidenceLedger:
 
 
 def build_evidence_ledger(records: Sequence[EvidenceRecord]) -> EvidenceLedger:
-    """Build and cryptographically validate a contiguous evidence ledger."""
     if isinstance(records, (str, bytes)):
         raise TypeError("records must be a sequence of EvidenceRecord")
     materialized = tuple(records)
-    for index, record in enumerate(materialized):
-        if not isinstance(record, EvidenceRecord):
-            raise TypeError("records must contain only EvidenceRecord instances")
+    if any(not isinstance(record, EvidenceRecord) for record in materialized):
+        raise TypeError("records must contain only EvidenceRecord instances")
+    canonical = tuple(sorted(materialized, key=lambda record: record.sequence))
+    for index, record in enumerate(canonical):
         if record.sequence != index:
             raise ValueError("evidence sequences must be contiguous from zero")
-    hashes = [record.evidence_hash for record in materialized]
+    hashes = [record.evidence_hash for record in canonical]
     if len(hashes) != len(set(hashes)):
         raise ValueError("duplicate evidence records are not permitted")
-    return EvidenceLedger(materialized, _ledger_hash(hashes))
+    return EvidenceLedger(canonical, _ledger_hash(hashes))
 
 
-def verify_evidence(ledger: EvidenceLedger, target_state_hash: str) -> bool:
-    """Verify ledger integrity and bind every record to the target state."""
+def verify_evidence(
+    ledger: EvidenceLedger, target_state_hash: str | None = None
+) -> bool:
     if not isinstance(ledger, EvidenceLedger):
         raise TypeError("ledger must be an EvidenceLedger")
-    _validate_hash(target_state_hash, "target_state_hash")
+    if target_state_hash is not None:
+        _validate_hash(target_state_hash, "target_state_hash")
     expected_hashes: list[str] = []
     for index, record in enumerate(ledger.records):
         if record.sequence != index:
@@ -144,7 +154,7 @@ def verify_evidence(ledger: EvidenceLedger, target_state_hash: str) -> bool:
         )
         if record.evidence_hash != expected:
             raise ValueError("evidence record integrity mismatch")
-        if record.state_hash != target_state_hash:
+        if target_state_hash is not None and record.state_hash != target_state_hash:
             raise ValueError("evidence state binding mismatch")
         expected_hashes.append(expected)
     if ledger.ledger_hash != _ledger_hash(expected_hashes):
