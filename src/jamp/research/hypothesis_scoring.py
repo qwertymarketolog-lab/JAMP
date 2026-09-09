@@ -6,8 +6,9 @@ of truth and performs no ranking or global normalization.
 """
 from __future__ import annotations
 
+from . import canonical
 from .evidence import EvidenceLedger, verify_evidence
-from .hypothesis_formation import Hypothesis, verify_hypothesis_provenance
+from .hypothesis_formation import Hypothesis, HypothesisSet, verify_hypothesis_provenance
 from .lineage_graph import LineageGraph, verify_lineage
 
 __all__ = ("score_hypothesis",)
@@ -48,15 +49,10 @@ def score_hypothesis(
         raise ValueError("duplicate evidence references are not permitted")
 
     verify_evidence(ledger, target_state_hash=hypothesis.state_hash)
-    verify_hypothesis_provenance(
-        __import__("jamp.research.hypothesis_formation", fromlist=["HypothesisSet"]).HypothesisSet(
-            (hypothesis,),
-            __import__("jamp.research.hypothesis_formation", fromlist=["_set_digest"])._set_digest(
-                (hypothesis,)
-            ),
-        ),
-        ledger,
+    hypothesis_set = HypothesisSet(
+        (hypothesis,), canonical.replay_hash([hypothesis.hypothesis_hash])
     )
+    verify_hypothesis_provenance(hypothesis_set, ledger)
     verify_lineage(graph)
 
     evidence_by_hash = {record.evidence_hash: record for record in ledger.records}
