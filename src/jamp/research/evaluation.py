@@ -35,15 +35,15 @@ def evaluate_candidate(candidate: SearchState) -> EvaluationMetrics:
     if replay_hash(exported) != candidate.state_hash:
         raise SearchSpaceError("candidate state_hash does not match canonical export")
 
-    hypotheses = candidate.hypotheses
+    hypotheses = candidate.hypothesis_set
     metrics = {
         "claim_count": sum(len(h.claims) for h in hypotheses),
-        "supporting_evidence_count": sum(len(h.support) for h in hypotheses),
-        "contradicting_evidence_count": sum(len(h.contradicting) for h in hypotheses),
-        "causal_dependency_count": sum(len(h.causal) for h in hypotheses),
+        "supporting_evidence_count": sum(len(h.supporting_evidence) for h in hypotheses),
+        "contradicting_evidence_count": sum(len(h.contradicting_evidence) for h in hypotheses),
+        "causal_dependency_count": sum(len(h.causal_dependencies) for h in hypotheses),
         "assumption_count": len(candidate.assumptions),
-        "admissible_intervention_count": sum(len(h.interventions) for h in hypotheses),
-        "search_depth": candidate.depth,
+        "admissible_intervention_count": sum(len(h.admissible_interventions) for h in hypotheses),
+        "search_depth": candidate.search_depth,
     }
     return EvaluationMetrics(
         state_hash=candidate.state_hash,
