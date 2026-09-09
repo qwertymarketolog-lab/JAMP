@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Mapping
 
 from .canonical import replay_hash
 from .search_space import SearchSpaceError, SearchState
+
+__all__ = ("EvaluationMetrics", "evaluate_candidate")
 
 
 @dataclass(frozen=True)
@@ -34,22 +36,13 @@ def evaluate_candidate(candidate: SearchState) -> EvaluationMetrics:
         raise SearchSpaceError("candidate state_hash does not match canonical export")
 
     hypotheses = candidate.hypotheses
-    claim_count = sum(len(h.claims) for h in hypotheses)
-    supporting_evidence_count = sum(len(h.support) for h in hypotheses)
-    contradicting_evidence_count = sum(len(h.contradicting) for h in hypotheses)
-    causal_dependency_count = sum(len(h.causal) for h in hypotheses)
-    assumption_count = len(candidate.assumptions) + sum(
-        len(h.assumptions) for h in hypotheses
-    )
-    admissible_intervention_count = sum(len(h.interventions) for h in hypotheses)
-
     metrics = {
-        "claim_count": claim_count,
-        "supporting_evidence_count": supporting_evidence_count,
-        "contradicting_evidence_count": contradicting_evidence_count,
-        "causal_dependency_count": causal_dependency_count,
-        "assumption_count": assumption_count,
-        "admissible_intervention_count": admissible_intervention_count,
+        "claim_count": sum(len(h.claims) for h in hypotheses),
+        "supporting_evidence_count": sum(len(h.support) for h in hypotheses),
+        "contradicting_evidence_count": sum(len(h.contradicting) for h in hypotheses),
+        "causal_dependency_count": sum(len(h.causal) for h in hypotheses),
+        "assumption_count": len(candidate.assumptions),
+        "admissible_intervention_count": sum(len(h.interventions) for h in hypotheses),
         "search_depth": candidate.depth,
     }
     return EvaluationMetrics(
