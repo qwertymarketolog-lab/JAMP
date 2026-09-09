@@ -102,11 +102,13 @@ All exceptional cases MUST have deterministic outcomes. At minimum:
 
 | Scenario | Required behavior |
 |---|---|
-| Empty ledger | `0.0` plus explicit zero-evidence provenance status |
+| Empty ledger | scalar `0.0`, defined as the canonical zero-evidence provenance outcome |
 | Duplicate references | deterministic rejection; no density inflation |
 | Broken/tampered hash | structural invalidation; deterministic `ValueError` |
 | Correlated paths | independence component excludes prohibited dependent support |
 | Invalid hypothesis provenance | scoring MUST NOT produce positive support |
+
+The public scoring API remains scalar: `score_hypothesis(...) -> float`. No status wrapper is required for the empty-ledger boundary. The empty ledger itself is the explicit, deterministic zero-evidence provenance condition, and the scalar `0.0` is its canonical result.
 
 ## Mathematical acceptance properties
 
