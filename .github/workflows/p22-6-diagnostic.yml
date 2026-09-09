@@ -1,0 +1,25 @@
+name: P22.6 Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p22-6-state-replay
+  workflow_dispatch:
+
+jobs:
+  p22-6-diagnostic:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONPATH: src
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup CPython 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Run P22.6 contract gates
+        run: python -m pytest -q tests/research/test_state_replay.py
