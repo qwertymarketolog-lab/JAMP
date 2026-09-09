@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-from dataclasses import replace
 
 import pytest
 
@@ -108,9 +107,8 @@ def test_gate_20_depth_cannot_decrease(validator_module):
     p = make_state(depth=1); c = make_state(depth=0)
     with pytest.raises(SearchSpaceError): validator_module.validate_candidates(p, (c,))
 
-def test_gate_21_depth_bound_is_enforced(validator_module):
-    p = make_state(depth=0, constraints=("depth<=0",)); c = make_state(depth=1, constraints=("depth<=0",))
-    with pytest.raises(SearchSpaceError): validator_module.validate_candidates(p, (c,))
+def test_gate_21_depth_bound_is_enforced():
+    with pytest.raises(SearchSpaceError): make_state(depth=1, constraints=("depth<=0",))
 
 def test_gate_22_constraints_must_be_preserved(validator_module):
     p = make_state(constraints=("depth<=2",)); c = make_state(depth=1)
