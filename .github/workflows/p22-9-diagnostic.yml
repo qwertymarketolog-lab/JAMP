@@ -1,0 +1,29 @@
+name: P22.9 Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p22-9-hypothesis-scoring
+
+jobs:
+  p22-9-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact contract commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Run P22.9 contract
+        env:
+          PYTHONPATH: src
+          PYTHONHASHSEED: "0"
+        run: python -m pytest -q tests/research/test_hypothesis_scoring.py
