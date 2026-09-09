@@ -1,0 +1,25 @@
+name: P21.2 Research Session Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p21-2-research-session
+  pull_request:
+    branches:
+      - feature/p21-2-research-session
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+      - name: Run P21.2 acceptance gates
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_session.py
