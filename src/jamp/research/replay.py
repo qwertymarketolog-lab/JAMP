@@ -1,35 +1,44 @@
-"""P22.6 deterministic, immutable state replay primitives.
+"""Deterministic replay primitives with backward-compatible research contracts.
 
-The replay boundary is intentionally structural: it validates the lineage
-commitment, reconstructs the requested ancestor chain in parent-first order,
-and returns the content-addressed target identity.
-
-A narrow P19/P20 compatibility surface is retained for legacy research
-artifacts: ``ReplayTrace`` and ``compute_trace_hash`` are structural helpers
-used by the immutable artifact registry. They do not alter the P22.6 replay
-state API or perform selection, ranking, scoring, filtering, or I/O.
+The P22.6 state-replay API remains the active lineage-based boundary. The
+P19/P20 replay projection surface is retained as a compatibility layer for
+historical research artifacts and diagnostics. Both surfaces are immutable,
+deterministic, content-addressed, and free of I/O and environment-dependent
+selection logic.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-from typing import Sequence
+from typing import Any, Callable, Sequence
 
-from .canonical import canonical_bytes
+from .canonical import canonical_bytes, replay_hash
+from .causal import CausalEvent, topological_order
 from .lineage_graph import LineageGraph, verify_lineage
 
-__all__ = (
-    "ReplayTrace",
-    "compute_trace_hash",
-    "ReplayResult",
-    "replay_state",
-    "verify_replay",
-)
+
+Transition = Callable[[Any, CausalEvent], Any]
+
+
+class ReplayError(ValueError):
+    """Base error for deterministic replay projection failures."""
+
+
+class ReplayIntegrityError(ReplayError):
+    """Raised when a persisted replay trace does not match its content."""
+
+
+class ReplayTransitionError(ReplayError):
+    """Raised when a transition result does not match its event state anchor."""
+
+
+class ReplayUnknownEventError(ReplayError):
+    """Raised when the transition function cannot interpret an event type."""
 
 
 @dataclass(frozen=True, slots=True)
 class ReplayTrace:
-    """Legacy immutable identity of one deterministic replay trajectory."""
+    """Immutable cryptographic identity of one deterministic replay trajectory."""
 
     initial_state_hash: str
     ordered_event_ids: tuple[str, ...]
@@ -51,7 +60,84 @@ def compute_trace_hash(
     return hashlib.sha256(canonical_bytes(material)).hexdigest()
 
 
-@dataclass(frozen=True)
+def _make_trace(
+    initial_state_hash: str,
+    ordered_event_ids: Sequence[str],
+    resulting_state_hash: str,
+) -> ReplayTrace:
+    event_ids = tuple(ordered_event_ids)
+    return ReplayTrace(
+        initial_state_hash=initial_state_hash,
+        ordered_event_ids=event_ids,
+        resulting_state_hash=resulting_state_hash,
+        trace_hash=compute_trace_hash(initial_state_hash, event_ids, resulting_state_hash),
+    )
+
+
+def project_replay(
+    initial_state: Any,
+    events: Sequence[CausalEvent],
+    transition: Transition,
+) -> ReplayTrace:
+    """Project a causal DAG into a deterministic, cryptographically anchored trace."""
+    current_state = initial_state
+    initial_state_hash = replay_hash(initial_state)
+    ordered_events = topological_order(events)
+
+    for event in ordered_events:
+        try:
+            next_state = transition(current_state, event)
+        except ReplayUnknownEventError:
+            raise
+        except ReplayTransitionError:
+            raise
+        except Exception as exc:
+            raise ReplayTransitionError(
+                f"transition failed for event {event.event_id}"
+            ) from exc
+
+        try:
+            next_state_hash = replay_hash(next_state)
+        except Exception as exc:
+            raise ReplayTransitionError(
+                f"transition produced a non-canonical state for event {event.event_id}"
+            ) from exc
+
+        if next_state_hash != event.state_hash:
+            raise ReplayTransitionError(
+                f"state anchor mismatch for event {event.event_id}: "
+                f"expected {event.state_hash}, got {next_state_hash}"
+            )
+        current_state = next_state
+
+    resulting_state_hash = replay_hash(current_state)
+    return _make_trace(
+        initial_state_hash,
+        (event.event_id for event in ordered_events),
+        resulting_state_hash,
+    )
+
+
+def verify_trace(
+    trace: ReplayTrace,
+    initial_state: Any,
+    events: Sequence[CausalEvent],
+    transition: Transition,
+) -> bool:
+    """Recompute a trace from source inputs and reject any integrity mismatch."""
+    expected = project_replay(initial_state, events, transition)
+    if trace != expected:
+        raise ReplayIntegrityError("replay trace integrity failure")
+    if trace.trace_hash != compute_trace_hash(
+        trace.initial_state_hash,
+        trace.ordered_event_ids,
+        trace.resulting_state_hash,
+    ):
+        raise ReplayIntegrityError("replay trace hash integrity failure")
+    return True
+
+
+@dataclass(frozen=True, slots=True)
 class ReplayResult:
     """Immutable result of deterministic replay for one lineage target."""
 
@@ -99,3 +185,18 @@ def verify_replay(graph: LineageGraph, result: ReplayResult) -> bool:
     if not result.lineage or result.state_hash != result.lineage[-1]:
         raise ValueError("replay state hash mismatch")
     return True
+
+
+__all__ = (
+    "ReplayError",
+    "ReplayIntegrityError",
+    "ReplayTransitionError",
+    "ReplayUnknownEventError",
+    "ReplayTrace",
+    "compute_trace_hash",
+    "project_replay",
+    "verify_trace",
+    "ReplayResult",
+    "replay_state",
+    "verify_replay",
+)
