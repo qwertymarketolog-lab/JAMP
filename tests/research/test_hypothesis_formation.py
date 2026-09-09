@@ -12,7 +12,7 @@ from dataclasses import FrozenInstanceError, is_dataclass
 import pytest
 
 from jamp.research import evidence
-from jamp.research import hypothesis
+from jamp.research import hypothesis_formation as hypothesis
 
 FORBIDDEN = {
     "select", "select_node", "select_nodes", "rank", "sort", "sorted",
