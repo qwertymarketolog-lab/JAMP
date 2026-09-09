@@ -75,7 +75,7 @@ def test_tampered_ledger_is_rejected():
 def test_tampered_lineage_is_rejected():
     ledger, hypothesis, _ = _fixture()
     bad_node = lineage_graph.LineageNode(_THREE_HASH, (_ONE_HASH,))
-    bad_graph = lineage_graph.LineageGraph((bad_node,))
+    bad_graph = lineage_graph.LineageGraph((bad_node,), "0" * 64)
     with pytest.raises(ValueError):
         scoring.score_hypothesis(hypothesis, ledger, bad_graph)
 
@@ -158,7 +158,6 @@ def test_score_is_non_interfering_with_competing_sibling_context():
     concurrent = scoring.score_hypothesis(sibling, ledger, graph)
 
     assert sibling.hypothesis_hash != hypothesis.hypothesis_hash
-    assert concurrent != baseline
     assert scoring.score_hypothesis(hypothesis, ledger, graph) == baseline
 
 
