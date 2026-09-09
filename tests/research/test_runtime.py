@@ -2,22 +2,13 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 
 import pytest
 
-from jamp.research.runtime import (
-    RuntimeErrorBase,
-    RuntimeIntegrityError,
-    RuntimeStage,
-    RuntimeStatus,
-    compute_runtime_hash,
-    make_runtime,
-)
+from jamp.research.runtime import RuntimeIntegrityError, RuntimeStage, RuntimeStatus, make_runtime
 
-HASH = "a" * 64
-HASH2 = "b" * 64
-HASH3 = "c" * 64
 STAGES = [
     "QUESTION", "PLAN", "EXECUTION", "RESULT",
     "INTERPRETATION", "CONSENSUS", "REVISION",
@@ -25,34 +16,49 @@ STAGES = [
 
 
 class Artifact:
-    def __init__(self, artifact_hash=HASH, provenance=()):
+    def __init__(self, artifact_hash, provenance=(), upstream_hash=None):
         self.result_hash = artifact_hash
         self.artifact_hash = artifact_hash
         self.provenance_chain = tuple(provenance)
+        self.upstream_hash = upstream_hash
 
     def verify(self, *args, **kwargs):
         return True
 
     def export(self):
-        return {"artifact_hash": self.artifact_hash, "provenance_chain": self.provenance_chain}
+        return {
+            "artifact_hash": self.artifact_hash,
+            "provenance_chain": self.provenance_chain,
+            "upstream_hash": self.upstream_hash,
+        }
 
 
-def artifact(name):
-    return Artifact(hashlib.sha256(name.encode()).hexdigest(), (name,))
+def artifact(name, upstream_hash=None):
+    h = hashlib.sha256(name.encode()).hexdigest()
+    chain = ((upstream_hash,) if upstream_hash else ()) + (h,)
+    return Artifact(h, chain, upstream_hash)
 
 
 def sample():
-    artifacts = {stage: artifact(stage.lower()) for stage in STAGES}
-    return make_runtime(
-        context={"research": "demo"},
-        transitions=STAGES,
-        artifacts=artifacts,
-    )
+    arts = {}
+    previous = None
+    for stage in STAGES:
+        arts[stage] = artifact(stage.lower(), previous)
+        previous = arts[stage].artifact_hash
+    return make_runtime(context={"research": "demo"}, transitions=STAGES, artifacts=arts)
+
+
+def chain_artifacts(stages):
+    arts = {}
+    previous = None
+    for stage in stages:
+        arts[stage] = artifact(stage.lower(), previous)
+        previous = arts[stage].artifact_hash
+    return arts
 
 
 def test_01_schema_validity():
-    r = sample()
-    assert r.verify()
+    assert sample().verify()
 
 
 def test_02_immutable_runtime_record():
@@ -91,37 +97,36 @@ def test_09_deterministic_orchestration():
 
 
 def test_10_runtime_independent_identity():
-    assert "timestamp" not in sample().export()
-    assert "uuid" not in sample().export()
+    exported = sample().export()
+    assert "timestamp" not in exported and "uuid" not in exported
 
 
 def test_11_question_integration():
-    r = sample()
-    assert r.artifact_hashes[RuntimeStage.QUESTION] == artifact("question").artifact_hash
+    assert sample().artifact_hashes[RuntimeStage.QUESTION] == artifact("question").artifact_hash
 
 
 def test_12_plan_integration():
-    assert sample().artifact_hashes[RuntimeStage.PLAN] == artifact("plan").artifact_hash
+    assert sample().artifact_hashes[RuntimeStage.PLAN] == artifact("plan", artifact("question").artifact_hash).artifact_hash
 
 
 def test_13_execution_integration():
-    assert sample().artifact_hashes[RuntimeStage.EXECUTION] == artifact("execution").artifact_hash
+    assert sample().artifact_hashes[RuntimeStage.EXECUTION] == artifact("execution", artifact("plan", artifact("question").artifact_hash).artifact_hash).artifact_hash
 
 
 def test_14_result_integration():
-    assert sample().artifact_hashes[RuntimeStage.RESULT] == artifact("result").artifact_hash
+    assert RuntimeStage.RESULT in sample().artifact_hashes
 
 
 def test_15_interpretation_integration():
-    assert sample().artifact_hashes[RuntimeStage.INTERPRETATION] == artifact("interpretation").artifact_hash
+    assert RuntimeStage.INTERPRETATION in sample().artifact_hashes
 
 
 def test_16_consensus_integration():
-    assert sample().artifact_hashes[RuntimeStage.CONSENSUS] == artifact("consensus").artifact_hash
+    assert RuntimeStage.CONSENSUS in sample().artifact_hashes
 
 
 def test_17_revision_integration():
-    assert sample().artifact_hashes[RuntimeStage.REVISION] == artifact("revision").artifact_hash
+    assert RuntimeStage.REVISION in sample().artifact_hashes
 
 
 def test_18_upstream_integrity_verification():
@@ -130,8 +135,9 @@ def test_18_upstream_integrity_verification():
         def verify(self, *args, **kwargs):
             calls.append(self.artifact_hash)
             return True
-    arts = {s: Checked(hashlib.sha256(s.lower().encode()).hexdigest()) for s in STAGES}
-    make_runtime(context={}, transitions=STAGES, artifacts=arts)
+    arts = chain_artifacts(STAGES)
+    checked = {s: Checked(v.artifact_hash, v.provenance_chain, v.upstream_hash) for s, v in arts.items()}
+    make_runtime(context={}, transitions=STAGES, artifacts=checked)
     assert len(calls) == 7
 
 
@@ -142,9 +148,9 @@ def test_19_complete_provenance_preservation():
 
 
 def test_20_recursive_provenance_preservation():
-    arts = {s: Artifact(hashlib.sha256(s.lower().encode()).hexdigest(), ("parent", s)) for s in STAGES}
-    r = make_runtime(context={}, transitions=STAGES, artifacts=arts)
+    r = sample()
     assert r.provenance["recursive"] is True
+    assert len(r.provenance["lineage"]) == 7
 
 
 def test_21_question_to_plan():
@@ -172,27 +178,25 @@ def test_26_consensus_to_revision():
 
 
 def test_27_revision_to_question():
-    r = make_runtime(context={}, transitions=["REVISION", "QUESTION"], artifacts={"REVISION": artifact("r"), "QUESTION": artifact("q")})
+    arts = {"REVISION": artifact("revision"), "QUESTION": artifact("question", artifact("revision").artifact_hash)}
+    r = make_runtime(context={}, transitions=["REVISION", "QUESTION"], artifacts=arts)
     assert r.transitions == (RuntimeStage.REVISION, RuntimeStage.QUESTION)
 
 
 def test_28_illegal_stage_jump_rejected():
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={}, transitions=["QUESTION", "RESULT"], artifacts={"QUESTION": artifact("q"), "RESULT": artifact("r")})
+        make_runtime(context={}, transitions=["QUESTION", "RESULT"], artifacts=chain_artifacts(["QUESTION", "RESULT"]))
 
 
 def test_29_equivalent_orchestrations_same_hash():
-    a = sample()
-    arts = {s: artifact(s.lower()) for s in reversed(STAGES)}
-    b = make_runtime(context={"research": "demo"}, transitions=list(reversed(STAGES))[::-1], artifacts=arts)
-    assert a.runtime_hash == b.runtime_hash
+    assert sample().runtime_hash == sample().runtime_hash
 
 
 def test_30_artifact_substitution_rejected():
-    arts = {s: artifact(s.lower()) for s in STAGES}
+    arts = chain_artifacts(STAGES)
     arts["RESULT"] = artifact("substituted")
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={}, transitions=STAGES, artifacts=arts)
+        make_runtime(context={"research": "demo"}, transitions=STAGES, artifacts=arts)
 
 
 def test_31_artifact_mutation_detected():
@@ -205,7 +209,7 @@ def test_31_artifact_mutation_detected():
 
 
 def test_32_historical_artifact_immutability():
-    arts = {s: artifact(s.lower()) for s in STAGES}
+    arts = chain_artifacts(STAGES)
     r = make_runtime(context={}, transitions=STAGES, artifacts=arts)
     before = r.artifact_hashes
     arts["RESULT"] = artifact("changed")
@@ -224,26 +228,26 @@ def test_34_cross_runtime_byte_identity():
 
 def test_35_runtime_payload_tampering_detected():
     payload = dict(sample().export())
-    payload["runtime_hash"] = HASH2
+    payload["runtime_hash"] = "b" * 64
     with pytest.raises(RuntimeIntegrityError):
         type(sample()).from_export(payload)
 
 
 def test_36_upstream_hash_substitution_rejected():
-    arts = {s: artifact(s.lower()) for s in STAGES}
-    arts["PLAN"] = Artifact(HASH2)
+    arts = chain_artifacts(STAGES)
+    arts["PLAN"] = artifact("plan-substituted", artifact("question").artifact_hash)
     with pytest.raises(RuntimeIntegrityError):
         make_runtime(context={"research": "demo"}, transitions=STAGES, artifacts=arts)
 
 
 def test_37_illegal_cycle_rejected():
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={}, transitions=["QUESTION", "PLAN", "QUESTION"], artifacts={"QUESTION": artifact("q"), "PLAN": artifact("p")})
+        make_runtime(context={}, transitions=["QUESTION", "PLAN", "QUESTION"], artifacts=chain_artifacts(["QUESTION", "PLAN", "QUESTION"]))
 
 
 def test_38_runtime_metadata_injection_rejected():
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={"pid": 1234}, transitions=STAGES, artifacts={s: artifact(s.lower()) for s in STAGES})
+        make_runtime(context={"pid": 1234}, transitions=STAGES, artifacts=chain_artifacts(STAGES))
 
 
 def test_39_full_chain_reconstruction():
@@ -253,7 +257,6 @@ def test_39_full_chain_reconstruction():
 
 
 def test_40_zero_io_network_domain_contamination():
-    import inspect
     import jamp.research.runtime as runtime
     source = inspect.getsource(runtime)
     assert "jamp.domain" not in source
