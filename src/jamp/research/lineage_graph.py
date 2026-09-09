@@ -32,6 +32,16 @@ def _validate_parents(parents: tuple[str, ...]) -> tuple[str, ...]:
     return parents
 
 
+def _canonical_nodes(nodes: Mapping[str, "LineageNode"]) -> tuple["LineageNode", ...]:
+    remaining = set(nodes)
+    ordered: list[LineageNode] = []
+    while remaining:
+        smallest = min(remaining)
+        ordered.append(nodes[smallest])
+        remaining.remove(smallest)
+    return tuple(ordered)
+
+
 @dataclass(frozen=True)
 class LineageNode:
     """Immutable content-addressed node identified by state and lineage."""
@@ -122,12 +132,13 @@ def build_lineage_graph(nodes: tuple[LineageNode, ...]) -> LineageGraph:
     for node in nodes:
         check(node.node_hash)
 
+    canonical_nodes = _canonical_nodes(index)
     exported_nodes = [
         {"node_hash": node.node_hash, "parents": list(node.parents)}
-        for node in nodes
+        for node in canonical_nodes
     ]
     graph_hash = replay_hash({"nodes": exported_nodes})
-    return LineageGraph(nodes=nodes, graph_hash=graph_hash)
+    return LineageGraph(nodes=canonical_nodes, graph_hash=graph_hash)
 
 
 def verify_lineage(graph: LineageGraph) -> bool:
@@ -140,7 +151,4 @@ def verify_lineage(graph: LineageGraph) -> bool:
     for node in graph.nodes:
         _validate_hash(node.node_hash, "node_hash")
         _validate_parents(node.parents)
-        expected = node.node_hash
-        if expected != node.node_hash:
-            raise ValueError("node hash mismatch")
     return True
