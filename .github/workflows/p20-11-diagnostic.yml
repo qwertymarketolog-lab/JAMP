@@ -1,0 +1,28 @@
+name: P20.11 Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/p20-11-research-loop
+  pull_request:
+    branches:
+      - feature/p20-11-research-loop
+      - main
+  workflow_dispatch:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+      - name: Run P20.11 acceptance suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_revision.py
