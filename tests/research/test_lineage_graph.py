@@ -11,9 +11,7 @@ from dataclasses import FrozenInstanceError, is_dataclass
 
 import pytest
 
-from jamp.domain.exceptions import CausalConsistencyError
 from jamp.research import lineage_graph
-
 
 FORBIDDEN = {
     "select", "select_node", "select_nodes", "rank", "sort", "sorted",
@@ -54,7 +52,7 @@ def test_node_identity_is_content_addressed():
 
 
 def test_node_rejects_invalid_state_hash():
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.LineageNode("not-a-sha", ())
 
 
@@ -93,7 +91,7 @@ def test_tampered_graph_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ())
     graph = lineage_graph.build_lineage_graph((a,))
     object.__setattr__(graph, "graph_hash", "f" * 64)
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.verify_lineage(graph)
 
 
@@ -101,26 +99,26 @@ def test_tampered_node_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ())
     graph = lineage_graph.build_lineage_graph((a,))
     object.__setattr__(a, "node_hash", "f" * 64)
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.verify_lineage(graph)
 
 
 def test_cycle_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ("b" * 64,))
     b = lineage_graph.LineageNode("b" * 64, ("a" * 64,))
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.build_lineage_graph((a, b))
 
 
 def test_missing_parent_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ("b" * 64,))
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.build_lineage_graph((a,))
 
 
 def test_duplicate_node_identity_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ())
-    with pytest.raises((ValueError, CausalConsistencyError)):
+    with pytest.raises(ValueError):
         lineage_graph.build_lineage_graph((a, a))
 
 
@@ -161,7 +159,7 @@ def test_traversal_does_not_mutate_graph():
 def test_unknown_traversal_node_is_rejected():
     a = lineage_graph.LineageNode("a" * 64, ())
     graph = lineage_graph.build_lineage_graph((a,))
-    with pytest.raises((KeyError, ValueError, CausalConsistencyError)):
+    with pytest.raises((KeyError, ValueError)):
         graph.traverse("f" * 64)
 
 
