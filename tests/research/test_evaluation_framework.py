@@ -104,7 +104,7 @@ def test_gate_11_state_hash_matches_canonical_export(evaluation_module):
 
 
 def test_gate_12_score_is_present(evaluation_module):
-    assert "score" in dataclasses.fields(evaluation_module.EvaluationMetrics)
+    assert "score" in {field.name for field in dataclasses.fields(evaluation_module.EvaluationMetrics)}
 
 
 def test_gate_13_score_is_mapping_not_scalar_rank(evaluation_module):
