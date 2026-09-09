@@ -6,10 +6,10 @@ decision, ranking, scoring, filtering, confidence, or environment logic.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 import hashlib
 import json
-from collections.abc import Sequence
 
 __all__ = (
     "EvidenceRecord",
@@ -128,10 +128,22 @@ def build_evidence_ledger(records: Sequence[EvidenceRecord]) -> EvidenceLedger:
     materialized = tuple(records)
     if any(not isinstance(record, EvidenceRecord) for record in materialized):
         raise TypeError("records must contain only EvidenceRecord instances")
-    canonical = tuple(sorted(materialized, key=lambda record: record.sequence))
-    for index, record in enumerate(canonical):
-        if record.sequence != index:
+
+    by_sequence: list[EvidenceRecord | None] = [None] * len(materialized)
+    for record in materialized:
+        sequence = record.sequence
+        if sequence >= len(materialized):
             raise ValueError("evidence sequences must be contiguous from zero")
+        if by_sequence[sequence] is not None:
+            raise ValueError("duplicate evidence sequences are not permitted")
+        by_sequence[sequence] = record
+
+    canonical: tuple[EvidenceRecord, ...] = tuple(
+        record for record in by_sequence if record is not None
+    )
+    if len(canonical) != len(materialized):
+        raise ValueError("evidence sequences must be contiguous from zero")
+
     hashes = [record.evidence_hash for record in canonical]
     if len(hashes) != len(set(hashes)):
         raise ValueError("duplicate evidence records are not permitted")
