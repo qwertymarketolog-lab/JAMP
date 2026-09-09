@@ -8,17 +8,15 @@ import sys
 from typing import Dict, List
 
 from jamp.research.lineage_graph import LineageGraph
-from tests.benchmarks.fixtures.e2e_synthetic_discovery import (
-    EvidenceLedger,
-    SyntheticHypothesis,
-)
+from jamp.research.hypothesis_formation import Hypothesis
+from jamp.research.evidence import EvidenceLedger
 from tests.benchmarks.harness.snapshot_schema import dump_snapshot
 
 
 def run_cold_replay(
     graph: LineageGraph,
     ledger: EvidenceLedger,
-    hypotheses: List[SyntheticHypothesis],
+    hypotheses: List[Hypothesis],
     tmp_path: Path,
 ) -> Dict[str, float]:
     """Executes scoring via disk persistence and fresh sub-process isolation."""
