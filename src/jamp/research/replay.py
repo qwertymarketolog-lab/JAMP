@@ -36,7 +36,10 @@ def replay_state(graph: LineageGraph, target_hash: str) -> ReplayResult:
 
     # Verify the cryptographic graph commitment before consulting the target.
     verify_lineage(graph)
-    lineage = graph.traverse(target_hash)
+    try:
+        lineage = graph.traverse(target_hash)
+    except KeyError as exc:
+        raise ValueError("replay target is not present in the lineage graph") from exc
     if not lineage or lineage[-1] != target_hash:
         raise ValueError("replay target is not the terminal lineage state")
 
@@ -51,7 +54,10 @@ def verify_replay(graph: LineageGraph, result: ReplayResult) -> bool:
         raise TypeError("result must be a ReplayResult")
 
     verify_lineage(graph)
-    expected = graph.traverse(result.state_hash)
+    try:
+        expected = graph.traverse(result.state_hash)
+    except KeyError as exc:
+        raise ValueError("replay state hash is not present in the lineage graph") from exc
     if result.lineage != expected:
         raise ValueError("replay lineage mismatch")
     if not result.lineage or result.state_hash != result.lineage[-1]:
