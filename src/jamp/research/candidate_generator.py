@@ -6,35 +6,35 @@ or counterfactual evaluation.
 """
 from __future__ import annotations
 
-from typing import Iterable
-
 from .search_space import SearchSpaceError, SearchState, apply_mutation, MutationOp
 
 
 def generate_candidate_states(state: SearchState) -> tuple[SearchState, ...]:
-    """Return the canonical, evidence-compliant descendants of ``state``.
+    """Return canonical, evidence-compliant descendants of ``state``.
 
-    Generation is a pure function: the input is verified but never mutated.
-    Candidate order is determined solely by the resulting content hashes.
+    Generation is pure: the input is verified but never mutated. The P22.2
+    contract requires hypothesis assumptions, evidence, causal dependencies,
+    and interventions to remain inherited unchanged, so generation does not
+    remove assumptions. Candidate order is determined solely by state hashes.
     """
     state.verify()
     if not state.hypothesis_set:
         return ()
 
-    candidates: dict[str, SearchState] = {}
-    for index, hypothesis in enumerate(state.hypothesis_set):
-        for condition in hypothesis.claims:
-            payload = {"condition": condition}
-            try:
-                candidate = apply_mutation(state, MutationOp.REMOVE_CONDITION, payload)
-            except (SearchSpaceError, KeyError, TypeError, ValueError):
-                continue
-            candidates[candidate.state_hash] = candidate
+    if any(c.startswith("depth<=") for c in state.constraints):
+        limit = int(next(c.split("<=", 1)[1] for c in state.constraints if c.startswith("depth<=")))
+        if state.search_depth >= limit:
+            return ()
 
-        for assumption in hypothesis.assumptions:
-            payload = {"assumption": assumption}
+    candidates: dict[str, SearchState] = {}
+    for hypothesis in state.hypothesis_set:
+        for condition in hypothesis.claims:
             try:
-                candidate = apply_mutation(state, MutationOp.REMOVE_ASSUMPTION, payload)
+                candidate = apply_mutation(
+                    state,
+                    MutationOp.REMOVE_CONDITION,
+                    {"condition": condition},
+                )
             except (SearchSpaceError, KeyError, TypeError, ValueError):
                 continue
             candidates[candidate.state_hash] = candidate
