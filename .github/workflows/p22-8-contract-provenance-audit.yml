@@ -35,19 +35,25 @@ jobs:
           echo "Resolved historical contract path: $HIST_FILE"
           git show "b08794bc9971271c2431439f6318bbfada6a485f:${HIST_FILE}" > /tmp/historical_contract.py
 
-      - name: Collect and compare exact nodes
+      - name: Collect and compare normalized nodes
         run: |
           set -euo pipefail
-          python -m pytest --collect-only -q /tmp/historical_contract.py | grep '::' | sort > /tmp/nodes_historical.txt
-          python -m pytest --collect-only -q tests/research/test_hypothesis_formation.py | grep '::' | sort > /tmp/nodes_current.txt
-          HISTORICAL_COUNT=$(wc -l < /tmp/nodes_historical.txt | tr -d ' ')
-          CURRENT_COUNT=$(wc -l < /tmp/nodes_current.txt | tr -d ' ')
-          comm -23 /tmp/nodes_historical.txt /tmp/nodes_current.txt > /tmp/missing_items.txt
-          comm -13 /tmp/nodes_historical.txt /tmp/nodes_current.txt > /tmp/added_items.txt
+          python -m pytest --collect-only -q /tmp/historical_contract.py \
+            | grep '::' \
+            | sed -E 's/^[^:]+::/::/' \
+            | sort -u > /tmp/nodes_historical_norm.txt
+          python -m pytest --collect-only -q tests/research/test_hypothesis_formation.py \
+            | grep '::' \
+            | sed -E 's/^[^:]+::/::/' \
+            | sort -u > /tmp/nodes_current_norm.txt
+          HISTORICAL_COUNT=$(wc -l < /tmp/nodes_historical_norm.txt | tr -d ' ')
+          CURRENT_COUNT=$(wc -l < /tmp/nodes_current_norm.txt | tr -d ' ')
+          comm -23 /tmp/nodes_historical_norm.txt /tmp/nodes_current_norm.txt > /tmp/missing_items.txt
+          comm -13 /tmp/nodes_historical_norm.txt /tmp/nodes_current_norm.txt > /tmp/added_items.txt
           MISSING_COUNT=$(wc -l < /tmp/missing_items.txt | tr -d ' ')
           ADDED_COUNT=$(wc -l < /tmp/added_items.txt | tr -d ' ')
           echo "=================================================="
-          echo "P22.8 PROVENANCE AUDIT TELEMETRY"
+          echo "P22.8 NORMALIZED PROVENANCE AUDIT TELEMETRY"
           echo "=================================================="
           echo "HISTORICAL_NODE_COUNT=${HISTORICAL_COUNT}"
           echo "CURRENT_NODE_COUNT=${CURRENT_COUNT}"
