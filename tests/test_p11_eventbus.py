@@ -1,5 +1,7 @@
 from jamp.research.p11_eventbus import (
     Div,
+    Equals,
+    GCD,
     Number,
     RootAnchor,
     Var,
@@ -17,12 +19,7 @@ def test_expr_structural_equality_and_hashing() -> None:
 
 def test_native_collision_positive() -> None:
     state = {
-        __import__("jamp.research.p11_eventbus", fromlist=["Equals"]).Equals(
-            __import__("jamp.research.p11_eventbus", fromlist=["GCD"]).GCD(
-                Var("p"), Var("q")
-            ),
-            Number(1),
-        ),
+        Equals(GCD(Var("p"), Var("q")), Number(1)),
         Div(Number(2), Var("p")),
         Div(Number(2), Var("q")),
     }
@@ -32,8 +29,6 @@ def test_native_collision_positive() -> None:
 
 
 def test_native_collision_negative() -> None:
-    from jamp.research.p11_eventbus import Equals, GCD
-
     state = {
         Equals(GCD(Var("p"), Var("q")), Number(1)),
         Div(Number(2), Var("p")),
