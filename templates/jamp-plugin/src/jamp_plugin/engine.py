@@ -1,7 +1,8 @@
 """Example extension boundary for JAMP."""
+
 from __future__ import annotations
 
-from typing import Protocol, Any
+from typing import Any, Protocol
 
 
 class EnginePlugin(Protocol):

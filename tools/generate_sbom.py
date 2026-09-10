@@ -8,8 +8,28 @@ import hashlib
 import json
 import pathlib
 import tomllib
+from typing import NotRequired, TypedDict
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+class SbomProperty(TypedDict):
+    name: str
+    value: str
+
+
+class SbomMetadata(TypedDict):
+    component: dict[str, str]
+    properties: NotRequired[list[SbomProperty]]
+
+
+class Sbom(TypedDict):
+    bomFormat: str
+    specVersion: str
+    serialNumber: str
+    version: int
+    metadata: SbomMetadata
+    components: list[dict[str, str]]
 
 
 def component(name: str, version: str, scope: str) -> dict[str, str]:
@@ -30,7 +50,7 @@ def main() -> int:
         name, _, version = dep.partition(">=")
         components.append(component(name.strip(), version.strip() or "unspecified", "development"))
     components.sort(key=lambda item: (item["scope"], item["name"], item["version"]))
-    bom = {
+    bom: Sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
         "serialNumber": "urn:uuid:jamp-local-sbom",
