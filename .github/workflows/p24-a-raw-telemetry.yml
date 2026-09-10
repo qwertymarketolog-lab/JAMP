@@ -25,12 +25,12 @@ jobs:
 
       - name: Run P24-A Orchestrator
         run: |
-          export PYTHONPATH=.
+          export PYTHONPATH=src:.
           python -m tests.benchmarks.harness.orchestrator > telemetry_output.json
 
       - name: Validate telemetry payload syntax
         env:
-          PYTHONPATH: .
+          PYTHONPATH: src:.
         run: |
           python - <<'PY'
           import json
