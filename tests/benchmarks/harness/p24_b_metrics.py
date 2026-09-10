@@ -45,9 +45,19 @@ def classify_ablation(
     score_delta = score - base_score if base_score is not None and score is not None else None
 
     if factor_id == "F6":
-        classification = "SUPPORTED" if integrity else "FALSIFIED"
-        reason = "Semantic identity preserved" if integrity else "Semantic identity drift detected"
+        classification = "CONTROL_PASS" if integrity else "CONTROL_FAILED"
+        reason = "Semantic state identity preserved" if integrity else "Semantic zero-drift broken"
         raw_delta = None
+        exceeded = False
+    elif factor_id == "F4" and score is None:
+        classification = "INCONCLUSIVE"
+        reason = "Scoring output suppressed (score=None); primary outcome unmeasured rather than invariant"
+        raw_delta = None
+        exceeded = False
+    elif not integrity and factor_id in {"F1", "F2", "F4"}:
+        classification = "INCONCLUSIVE"
+        reason = "State/lineage integrity broken during factor intervention"
+        raw_delta = score_delta
         exceeded = False
     elif not integrity:
         classification = "INCONCLUSIVE"
