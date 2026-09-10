@@ -7,8 +7,10 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: feature/p24-a-telemetry
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -21,27 +23,30 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
 
-      - name: Run P24-A raw telemetry benchmark
-        env:
-          PYTHONPATH: src
+      - name: Run P24-A Orchestrator
         run: |
-          python -m tests.benchmarks.harness.orchestrator
+          export PYTHONPATH=.
+          python -m tests.benchmarks.harness.orchestrator > telemetry_output.json
 
       - name: Validate telemetry payload syntax
         env:
-          PYTHONPATH: src
+          PYTHONPATH: .
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          candidates = list(Path("artifacts").rglob("*.json")) + list(Path("tests").rglob("*telemetry*.json"))
-          if not candidates:
-              raise SystemExit("No telemetry JSON payload found for syntax validation")
+          candidates = [Path("telemetry_output.json")]
+          candidates += list(Path("artifacts").rglob("*.json")) if Path("artifacts").exists() else []
+          candidates += list(Path("tests").rglob("*telemetry*.json"))
           for path in candidates:
+              if not path.exists():
+                  continue
               with path.open(encoding="utf-8") as fh:
                   json.load(fh)
               print(f"VALID JSON: {path}")
+          if not any(path.exists() for path in candidates):
+              raise SystemExit("No telemetry JSON payload found for syntax validation")
           PY
 
       - name: Upload P24-A raw telemetry
@@ -50,6 +55,7 @@ jobs:
         with:
           name: p24-a-raw-telemetry
           path: |
+            telemetry_output.json
             artifacts/**
             **/*telemetry*.json
           if-no-files-found: warn
