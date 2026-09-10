@@ -80,7 +80,7 @@ jobs:
           mkdir -p artifacts/p24-b
           for factor in F1 F2 F3 F4 F5; do
             echo "=== P24-B ${factor} ==="
-            python -m tests.benchmarks.harness.p24_b_runner --baseline /tmp/p24-a-baseline.json --factor "${factor}" | tee "artifacts/p24-b/${factor}.json"
+            python -m tests.benchmarks.harness.p24_b_runner --baseline /tmp/p24-a-baseline.json --factor "${factor}" | tee "artifacts/p24-b/f${factor#F}_ablation.json"
           done
 
       - name: Upload P24-B raw results
