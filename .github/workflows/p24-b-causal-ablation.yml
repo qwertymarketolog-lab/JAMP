@@ -1,0 +1,60 @@
+name: P24-B Controlled Causal Ablation
+
+on:
+  push:
+    branches:
+      - feature/p24-b-causal-ablation
+  workflow_dispatch:
+
+jobs:
+  p24-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: feature/p24-b-causal-ablation
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+      - name: Run P24-B contract tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/benchmarks/harness/test_p24_b_contract.py
+      - name: Materialize frozen P24-A baseline
+        env:
+          PYTHONPATH: src
+        run: |
+          mkdir -p artifacts/p24-b
+          python -m jamp.research.p24_b_runner --factor F6
+          test -f /tmp/p24-b-f6.json
+          cp /tmp/p24-b-f6.json artifacts/p24-b/f6_control.json
+          python - <<'PY'
+          import json
+          p = 'artifacts/p24-b/f6_control.json'
+          d = json.load(open(p))
+          assert d.get('semantic_gate_pass') is True
+          assert d.get('metrics', {}).get('classification') == 'CONTROL_PASS'
+          PY
+      - name: Run P24-B factors F1-F5
+        env:
+          PYTHONPATH: src
+        run: |
+          for factor in F1 F2 F3 F4 F5; do
+            python -m jamp.research.p24_b_runner --factor "$factor"
+            cp "/tmp/p24-b-${factor,,}.json" "artifacts/p24-b/${factor,,}_ablation.json"
+          done
+      - name: Upload P24-B raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p24-b-causal-ablation
+          path: artifacts/p24-b/*.json
+          if-no-files-found: warn
