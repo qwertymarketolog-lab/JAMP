@@ -1,0 +1,55 @@
+name: P24-A Raw Telemetry Benchmark
+
+on:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+
+      - name: Run P24-A raw telemetry benchmark
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m tests.benchmarks.harness.orchestrator
+
+      - name: Validate telemetry payload syntax
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          candidates = list(Path("artifacts").rglob("*.json")) + list(Path("tests").rglob("*telemetry*.json"))
+          if not candidates:
+              raise SystemExit("No telemetry JSON payload found for syntax validation")
+          for path in candidates:
+              with path.open(encoding="utf-8") as fh:
+                  json.load(fh)
+              print(f"VALID JSON: {path}")
+          PY
+
+      - name: Upload P24-A raw telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p24-a-raw-telemetry
+          path: |
+            artifacts/**
+            **/*telemetry*.json
+          if-no-files-found: warn
