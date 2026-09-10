@@ -62,7 +62,9 @@ jobs:
         env:
           PYTHONPATH: src:.
         run: |
+          mkdir -p artifacts/p24-b
           python -m tests.benchmarks.harness.p24_b_runner --baseline /tmp/p24-a-baseline.json --factor F6 | tee /tmp/p24-b-f6.json
+          cp /tmp/p24-b-f6.json artifacts/p24-b/f6_control.json
           python - <<'PY'
           import json
           result = json.load(open('/tmp/p24-b-f6.json', encoding='utf-8'))
