@@ -1,0 +1,80 @@
+name: Developer Quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Fetch target base branch
+        run: git fetch origin main --no-tags
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install isolated developer environment
+        run: python -m pip install ".[dev]"
+      - name: Run architectural isolation tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/test_architectural_boundaries.py
+      - name: Run full test suite
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q
+      - name: Ruff changed Python files
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
+          if ((${#files[@]})); then
+            ruff check "${files[@]}"
+            ruff format --check "${files[@]}"
+          else
+            echo "No Python files changed."
+          fi
+
+      - name: Mypy changed Python files
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
+          if ((${#files[@]})); then
+            root_files=()
+            template_files=()
+
+            for file in "${files[@]}"; do
+              case "$file" in
+                templates/jamp-plugin/*)
+                  template_files+=("${file#templates/jamp-plugin/}")
+                  ;;
+                tools/*)
+                  root_files+=("$file")
+                  ;;
+              esac
+            done
+
+            if ((${#root_files[@]})); then
+              mypy "${root_files[@]}"
+            fi
+
+            if ((${#template_files[@]})); then
+              (
+                cd templates/jamp-plugin
+                MYPYPATH=src mypy src/jamp_plugin
+                if printf '%s\n' "${template_files[@]}" | grep -qx 'tests/test_engine.py'; then
+                  MYPYPATH=src mypy tests/test_engine.py
+                fi
+              )
+            fi
+          else
+            echo "No Python files changed."
+          fi
+      - name: Baseline integrity
+        run: python tools/check_baseline.py --baseline "$(head -n 1 .jamp-baseline)"
