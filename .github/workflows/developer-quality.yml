@@ -15,8 +15,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Install project without runtime dependencies
-        run: python -m pip install --no-deps --no-build-isolation .
+      - name: Install isolated developer environment
+        run: python -m pip install ".[dev]"
       - name: Run architectural isolation tests
         env:
           PYTHONPATH: src
@@ -25,11 +25,9 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -q
-      - name: Ruff (when installed in the runner environment)
-        run: |
-          if command -v ruff >/dev/null 2>&1; then ruff check . && ruff format --check .; else echo "ruff not preinstalled; local pre-commit remains authoritative"; fi
-      - name: Mypy (when installed in the runner environment)
-        run: |
-          if command -v mypy >/dev/null 2>&1; then mypy; else echo "mypy not preinstalled; local pre-commit remains authoritative"; fi
+      - name: Ruff
+        run: ruff check . && ruff format --check .
+      - name: Mypy
+        run: mypy
       - name: Baseline integrity
         run: python tools/check_baseline.py --baseline "$(head -n 1 .jamp-baseline)"
