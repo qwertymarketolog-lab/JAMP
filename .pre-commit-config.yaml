@@ -1,0 +1,33 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff (offline)
+        entry: ruff check --force-exclude
+        language: system
+        types: [python]
+        pass_filenames: true
+      - id: ruff-format
+        name: ruff format check (offline)
+        entry: ruff format --check
+        language: system
+        types: [python]
+        pass_filenames: true
+      - id: mypy
+        name: mypy (offline)
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: research-isolation
+        name: research isolation tests (offline)
+        entry: python -m pytest -q tests/test_architectural_boundaries.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: baseline-integrity
+        name: JAMP baseline integrity (offline)
+        entry: python tools/check_baseline.py --baseline 2dd9ccd16c93978212f0130d957a8d39372e3ade
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

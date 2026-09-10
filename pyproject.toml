@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jamp-core"
+version = "0.1.0"
+description = "Causal Experimental Architecture for Machine Discovery"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Eduar Leonidovich Viskunov" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "pytest-mock>=3,<4",
+  "mypy>=1.11,<2",
+  "ruff>=0.6,<1",
+  "pre-commit>=3.8,<5",
+]
+
+[project.urls]
+Repository = "https://github.com/qwertymarketolog-lab/JAMP"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["jamp*"]
+namespaces = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["artifacts", ".git"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/jamp"]
+exclude = ["^tests/", "^artifacts/"]
+warn_unused_configs = true
+no_site_packages = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
