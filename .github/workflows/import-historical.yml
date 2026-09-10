@@ -28,3 +28,190 @@ jobs:
           SOURCE_SHA: 7b717a8dea269bc5c33d9c128634f55c0bad27b0
           TARGET_REPO: qwertymarketolog-lab/JAMP
         run: |
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          import subprocess
+
+          source_repo = os.environ["SOURCE_REPO"]
+          source_sha = os.environ["SOURCE_SHA"]
+          target_repo = os.environ["TARGET_REPO"]
+          token = os.environ["GH_TOKEN"]
+
+          if not token:
+              raise SystemExit("VMH_READ_PAT is not available")
+
+          def gh_api(method, path, data=None):
+              cmd = ["gh", "api", "--method", method,
+                     "-H", "Accept: application/vnd.github+json"]
+              payload = None
+              if data is not None:
+                  payload = json.dumps(data, ensure_ascii=False)
+                  cmd += ["--input", "-"]
+              cmd += [path]
+              proc = subprocess.run(
+                  cmd, input=payload, text=True, capture_output=True,
+                  env={**os.environ, "GH_TOKEN": token},
+              )
+              if proc.returncode != 0:
+                  raise SystemExit(
+                      f"GitHub API {method} {path} failed:\n{proc.stderr}"
+                  )
+              return json.loads(proc.stdout)
+
+          # 1. Resolve the exact historical recursive tree and refuse partial data.
+          tree = gh_api(
+              "GET",
+              f"repos/{source_repo}/git/trees/{source_sha}?recursive=1",
+          )
+          if tree.get("truncated"):
+              raise SystemExit(
+                  "Historical source tree is truncated; refusing partial import"
+              )
+
+          prefixes = ("src/jamp/", "tests/", "integration/")
+          selected = [
+              item for item in tree["tree"]
+              if item["type"] == "blob"
+              and (item["path"].startswith(prefixes)
+                   or item["path"] == "pytest.ini")
+          ]
+
+          # integration/ is historically nested under tests/; never fabricate a
+          # second root-level integration/ directory.
+          if any(x["path"].startswith("integration/") for x in selected):
+              raise SystemExit("Unexpected root-level integration/ in source tree")
+
+          required = {
+              "src/jamp/p18/controlled_transfer.py",
+              "src/jamp/p18/experiment_registry.py",
+              "src/jamp/search/boundary.py",
+              "src/jamp/registry/registry.py",
+              "tests/test_p18_4_ablation.py",
+              "tests/integration/test_adversarial_e2e.py",
+              "pytest.ini",
+          }
+          selected_paths = {x["path"] for x in selected}
+          missing = sorted(required - selected_paths)
+          if missing:
+              raise SystemExit(f"Historical source incomplete; missing: {missing}")
+
+          # Preserve the target-owned architectural boundary test exactly as it
+          # exists at the current migration-branch parent.
+          boundary = subprocess.run(
+              ["git", "show", "HEAD:tests/test_architectural_boundaries.py"],
+              check=True, capture_output=True,
+          ).stdout.decode("utf-8")
+
+          entries = []
+          for item in selected:
+              blob = gh_api(
+                  "GET", f"repos/{source_repo}/git/blobs/{item['sha']}"
+              )
+              raw = base64.b64decode(blob["content"])
+              content = raw.decode("utf-8")
+              entries.append({
+                  "path": item["path"],
+                  "mode": item.get("mode", "100644"),
+                  "type": "blob",
+                  "content": content,
+              })
+
+          entries.append({
+              "path": "tests/test_architectural_boundaries.py",
+              "mode": "100644",
+              "type": "blob",
+              "content": boundary,
+          })
+          entries.sort(key=lambda x: x["path"])
+
+          # 2. Create one native target tree. Inline content makes all blobs
+          # target-native without 70 individual blob-write operations.
+          parent = subprocess.run(
+              ["git", "rev-parse", "HEAD"],
+              check=True, capture_output=True, text=True,
+          ).stdout.strip()
+          parent_commit = gh_api(
+              "GET", f"repos/{target_repo}/git/commits/{parent}"
+          )
+          new_tree = gh_api(
+              "POST", f"repos/{target_repo}/git/trees",
+              {
+                  "base_tree": parent_commit["tree"]["sha"],
+                  "tree": entries,
+              },
+          )
+
+          # Verify tree creation before creating the commit.
+          if new_tree.get("truncated"):
+              raise SystemExit("Candidate tree is truncated; refusing commit")
+          candidate_tree = gh_api(
+              "GET", f"repos/{target_repo}/git/trees/{new_tree['sha']}?recursive=1"
+          )
+          if candidate_tree.get("truncated"):
+              raise SystemExit("Candidate tree verification is truncated")
+          candidate_paths = {x["path"] for x in candidate_tree["tree"]}
+          expected_paths = selected_paths | {"tests/test_architectural_boundaries.py"}
+          if not expected_paths.issubset(candidate_paths):
+              missing = sorted(expected_paths - candidate_paths)
+              raise SystemExit(f"Candidate tree missing paths: {missing}")
+
+          # 3. Exactly one candidate commit, parent = current migration HEAD.
+          candidate = gh_api(
+              "POST", f"repos/{target_repo}/git/commits",
+              {
+                  "message": "import: assemble historical upstream 7b717a8",
+                  "tree": new_tree["sha"],
+                  "parents": [parent],
+              },
+          )
+
+          # 4. Fast-forward the migration branch to the candidate commit.
+          gh_api(
+              "PATCH",
+              f"repos/{target_repo}/git/refs/heads/import/jamp-from-visual-merchant-hub",
+              {"sha": candidate["sha"], "force": False},
+          )
+
+          # Continue verification against the exact candidate, not the old
+          # checkout that launched this workflow.
+          subprocess.run(["git", "fetch", "origin", candidate["sha"]], check=True)
+          subprocess.run(["git", "checkout", "--detach", candidate["sha"]], check=True)
+
+          print(f"HISTORICAL_SOURCE_SHA={source_sha}")
+          print(f"IMPORTED_FILES={len(selected)}")
+          print(f"PRESERVED_BOUNDARY_TEST=tests/test_architectural_boundaries.py")
+          print(f"CANDIDATE_PARENT={parent}")
+          print(f"CANDIDATE_COMMIT={candidate['sha']}")
+          print(f"CANDIDATE_TREE={new_tree['sha']}")
+          PY
+
+      - name: Verify assembled candidate
+        run: |
+          test -f src/jamp/domain/causal.py
+          test -f src/jamp/engine/evaluate.py
+          test -f src/jamp/engine/commit.py
+          test -f src/jamp/p17/dynamic_policy.py
+          test -f src/jamp/p18/controlled_transfer.py
+          test -f src/jamp/p18/experiment_registry.py
+          test -f src/jamp/p18/task_family_isolation.py
+          test -f src/jamp/registry/registry.py
+          test -f src/jamp/search/boundary.py
+          test -f tests/test_p18_4_ablation.py
+          test -f tests/test_architectural_boundaries.py
+          test -f tests/integration/test_adversarial_e2e.py
+          test -f pytest.ini
+
+      - name: Run historical Python 3.11 suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Execute full suite with P18.4 telemetry
+        run: |
+          pytest -q
+          pytest -q tests/test_p18_4_ablation.py
