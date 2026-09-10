@@ -1,0 +1,94 @@
+name: P24-B Controlled Causal Ablation
+
+on:
+  push:
+    branches:
+      - feature/p24-b-causal-ablation
+  workflow_dispatch:
+
+jobs:
+  p24-b:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feature/p24-b-causal-ablation
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+
+      - name: Boundary audit
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python - <<'PY'
+          import subprocess
+          protected = {
+              "src/jamp/research/replay.py",
+              "src/jamp/research/registry.py",
+          }
+          base = subprocess.check_output([
+              "git", "rev-parse", "HEAD~1"
+          ], text=True).strip()
+          changed = set(subprocess.check_output([
+              "git", "diff", "--name-only", base, "HEAD"
+          ], text=True).splitlines())
+          bad = sorted(changed & protected)
+          if bad:
+              raise SystemExit(f"Protected core files changed: {bad}")
+          print("CORE BOUNDARY: PASS")
+          print("Changed files:", *sorted(changed), sep="\n  ")
+          PY
+
+      - name: Run P24-B contract tests
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q tests/benchmarks/harness/test_p24_b_contract.py
+
+      - name: Materialize frozen P24-A baseline
+        run: |
+          cat > /tmp/p24-a-baseline.json <<'JSON'
+          {"calibration":{"max_seconds":4.1100000203186937e-07,"mean_seconds":6.718899996371874e-08,"min_seconds":5.999999075356754e-08,"runs":1000},"hypothesis_index":0,"replay_result":{"lineage":["4a29ffa6de90508446074bf55dd5f3560ff10b60c6bac7ef0959a09e21c41324","1d1457dd6e5a24176b4f19c3103980646048f6e54940af9751be4699e8cf3189"],"state_hash":"1d1457dd6e5a24176b4f19c3103980646048f6e54940af9751be4699e8cf3189"},"score":0.8888888888888888,"stages":{"replay_seconds":5.922099998656449e-05,"restore_seconds":0.00032221400002185874,"scoring_seconds":0.0001555119999920862,"verification_seconds":4.970399999137953e-05},"status":"OK","target_hash":"1d1457dd6e5a24176b4f19c3103980646048f6e54940af9751be4699e8cf3189"}
+          JSON
+
+      - name: Phase 0 — F6 semantic gate
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -m tests.benchmarks.harness.p24_b_runner --baseline /tmp/p24-a-baseline.json --factor F6 | tee /tmp/p24-b-f6.json
+          python - <<'PY'
+          import json
+          result = json.load(open('/tmp/p24-b-f6.json', encoding='utf-8'))
+          if not result.get('semantic_gate_pass'):
+              raise SystemExit('P24-B F6 semantic gate FAILED; F1-F5 locked')
+          print('P24-B F6 SEMANTIC GATE: PASS')
+          PY
+
+      - name: Phase 1 — F1-F5 sequential ablations
+        env:
+          PYTHONPATH: src:.
+        run: |
+          mkdir -p artifacts/p24-b
+          for factor in F1 F2 F3 F4 F5; do
+            echo "=== P24-B ${factor} ==="
+            python -m tests.benchmarks.harness.p24_b_runner \
+              --baseline /tmp/p24-a-baseline.json \
+              --factor "${factor}" | tee "artifacts/p24-b/${factor}.json"
+          done
+
+      - name: Upload P24-B raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p24-b-causal-ablation
+          path: artifacts/p24-b/*.json
+          if-no-files-found: warn
