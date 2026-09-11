@@ -153,3 +153,18 @@ Until such comparative work is completed, the project must not claim historical 
 ### Provenance status of the origin framework
 
 The four-layer model, Core Birth stopping criterion, independent Core/Audit origin trees, claim-by-claim evidence model, and prior-art qualification recorded here are **methodological decisions of the current provenance work**. They do not retroactively turn reconstructed history into primary evidence.
+
+## Cycle closure 2026-09-12
+
+Issue #39 closed. Results:
+- extension cycle: NEGATIVE
+- phase 3: NOT EXECUTABLE on accessible history
+- track-a characterization: VALID, scoped to `d1b3a8c7e0cb6a16fb2eafacc5509382cecbcc39`
+- `|closure|=13`: not proven as a closure-only invariant
+- Task 5: DEFERRED / BLOCKED ON ENVIRONMENT
+
+Anchors:
+- `49a5c86be320cab5f998001182e6a3ffa836ec1c`: provenance, integrity defect present
+- `d1b3a8c7e0cb6a16fb2eafacc5509382cecbcc39`: characterization, CI-unattested
+
+Protocol lock `49a5c86be320cab5f998001182e6a3ffa836ec1c` unchanged.
