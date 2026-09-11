@@ -7,6 +7,11 @@ This artifact must not be used as a preregistration. It was created before the f
 
 No extension is selected by this artifact.
 
+## Audit links
+
+- Frozen extension-choice criterion: commit `117b6fab388e711444be2aa69aba190a5f6c4687` (`docs(design): extension choice criterion`)
+- Public write-pending mirror: Issue #39 — https://github.com/qwertymarketolog-lab/JAMP/issues/39
+
 The file is retained as an explicit audit record rather than silently deleting the premature artifact. A valid `extension-preregistration.md` may be created only after:
 
 1. the frozen criterion exists;
