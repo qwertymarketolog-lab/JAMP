@@ -3,10 +3,29 @@
 Self-contained symbolic engine. No JAMP-Delta phases, MCTS, learned policy,
 or root-specific shortcuts. Baseline and treatment differ only in substitution
 routing; all other rules and boundaries are shared.
+
+Experimental instrumentation is controlled by JAMP_INSTRUMENTATION_MODE:
+- none: no instrumentation
+- noop: compute and write records to /dev/null
+- memory: keep records in _INSTR_LOG
 """
 from __future__ import annotations
 from dataclasses import dataclass
+import os
 import random
+
+_INSTR_MODE = os.environ.get("JAMP_INSTRUMENTATION_MODE", "none")
+_INSTR_LOG = []
+
+def _record(step, strategy_name, n_candidates_total, n_candidates_novel, chosen_op, chosen_expr_repr, state_size):
+    if _INSTR_MODE == "none":
+        return
+    rec = (step, strategy_name, n_candidates_total, n_candidates_novel, chosen_op, chosen_expr_repr, state_size)
+    if _INSTR_MODE == "noop":
+        with open(os.devnull, "w") as f:
+            f.write(repr(rec))
+    elif _INSTR_MODE == "memory":
+        _INSTR_LOG.append(rec)
 
 @dataclass(frozen=True)
 class E:
@@ -111,7 +130,11 @@ def random_substitution(s,rng):
     for si,name,repl in ss:
         targets=[(i,e) for i,e in enumerate(s.objects) if i!=si and contains(e,name)]
         if targets:
-            ti,t=rng.choice(targets); return [T(canon(replace(t,name,repl)),"random_substitution",(si,ti))]
+            ti,t=rng.choice(targets)
+            new=canon(replace(t,name,repl))
+            _record(len(s.history),"BASELINE_RANDOM",len(targets),sum(canon(replace(e,name,repl)) not in s.index for _,e in targets),"random_substitution",str(new),len(s.objects))
+            return [T(new,"random_substitution",(si,ti))]
+    _record(len(s.history),"BASELINE_RANDOM",0,0,None,None,len(s.objects))
     return []
 
 def target_substitution(s,rng):
@@ -121,7 +144,10 @@ def target_substitution(s,rng):
             if ti!=si and contains(t,name):
                 n=canon(replace(t,name,repl))
                 if n!=t and n not in s.index:out.append(T(n,"target_directed_substitution",(si,ti)))
-    rng.shuffle(out); return out[:1]
+    rng.shuffle(out)
+    chosen=out[:1]
+    _record(len(s.history),"TREATMENT_TARGETED",len(out),len(out),chosen[0].op if chosen else None,str(chosen[0].new) if chosen else None,len(s.objects))
+    return chosen
 
 def run(seed,root,strategy,N=200,max_objects=120):
     rng=random.Random(seed); s=State(root,max_objects); s.closure()
