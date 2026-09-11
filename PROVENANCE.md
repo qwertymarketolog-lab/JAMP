@@ -97,3 +97,59 @@ The exact protocol locked by commit `49a5c86be320cab5f998001182e6a3ffa836ec1c` h
 This subsequent commit adds only explicit lock-status metadata and the protocol-amendment rule; it does not retroactively alter the meaning of the original lock.
 
 The present file is a post-lock status supplement; the protocol anchor remains commit `49a5c86be320cab5f998001182e6a3ffa836ec1c`.
+
+## JAMP Origin Framework
+
+This section records the current methodological framework for provenance of JAMP itself. It is separate from the cap audit protocol above and does not establish historical facts that have not yet been evidenced by dated primary artifacts.
+
+### Four layers
+
+1. **Idea prehistory.** The broad position that the path to discovery/problem solving matters, not only the final result. This belongs to a wider intellectual tradition and is not, by itself, a distinctive JAMP origin claim.
+2. **JAMP Core — operationalization.** The transformation of that position into an experimentally addressable mechanism: a search/representation space together with a dynamic transition in which an exhausted or ineffective mode (`STUCK`) leads to a change of representation/mode (`JUMP`).
+3. **Engineering evolution.** Implementations and experiments derived from the core, including Cube, controlled experiments, R/D, Δ, registries, event/provenance DAGs, and later architecture.
+4. **Audit protocol.** Provenance locks, invariant tuples, GATE 0–4, SHA fixation, causal ablation, and explicit separation of evidence, hypothesis, and reconstruction. This is a corrective methodology for making claims about JAMP auditable; it is not treated as a generative continuation of the JAMP mechanism.
+
+### Core Birth — stopping criterion
+
+For historical search purposes, **JAMP Core Birth** is defined as the earliest *dated primary artifact* in which both conditions are present:
+
+- the path to a solution/discovery is treated as the object of study rather than only the final result; and
+- a **dynamic STUCK → JUMP element** is present together with some explicit representation/search-space formalism.
+
+The second condition is intentionally stronger than the presence of any single item from `{Ω, A, C, O, STUCK, JUMP, elements of thought}`. `Ω/A/C/O` alone can describe generic search or decision-process formalisms, and taxonomies of operations can have substantial prior art. The stopping criterion therefore requires the distinctive dynamic transition plus a space/representation formalism.
+
+If no dated primary artifact satisfying this criterion is recovered, the correct result is **Core Birth: reconstruction only; no primary evidence**, rather than an arbitrarily selected earlier document.
+
+### Core Birth and Audit Birth are independent origins
+
+**JAMP Core Birth** is a **generative event**: a construction appears that was not previously present in the project record.
+
+**JAMP Audit Birth** is a **corrective event**: an audit procedure is introduced in response to a concrete failure such as instrumentation drift (`76` versus `456`). It constrains how claims about JAMP may be made; it does not mean that JAMP was generated a second time.
+
+These are therefore maintained as two independent provenance trees with a shared present-day leaf, rather than as two points on one chronological "birth" scale.
+
+### Evidence model for historical artifacts
+
+An artifact does not receive one undifferentiated historical status merely because some of its claims are strong. Historical assessment is **claim × strength**.
+
+For each artifact, assess independently at minimum:
+
+| Claim | Strength to assess |
+|---|---|
+| Date of the artifact | primary / corroborated / reconstructed |
+| Authorship or attribution | primary / corroborated / reconstructed |
+| Relation to Cube implementation | established / probable / unresolved |
+| Conceptual content | direct textual evidence / inferred |
+| Causal priority relative to later mechanisms | established / probable / unresolved |
+
+The artifact currently referred to as **“Критика куба”** is therefore not assigned a single blanket `A` or `A-minus` label. Its evidentiary status must be decomposed claim by claim. In particular, a reliable internal date could establish the date claim without establishing causal priority relative to the Cube implementation.
+
+### Prior art and independence
+
+Claims of independence are not treated as provable at the level of the broad idea of studying problem-solving paths. The relevant test is **operational independence of the concrete formalization**. This requires comparison against relevant prior traditions and formalisms, including search/planning, MCTS, program synthesis, inductive logic programming, and interactive theorem proving, as appropriate to the specific JAMP construction.
+
+Until such comparative work is completed, the project must not claim historical or operational independence from prior art.
+
+### Provenance status of the origin framework
+
+The four-layer model, Core Birth stopping criterion, independent Core/Audit origin trees, claim-by-claim evidence model, and prior-art qualification recorded here are **methodological decisions of the current provenance work**. They do not retroactively turn reconstructed history into primary evidence.
