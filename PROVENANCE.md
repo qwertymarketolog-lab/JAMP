@@ -1,6 +1,11 @@
 # Cap Provenance Audit
 
-**Status:** PROVISIONALLY FROZEN / PROVENANCE PENDING
+**Status:** PROVISIONALLY FROZEN / PROVENANCE PENDING  
+**STATUS: PROTOCOL LOCK ONLY — NOT A VALIDATION ARTIFACT**
+
+**Protocol lock commit:** `49a5c86be320cab5f998001182e6a3ffa836ec1c`
+
+Decisions in GATE 0–2 must refer to this exact protocol-lock commit, not to mutable current contents of this file.
 
 ## Scope
 
@@ -35,6 +40,8 @@ The provenance tuple is frozen as the following ordered fields:
 `pool_after_cap_hash`
 `ranked_order_hash`
 `chosen_index`
+
+This tuple is the protocol baseline for GATE 0–2. Any addition, removal, or semantic change to a tuple element is a protocol change and must be recorded by a new commit explicitly stating that the protocol was amended before GATE 0 passed.
 
 ## GATE 0 — Provenance
 
@@ -82,3 +89,11 @@ While this status remains **PROVISIONALLY FROZEN / PROVENANCE PENDING**:
 - the next unblock condition is access to and audit of the canonical code/harness sufficient to evaluate GATE 0–2.
 
 This document records the audit boundary; it does not itself establish PASS for any gate.
+
+## Protocol-Lock Integrity
+
+The exact protocol locked by commit `49a5c86be320cab5f998001182e6a3ffa836ec1c` had GitHub blob SHA `4ca7d2a0bc4b090059119e9d74b0de92e59ac7c9` for `PROVENANCE.md`.
+
+This subsequent commit adds only explicit lock-status metadata and the protocol-amendment rule; it does not retroactively alter the meaning of the original lock.
+
+The present file is a post-lock status supplement; the protocol anchor remains commit `49a5c86be320cab5f998001182e6a3ffa836ec1c`.
