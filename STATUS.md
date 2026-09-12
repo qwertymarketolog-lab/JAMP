@@ -12,15 +12,16 @@ Track A 30-run:           final_size = 13 in 30/30    [M-012, 4f5bbc47]
 Characterization status:  VALID                       [M-012, issue #40 5646317280 (issue-comment)]
 H-P1:                     C / STRUCTURAL NEGATIVE     [M-011]
 H-J2 partial:             ESTABLISHED (C1, C2)        [M-008]
-H-J1 refined:             ESTABLISHED (branch-scoped) [M-013, session-only]
+H-J1 refined:             ESTABLISHED (branch-scoped) [docs/research/h-j1-refined.md; M-013]
 
 ## Открыто
 
 H-J2 general:       class characterization (mathematical, not experimental)
 P18.4 closure:      requires test-only correction + revalidation in
                     visual-merchant-hub @ feature/p18-4-ablation-target
-M-013 evidence:     session-only; requires repository write-up to
-                    raise evidence level to repository-artifact
+M-013 ledger update:   repository artifact added (commit 7d355f0b);
+                       ledger entry still records session-only.
+                       All update attempts blocked by write-channel limitation.
 
 ## Не утверждается
 
