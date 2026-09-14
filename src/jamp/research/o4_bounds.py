@@ -7,9 +7,23 @@ values, generate tuples, evaluate expressions, or invoke an external solver.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, NamedTuple
 
 from .p0_canonical import Expr
+
+
+class Interval(NamedTuple):
+    variable: Expr
+    lower: Expr
+    lower_closed: bool
+    upper: Expr
+    upper_closed: bool
+
+
+class TightenResult(NamedTuple):
+    interval: Interval | None
+    contradiction: bool
+    parents: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +38,7 @@ class DerivedBound:
     """One locally derived bound and its immediate provenance parents."""
 
     statement_id: str
-    expression: Expr
+    expression: Expr | Interval
     parents: tuple[str, ...]
 
 
@@ -57,20 +71,29 @@ def _as_bound(expr: Expr) -> tuple[Expr, str, Expr] | None:
 def _tighten(
     variable: Expr,
     bounds: list[tuple[str, str, Expr]],
-) -> tuple[tuple[str, str, Expr] | None, bool]:
-    """Select a deterministic tightest lower/upper bound pair locally."""
+) -> TightenResult:
+    """Derive one symbolic interval without evaluating endpoint expressions."""
     lowers = [(sid, op, value) for sid, op, value in bounds if op in (">", ">=")]
     uppers = [(sid, op, value) for sid, op, value in bounds if op in ("<", "<=")]
     if not lowers or not uppers:
-        return None, False
+        return TightenResult(None, False, ())
 
     # This v0.1 engine intentionally compares only identical constant tokens.
     # It therefore never performs arithmetic evaluation or numeric ordering.
-    for lid, lop, lv in lowers:
-        for uid, uop, uv in uppers:
-            if lv == uv and (lop == ">" or uop == "<"):
-                return None, True
-    return None, False
+    for lower_sid, lop, endpoint in lowers:
+        upper_sid = next((sid for sid, _, value in uppers if value == endpoint), None)
+        if upper_sid is None:
+            continue
+
+        lower_strict = any(op == ">" for _, op, value in lowers if value == endpoint)
+        upper_strict = any(op == "<" for _, op, value in uppers if value == endpoint)
+
+        if lower_strict or upper_strict:
+            return TightenResult(None, True, ())
+
+        return TightenResult(Interval(variable, endpoint, True, endpoint, True), False, (lower_sid, upper_sid))
+
+    return TightenResult(None, False, ())
 
 
 def propagate_bounds(
@@ -91,6 +114,7 @@ def propagate_bounds(
     known = {sid: expr for sid, expr in indexed}
     next_id = len(indexed)
     derived: list[DerivedBound] = []
+    derived_next_id = 0
     contradiction = False
 
     by_variable: dict[Expr, list[tuple[str, str, Expr]]] = {}
@@ -113,14 +137,16 @@ def propagate_bounds(
         by_variable.setdefault(variable, []).append((sid, op, value))
 
     for variable, bounds in by_variable.items():
-        _, local_contradiction = _tighten(variable, bounds)
-        contradiction = contradiction or local_contradiction
+        local_result = _tighten(variable, bounds)
+        contradiction = contradiction or local_result.contradiction
+        if local_result.interval is not None:
+            derived.append(DerivedBound(statement_id=f"o4-derived-{derived_next_id}", expression=local_result.interval, parents=local_result.parents))
+            derived_next_id += 1
 
-    # v0.1 intentionally records the supplied constraints and local
-    # contradiction detection. Numeric interval construction is deferred until
-    # its exact symbolic representation/provenance contract is frozen.
+    # v0.1 records supplied constraints and derives symbolic intervals
+    # without numeric evaluation or domain materialization.
     result_state = BoundState(tuple(indexed))
     return PropagationResult(result_state, tuple(derived), contradiction)
 
 
-__all__ = ["BoundState", "DerivedBound", "PropagationResult", "propagate_bounds"]
+__all__ = ["BoundState", "Interval", "DerivedBound", "PropagationResult", "propagate_bounds"]
