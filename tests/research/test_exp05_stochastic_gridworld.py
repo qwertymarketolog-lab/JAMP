@@ -58,6 +58,8 @@ def test_exp05a_seed1_atomic_stochastic_interaction():
             assert event.state_before == StateSnapshot((0, 0), 1, 0)
         else:
             assert event.state_before == previous_after
+        assert event.intended_by == "agent"
+        assert event.outcome_from == "environment"
         assert event.is_deviated == (event.actual_outcome != event.intended_action)
         assert event.state_after.step_count == event.state_before.step_count + 1
         previous_after = event.state_after
@@ -95,6 +97,8 @@ def test_exp05_provenance_contains_complete_atomic_interactions():
 
     assert state.events[0].state_before.agent_pos == (0, 0)
     for event in state.events:
+        assert event.intended_by == "agent"
+        assert event.outcome_from == "environment"
         assert event.intended_action == "MOVE_EAST"
         assert event.actual_outcome in {
             "MOVE_EAST",
