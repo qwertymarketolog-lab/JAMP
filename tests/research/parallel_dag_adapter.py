@@ -33,10 +33,21 @@ class ParallelDAGState:
 
 
 class ParallelDAGAdapter:
+    budget = 1
+
+    def __init__(self, initial_state: ParallelDAGState):
+        self._initial_state = initial_state
+
+    def initial(self) -> ParallelDAGState:
+        return self._initial_state
+
     def candidates(self, state: ParallelDAGState) -> List[str]:
         if state.stage == "INIT":
             return ["SPAWN_AND_JOIN"]
         return []
+
+    def admissible(self, state: ParallelDAGState, action: str) -> bool:
+        return action == "SPAWN_AND_JOIN" and state.stage == "INIT"
 
     def strategy(self, state: ParallelDAGState, candidates: List[str]) -> str:
         return candidates[0]
