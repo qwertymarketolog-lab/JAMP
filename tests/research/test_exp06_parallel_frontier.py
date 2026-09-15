@@ -26,9 +26,9 @@ def test_scn06_04_core_immutability_sha():
 
 
 def test_scn06_01_concurrency_execution_span_overlap():
-    adapter = ParallelDAGAdapter()
     state = ParallelDAGState(delay_a=0.06, delay_b=0.06)
-    result = run(adapter, state)
+    adapter = ParallelDAGAdapter(state)
+    result = run(adapter)
 
     spans = {s.worker_id: s for s in result.state.spans}
     span_a = spans["worker_a"]
@@ -42,12 +42,12 @@ def test_scn06_01_concurrency_execution_span_overlap():
 
 
 def test_scn06_02_anti_fake_concurrency_guard():
-    adapter = ParallelDAGAdapter()
     delay_a = 0.05
     delay_b = 0.05
     state = ParallelDAGState(delay_a=delay_a, delay_b=delay_b)
+    adapter = ParallelDAGAdapter(state)
 
-    result = run(adapter, state)
+    result = run(adapter)
     spans = {s.worker_id: s for s in result.state.spans}
 
     start_all = min(s.start_time for s in spans.values())
@@ -59,13 +59,15 @@ def test_scn06_02_anti_fake_concurrency_guard():
 
 
 def test_scn06_03_canonical_lineage_replay():
-    adapter = ParallelDAGAdapter()
-
     # Run 1: Physical completion WB -> WA
-    res_b_first = run(adapter, ParallelDAGState(delay_a=0.06, delay_b=0.01))
+    res_b_first = run(
+        ParallelDAGAdapter(ParallelDAGState(delay_a=0.06, delay_b=0.01))
+    )
 
     # Run 2: Physical completion WA -> WB
-    res_a_first = run(adapter, ParallelDAGState(delay_a=0.01, delay_b=0.06))
+    res_a_first = run(
+        ParallelDAGAdapter(ParallelDAGState(delay_a=0.01, delay_b=0.06))
+    )
 
     # 1. Verify physical arrival order difference in raw State.events
     phys_b_first = [e.worker_id for e in res_b_first.state.events if e.causal_type == "WORKER_COMPLETION"]
