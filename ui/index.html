@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JAMP Run Viewer</title>
+<style>
+  body { font-family: ui-monospace, monospace; margin: 0; padding: 16px; background: #111; color: #ddd; }
+  #drop { border: 1px dashed #444; padding: 24px; text-align: center; margin-bottom: 16px; cursor: pointer; }
+  #drop.over { border-color: #888; background: #1a1a1a; }
+  .panel { border: 1px solid #333; padding: 12px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .metrics { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
+  .trace { max-height: 400px; overflow-y: auto; }
+  .trace div { padding: 2px 4px; cursor: pointer; }
+  .trace div:hover { background: #1a1a1a; }
+  .trace div.sel { background: #2a2a2a; color: #fff; }
+  .prov pre { margin: 0; white-space: pre-wrap; }
+  .stop { display: inline-block; padding: 2px 8px; border-radius: 2px; }
+  .stop.MAX_ITERATIONS { background: #442; color: #cc9; }
+  .stop.SOLVED { background: #242; color: #9c9; }
+  .stop.MAX_OBJECTS { background: #422; color: #c99; }
+  .status { color: #888; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="drop">drop results.json here<br><span class="status">or click to choose a JSON file</span></div>
+
+<div id="view" style="display:none">
+  <div class="panel">
+    <h2>Run</h2>
+    <div class="metrics" id="metrics"></div>
+  </div>
+  <div class="panel">
+    <h2>Trace</h2>
+    <div class="trace" id="trace"></div>
+  </div>
+  <div class="panel">
+    <h2>Provenance</h2>
+    <div class="prov" id="prov">click a trace row</div>
+  </div>
+</div>
+
+<script>
+let data = null;
+
+const drop = document.getElementById('drop');
+
+drop.addEventListener('dragover', e => {
+  e.preventDefault();
+  drop.classList.add('over');
+});
+
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+
+drop.addEventListener('drop', async e => {
+  e.preventDefault();
+  drop.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  await loadFile(f);
+});
+
+drop.addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json,application/json';
+  inp.onchange = async () => {
+    const f = inp.files[0];
+    if (f) await loadFile(f);
+  };
+  inp.click();
+});
+
+async function loadFile(file) {
+  try {
+    data = JSON.parse(await file.text());
+    render();
+  } catch (err) {
+    drop.textContent = `invalid JSON: ${err.message}`;
+    drop.style.display = 'block';
+    document.getElementById('view').style.display = 'none';
+  }
+}
+
+function esc(value) {
+  return String(value ?? '—').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function render() {
+  drop.style.display = 'none';
+  document.getElementById('view').style.display = 'block';
+
+  const r = data;
+  const meta = r.meta ?? r.input ?? {};
+  const metrics = r.metrics ?? {};
+  const rows = [
+    ['problem', r.root ?? meta.problem ?? meta.root],
+    ['seed', r.seed ?? meta.seed],
+    ['strategy', r.strategy ?? meta.strategy],
+    ['budget', r.N ?? meta.budget ?? meta.N],
+    ['max_objects', r.max_objects ?? meta.max_objects],
+    ['solved', r.solved ?? metrics.solved],
+    ['stop_reason', r.stop_reason ?? metrics.stop_reason],
+    ['final_objects_count', metrics.final_objects_count ?? r.final_size ?? r.max_objects],
+    ['Track A steps', metrics.track_a_steps ?? r.steps],
+    ['Run iterations', metrics.run_iterations],
+    ['Run steps', metrics.run_steps],
+    ['progress', r.progress ?? metrics.progress],
+    ['ast_depth', r.ast_depth ?? metrics.ast_depth]
+  ];
+
+  document.getElementById('metrics').innerHTML = rows
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `<div>${esc(k)}</div><div>${
+      k === 'stop_reason'
+        ? `<span class="stop ${esc(v)}">${esc(v)}</span>`
+        : esc(v)
+    }</div>`)
+    .join('');
+
+  const trace = r.trace ?? [];
+  const traceEl = document.getElementById('trace');
+  traceEl.textContent = '';
+
+  trace.forEach((ev, i) => {
+    const row = document.createElement('div');
+    row.dataset.i = i;
+    row.textContent = `${ev.step ?? i} ${ev.op ?? '—'}`;
+    row.addEventListener('click', () => {
+      traceEl.querySelectorAll('div').forEach(x => x.classList.remove('sel'));
+      row.classList.add('sel');
+      showProv(trace[i]);
+    });
+    traceEl.appendChild(row);
+  });
+}
+
+function showProv(ev) {
+  if (!ev) return;
+  const lines = [
+    `step:       ${ev.step ?? '—'}`,
+    `op:         ${ev.op ?? '—'}`,
+    `parents:    ${JSON.stringify(ev.parents ?? [])}`,
+    `expression: ${ev.expr ?? '—'}`
+  ];
+  const pre = document.createElement('pre');
+  pre.textContent = lines.join('\n');
+  const prov = document.getElementById('prov');
+  prov.textContent = '';
+  prov.appendChild(pre);
+}
+</script>
+</body>
+</html>
