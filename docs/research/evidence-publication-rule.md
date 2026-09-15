@@ -20,4 +20,4 @@ The publication rule does not upgrade evidence quality, alter experiment outcome
 
 - **EXP-02:** reachable on `exp-03-spec`; publication candidate recorded in the index.
 - **EXP-03:** reachable on `exp-03-spec`; publication candidate recorded in the index.
-- **Q3b:** historical evidence chain is currently dangling and not present on an accessible branch/ref; therefore it is not yet publishable under this rule. Recovery must preserve the original evidence content and provenance.
+- **Q3b:** reachable on `q3b-closed-evidence`; evidence is recorded in the canonical index and is therefore canonically published under this rule. The original evidence content and provenance are preserved.
