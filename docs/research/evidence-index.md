@@ -51,3 +51,24 @@ A chain is canonically published only when this index names its exact ref and ev
 - B-audit result: `PASS — RECONSTRUCTIBLE`
 - Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-04-4queens/docs/research/EXP-04-EVIDENCE.md
 - B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-04-B-AUDIT.md
+
+## EXP-05
+
+- Ref: `feature/exp-05-stochastic-gridworld`
+- Specification: `docs/research/EXP-05-SPEC.md`
+- Scenarios: `docs/research/EXP-05-SCENARIOS.md`
+- Evidence: `docs/research/EXP-05-EVIDENCE.md`
+- Evidence blob: `a187e32111fe210ecf1c76e49530cb04c97a3dc9`
+- Execution commit: `df93172980c365eea9b370cf06a1de5bfbd36694`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Adapter blob: `907ecd9f257b338bf0dd1413edafefc3129ec960`
+- Test blob: `a6e18f6b2774981bd535a1cc3c68501af6e3aec7`
+- Workflow blob: `4547902d5f7ead17215dc27af52af20fe210b5aa`
+- Dedicated CI run: `35020257179`
+- Recorded outcome: `TARGET PASS`
+- Observation: Seed 1 and Seed 2 produced different trajectories; cross-seed divergence was not a pass/fail criterion.
+- Scope note: The result is bounded to stochastic Gridworld agent/environment interaction and does not establish universal stochastic or universal problem-solving support.
+- B-audit: `docs/research/EXP-05-B-AUDIT.md`
+- B-audit result: `PASS — RECONSTRUCTIBLE`
+- Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-05-stochastic-gridworld/docs/research/EXP-05-EVIDENCE.md
+- B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-05-B-AUDIT.md
