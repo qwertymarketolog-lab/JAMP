@@ -5,6 +5,12 @@ from jamp.run import run
 from queens_adapter import FourQueensAdapter
 
 
+def _assert_provenance_chain(events: tuple) -> None:
+    assert events
+    for previous, current in zip(events, events[1:]):
+        assert current.board_before == previous.board_after
+
+
 def test_exp04a_find_one_mode() -> None:
     result = run(FourQueensAdapter("FIND_ONE"))
     state = result.state
@@ -13,6 +19,7 @@ def test_exp04a_find_one_mode() -> None:
     assert result.stop_reason.kind == "terminal"
     assert len(state.solutions) == 1
     assert state.solutions[0] == (2, 4, 1, 3)
+    assert result.steps == len(events)
 
     kinds = [event.kind for event in events]
     assert "PRUNE" in kinds
@@ -26,6 +33,7 @@ def test_exp04a_find_one_mode() -> None:
     sat_events = [event for event in events if event.kind == "TERMINAL_SAT"]
     assert len(sat_events) == 1
     assert sat_events[0].details["solution_vector"] == (2, 4, 1, 3)
+    _assert_provenance_chain(events)
 
 
 def test_exp04b_exhaustive_mode() -> None:
@@ -36,6 +44,7 @@ def test_exp04b_exhaustive_mode() -> None:
     assert result.stop_reason.kind == "terminal"
     assert len(state.solutions) == 2
     assert state.solutions == ((2, 4, 1, 3), (3, 1, 4, 2))
+    assert result.steps == len(events)
 
     backtracks = [event for event in events if event.kind == "BACKTRACK"]
     prunes = [event for event in events if event.kind == "PRUNE"]
@@ -53,11 +62,8 @@ def test_exp04b_exhaustive_mode() -> None:
         if index > 0
     )
 
-    # Every recorded event preserves the observed board transition.
-    for event in events:
-        assert event.board_before is not None
-        assert event.board_after is not None
-
     for event in backtracks:
         assert event.details["from_row"] > event.details["to_row"]
         assert event.board_before != event.board_after
+
+    _assert_provenance_chain(events)
