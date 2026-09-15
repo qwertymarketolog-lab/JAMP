@@ -70,3 +70,51 @@ if __name__ == "__main__":
     test_run_exhausted()
     test_run_error()
     print("run contract tests: PASS")
+
+
+def test_run_on_empty_recovers():
+    class R:
+        budget = 10
+        def initial(self): return 0
+        def candidates(self, s): return [] if s < 2 else [s]
+        def admissible(self, s, c): return True
+        def apply(self, s, c): return c
+        def terminal(self, s): return s >= 2
+        def strategy(self, s, cands): return next(iter(cands))
+        def on_empty(self, s): return s + 1
+    result = run(R())
+    assert result.state == 2
+    assert result.steps == 0
+    assert result.stop_reason.kind == "terminal"
+
+
+def test_run_on_empty_returns_none():
+    class R:
+        budget = 10
+        def initial(self): return 0
+        def candidates(self, s): return []
+        def admissible(self, s, c): return True
+        def apply(self, s, c): return c
+        def terminal(self, s): return False
+        def strategy(self, s, cands): return next(iter(cands))
+        def on_empty(self, s): return None
+    result = run(R())
+    assert result.state == 0
+    assert result.steps == 0
+    assert result.stop_reason.kind == "exhausted"
+
+
+def test_run_on_empty_budget():
+    class R:
+        budget = 5
+        def initial(self): return 0
+        def candidates(self, s): return []
+        def admissible(self, s, c): return True
+        def apply(self, s, c): return c
+        def terminal(self, s): return False
+        def strategy(self, s, cands): return next(iter(cands))
+        def on_empty(self, s): return s + 1
+    result = run(R())
+    assert result.state == 5
+    assert result.steps == 0
+    assert result.stop_reason.kind == "budget"
