@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JAMP RunResult Viewer</title>
+<style>
+  body { font-family: ui-monospace, monospace; margin: 0; padding: 16px;
+         background: #111; color: #ddd; }
+  #drop { border: 1px dashed #444; padding: 24px; text-align: center;
+          margin-bottom: 16px; cursor: pointer; }
+  #drop.over { border-color: #888; background: #1a1a1a; }
+  .panel { border: 1px solid #333; padding: 12px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 14px; color: #888;
+              text-transform: uppercase; letter-spacing: 1px; }
+  .metrics { display: grid; grid-template-columns: auto 1fr;
+             gap: 4px 16px; }
+  .trace { max-height: 400px; overflow-y: auto; }
+  .trace div { padding: 2px 4px; cursor: pointer; }
+  .trace div:hover { background: #1a1a1a; }
+  .trace div.sel { background: #2a2a2a; color: #fff; }
+  .prov pre { margin: 0; white-space: pre-wrap; }
+  .stop { display: inline-block; padding: 2px 8px; border-radius: 2px;
+          background: #442; color: #cc9; }
+</style>
+</head>
+<body>
+
+<div id="drop">drop run_result.json here</div>
+
+<div id="view" style="display:none">
+  <div class="panel">
+    <h2>Run</h2>
+    <div class="metrics" id="metrics"></div>
+  </div>
+  <div class="panel">
+    <h2>Trace</h2>
+    <div class="trace" id="trace"></div>
+  </div>
+  <div class="panel">
+    <h2>Provenance</h2>
+    <div class="prov" id="prov">click a trace row</div>
+  </div>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+
+drop.addEventListener('dragover', e => {
+  e.preventDefault(); drop.classList.add('over');
+});
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', async e => {
+  e.preventDefault();
+  drop.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  render(JSON.parse(await f.text()));
+});
+drop.addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json';
+  inp.onchange = async () => {
+    const f = inp.files[0];
+    if (!f) return;
+    render(JSON.parse(await f.text()));
+  };
+  inp.click();
+});
+
+function render(r) {
+  drop.style.display = 'none';
+  document.getElementById('view').style.display = 'block';
+
+  const rr = r.run_result || {};
+  const env = r.environment || {};
+  const rows = [
+    ['source',           r.source ?? '—'],
+    ['contract',         r.adapter_contract ?? '—'],
+    ['run_contract',     r.run_contract ?? '—'],
+    ['commit',           (r.commit ?? '—').slice(0, 12)],
+    ['python',           env.python ?? '—'],
+    ['platform',         env.platform ?? '—'],
+    ['root',             r.input?.root ?? '—'],
+    ['seed',             r.input?.seed ?? '—'],
+    ['N',                r.input?.N ?? '—'],
+    ['max_objects',      r.input?.max_objects ?? '—'],
+    ['Track A history',  r.track_a_history_len ?? '—'],
+    ['Run steps',        rr.steps ?? '—'],
+    ['Run iterations',   rr.iterations ?? '—'],
+    ['Run stop',         rr.stop_reason?.kind ?? '—'],
+    ['final_size',       r.final_size ?? '—'],
+  ];
+
+  document.getElementById('metrics').innerHTML = rows.map(([k, v]) => {
+    const cell = (k === 'Run stop' && v !== '—')
+      ? `<span class="stop">${v}</span>` : v;
+    return `<div>${k}</div><div>${cell}</div>`;
+  }).join('');
+
+  const trace = r.trace || [];
+  const traceEl = document.getElementById('trace');
+  traceEl.innerHTML = trace.map((ev, i) =>
+    `<div data-i="${i}">${ev.step ?? i} ${ev.op ?? '—'}</div>`
+  ).join('');
+
+  traceEl.querySelectorAll('div').forEach(el => {
+    el.addEventListener('click', () => {
+      traceEl.querySelectorAll('div').forEach(x => x.classList.remove('sel'));
+      el.classList.add('sel');
+      const ev = trace[+el.dataset.i] || {};
+      document.getElementById('prov').innerHTML =
+        `<pre>step:       ${ev.step ?? '—'}
+op:         ${ev.op ?? '—'}
+parents:    ${JSON.stringify(ev.parents ?? [])}
+expression: ${String(ev.expr ?? '—')}</pre>`;
+    });
+  });
+}
+</script>
+</body>
+</html>
