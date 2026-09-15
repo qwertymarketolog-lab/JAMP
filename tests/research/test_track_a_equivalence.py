@@ -1,4 +1,4 @@
-"""Equivalence gate: adapter vs direct Track A semantics on 30 cases."""
+"""Equivalence gate: adapter vs direct Track A semantics on 15 cases."""
 from __future__ import annotations
 
 import random
@@ -38,7 +38,7 @@ def direct_state(root, seed, N, max_objects=120):
     return state
 
 
-def test_equivalence_30():
+def test_equivalence_15():
     for root in ROOTS:
         for seed in SEEDS:
             direct_result = track_a_run(
@@ -67,8 +67,8 @@ def test_equivalence_30():
                 f"final_size root={root} seed={seed}: {len(adapter.state.objects)}"
             )
 
-    print("track_a equivalence: 30/30 PASS")
+    print("track_a equivalence: 15/15 PASS")
 
 
 if __name__ == "__main__":
-    test_equivalence_30()
+    test_equivalence_15()
