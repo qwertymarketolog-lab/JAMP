@@ -25,7 +25,9 @@ A chain is canonically published only when this index names its exact ref and ev
 
 ## Q3b
 
-- Historical evidence chain: `ed686f52dc5162d7fab3ceb434bba106a85c0033` → `56218c31abad64fdda91f8789b7e7ff9d36bd7cf` → `80335f5b3ec29bae4998d184caeff02c7d5202a9`
-- Intended evidence: `docs/research/q3b-artifact-contract.md`
-- Status: **NOT REACHABLE**
-- The historical chain is currently dangling and absent from accessible repository refs. It is therefore deliberately not represented as a published evidence chain. No replacement artifact is inferred or fabricated.
+- Ref: `q3b-closed-evidence`
+- Evidence: `docs/research/q3b-artifact-contract.md`
+- Evidence blob: `249a28bd7bd045b6fc60f48398e6a69ff2431c72`
+- Closure commit: `80335f5b3ec29bae4998d184caeff02c7d5202a9`
+- Recorded status: `Q3b CLOSED` (Q3b.1 SPECIFIED; Q3b.2 PASS; Q3b.3 PASS)
+- Repository link: https://github.com/qwertymarketolog-lab/JAMP/blob/q3b-closed-evidence/docs/research/q3b-artifact-contract.md
