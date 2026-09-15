@@ -42,12 +42,13 @@ The branching instance must use the following fixed node ids:
 X = 0   (dead-end node)
 A = 1   (first alternative)
 B = 2   (second alternative)
-G = 3   (goal)
+S = 3   (start node)
+G = 4   (goal)
 ```
 
-At `START`, the frontier is `{A, B}`, so the deterministic strategy must select `A` first.
+At `START`, the frontier is `{S}` and the deterministic strategy selects `S`. After expanding `S`, the frontier is `{A, B}`, so the same rule selects `A` first.
 
-After expanding `A`, the frontier must contain `{X, B}`, so the same rule selects `X` next. `X` is a dead end and adds no new node. The remaining frontier is then `{B}`, so the strategy selects `B`, which leads to `G`.
+After expanding `A`, the frontier contains `{B, X}`, so the same rule selects `X` next. `X` is a dead end and adds no new node. The remaining frontier is then `{B}`, so the strategy selects `B`, which leads to `G`.
 
 This explicit id assignment is part of the experimental protocol. The experiment must not depend on incidental list order, LIFO/FIFO behavior, randomization, or implementation-specific ordering.
 
@@ -136,13 +137,15 @@ SearchState_0 → SearchState_1 → SearchState_2 → ...
 
 The provenance of the Run remains a linear sequence of state transitions. The search tree, if any, exists inside the contents of those states rather than as a separate provenance topology.
 
+**Backtrack semantics:** “backtrack” is not an explicit action or event; it is the continuation from a dead-end through the alternative already retained in the adapter-owned frontier. The Core Run API observes only successive `SearchState` transitions.
+
 In this experiment, “backtracking” means that after the first alternative reaches a dead end, the adapter continues from the still-pending frontier alternative `B`. It does not require a special physical rollback operation in the Run contract.
 
 ## Terminal semantics
 
 The experiment uses the **expansion-model goal test**:
 
-> **`terminal(state) == True` iff `G ∈ visited`.**
+> **`terminal(state) == True iff G ∈ visited`.**
 
 The goal is therefore considered reached only after `G` has been selected from the frontier and expanded by `apply()`. Merely placing `G` in the frontier does not terminate the Run.
 
