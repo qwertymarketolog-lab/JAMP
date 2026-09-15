@@ -20,12 +20,12 @@ The following methodology findings are now recorded as an Issue-level ledger mir
 | M-011 | structural boundary finding | H-P1 formalization cannot be expressed in current JAMP vocabulary | Task 1.1 vocabulary audit + Task 2 component comparison | H-P1 not testable on frozen JAMP @ `d1b3a8c` | geometric/temporal hypotheses require a different operator set; extension cycle closed negative | ADDRESSED |
 | M-012 | characterization summary | Origin of 13 — characterization components | Track A audit | no single document asserts whole characterization; evidence is split across two repository artifacts and one issue comment | characterization evidence must preserve the distinct execution and provenance levels of its components | ADDRESSED |
 | M-013 | structural finding, evidence-pending | H-J1 refined: substitution-layer has unique fixpoint for root=2, source p=2·k_6, vocabulary @ `d1b3a8c` | structural analysis | finding exists but cannot be cited from repository | repository write-up is required to raise evidence level; until then the finding remains session-only | OPEN — requires repository write-up to raise evidence level, or explicit acknowledgment as session-only in downstream documentation |
+| M-014 | evidence registry update | M-013 originally recorded session-only. Repository artifact now exists. | provenance integrity check | H-J1 refined is now repository-artifact; M-013 status is updated by reference, not by editing M-013 in place | evidence-level transitions are recorded as new ledger entries with source artifact, commit, and blob | ADDRESSED |
 
 M-011
 Title: H-P1 structural negative
 Mode: structural boundary finding
 Instance: H-P1 formalization cannot be expressed in current JAMP vocabulary
-Detected by: Task 1.1 vocabulary audit + Task 2 component comparison
 Evidence: Issue #40 comment 5646491353
 Evidence level: issue-comment
 Basis: all mandatory components of H-P1 (S₀, F, M, C, X) lie outside frozen vocabulary @ d1b3a8c
@@ -74,3 +74,14 @@ Not subsumed by M-008 (M-008 covers H-J2 partial, not H-J1 refined).
 Consequence: finding exists but cannot be cited from repository.
              Cannot be written into STATUS.md with repository reference.
 Status: OPEN — requires repository write-up to raise evidence level to repository-artifact, or explicit acknowledgment as session-only in downstream documentation.
+
+M-014
+Title: H-J1 refined — evidence level raised
+Mode: evidence registry update
+Instance: M-013 originally recorded session-only. Repository artifact now exists.
+Evidence: docs/research/h-j1-refined.md
+          commit 7d355f0b89162f87c2647d4654e84ebb4a190158
+          blob 3ee618c71f971a99ad5dc3c359480c0dfd4a7044
+Consequence: H-J1 refined is now repository-artifact.
+             M-013 status updated by reference (M-014), not by editing M-013 in place.
+Status: ADDRESSED
