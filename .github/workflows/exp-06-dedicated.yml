@@ -3,6 +3,7 @@ name: EXP-06 Dedicated Verification
 on:
   push:
     branches: [feature/exp-06-parallel-frontier]
+  workflow_dispatch:
 
 jobs:
   exp-06:
