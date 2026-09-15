@@ -47,4 +47,7 @@ A chain is canonically published only when this index names its exact ref and ev
 - Artifact SHA-256: `3d51ded65b0f5ec6b8f0db057070b903fdee102368c7ac833f7a2fc21d0ce0f5`
 - Recorded outcome: `TARGET PASS`
 - Scope note: `Artifact v0 envelope neutrality was not tested by EXP-04`
+- B-audit: `docs/research/EXP-04-B-AUDIT.md`
+- B-audit result: `PASS — RECONSTRUCTIBLE`
 - Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-04-4queens/docs/research/EXP-04-EVIDENCE.md
+- B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-04-B-AUDIT.md
