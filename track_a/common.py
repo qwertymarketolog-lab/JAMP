@@ -121,13 +121,21 @@ def target_substitution(s,rng):
             if ti!=si and contains(t,name):
                 n=canon(replace(t,name,repl))
                 if n!=t and n not in s.index:out.append(T(n,"target_directed_substitution",(si,ti)))
-    rng.shuffle(out); return out[:1]
+    return out
 
-def run(seed,root,strategy,N=200,max_objects=120):
+def run(seed,root,strategy,N=200,max_objects=120,strategy_fn=None):
     rng=random.Random(seed); s=State(root,max_objects); s.closure()
     for _ in range(N):
         if s.solved:break
-        sub=target_substitution(s,rng) if strategy=="TREATMENT_TARGETED" else random_substitution(s,rng)
+        if strategy=="TREATMENT_TARGETED":
+            out=target_substitution(s,rng)
+            if strategy_fn is None:
+                rng.shuffle(out); sub=out[:1]
+            else:
+                chosen=strategy_fn(s,out)
+                sub=[chosen] if chosen is not None else []
+        else:
+            sub=random_substitution(s,rng)
         if not sub:
             s.closure(); continue
         s.add(sub[0].new,sub[0].op,sub[0].parents); s.closure()
