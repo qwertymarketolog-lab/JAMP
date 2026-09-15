@@ -31,3 +31,20 @@ A chain is canonically published only when this index names its exact ref and ev
 - Closure commit: `80335f5b3ec29bae4998d184caeff02c7d5202a9`
 - Recorded status: `Q3b CLOSED` (Q3b.1 SPECIFIED; Q3b.2 PASS; Q3b.3 PASS)
 - Repository link: https://github.com/qwertymarketolog-lab/JAMP/blob/q3b-closed-evidence/docs/research/q3b-artifact-contract.md
+
+## EXP-04
+
+- Ref: `feature/exp-04-4queens`
+- Evidence: `docs/research/EXP-04-EVIDENCE.md`
+- Evidence blob: `8ea4ce018edd14d854b706a3518b4006df50e4a3`
+- Execution commit: `0b12d63a49cab7fbb804f9fad29a3dbaa68ccb3d`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Adapter blob: `f0f210359297abc0e327921599a6b3ff01b08af1`
+- Test blob: `74d2249835bf13a78d2ed90d73c539c5de1cf244`
+- Workflow blob: `251d1d5f4f93593e784f80dea19f0ea435ca9a3f`
+- CI run: `35016967681`
+- Execution artifact: `10416510391`
+- Artifact SHA-256: `3d51ded65b0f5ec6b8f0db057070b903fdee102368c7ac833f7a2fc21d0ce0f5`
+- Recorded outcome: `TARGET PASS`
+- Scope note: `Artifact v0 envelope neutrality was not tested by EXP-04`
+- Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-04-4queens/docs/research/EXP-04-EVIDENCE.md
