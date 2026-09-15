@@ -16,9 +16,11 @@ Contract notes:
   If it returns a new state, the loop continues; if it returns `None`,
   the run stops with `StopReason("exhausted")`. If the hook is absent,
   empty candidate set stops the run with `exhausted` (v0.1 behaviour).
-- Two counters are tracked:
+- Two counters are tracked and both exposed in `RunResult`:
     * `steps`       = successful `apply` calls
-    * `iterations`  = total loop turns, including `on_empty` recovery
+    * `iterations`  = loop turns that entered the body, including
+                      `on_empty` recovery turns. The turn that
+                      exits via `terminal()` check is not counted.
   `budget` bounds `iterations`, not `steps`.
 - `RunResult.steps` is **not** the same metric as any implementation
   internal history length. Adapters are responsible for their own
@@ -41,6 +43,7 @@ class StopReason(NamedTuple):
 class RunResult(NamedTuple):
     state: object
     steps: int
+    iterations: int
     stop_reason: StopReason
 
 
@@ -64,25 +67,25 @@ def run(r: Run[S, C]) -> RunResult:
     iterations = 0
     while True:
         if r.terminal(state):
-            return RunResult(state, steps, StopReason("terminal"))
+            return RunResult(state, steps, iterations, StopReason("terminal"))
         if iterations >= r.budget:
-            return RunResult(state, steps, StopReason("budget"))
+            return RunResult(state, steps, iterations, StopReason("budget"))
         iterations += 1
         cands = [c for c in r.candidates(state) if r.admissible(state, c)]
         if not cands:
             on_empty = getattr(r, "on_empty", None)
             if on_empty is None:
-                return RunResult(state, steps, StopReason("exhausted"))
+                return RunResult(state, steps, iterations, StopReason("exhausted"))
             new_state = on_empty(state)
             if new_state is None:
-                return RunResult(state, steps, StopReason("exhausted"))
+                return RunResult(state, steps, iterations, StopReason("exhausted"))
             state = new_state
             continue
         try:
             chosen = r.strategy(state, cands)
             state = r.apply(state, chosen)
         except Exception as exc:
-            return RunResult(state, steps, StopReason("error", repr(exc)))
+            return RunResult(state, steps, iterations, StopReason("error", repr(exc)))
         steps += 1
 
 

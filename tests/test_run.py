@@ -14,6 +14,7 @@ def test_run_terminal():
     result = run(Counter())
     assert result.state == 2
     assert result.steps == 2
+    assert result.iterations == 2
     assert result.stop_reason.kind == "terminal"
 
 
@@ -30,6 +31,7 @@ def test_run_budget():
     result = run(Endless())
     assert result.state == 5
     assert result.steps == 5
+    assert result.iterations == 5
     assert result.stop_reason.kind == "budget"
 
 
@@ -46,6 +48,8 @@ def test_run_exhausted():
     result = run(Nothing())
     assert result.state == 0
     assert result.steps == 0
+    assert result.iterations == 1
+    # iterations counts entered turns, not exit turns.
     assert result.stop_reason.kind == "exhausted"
 
 
@@ -60,6 +64,9 @@ def test_run_error():
         def strategy(self, s, cands): return next(iter(cands))
 
     result = run(Boom())
+    assert result.steps == 0
+    assert result.iterations == 1
+    # iterations counts entered turns, not exit turns.
     assert result.stop_reason.kind == "error"
     assert "boom" in result.stop_reason.detail
 
@@ -85,6 +92,8 @@ def test_run_on_empty_recovers():
     result = run(R())
     assert result.state == 2
     assert result.steps == 0
+    assert result.iterations == 2
+    # iterations counts entered turns, not exit turns.
     assert result.stop_reason.kind == "terminal"
 
 
@@ -101,6 +110,8 @@ def test_run_on_empty_returns_none():
     result = run(R())
     assert result.state == 0
     assert result.steps == 0
+    assert result.iterations == 1
+    # iterations counts entered turns, not exit turns.
     assert result.stop_reason.kind == "exhausted"
 
 
@@ -117,4 +128,6 @@ def test_run_on_empty_budget():
     result = run(R())
     assert result.state == 5
     assert result.steps == 0
+    assert result.iterations == 5
+    # iterations counts entered turns, not exit turns.
     assert result.stop_reason.kind == "budget"
