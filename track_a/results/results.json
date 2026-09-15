@@ -1,0 +1,3272 @@
+[
+  {
+    "root": "sqrt(2)",
+    "seed": 0,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 0,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 1,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 1,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 2,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 2,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 42,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 42,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 99,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(2)",
+    "seed": 99,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(2*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(2)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(2>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(2|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(2*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((2*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((2*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(2|(2*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((2*(k_6^2))=(q^2))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 0,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 0,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 1,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 1,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 2,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 2,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 42,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 42,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 99,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(3)",
+    "seed": 99,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(3*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(3)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(3>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(3|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(3*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((3*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((3*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(3|(3*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((3*(k_6^2))=(q^2))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 0,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 0,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 1,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 1,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 2,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 2,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 42,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 42,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 99,
+    "strategy": "BASELINE_RANDOM",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 10,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      },
+      {
+        "step": 12,
+        "op": "random_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      }
+    ]
+  },
+  {
+    "root": "sqrt(5)",
+    "seed": 99,
+    "strategy": "TREATMENT_TARGETED",
+    "solved": false,
+    "steps": 13,
+    "progress": 7,
+    "max_objects": 13,
+    "ast_depth": 9,
+    "stop_reason": "MAX_ITERATIONS",
+    "trace": [
+      {
+        "step": 0,
+        "op": "anchor",
+        "parents": [],
+        "expr": "((p^2)=(5*(q^2)))"
+      },
+      {
+        "step": 1,
+        "op": "axiom",
+        "parents": [],
+        "expr": "prime?(5)"
+      },
+      {
+        "step": 2,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(p)"
+      },
+      {
+        "step": 3,
+        "op": "axiom",
+        "parents": [],
+        "expr": "integer?(q)"
+      },
+      {
+        "step": 4,
+        "op": "axiom",
+        "parents": [],
+        "expr": "(5>1)"
+      },
+      {
+        "step": 5,
+        "op": "axiom",
+        "parents": [],
+        "expr": "gcd(p,q,1)"
+      },
+      {
+        "step": 6,
+        "op": "derive_divisibility",
+        "parents": [
+          0
+        ],
+        "expr": "(5|p)"
+      },
+      {
+        "step": 7,
+        "op": "divisibility_witness",
+        "parents": [
+          6
+        ],
+        "expr": "(p=(5*k_6))"
+      },
+      {
+        "step": 8,
+        "op": "integer_witness",
+        "parents": [
+          6
+        ],
+        "expr": "integer?(k_6)"
+      },
+      {
+        "step": 9,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          5
+        ],
+        "expr": "gcd((5*k_6),q,1)"
+      },
+      {
+        "step": 10,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          2
+        ],
+        "expr": "integer?((5*k_6))"
+      },
+      {
+        "step": 11,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          6
+        ],
+        "expr": "(5|(5*k_6))"
+      },
+      {
+        "step": 12,
+        "op": "target_directed_substitution",
+        "parents": [
+          7,
+          0
+        ],
+        "expr": "((5*(k_6^2))=(q^2))"
+      }
+    ]
+  }
+]

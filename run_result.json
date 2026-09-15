@@ -1,0 +1,124 @@
+{
+  "source": "track_a_run_adapter",
+  "adapter_contract": "D1-D8",
+  "run_contract": "v0.3",
+  "commit": "da3afffa34ce95ab1ab3d8ec522b7c104f33e5f3",
+  "environment": {
+    "python": "3.14.6",
+    "platform": "Android-13-aarch64-64bit"
+  },
+  "input": {
+    "root": 2,
+    "seed": 42,
+    "N": 500,
+    "max_objects": 120
+  },
+  "run_result": {
+    "steps": 4,
+    "iterations": 500,
+    "stop_reason": {
+      "kind": "budget",
+      "detail": ""
+    }
+  },
+  "track_a_history_len": 13,
+  "final_size": 13,
+  "trace": [
+    {
+      "step": 0,
+      "op": "anchor",
+      "parents": [],
+      "expr": "((p^2)=(2*(q^2)))"
+    },
+    {
+      "step": 1,
+      "op": "axiom",
+      "parents": [],
+      "expr": "prime?(2)"
+    },
+    {
+      "step": 2,
+      "op": "axiom",
+      "parents": [],
+      "expr": "integer?(p)"
+    },
+    {
+      "step": 3,
+      "op": "axiom",
+      "parents": [],
+      "expr": "integer?(q)"
+    },
+    {
+      "step": 4,
+      "op": "axiom",
+      "parents": [],
+      "expr": "(2>1)"
+    },
+    {
+      "step": 5,
+      "op": "axiom",
+      "parents": [],
+      "expr": "gcd(p,q,1)"
+    },
+    {
+      "step": 6,
+      "op": "derive_divisibility",
+      "parents": [
+        0
+      ],
+      "expr": "(2|p)"
+    },
+    {
+      "step": 7,
+      "op": "divisibility_witness",
+      "parents": [
+        6
+      ],
+      "expr": "(p=(2*k_6))"
+    },
+    {
+      "step": 8,
+      "op": "integer_witness",
+      "parents": [
+        6
+      ],
+      "expr": "integer?(k_6)"
+    },
+    {
+      "step": 9,
+      "op": "target_directed_substitution",
+      "parents": [
+        7,
+        5
+      ],
+      "expr": "gcd((2*k_6),q,1)"
+    },
+    {
+      "step": 10,
+      "op": "target_directed_substitution",
+      "parents": [
+        7,
+        2
+      ],
+      "expr": "integer?((2*k_6))"
+    },
+    {
+      "step": 11,
+      "op": "target_directed_substitution",
+      "parents": [
+        7,
+        6
+      ],
+      "expr": "(2|(2*k_6))"
+    },
+    {
+      "step": 12,
+      "op": "target_directed_substitution",
+      "parents": [
+        7,
+        0
+      ],
+      "expr": "((2*(k_6^2))=(q^2))"
+    }
+  ]
+}
