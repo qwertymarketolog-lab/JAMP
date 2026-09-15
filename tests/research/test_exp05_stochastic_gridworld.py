@@ -62,6 +62,10 @@ def test_exp05a_seed1_atomic_stochastic_interaction():
         assert event.state_after.step_count == event.state_before.step_count + 1
         previous_after = event.state_after
 
+    assert state.events[-1].state_after == StateSnapshot(
+        state.agent_pos, state.rng_state, state.step_count
+    )
+
 
 def test_exp05b_replay_determinism_for_each_seed():
     seed1_run1 = execute(1)
