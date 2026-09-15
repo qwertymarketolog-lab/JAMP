@@ -28,9 +28,15 @@ Execution branch: `feature/exp-04-4queens`
 
 Adapter: `tests/research/queens_adapter.py`
 
+- blob SHA: `f0f210359297abc0e327921599a6b3ff01b08af1`
+
 Tests: `tests/research/test_exp04_4queens.py`
 
+- blob SHA: `74d2249835bf13a78d2ed90d73c539c5de1cf244`
+
 Execution workflow: `.github/workflows/exp-04-4queens.yml`
+
+- blob SHA: `251d1d5f4f93593e784f80dea19f0ea435ca9a3f`
 
 Run Core blob at execution commit:
 
@@ -83,6 +89,9 @@ Execution artifact:
 - Name: `exp-04-4queens-execution`
 - Artifact ID: `10416510391`
 - SHA-256: `3d51ded65b0f5ec6b8f0db057070b903fdee102368c7ac833f7a2fc21d0ce0f5`
+- Status observed during audit: not expired
+
+This artifact is the CI execution-metadata artifact. It is **not** an Artifact v0 domain-result envelope. Therefore Artifact v0 envelope neutrality was not independently tested by this EXP-04 execution and is not claimed here.
 
 ## Verified outcomes
 
@@ -132,13 +141,13 @@ Verified by test:
 | Provenance state chain | PASS |
 | Run Core unchanged | PASS |
 | Core breach | FALSIFIED |
-| Artifact/provenance representation failure | FALSIFIED for the tested v0 payload |
-| Trivial greedy execution | FALSIFIED |
+| Trivial execution | FALSIFIED |
+| Artifact v0 envelope neutrality | NOT TESTED in EXP-04 |
 
-Overall: **TARGET PASS**.
+Overall experiment outcome: **TARGET PASS** for the stated CSP execution-transfer question.
 
 ## Boundary of the claim
 
-This experiment demonstrates transfer of the existing execution kernel to the tested 4-Queens CSP search pattern. It does **not** establish a universal CSP solver, universal search algorithm, third-domain neutrality, or general problem-solving ability outside the tested contract.
+This experiment demonstrates transfer of the existing execution kernel to the tested 4-Queens CSP search pattern. It does **not** establish a universal CSP solver, universal search algorithm, third-domain neutrality, Artifact v0 production-exporter transfer, or general problem-solving ability outside the tested contract.
 
 No modification to `src/jamp/run.py` was required.
