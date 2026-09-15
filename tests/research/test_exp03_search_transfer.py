@@ -7,6 +7,7 @@ from pathlib import Path
 from exp03_adapter import Exp03Adapter
 from exp03_export import run_exp03
 from exp03_graph import G
+from jamp.run import run
 
 EXPECTED_RUN_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EXPECTED_PATH = ["S", "A", "X", "B", "G"]
@@ -43,13 +44,17 @@ def test_exp03_search_transfer():
 
 def test_exp03_provenance_is_linear_search_state_chain():
     adapter = Exp03Adapter()
-    from jamp.run import run
-
     result = run(adapter)
 
     assert result.steps == 5
     assert len(adapter.history) == result.steps
-    assert [selected for _before, selected, _after in adapter.history] == [3, 1, 0, 2, 4]
+    assert [selected for _before, selected, _after in adapter.history] == [
+        3,
+        1,
+        0,
+        2,
+        4,
+    ]
 
     for index in range(len(adapter.history) - 1):
         _before, _selected, after = adapter.history[index]
