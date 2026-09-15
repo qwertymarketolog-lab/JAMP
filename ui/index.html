@@ -3,155 +3,146 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JAMP Run Viewer</title>
+<title>JAMP Track A Run Viewer</title>
 <style>
   body { font-family: ui-monospace, monospace; margin: 0; padding: 16px; background: #111; color: #ddd; }
+  button, select { font: inherit; background: #181818; color: #ddd; border: 1px solid #444; padding: 6px; }
   #drop { border: 1px dashed #444; padding: 24px; text-align: center; margin-bottom: 16px; cursor: pointer; }
   #drop.over { border-color: #888; background: #1a1a1a; }
   .panel { border: 1px solid #333; padding: 12px; margin-bottom: 12px; }
   .panel h2 { margin: 0 0 8px; font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .matrix th, .matrix td { border: 1px solid #333; padding: 5px; text-align: left; }
+  .matrix tr { cursor: pointer; }
+  .matrix tr:hover, .matrix tr.sel { background: #222; }
   .metrics { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
   .trace { max-height: 400px; overflow-y: auto; }
   .trace div { padding: 2px 4px; cursor: pointer; }
-  .trace div:hover { background: #1a1a1a; }
-  .trace div.sel { background: #2a2a2a; color: #fff; }
+  .trace div:hover, .trace div.sel { background: #2a2a2a; color: #fff; }
+  .trace div.parent { outline: 1px solid #665; }
   .prov pre { margin: 0; white-space: pre-wrap; }
   .stop { display: inline-block; padding: 2px 8px; border-radius: 2px; }
   .stop.MAX_ITERATIONS { background: #442; color: #cc9; }
   .stop.SOLVED { background: #242; color: #9c9; }
   .stop.MAX_OBJECTS { background: #422; color: #c99; }
   .status { color: #888; margin-top: 8px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 </style>
 </head>
 <body>
-
 <div id="drop">drop results.json here<br><span class="status">or click to choose a JSON file</span></div>
 
 <div id="view" style="display:none">
   <div class="panel">
-    <h2>Run</h2>
-    <div class="metrics" id="metrics"></div>
+    <h2>Run Matrix</h2>
+    <div class="toolbar"><span id="runCount"></span></div>
+    <table class="matrix"><thead><tr><th>#</th><th>root</th><th>seed</th><th>strategy</th><th>steps</th><th>stop</th></tr></thead><tbody id="matrix"></tbody></table>
   </div>
-  <div class="panel">
-    <h2>Trace</h2>
-    <div class="trace" id="trace"></div>
-  </div>
-  <div class="panel">
-    <h2>Provenance</h2>
-    <div class="prov" id="prov">click a trace row</div>
-  </div>
+  <div class="panel"><h2>Run</h2><div class="metrics" id="metrics"></div></div>
+  <div class="panel"><h2>Trace</h2><div class="trace" id="trace"></div></div>
+  <div class="panel"><h2>Provenance</h2><div class="prov" id="prov">click a trace row</div></div>
 </div>
 
 <script>
-let data = null;
+let runs = [];
+let selectedRun = 0;
+let selectedTrace = -1;
 
 const drop = document.getElementById('drop');
-
-drop.addEventListener('dragover', e => {
-  e.preventDefault();
-  drop.classList.add('over');
-});
-
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-
-drop.addEventListener('drop', async e => {
-  e.preventDefault();
-  drop.classList.remove('over');
-  const f = e.dataTransfer.files[0];
-  if (!f) return;
-  await loadFile(f);
-});
-
+drop.addEventListener('drop', async e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) await loadFile(f); });
 drop.addEventListener('click', () => {
   const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = '.json,application/json';
-  inp.onchange = async () => {
-    const f = inp.files[0];
-    if (f) await loadFile(f);
-  };
+  inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = async () => { if (inp.files[0]) await loadFile(inp.files[0]); };
   inp.click();
 });
 
 async function loadFile(file) {
   try {
-    data = JSON.parse(await file.text());
-    render();
+    const parsed = JSON.parse(await file.text());
+    runs = Array.isArray(parsed) ? parsed : [parsed];
+    if (!runs.length) throw new Error('NO_LOCAL_ARTIFACT: JSON contains no runs');
+    selectedRun = 0; selectedTrace = -1;
+    drop.style.display = 'none';
+    document.getElementById('view').style.display = 'block';
+    renderMatrix(); renderRun();
   } catch (err) {
-    drop.textContent = `invalid JSON: ${err.message}`;
     drop.style.display = 'block';
+    drop.textContent = err.message.startsWith('NO_LOCAL_ARTIFACT') ? err.message : `invalid JSON: ${err.message}`;
     document.getElementById('view').style.display = 'none';
   }
 }
 
 function esc(value) {
-  return String(value ?? '—').replace(/[&<>"']/g, ch => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[ch]));
+  return String(value ?? '—').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 }
 
-function render() {
-  drop.style.display = 'none';
-  document.getElementById('view').style.display = 'block';
+function renderMatrix() {
+  document.getElementById('runCount').textContent = `${runs.length} run${runs.length === 1 ? '' : 's'}`;
+  const body = document.getElementById('matrix');
+  body.textContent = '';
+  runs.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    if (i === selectedRun) tr.classList.add('sel');
+    [i + 1, r.root, r.seed, r.strategy, r.steps, r.stop_reason].forEach(v => {
+      const td = document.createElement('td'); td.textContent = v ?? '—'; tr.appendChild(td);
+    });
+    tr.addEventListener('click', () => { selectedRun = i; selectedTrace = -1; renderMatrix(); renderRun(); });
+    body.appendChild(tr);
+  });
+}
 
-  const r = data;
-  const meta = r.meta ?? r.input ?? {};
-  const metrics = r.metrics ?? {};
+function renderRun() {
+  const r = runs[selectedRun];
   const rows = [
-    ['problem', r.root ?? meta.problem ?? meta.root],
-    ['seed', r.seed ?? meta.seed],
-    ['strategy', r.strategy ?? meta.strategy],
-    ['budget', r.N ?? meta.budget ?? meta.N],
-    ['max_objects', r.max_objects ?? meta.max_objects],
-    ['solved', r.solved ?? metrics.solved],
-    ['stop_reason', r.stop_reason ?? metrics.stop_reason],
-    ['final_objects_count', metrics.final_objects_count ?? r.final_size ?? r.max_objects],
-    ['Track A steps', metrics.track_a_steps ?? r.steps],
-    ['Run iterations', metrics.run_iterations],
-    ['Run steps', metrics.run_steps],
-    ['progress', r.progress ?? metrics.progress],
-    ['ast_depth', r.ast_depth ?? metrics.ast_depth]
+    ['problem', r.root], ['seed', r.seed], ['strategy', r.strategy],
+    ['Track A steps', r.steps], ['Run iterations', '—'], ['Run steps', '—'],
+    ['progress', r.progress], ['final_objects_count', r.max_objects],
+    ['ast_depth', r.ast_depth], ['solved', r.solved], ['stop_reason', r.stop_reason]
   ];
-
-  document.getElementById('metrics').innerHTML = rows
-    .filter(([, v]) => v !== undefined && v !== null)
-    .map(([k, v]) => `<div>${esc(k)}</div><div>${
-      k === 'stop_reason'
-        ? `<span class="stop ${esc(v)}">${esc(v)}</span>`
-        : esc(v)
-    }</div>`)
-    .join('');
+  document.getElementById('metrics').innerHTML = rows.map(([k, v]) =>
+    `<div>${esc(k)}</div><div>${k === 'stop_reason' ? `<span class="stop ${esc(v)}">${esc(v)}</span>` : esc(v)}</div>`
+  ).join('');
 
   const trace = r.trace ?? [];
   const traceEl = document.getElementById('trace');
   traceEl.textContent = '';
-
   trace.forEach((ev, i) => {
     const row = document.createElement('div');
-    row.dataset.i = i;
     row.textContent = `${ev.step ?? i} ${ev.op ?? '—'}`;
-    row.addEventListener('click', () => {
-      traceEl.querySelectorAll('div').forEach(x => x.classList.remove('sel'));
-      row.classList.add('sel');
-      showProv(trace[i]);
-    });
+    if (i === selectedTrace) row.classList.add('sel');
+    row.addEventListener('click', () => { selectedTrace = i; renderTrace(); showProv(trace[i]); });
     traceEl.appendChild(row);
+  });
+  if (selectedTrace >= 0 && trace[selectedTrace]) showProv(trace[selectedTrace]);
+}
+
+function renderTrace() {
+  const r = runs[selectedRun], trace = r.trace ?? [];
+  const selected = trace[selectedTrace];
+  const parents = new Set(selected?.parents ?? []);
+  document.querySelectorAll('#trace > div').forEach((row, i) => {
+    row.classList.toggle('sel', i === selectedTrace);
+    row.classList.toggle('parent', parents.has(trace[i]?.step));
   });
 }
 
 function showProv(ev) {
   if (!ev) return;
+  const parentSteps = ev.parents ?? [];
   const lines = [
     `step:       ${ev.step ?? '—'}`,
     `op:         ${ev.op ?? '—'}`,
-    `parents:    ${JSON.stringify(ev.parents ?? [])}`,
-    `expression: ${ev.expr ?? '—'}`
+    `parents:    ${JSON.stringify(parentSteps)}`,
+    `expression: ${ev.expr ?? '—'}`,
+    '',
+    `run:        ${runs[selectedRun].root} / seed ${runs[selectedRun].seed} / ${runs[selectedRun].strategy}`
   ];
-  const pre = document.createElement('pre');
-  pre.textContent = lines.join('\n');
-  const prov = document.getElementById('prov');
-  prov.textContent = '';
-  prov.appendChild(pre);
+  const pre = document.createElement('pre'); pre.textContent = lines.join('\n');
+  const prov = document.getElementById('prov'); prov.textContent = ''; prov.appendChild(pre);
+  renderTrace();
 }
 </script>
 </body>
