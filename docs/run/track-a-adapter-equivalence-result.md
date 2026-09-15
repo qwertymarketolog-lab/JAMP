@@ -42,3 +42,17 @@ Therefore:
   PASS 15/15.
 
 No claim is made here about which commit the PASS ran against.
+
+## Anchored execution — 2026-09-15
+
+Fresh execution against commit `ac166a55872adf697e9c03618a32e8c2d652423f`.
+
+Command: `PYTHONPATH=src python -m pytest -q tests/research/test_track_a_equivalence.py`
+
+Result: **1 passed in 28.08s — 15/15 equivalence cases PASS.**
+
+Environment: Python 3.14.6, Termux/Android, `PYTHONPATH=src`.
+
+At execution time `HEAD` and `origin/o4-tighten-v01` were both `ac166a55872adf697e9c03618a32e8c2d652423f`; working tree was clean.
+
+This fresh execution closes the previous provenance gap: the earlier 15/15 observation did not record its exact execution SHA.
