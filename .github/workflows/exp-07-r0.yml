@@ -1,0 +1,24 @@
+name: EXP-07 Replay R0
+
+on:
+  push:
+    branches: [research/exp-07-replay-r0]
+  workflow_dispatch:
+
+jobs:
+  replay-r0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependency
+        run: python -m pip install pytest
+
+      - name: Run EXP-07 R0
+        run: python -m pytest -q tests/research/test_exp07_replay_r0.py
