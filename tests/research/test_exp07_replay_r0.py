@@ -1,6 +1,7 @@
 import hashlib
 from pathlib import Path
 
+from jamp.run import run
 from tests.research.exp07_replay import ReplayEvent, replay
 from tests.research.parallel_dag_adapter import ParallelDAGAdapter, ParallelDAGState
 
@@ -51,6 +52,21 @@ def _recorded_log(*, reverse_workers: bool = False) -> tuple[ReplayEvent, ...]:
     )
 
 
+def _capture_from_exp06_adapter() -> tuple[ReplayEvent, ...]:
+    recorded = run(ParallelDAGAdapter(ParallelDAGState(delay_a=0.0, delay_b=0.0)))
+    return tuple(
+        ReplayEvent(
+            event_id=event.event_id,
+            parent_event_ids=event.parent_event_ids,
+            causal_type=event.causal_type,
+            worker_id=event.worker_id,
+            logical_clock=event.logical_clock,
+            payload=event.payload,
+        )
+        for event in recorded.state.events
+    )
+
+
 def compute_git_blob_sha1(filepath: Path) -> str:
     content = filepath.read_bytes()
     header = f"blob {len(content)}\x00".encode("ascii")
@@ -78,6 +94,7 @@ def test_r0_2_reverse_physical_order_is_canonicalized_identically():
 
 
 def test_r0_3_replay_does_not_execute_workers(monkeypatch):
+    recorded_log = _capture_from_exp06_adapter()
     adapter = ParallelDAGAdapter(ParallelDAGState())
 
     def raise_if_called(*_args, **_kwargs):
@@ -85,7 +102,7 @@ def test_r0_3_replay_does_not_execute_workers(monkeypatch):
 
     monkeypatch.setattr(adapter, "_worker_task", raise_if_called)
 
-    result = replay(_recorded_log())
+    result = replay(recorded_log)
     assert result.dag_hash == EXPECTED_DAG_HASH
     assert result.merged_result == "Merged=60"
 
