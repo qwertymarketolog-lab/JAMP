@@ -59,6 +59,12 @@ The adapter-owned state is the complete search state:
 SearchState = PuzzleState + Frontier + SearchBookkeeping
 ```
 
+The initial state is fixed explicitly:
+
+```text
+initial() = SearchState(frontier=[S], visited={}, current=S)
+```
+
 At minimum, the state must contain enough information to represent:
 
 - the current puzzle/search position;
@@ -134,10 +140,16 @@ In this experiment, “backtracking” means that after the first alternative re
 
 ## Terminal semantics
 
+The experiment uses the **expansion-model goal test**:
+
+> **`terminal(state) == True` iff `G ∈ visited`.**
+
+The goal is therefore considered reached only after `G` has been selected from the frontier and expanded by `apply()`. Merely placing `G` in the frontier does not terminate the Run.
+
 Terminal semantics are explicitly separated into three relevant outcomes:
 
 1. **Goal found → `terminal`**
-   - `terminal(state) == True` only when the goal `G` has actually been reached by the adapter's declared goal condition;
+   - `terminal(state) == True` only when `G` is in `visited`;
    - the adapter must not report `terminal` merely because a goal node is present in the frontier or because a dead-end branch has been reached.
 2. **Frontier exhausted without goal → `exhausted`**
    - the search has no remaining frontier nodes;
@@ -147,6 +159,26 @@ Terminal semantics are explicitly separated into three relevant outcomes:
    - the Run budget is reached before either goal or complete frontier exhaustion.
 
 This distinction is required so that “search failed because there is nothing left to explore” cannot be confused with “search found the goal”, and neither can be confused with a dead end of a single branch.
+
+## Expected execution count
+
+The experiment uses the Run expansion model with `initial().frontier == [S]` and a goal test of `G ∈ visited`.
+
+The expected selected-node sequence is:
+
+```text
+S → A → X → B → G
+```
+
+Therefore the required result is:
+
+```text
+steps      = 5
+iterations = 5
+stop       = terminal
+```
+
+The Run budget must be **10**, so successful termination must occur before budget exhaustion.
 
 ## Core boundary
 
