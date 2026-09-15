@@ -21,4 +21,6 @@ jobs:
         run: python -m pip install pytest
 
       - name: Run EXP-07 R0
+        env:
+          PYTHONPATH: src
         run: python -m pytest -q tests/research/test_exp07_replay_r0.py
