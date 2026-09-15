@@ -30,6 +30,27 @@ This is a test of the search abstraction boundary, not a claim that JAMP is a ge
 
 The strategy therefore selects which frontier node to expand next. This is the node-view of search and tests transfer of search policy (for example DFS/BFS/greedy), rather than selecting individual edges directly.
 
+## Deterministic strategy and candidate ordering
+
+The strategy rule is fixed in advance:
+
+> **Select the frontier candidate with the minimum declared node id.**
+
+The branching instance must use the following fixed node ids:
+
+```text
+X = 0   (dead-end node)
+A = 1   (first alternative)
+B = 2   (second alternative)
+G = 3   (goal)
+```
+
+At `START`, the frontier is `{A, B}`, so the deterministic strategy must select `A` first.
+
+After expanding `A`, the frontier must contain `{X, B}`, so the same rule selects `X` next. `X` is a dead end and adds no new node. The remaining frontier is then `{B}`, so the strategy selects `B`, which leads to `G`.
+
+This explicit id assignment is part of the experimental protocol. The experiment must not depend on incidental list order, LIFO/FIFO behavior, randomization, or implementation-specific ordering.
+
 ## Search-state definition
 
 The adapter-owned state is the complete search state:
@@ -73,16 +94,29 @@ The experiment must contain a genuine branching situation of the following logic
 ```text
 START
   |
-  +--> A --> DEAD END
-  |          |
-  |          +--> BACKTRACK
+  +--> A --> X --> DEAD END
   |
-  +--> B --> GOAL
+  +--> B --> G --> GOAL
 ```
 
-The strategy must first select the alternative leading to `A`, reach a state where that alternative cannot produce the goal, and then continue with `B`.
+The strategy must first select `A`, then select `X`, observe that `X` has no successors, and then continue with the still-pending alternative `B`.
 
 A run that simply follows a known successful path without abandoning an alternative is **not** sufficient for the target outcome.
+
+## Dead-end semantics
+
+A **dead end is an adapter-internal search event, not a Run `StopReason`.**
+
+In the required instance:
+
+- after `A` is expanded, both `X` and `B` are pending in the frontier;
+- after `X` is expanded, `X` produces no successors;
+- the frontier still contains `B`;
+- the Run therefore continues normally and selects `B` on the next iteration.
+
+Consequently, `terminal` and `exhausted` must not be used to represent the dead end of one branch.
+
+`exhausted` occurs only when the **entire frontier is empty** and no goal has been found.
 
 ## Required backtracking
 
@@ -96,19 +130,23 @@ SearchState_0 → SearchState_1 → SearchState_2 → ...
 
 The provenance of the Run remains a linear sequence of state transitions. The search tree, if any, exists inside the contents of those states rather than as a separate provenance topology.
 
+In this experiment, “backtracking” means that after the first alternative reaches a dead end, the adapter continues from the still-pending frontier alternative `B`. It does not require a special physical rollback operation in the Run contract.
+
 ## Terminal semantics
 
 Terminal semantics are explicitly separated into three relevant outcomes:
 
 1. **Goal found → `terminal`**
-   - `terminal(state) == True` only when the goal has actually been reached.
+   - `terminal(state) == True` only when the goal `G` has actually been reached by the adapter's declared goal condition;
+   - the adapter must not report `terminal` merely because a goal node is present in the frontier or because a dead-end branch has been reached.
 2. **Frontier exhausted without goal → `exhausted`**
    - the search has no remaining frontier nodes;
+   - this is a semantic search outcome distinct from reaching the goal;
    - the adapter must not report this condition as `terminal`.
 3. **Budget exhausted → `budget`**
-   - the Run budget is reached before either goal or successful exhaustion.
+   - the Run budget is reached before either goal or complete frontier exhaustion.
 
-This distinction is required so that “search failed because there is nothing left to explore” cannot be confused with “search found the goal”.
+This distinction is required so that “search failed because there is nothing left to explore” cannot be confused with “search found the goal”, and neither can be confused with a dead end of a single branch.
 
 ## Core boundary
 
@@ -126,12 +164,13 @@ A change to `src/jamp/run.py` required specifically to support branching/backtra
 The experiment must record enough provenance to establish, from the executed state sequence, that:
 
 1. the initial search state was created;
-2. a branching frontier existed;
-3. the first alternative was selected;
-4. that alternative reached a dead end;
-5. the search state retained or recovered an alternative;
-6. the second alternative was selected;
-7. the goal was reached, or the search was correctly classified as exhausted/budget.
+2. a branching frontier containing `A` and `B` existed;
+3. `A` was selected first by the declared minimum-id strategy;
+4. `A` led to `X`;
+5. `X` was expanded and identified as a dead end without terminating the Run;
+6. the search state retained the pending alternative `B`;
+7. `B` was selected next;
+8. `B` led to `G` and the goal was reached.
 
 The provenance representation remains opaque to Artifact v0.
 
@@ -148,6 +187,8 @@ Classification: **technical PASS of execution, insufficient for the target EXP-0
 ### B — TARGET PASS
 
 The existing Run contract executes a genuine branching/backtracking search using adapter-owned `SearchState`, including frontier and search bookkeeping, with no changes to `src/jamp/run.py` or `RunResult`.
+
+The required execution specifically reaches `A`, then the dead-end `X`, then continues with `B` and reaches `G` under the declared minimum-id strategy.
 
 This is the required successful outcome of EXP-03.
 
@@ -183,7 +224,7 @@ The following are separate from C and must not be silently folded into it:
 
 - **RunResult failure:** the search requires new domain-specific fields or altered RunResult semantics to communicate its result.
 - **Artifact failure:** the required executed result cannot be represented by Artifact v0 without domain-specific schema/serializer changes.
-- **Reproducibility failure:** the required branching/backtracking behavior cannot be deterministically demonstrated from a fixed initial condition and declared execution parameters.
+- **Reproducibility failure:** the required branching/backtracking behavior cannot be deterministically demonstrated from a fixed initial condition, fixed node ids, and declared execution parameters.
 
 These findings must be reported separately if encountered.
 
@@ -198,7 +239,7 @@ A completed EXP-03 report must include:
 5. evidence of the branching scenario and actual backtracking;
 6. the final search state and its declared interpretation;
 7. the serialized Artifact v0 result, if artifact testing is included;
-8. provenance sufficient to distinguish the first failed alternative from the successful alternative;
+8. provenance sufficient to distinguish `A → X` dead-end from the successful `B → G` alternative;
 9. working-tree cleanliness or an explicit explanation of any deviation.
 
 ## Final-state semantics
