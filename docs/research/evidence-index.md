@@ -72,3 +72,27 @@ A chain is canonically published only when this index names its exact ref and ev
 - B-audit result: `PASS — RECONSTRUCTIBLE`
 - Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-05-stochastic-gridworld/docs/research/EXP-05-EVIDENCE.md
 - B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-05-B-AUDIT.md
+
+## EXP-06
+
+- Ref: `feature/exp-06-parallel-frontier`
+- Specification: `docs/research/EXP-06-SPEC.md`
+- Specification blob: `7c77c8766b87eec2182c3f36bd61903a1d6d4040`
+- Scenarios: `docs/research/EXP-06-SCENARIOS.md`
+- Scenarios blob: `be846f30bea07c943c34288c7ef63f049301d61e`
+- Evidence: `docs/research/EXP-06-EVIDENCE.md`
+- Evidence blob: `24c706e93b16cd77afe70e18aa15c9d9593b0e65`
+- Execution / correction commits: `d5920ecd9edffbe9a56392e43bc343398aaface7`, `d2b680d38ffa420dcfd6b7449e8f5c7b7d95328d`, `62eadcc94c4df606489e8f6848098de50d77bb80`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Adapter blob: `4654c19abe7038830b109531de7105f65defb06e`
+- Test blob: `c910c9952149b241ba2124bf5e4627fb5c703f18`
+- Workflow blob: `58952e03aee85a650425ee11a47dd08ab1c4a9db`
+- Local result: `4/4 PASS` (`4 passed in 0.77s`)
+- CI visual evidence: GitHub Mobile screenshot supplied in the research session at `2026-09-15T22:38:56Z`; Run #6 failed on the pre-correction signature mismatch, Runs #7 and #8 are shown as `Success` after correction/registration. Numeric IDs for #7/#8 are intentionally not asserted because they were not captured.
+- Dedicated workflow registered on `main`: commit `9e5cc16abba46f831b6131220432f98f5c1347b4`
+- Recorded outcome: `CLOSED — TARGET PASS`
+- Scope note: bounded to real threaded parallel-frontier execution, causal DAG canonicalization, logical replay, and Core immutability; does not establish universal concurrency or distributed-system support.
+- B-audit: `docs/research/EXP-06-B-AUDIT.md`
+- B-audit result: `PASS — RECONSTRUCTIBLE`
+- Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-06-parallel-frontier/docs/research/EXP-06-EVIDENCE.md
+- B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-06-B-AUDIT.md
