@@ -43,9 +43,15 @@ def test_exp03_search_transfer():
 
 def test_exp03_provenance_is_linear_search_state_chain():
     adapter = Exp03Adapter()
-    result = __import__("jamp.run", fromlist=["run"]).run(adapter)
+    from jamp.run import run
+
+    result = run(adapter)
 
     assert result.steps == 5
     assert len(adapter.history) == result.steps
-    for previous, _selected, current in adapter.history:
-        assert previous.current != current.current or previous != current
+    assert [selected for _before, selected, _after in adapter.history] == [3, 1, 0, 2, 4]
+
+    for index in range(len(adapter.history) - 1):
+        _before, _selected, after = adapter.history[index]
+        next_before, _next_selected, _next_after = adapter.history[index + 1]
+        assert after == next_before
