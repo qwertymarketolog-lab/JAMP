@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from exp03_graph import G, NODES, S, successors
+from exp03_graph import G, S, successors
 
 
 @dataclass(frozen=True)
@@ -53,4 +53,4 @@ class Exp03Adapter:
         return G.id in state.visited
 
 
-__all__ = ["SearchState", "Exp03Adapter", "NODES"]
+__all__ = ["SearchState", "Exp03Adapter"]
