@@ -95,12 +95,11 @@ def test_r0_2_reverse_physical_order_is_canonicalized_identically():
 
 def test_r0_3_replay_does_not_execute_workers(monkeypatch):
     recorded_log = _capture_from_exp06_adapter()
-    adapter = ParallelDAGAdapter(ParallelDAGState())
 
     def raise_if_called(*_args, **_kwargs):
         raise AssertionError("EXP-06 worker execution must not run during EXP-07 replay")
 
-    monkeypatch.setattr(adapter, "_worker_task", raise_if_called)
+    monkeypatch.setattr(ParallelDAGAdapter, "_worker_task", raise_if_called)
 
     result = replay(recorded_log)
     assert result.dag_hash == EXPECTED_DAG_HASH
