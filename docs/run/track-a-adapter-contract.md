@@ -124,6 +124,33 @@ The adapter is accepted only if, for the agreed test cases, it reproduces:
 
 The gate must also verify that the adapter consumes the expected iteration budget where Track A continues through empty-candidate recovery.
 
+### Equivalence gate status
+
+Adapter equivalence gate: **PASS, 15/15** on the pre-cosmetic gate state.
+
+- Cases: roots `{2,3,5}` × seeds `{0,1,2,42,99}`
+- Anchor: `track_a/common.py @ 4b8aa64e` (direct run)
+- Adapter: `tests/research/track_a_run_adapter.py`
+- Gate: `tests/research/test_track_a_equivalence.py`
+- Verified on: pre-cosmetic gate state, before commit `3fb8852a4badfe11af28c2f21b3f7a09c3a965a7`
+- Post-cosmetic commit: `3fb8852a4badfe11af28c2f21b3f7a09c3a965a7`
+- Post-cosmetic diff: rename/output-only; no gate-semantic change observed
+- Post-cosmetic re-run: **NOT PERFORMED**
+
+The verified gate result covers all 15 cases and established:
+
+- final object set equality (order-independent);
+- stop-reason mapping `MAX_ITERATIONS → budget`;
+- `iterations == 500`;
+- `steps == 4`;
+- `final_size == 13`.
+
+Not compared:
+
+- Track A `steps` (`len(history) == 13`) vs `RunResult.steps` (`4`) — documented D8 divergence, not a mismatch.
+
+Commit `3fb8852a...` changes only the equivalence-test naming and PASS output from 30 to 15; it does not itself carry a new execution result. Its diff was inspected remotely and contains no semantic gate change.
+
 ## Non-goals
 
 This contract does not:
