@@ -20,6 +20,8 @@ class Event:
     is_deviated: bool
     state_after: StateSnapshot
     blocked: bool
+    intended_by: str = "agent"
+    outcome_from: str = "environment"
 
 
 @dataclass(frozen=True)
