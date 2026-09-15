@@ -1,30 +1,44 @@
 # Track A adapter equivalence result
 
-Gate:          `tests/research/test_track_a_equivalence.py`
-Cases:         15 (roots `{2,3,5}` × seeds `{0,1,2,42,99}`)
-Anchor:        `track_a/common.py @ 4b8aa64` (direct run)
-Adapter:       `tests/research/track_a_run_adapter.py` (D1–D8)
+## Gate
 
-## Observed PASS
+- File:    `tests/research/test_track_a_equivalence.py`
+- History: introduced in `2def08a`, label-corrected in `3fb8852`
+- Adapter: `tests/research/track_a_run_adapter.py` (D1–D8)
+- Anchor:  `track_a/common.py @ 4b8aa64e` (direct run, reference semantics)
 
-Observed PASS on: `5155bc3c547530db53380ef06d677ae7a18e206a`
+## Observed result
 
-This was the SHA at the actual execution of the equivalence test. It is a pre-cosmetic state relative to the later rename-only change; execution provenance is kept separate from the later commit state.
+PASS 15/15 during pre-cosmetic development of the gate file.
 
-Verified (15/15):
+- Cases:   15 (roots {2,3,5} × seeds {0,1,2,42,99})
+- Verified (all 15/15):
+    * final object set equality (order-independent)
+    * stop reason mapping MAX_ITERATIONS → budget
+    * iterations == 500
+    * steps == 4
+    * final_size == 13
+- Not compared:
+    * Track A.steps (len(history), 13) vs RunResult.steps (4)
+      — documented D8 divergence
 
-- final object set equality (order-independent)
-- stop reason mapping `MAX_ITERATIONS → budget`
-- `iterations == 500`
-- `steps == 4`
-- `final_size == 13`
+## Provenance note
 
-## Post-cosmetic state
+Exact commit SHA on which the 15/15 PASS was executed is **not recorded**.
+The run was performed on a local working tree during development of the
+gate file; no automatic attribution to a commit exists.
 
-`3fb8852a` is a rename-only change. The equivalence execution was not repeated after that cosmetic change because no execution channel was available.
+`3fb8852` changes only label text within the gate file
+(`30 cases` → `15 cases`, `test_equivalence_30` → `test_equivalence_15`,
+`30/30 PASS` → `15/15 PASS`). It is a label-only correction and does not
+constitute a re-execution of the gate.
 
-## Not compared
+Therefore:
 
-- `Track A.steps` (`len(history)`, 13) vs `RunResult.steps` (4) — documented D8 divergence.
+- The equivalence result is a real observation.
+- Its SHA attribution is unknown.
+- `3fb8852` is not the execution commit; it is the label-corrected
+  version of the same file whose pre-correction state was observed to
+  PASS 15/15.
 
-The equivalence gate therefore establishes the listed object-set, stop-mapping, iteration, step, and final-size checks only; it does not establish equality of the two step-count semantics.
+No claim is made here about which commit the PASS ran against.
