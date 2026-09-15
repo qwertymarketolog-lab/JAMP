@@ -21,14 +21,30 @@ state-space domain without semantic change?
 The experiment deliberately separates Core transfer from artifact
 production. The existing Track-A exporter was not modified.
 
-## Result
+## Result (executed at `0fcc8dfe42f8f120926e24d3d2f96d068b3e5c74`)
 
-### Core level — PASS
+Working tree: clean at execution time.
+
+### Core transfer — PASS
 
 The existing Run v0.3 Core executed the 8-puzzle adapter without
 modification.
 
-Observed result:
+Command:
+
+```text
+PYTHONPATH=src:. python -m pytest -q \
+  tests/research/test_puzzle8_transfer.py \
+  tests/research/test_puzzle8_provenance.py
+```
+
+Result:
+
+```text
+2 passed in 0.49s
+```
+
+The same execution produced:
 
 ```text
 steps=2
@@ -48,11 +64,14 @@ No change was made to `src/jamp/run.py`.
 
 ### Adapter provenance — PASS
 
-The 8-puzzle adapter records two non-empty transitions:
+The same SHA-anchored execution recorded two non-empty transitions:
 
 ```text
-state_before --RIGHT--> state_after
-state_before --RIGHT--> state_after
+START
+  --RIGHT-->
+(1,2,3,4,5,6,7,0,8)
+  --RIGHT-->
+(1,2,3,4,5,6,7,8,0)
 ```
 
 Track A provenance has a different structure:
@@ -75,34 +94,25 @@ provenance models.
 
 ### Artifact-exists — PASS (two domains)
 
-A minimal neutral JSON representation was produced for the 8-puzzle
-without changing the production exporter or the Core.
-
-The neutral representation contains:
+The neutral exporter executed at the same commit produced:
 
 ```text
-contract
-adapter
-run_result
-final_state
-provenance
+contract:     run-v0.3
+adapter:      8puzzle
+steps:        2
+iterations:   2
+stop_reason:  terminal
+final_state:  [1,2,3,4,5,6,7,8,0]
+provenance:   two RIGHT transitions START -> intermediate -> GOAL
 ```
 
-For 8-puzzle:
+The neutral representation contains Run-level result fields together
+with domain payload without requiring Track-A-specific internal
+structure.
 
-```json
-"final_state": [1,2,3,4,5,6,7,8,0]
-```
-
-and provenance contains state/action/state transitions.
-
-Track A already has a working artifact representation through the
-existing exporter, which remains unchanged.
-
-Therefore a neutral artifact representation has been demonstrated for
-two structurally different domains.
-
-This does **not** establish general artifact neutrality.
+The execution above is anchored to the exact repository commit shown
+in this section. The working tree was clean, so the result does not
+depend on uncommitted local copies of the experiment files.
 
 ### Artifact-production-transfer — NOT TESTED
 
@@ -193,6 +203,10 @@ is empty.
 `git diff --check` was clean.
 
 No changes were made to the Core or the existing production exporter.
+
+The SHA-anchored execution recorded above was performed after checking
+out the exact implementation commit `0fcc8dfe42f8f120926e24d3d2f96d068b3e5c74`
+with a clean working tree.
 
 ## Experimental boundary
 
