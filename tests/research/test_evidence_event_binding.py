@@ -123,9 +123,7 @@ def test_t5_replay_restores_and_verifies_chain() -> None:
     persisted = [{"evidence_ref": event.evidence_ref} for event in original]
     restored = [ResearchEvent(**state) for state in persisted]
 
-    assert [event.evidence_ref for event in restored] == [
-        event.evidence_ref for event in original
-    ]
+    assert [event.evidence_ref for event in restored] == [event.evidence_ref for event in original]
     assert _verify_chain(restored)
 
 
