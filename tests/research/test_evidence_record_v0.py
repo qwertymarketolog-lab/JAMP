@@ -5,8 +5,6 @@ They exercise the existing P19.1 canonicalization primitive and a local
 V0 schema boundary.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from jamp.research.canonical import canonical_bytes, replay_hash
