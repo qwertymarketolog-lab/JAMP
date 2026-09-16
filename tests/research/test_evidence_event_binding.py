@@ -21,6 +21,19 @@ class ResearchEvent:
             raise TypeError("ResearchEvent.evidence_ref must be a hash reference string")
 
 
+def _event_ref(event: ResearchEvent) -> str:
+    return replay_hash({"evidence_ref": event.evidence_ref})
+
+
+def _verify_chain(chain: list[ResearchEvent]) -> bool:
+    if not chain:
+        return False
+    for index in range(1, len(chain)):
+        if chain[index].evidence_ref != _event_ref(chain[index - 1]):
+            return False
+    return True
+
+
 def test_t1_evidence_binding_is_deterministic() -> None:
     ref_a = replay_hash(V0_001)
     ref_b = replay_hash(V0_001)
@@ -68,3 +81,34 @@ def test_t3_c_event_is_independent_of_evidence_structure() -> None:
     assert event.evidence_ref == EXPECTED_HASH
     assert replay_hash(modified) != event.evidence_ref
     assert event == ResearchEvent(evidence_ref=EXPECTED_HASH)
+
+
+def test_t4_a_evidence_substitution_breaks_chain() -> None:
+    event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
+    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
+    valid_chain = [event_a, event_b]
+
+    substituted = ResearchEvent(evidence_ref=replay_hash({"evidence_ref": "substituted"}))
+    invalid_chain = [event_a, substituted]
+
+    assert _verify_chain(valid_chain)
+    assert not _verify_chain(invalid_chain)
+
+
+def test_t4_b_predecessor_substitution_breaks_chain() -> None:
+    event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
+    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
+    alternate = ResearchEvent(evidence_ref=replay_hash({"evidence_ref": "alternate"}))
+    broken = ResearchEvent(evidence_ref=_event_ref(alternate))
+
+    assert _verify_chain([event_a, event_b])
+    assert not _verify_chain([event_a, broken])
+
+
+def test_t4_c_reordering_breaks_chain() -> None:
+    event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
+    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
+    event_c = ResearchEvent(evidence_ref=_event_ref(event_b))
+
+    assert _verify_chain([event_a, event_b, event_c])
+    assert not _verify_chain([event_a, event_c, event_b])
