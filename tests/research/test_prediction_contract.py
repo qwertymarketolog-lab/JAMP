@@ -39,10 +39,31 @@ def test_canonical_bytes_match_the_declared_hash_material() -> None:
 
 
 def test_each_mutable_input_changes_content_hash() -> None:
-    assert compute_prediction_hash(HYPOTHESIS_REF, "expanded_edges", EXPECTED_DIRECTION) != EXPECTED_HASH
-    assert compute_prediction_hash(HYPOTHESIS_REF, TARGET_METRIC, ExpectedDirection.INCREASE) != EXPECTED_HASH
+    assert (
+        compute_prediction_hash(
+            HYPOTHESIS_REF,
+            "expanded_edges",
+            EXPECTED_DIRECTION,
+        )
+        != EXPECTED_HASH
+    )
+    assert (
+        compute_prediction_hash(
+            HYPOTHESIS_REF,
+            TARGET_METRIC,
+            ExpectedDirection.INCREASE,
+        )
+        != EXPECTED_HASH
+    )
     other_hypothesis = "0" * 64
-    assert compute_prediction_hash(other_hypothesis, TARGET_METRIC, EXPECTED_DIRECTION) != EXPECTED_HASH
+    assert (
+        compute_prediction_hash(
+            other_hypothesis,
+            TARGET_METRIC,
+            EXPECTED_DIRECTION,
+        )
+        != EXPECTED_HASH
+    )
 
 
 def test_missing_prediction_hash_is_rejected() -> None:

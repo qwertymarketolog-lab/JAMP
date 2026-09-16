@@ -6,9 +6,9 @@ run metadata, or mutable pointer.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
-import re
 from typing import Any
 
 from .canonical import canonical_bytes, replay_hash
@@ -22,7 +22,7 @@ class PredictionIntegrityError(ValueError):
     """Raised when a PredictionRecord violates Schema v0."""
 
 
-class ExpectedDirection(str, Enum):
+class ExpectedDirection(str, Enum):  # noqa: UP042
     DECREASE = "DECREASE"
     INCREASE = "INCREASE"
     NO_CHANGE = "NO_CHANGE"
@@ -35,7 +35,12 @@ def _validate_hash(value: Any, field: str) -> str:
 
 
 def _canonical_metric(value: Any) -> str:
-    if not isinstance(value, str) or not value or value != value.strip() or not _TARGET_METRIC_RE.fullmatch(value):
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or not _TARGET_METRIC_RE.fullmatch(value)
+    ):
         raise PredictionIntegrityError("target_metric must be a canonical snake_case identifier")
     return value
 
