@@ -16,8 +16,14 @@ def _digest(value: object) -> str:
 
 
 def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tuple[str, dict]:
-    acceptance = {"field": "x", "op": "eq", "value": 2}
-    rejection = {"field": "x", "op": "eq" if not overlap else "ge", "value": 3 if not overlap else 2}
+    if overlap:
+        acceptance = {"field": "x", "op": "in", "value": [1, 2]}
+        rejection = {"field": "x", "op": "in", "value": [2, 3]}
+        pass_sample, fail_sample = 1, 3
+    else:
+        acceptance = {"field": "x", "op": "eq", "value": 2}
+        rejection = {"field": "x", "op": "eq", "value": 3}
+        pass_sample, fail_sample = 2, 3
     inconclusive = {"field": "x", "op": "eq", "value": 0}
     criterion = {
         "criterion_id": "criterion-1",
@@ -30,12 +36,12 @@ def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tup
         "rejection_predicate": rejection,
         "inconclusive_predicate": inconclusive,
         "self_test": {
-            "pass_case": {"sample": {"x": 2}, "expected": "FAIL" if self_test_failure else "PASS"},
-            "fail_case": {"sample": {"x": 3}, "expected": "FAIL"},
+            "pass_case": {"sample": {"x": pass_sample}, "expected": "FAIL" if self_test_failure else "PASS"},
+            "fail_case": {"sample": {"x": fail_sample}, "expected": "FAIL"},
             "inconclusive_case": {"sample": {"x": 0}, "expected": "INCONCLUSIVE"},
         },
         "provenance_reference": "authoring-1",
-        "covered_domain": [{"x": 0}, {"x": 2}, {"x": 3}],
+        "covered_domain": [{"x": 0}, {"x": pass_sample}, {"x": 2}, {"x": fail_sample}],
     }
     criterion_hash = _digest(criterion)
     return criterion_hash, {**criterion, "criterion_hash": criterion_hash}
