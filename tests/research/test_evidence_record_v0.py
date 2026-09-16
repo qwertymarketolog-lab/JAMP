@@ -24,9 +24,7 @@ EXPECTED_CANONICAL = (
 )
 EXPECTED_HASH = "c791c27c173d351847da161648ba2ebaae3626223d43c6115294913c69e98085"
 
-ALLOWED_FIELDS = frozenset(
-    {"evidence_type", "payload", "source_ref", "observed_at"}
-)
+ALLOWED_FIELDS = frozenset({"evidence_type", "payload", "source_ref", "observed_at"})
 FORBIDDEN_FIELDS = frozenset({"interpretation", "claim", "confidence"})
 
 
