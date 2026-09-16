@@ -1,6 +1,5 @@
 """Replay Isolation R0 research checks against the existing public replay primitives."""
 
-import os
 import random
 import time
 
