@@ -22,7 +22,42 @@ jobs:
       - name: Install development dependencies
         run: python -m pip install ".[dev]"
 
-      - name: Run EXP-08 execution tests
+      - name: Verify execution layer
         env:
           PYTHONPATH: src
         run: python -m pytest -q tests/research/test_exp08_mutation_execution.py
+
+      - name: Execute EXP-08 mutation corpus and emit raw observations
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tests.research.exp08_mutation_execution import collect_raw_observations
+          import json
+
+          observations = collect_raw_observations()
+          path = Path("EXP-08-EXECUTION.md")
+          lines = [
+              "# EXP-08 Execution — Raw Observations",
+              "",
+              "This file contains raw execution output only. No A/B/C/D classification is applied here.",
+              "",
+          ]
+          for observation in observations:
+              lines.append(f"## {observation['mutation_id']}")
+              lines.append("")
+              lines.append("```json")
+              lines.append(json.dumps(observation, ensure_ascii=False, indent=2, sort_keys=True))
+              lines.append("```")
+              lines.append("")
+          path.write_text("\\n".join(lines), encoding="utf-8")
+          print(path.read_text(encoding="utf-8"))
+          PY
+
+      - name: Upload raw EXP-08 observations
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-08-raw-observations
+          path: EXP-08-EXECUTION.md
+          if-no-files-found: error
