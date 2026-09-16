@@ -7,7 +7,7 @@ introducing any production API or runtime behavior.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import pytest
 
@@ -18,7 +18,7 @@ class ContractViolationError(ValueError):
     """Raised when a research-only Contingency R0 invariant is violated."""
 
 
-class EpistemicStatus(str, Enum):
+class EpistemicStatus(StrEnum):
     """Research-only epistemic states used by the Contingency R0 contract."""
 
     FACT_ABOUT_SEARCH = "FACT_ABOUT_SEARCH"
@@ -66,7 +66,7 @@ class ContingencyEventR0:
         """Return the fixed event kind; it is not itself epistemic evidence."""
         return "CONTINGENCY_EVENT"
 
-    def replay(self, *, reproduced: bool) -> "ContingencyEventR0":
+    def replay(self, *, reproduced: bool) -> ContingencyEventR0:
         """Apply the research-only controlled-replay boundary."""
         if not reproduced:
             return ContingencyEventR0(
