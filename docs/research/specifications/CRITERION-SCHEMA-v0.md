@@ -25,7 +25,7 @@ Criterion:
   acceptance_predicate: PureLogicExpression
   rejection_predicate: PureLogicExpression
   inconclusive_predicate: PureLogicExpression
-  self_test_cases:
+  self_test:
     pass_case: RawObservationSample
     fail_case: RawObservationSample
     inconclusive_case: RawObservationSample
@@ -71,7 +71,7 @@ Pure deterministic logic evaluating an observation against the rejection conditi
 
 Pure deterministic logic evaluating an observation against the inconclusive condition.
 
-### `self_test_cases`
+### `self_test`
 
 Mandatory deterministic control fixtures for the three result classes:
 
