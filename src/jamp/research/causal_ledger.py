@@ -232,10 +232,13 @@ class CausalLedger:
         prediction_commit_hash: str,
         execution_id: str,
     ) -> CausalEventV0:
-        payload = ExecutionStartV0(
+        payload_model = ExecutionStartV0(
             prediction_commit_hash=prediction_commit_hash,
             execution_id=execution_id,
-        ).canonical_payload()
+        )
+        if execution_id in self._execution_ids:
+            raise ExecutionIdDuplicateError("execution_id already exists")
+        payload = payload_model.canonical_payload()
         return self.append(
             self.build_event(
                 EventTypeV0.EXECUTION_START,
@@ -288,7 +291,11 @@ class CausalLedger:
             EventTypeV0.EXECUTION_START: EventTypeV0.EXECUTION_RESULT,
             EventTypeV0.EXECUTION_RESULT: EventTypeV0.EVIDENCE_RECORD,
         }
-        if parent_type is EventTypeV0.PREDICTION_COMMIT and event.event_type is EventTypeV0.EXECUTION_START:
+        if event.event_type is EventTypeV0.EXECUTION_START:
+            if parent_type is not EventTypeV0.PREDICTION_COMMIT:
+                raise PredictionCommitMissingError(
+                    "execution_start requires a PREDICTION_COMMIT parent"
+                )
             execution_start = ExecutionStartV0(**dict(payload))
             if execution_start.prediction_commit_hash != event.parent_hash:
                 raise PredictionCommitMissingError(
@@ -296,10 +303,6 @@ class CausalLedger:
                 )
             if execution_start.execution_id in self._execution_ids:
                 raise ExecutionIdDuplicateError("execution_id already exists")
-        elif event.event_type is EventTypeV0.EXECUTION_START:
-            raise PredictionCommitMissingError(
-                "execution_start requires a PREDICTION_COMMIT parent"
-            )
         elif event.event_type is not expected[parent_type]:
             raise CausalOrderViolationError("event type violates the R0.2 causal order")
 
