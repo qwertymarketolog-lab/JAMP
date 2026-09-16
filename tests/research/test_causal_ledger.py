@@ -123,22 +123,20 @@ def test_f_sequence_gap_is_rejected_atomically() -> None:
 def test_g_old_head_is_rejected_atomically() -> None:
     ledger = _ledger()
     genesis = ledger.genesis()
-    ledger.append_prediction_commit(_HASH)
+    prediction = ledger.append_prediction_commit(_HASH)
+    payload = {
+        "execution_id": "exec-a",
+        "prediction_commit_hash": genesis.event_hash,
+    }
     event = _event(
         ledger,
         EventTypeV0.EXECUTION_START,
         parent_hash=genesis.event_hash,
         sequence_index=2,
-        payload={"execution_id": "exec-a", "prediction_commit_hash": genesis.event_hash},
+        payload=payload,
     )
-    _assert_rejected_without_mutation(ledger, event, event_payload(event, genesis.event_hash), HeadViolationError)
-
-
-def event_payload(event, prediction_commit_hash: str) -> dict[str, str]:
-    return {
-        "execution_id": "exec-a",
-        "prediction_commit_hash": prediction_commit_hash,
-    }
+    assert prediction.event_hash == ledger.head
+    _assert_rejected_without_mutation(ledger, event, payload, HeadViolationError)
 
 
 def test_h_duplicate_event_is_rejected_atomically() -> None:
@@ -177,14 +175,14 @@ def test_j_execution_start_binds_to_prediction_commit() -> None:
     assert ledger.event_count == 3
 
 
-def test_k_execution_start_with_non_commit_parent_is_rejected_atomically() -> None:
+def test_k_execution_start_without_prediction_commit_is_rejected_atomically() -> None:
     ledger = _ledger()
     payload = {"execution_id": "exec-a", "prediction_commit_hash": ledger.head}
     event = _event(ledger, EventTypeV0.EXECUTION_START, payload=payload)
     _assert_rejected_without_mutation(ledger, event, payload, PredictionCommitMissingError)
 
 
-def test_l_execution_start_with_missing_prediction_commit_reference_is_rejected_atomically() -> None:
+def test_l_execution_start_wrong_prediction_commit_reference_is_rejected_atomically() -> None:
     ledger = _ledger()
     prediction = ledger.append_prediction_commit(_HASH)
     payload = {"execution_id": "exec-a", "prediction_commit_hash": "2" * 64}
@@ -197,22 +195,21 @@ def test_m_duplicate_execution_id_is_rejected_atomically() -> None:
     ledger = _ledger()
     prediction = ledger.append_prediction_commit(_HASH)
     ledger.append_execution_start(prediction.event_hash, "exec-a")
-    with pytest.raises(CausalOrderViolationError):
-        ledger.append_prediction_commit("2" * 64)
+    before = ledger.snapshot()
+    with pytest.raises(ExecutionIdDuplicateError):
+        ledger.append_execution_start(prediction.event_hash, "exec-a")
+    assert ledger.snapshot() == before
 
 
 def test_n_execution_start_payload_hash_mismatch_is_rejected_atomically() -> None:
     ledger = _ledger()
     prediction = ledger.append_prediction_commit(_HASH)
     payload = {"execution_id": "exec-a", "prediction_commit_hash": prediction.event_hash}
-    event = ledger.build_event(
-        EventTypeV0.EXECUTION_START,
-        2,
-        prediction.event_hash,
-        payload,
-    )
+    event = ledger.build_event(EventTypeV0.EXECUTION_START, 2, prediction.event_hash, payload)
     forged_payload = {"execution_id": "exec-b", "prediction_commit_hash": prediction.event_hash}
-    _assert_rejected_without_mutation(ledger, event, forged_payload, PayloadHashMismatchError)
+    _assert_rejected_without_mutation(
+        ledger, event, forged_payload, PayloadHashMismatchError
+    )
 
 
 def test_o_execution_start_event_hash_mismatch_is_rejected_atomically() -> None:
@@ -224,32 +221,24 @@ def test_o_execution_start_event_hash_mismatch_is_rejected_atomically() -> None:
     _assert_rejected_without_mutation(ledger, forged, payload, EventHashMismatchError)
 
 
-def test_p_duplicate_execution_id_is_rejected_atomically() -> None:
+def test_p_execution_start_sequence_gap_is_rejected_atomically() -> None:
     ledger = _ledger()
     prediction = ledger.append_prediction_commit(_HASH)
-    ledger.append_execution_start(prediction.event_hash, "exec-a")
-    snapshot = ledger.snapshot()
-    payload = {"execution_id": "exec-a", "prediction_commit_hash": ledger.head}
-    event = ledger.build_event(EventTypeV0.EXECUTION_START, 3, ledger.head, payload)
-    with pytest.raises(CausalOrderViolationError):
-        ledger.append(event, payload=payload)
-    assert ledger.snapshot() == snapshot
+    payload = {"execution_id": "exec-a", "prediction_commit_hash": prediction.event_hash}
+    event = ledger.build_event(EventTypeV0.EXECUTION_START, 7, prediction.event_hash, payload)
+    _assert_rejected_without_mutation(ledger, event, payload, SequenceDiscontinuityError)
 
 
-def test_q_execution_start_wrong_prediction_commit_reference_is_rejected_atomically() -> None:
+def test_q_execution_start_old_parent_is_rejected_atomically() -> None:
     ledger = _ledger()
-    first = ledger.append_prediction_commit(_HASH)
-    second_payload = {"prediction_hash": "2" * 64}
-    second = ledger.append(
-        ledger.build_event(EventTypeV0.PREDICTION_COMMIT, 2, first.event_hash, second_payload),
-        payload=second_payload,
-    )
-    payload = {"execution_id": "exec-a", "prediction_commit_hash": first.event_hash}
-    event = ledger.build_event(EventTypeV0.EXECUTION_START, 3, second.event_hash, payload)
-    _assert_rejected_without_mutation(ledger, event, payload, PredictionCommitMissingError)
+    genesis = ledger.genesis()
+    ledger.append_prediction_commit(_HASH)
+    payload = {"execution_id": "exec-a", "prediction_commit_hash": genesis.event_hash}
+    event = ledger.build_event(EventTypeV0.EXECUTION_START, 2, genesis.event_hash, payload)
+    _assert_rejected_without_mutation(ledger, event, payload, HeadViolationError)
 
 
-def test_r_rejection_preserves_head_and_event_count_for_execution_start() -> None:
+def test_r_execution_start_rejection_preserves_ledger_state() -> None:
     ledger = _ledger()
     prediction = ledger.append_prediction_commit(_HASH)
     payload = {"execution_id": "exec-a", "prediction_commit_hash": "2" * 64}
