@@ -1,4 +1,4 @@
-"""EXP-10 / R0.3 append-only causal ledger.
+"""EXP-10 / R0.4 append-only causal ledger.
 
 The ledger is a local, deterministic integrity layer. It binds events into a
 single append-only hash chain; it does not claim external existence or time.
@@ -68,6 +68,14 @@ class PredictionCommitMissingError(LedgerError):
     code = "PREDICTION_COMMIT_MISSING"
 
 
+class ExecutionStartMissingError(LedgerError):
+    code = "EXECUTION_START_MISSING"
+
+
+class ExecutionResultDuplicateError(LedgerError):
+    code = "EXECUTION_RESULT_DUPLICATE"
+
+
 class EventTypeV0(str, Enum):  # noqa: UP042
     GENESIS = "GENESIS"
     PREDICTION_COMMIT = "PREDICTION_COMMIT"
@@ -105,6 +113,24 @@ class ExecutionStartV0:
         return {
             "execution_id": self.execution_id,
             "prediction_commit_hash": self.prediction_commit_hash,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionResultV0:
+    """R0.4 payload binding a result reference to an ExecutionStart event."""
+
+    execution_start_hash: str
+    result_ref: str
+
+    def __post_init__(self) -> None:
+        _validate_hash(self.execution_start_hash, "execution_start_hash")
+        _validate_hash(self.result_ref, "result_ref")
+
+    def canonical_payload(self) -> dict[str, str]:
+        return {
+            "execution_start_hash": self.execution_start_hash,
+            "result_ref": self.result_ref,
         }
 
 
@@ -159,12 +185,13 @@ class LedgerSnapshot:
 
 
 class CausalLedger:
-    """Single-head, append-only causal ledger for EXP-10 R0.3."""
+    """Single-head, append-only causal ledger for EXP-10 R0.4."""
 
     def __init__(self) -> None:
         self._events: dict[str, CausalEventV0] = {}
         self._head = ZERO_HASH
         self._execution_ids: set[str] = set()
+        self._execution_result_starts: set[str] = set()
 
     @property
     def head(self) -> str:
@@ -249,6 +276,28 @@ class CausalLedger:
             payload=payload,
         )
 
+    def append_execution_result(
+        self,
+        execution_start_hash: str,
+        result_ref: str,
+    ) -> CausalEventV0:
+        payload_model = ExecutionResultV0(
+            execution_start_hash=execution_start_hash,
+            result_ref=result_ref,
+        )
+        if execution_start_hash in self._execution_result_starts:
+            raise ExecutionResultDuplicateError("execution result already exists")
+        payload = payload_model.canonical_payload()
+        return self.append(
+            self.build_event(
+                EventTypeV0.EXECUTION_RESULT,
+                len(self._events),
+                self._head,
+                payload,
+            ),
+            payload=payload,
+        )
+
     def append(self, event: CausalEventV0, *, payload: Mapping[str, Any]) -> CausalEventV0:
         """Validate every condition before mutating state (L0)."""
         self._validate(event, payload)
@@ -256,6 +305,9 @@ class CausalLedger:
         if event.event_type is EventTypeV0.EXECUTION_START:
             execution_start = ExecutionStartV0(**dict(payload))
             self._execution_ids.add(execution_start.execution_id)
+        elif event.event_type is EventTypeV0.EXECUTION_RESULT:
+            execution_result = ExecutionResultV0(**dict(payload))
+            self._execution_result_starts.add(execution_result.execution_start_hash)
         self._head = event.event_hash
         return event
 
@@ -303,6 +355,18 @@ class CausalLedger:
                 )
             if execution_start.execution_id in self._execution_ids:
                 raise ExecutionIdDuplicateError("execution_id already exists")
+        elif event.event_type is EventTypeV0.EXECUTION_RESULT:
+            if parent_type is not EventTypeV0.EXECUTION_START:
+                raise ExecutionStartMissingError(
+                    "execution_result requires an EXECUTION_START parent"
+                )
+            execution_result = ExecutionResultV0(**dict(payload))
+            if execution_result.execution_start_hash != event.parent_hash:
+                raise ExecutionStartMissingError(
+                    "execution_result must bind to its immediate execution start parent"
+                )
+            if execution_result.execution_start_hash in self._execution_result_starts:
+                raise ExecutionResultDuplicateError("execution result already exists")
         elif event.event_type is not expected[parent_type]:
             raise CausalOrderViolationError("event type violates the R0.2 causal order")
 
@@ -321,6 +385,9 @@ __all__ = (
     "EventHashMismatchError",
     "EventTypeV0",
     "ExecutionIdDuplicateError",
+    "ExecutionResultDuplicateError",
+    "ExecutionResultV0",
+    "ExecutionStartMissingError",
     "ExecutionStartV0",
     "GenesisViolationError",
     "HeadViolationError",
