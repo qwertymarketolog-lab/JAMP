@@ -3,6 +3,7 @@
 Research-only coverage. NC-4 remains an explicit contract gap because the
 current lineage_graph API has no canonical-root/orphan-fragment contract.
 """
+
 from __future__ import annotations
 
 import pytest
