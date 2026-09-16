@@ -8,6 +8,7 @@ V0 schema boundary.
 from __future__ import annotations
 
 import pytest
+
 from jamp.research.canonical import canonical_bytes, replay_hash
 
 
