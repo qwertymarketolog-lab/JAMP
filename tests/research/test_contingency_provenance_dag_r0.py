@@ -7,8 +7,8 @@ no production API or runtime behavior.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import json
+from dataclasses import asdict, dataclass
 
 import pytest
 
@@ -146,7 +146,6 @@ def test_exp14_expected_and_unexpected_boundary_is_preserved() -> None:
 def test_exp14_new_path_is_a_child_transition_not_history_rewrite() -> None:
     first = _node(_event(suffix="0"))
     jumped = _node(_event(suffix="1"), first.event_ref)
-    graph = ProvenanceDAGR0(nodes=(first, jumped))
 
     assert jumped.parent_refs == (first.event_ref,)
     assert jumped.event.new_path == "search-branch-jump-1"
