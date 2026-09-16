@@ -84,7 +84,9 @@ def _merge_graphs(
     return merged
 
 
-def _canonical_graph(graph: dict[str, ResearchMergeEvent]) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+def _canonical_graph(
+    graph: dict[str, ResearchMergeEvent],
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
     return tuple(
         sorted(
             (
