@@ -3,9 +3,9 @@
 This file is intentionally self-contained: no production TextAudit API exists yet.
 """
 
+import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
-import hashlib
 
 import pytest
 
