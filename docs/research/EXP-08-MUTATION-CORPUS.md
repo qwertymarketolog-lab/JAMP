@@ -1,6 +1,6 @@
 # EXP-08 — Mutation Corpus
 
-**Status:** REVIEWED  
+**Status:** FROZEN  
 **Parent experiment:** EXP-08 Mutation Resistance  
 **Specification:** frozen EXP-08 contract, blob `c505ffd1ca0a2e7071313c95b6d8a75b19ac5641`  
 **Baseline:** EXP-07 Replay R0 verified implementation at commit `e241872ab3ed12d09a050e46c6259082e745ab0e`
@@ -200,8 +200,8 @@ The implementation and execution stages must consume this frozen corpus without 
 
 ## 7. Lifecycle boundary
 
-Current status is **REVIEWED**.
+Current status is **FROZEN**.
 
-The substantive review found all 12 mutations precise enough for the defined bounded experiment, with deterministic source fields, isolated mutation scope, explicit observable surfaces, and no premature experimental verdicts.
+The reviewed corpus is now formally frozen as the deterministic input contract for EXP-08. The 12 mutations, their source fields, exact mutation operations, and observable surfaces are fixed for the next lifecycle stage.
 
-The next permitted transition is formal freezing of this reviewed corpus. Implementation of mutators, test code, execution, evidence publication, and changes to `docs/research/evidence-index.md` remain out of scope until the corpus is FROZEN.
+Implementation of mutators and test code may begin only against this frozen corpus. Execution, evidence publication, and changes to `docs/research/evidence-index.md` remain out of scope until their respective lifecycle stages are reached.
