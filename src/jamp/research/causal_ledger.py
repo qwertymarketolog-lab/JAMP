@@ -420,6 +420,8 @@ class CausalLedger:
             if execution_result.execution_start_hash in self._execution_result_starts:
                 raise ExecutionResultDuplicateError("execution result already exists")
         elif event.event_type is EventTypeV0.EVIDENCE_RECORD:
+            if "execution_result_hash" not in payload or "evidence_ref" not in payload:
+                raise CausalOrderViolationError("event type violates the R0.2 causal order")
             if parent_type is not EventTypeV0.EXECUTION_RESULT:
                 raise ExecutionResultMissingError(
                     "evidence_record requires an EXECUTION_RESULT parent"
