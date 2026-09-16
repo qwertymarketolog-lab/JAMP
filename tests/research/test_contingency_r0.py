@@ -53,9 +53,7 @@ class ContingencyEventR0:
         if not self.provenance_ref.startswith("sha256:"):
             raise ContractViolationError("provenance_ref must be a canonical hash reference")
         if self.status is EpistemicStatus.SUPPORTED and not self.controlled_replay:
-            raise ContractViolationError(
-                "epistemic promotion requires controlled_replay"
-            )
+            raise ContractViolationError("epistemic promotion requires controlled_replay")
         if not self.controlled_replay and self.status is not EpistemicStatus.FACT_ABOUT_SEARCH:
             raise ContractViolationError(
                 "without controlled_replay status is limited to FACT_ABOUT_SEARCH"
@@ -144,10 +142,7 @@ def test_r0_negative_missing_expected_state() -> None:
 
 
 def test_r0_negative_broken_provenance() -> None:
-    with pytest.raises(
-        ContractViolationError,
-        match="canonical hash reference",
-    ):
+    with pytest.raises(ContractViolationError, match="canonical hash reference"):
         ContingencyEventR0(
             before_state="search-state-0",
             expected_state="search-state-1",
@@ -159,10 +154,7 @@ def test_r0_negative_broken_provenance() -> None:
 
 
 def test_r0_negative_randomness_cannot_be_declared_supported() -> None:
-    with pytest.raises(
-        ContractViolationError,
-        match="requires controlled_replay",
-    ):
+    with pytest.raises(ContractViolationError, match="requires controlled_replay"):
         ContingencyEventR0(
             before_state="search-state-0",
             expected_state="search-state-1",
@@ -175,10 +167,7 @@ def test_r0_negative_randomness_cannot_be_declared_supported() -> None:
 
 
 def test_r0_negative_epistemic_promotion_without_replay_is_rejected() -> None:
-    with pytest.raises(
-        ContractViolationError,
-        match="requires controlled_replay",
-    ):
+    with pytest.raises(ContractViolationError, match="requires controlled_replay"):
         ContingencyEventR0(
             before_state="search-state-0",
             expected_state="search-state-1",
