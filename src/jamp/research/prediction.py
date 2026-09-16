@@ -81,7 +81,10 @@ class PredictionRecord:
         object.__setattr__(self, "hypothesis_ref", hypothesis_ref)
         object.__setattr__(self, "target_metric", target_metric)
         object.__setattr__(self, "expected_direction", ExpectedDirection(expected_direction))
-        if compute_prediction_hash(hypothesis_ref, target_metric, expected_direction) != prediction_hash:
+        if (
+            compute_prediction_hash(hypothesis_ref, target_metric, expected_direction)
+            != prediction_hash
+        ):
             raise PredictionIntegrityError(
                 "prediction_hash does not match content"
             )
