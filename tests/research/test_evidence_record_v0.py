@@ -6,9 +6,7 @@ V0 schema boundary.
 """
 
 import pytest
-
 from jamp.research.canonical import canonical_bytes, replay_hash
-
 
 V0_001 = {
     "evidence_type": "observation",
