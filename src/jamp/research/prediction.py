@@ -4,6 +4,7 @@ Research-only, deterministic, content-addressed prediction contract.
 A prediction is defined before execution and contains no observed result,
 run metadata, or mutable pointer.
 """
+
 from __future__ import annotations
 
 import re
@@ -85,9 +86,7 @@ class PredictionRecord:
             compute_prediction_hash(hypothesis_ref, target_metric, expected_direction)
             != prediction_hash
         ):
-            raise PredictionIntegrityError(
-                "prediction_hash does not match content"
-            )
+            raise PredictionIntegrityError("prediction_hash does not match content")
 
     def canonical_payload(self) -> dict[str, str]:
         """Return the exact hash material, excluding the derived hash itself."""
