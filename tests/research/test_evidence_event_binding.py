@@ -112,3 +112,30 @@ def test_t4_c_reordering_breaks_chain() -> None:
 
     assert _verify_chain([event_a, event_b, event_c])
     assert not _verify_chain([event_a, event_c, event_b])
+
+
+def test_t5_replay_restores_and_verifies_chain() -> None:
+    event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
+    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
+    event_c = ResearchEvent(evidence_ref=_event_ref(event_b))
+
+    original = [event_a, event_b, event_c]
+    persisted = [{"evidence_ref": event.evidence_ref} for event in original]
+    restored = [ResearchEvent(**state) for state in persisted]
+
+    assert [event.evidence_ref for event in restored] == [
+        event.evidence_ref for event in original
+    ]
+    assert _verify_chain(restored)
+
+
+def test_t5_replay_detects_tampered_state() -> None:
+    event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
+    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
+    persisted = [
+        {"evidence_ref": event_a.evidence_ref},
+        {"evidence_ref": "tampered"},
+    ]
+    restored = [ResearchEvent(**state) for state in persisted]
+
+    assert not _verify_chain(restored)
