@@ -82,7 +82,9 @@ class PredictionRecord:
         object.__setattr__(self, "target_metric", target_metric)
         object.__setattr__(self, "expected_direction", ExpectedDirection(expected_direction))
         if compute_prediction_hash(hypothesis_ref, target_metric, expected_direction) != prediction_hash:
-            raise PredictionIntegrityError("prediction_hash does not match content")
+            raise PredictionIntegrityError(
+                "prediction_hash does not match content"
+            )
 
     def canonical_payload(self) -> dict[str, str]:
         """Return the exact hash material, excluding the derived hash itself."""
