@@ -227,10 +227,10 @@ class CausalLedger:
             raise SequenceDiscontinuityError("sequence_index must follow the current head")
 
         expected = {
-            EventTypeV0.PREDICTION_COMMIT: EventTypeV0.GENESIS,
-            EventTypeV0.EXECUTION_START: EventTypeV0.PREDICTION_COMMIT,
-            EventTypeV0.EXECUTION_RESULT: EventTypeV0.EXECUTION_START,
-            EventTypeV0.EVIDENCE_RECORD: EventTypeV0.EXECUTION_RESULT,
+            EventTypeV0.GENESIS: EventTypeV0.PREDICTION_COMMIT,
+            EventTypeV0.PREDICTION_COMMIT: EventTypeV0.EXECUTION_START,
+            EventTypeV0.EXECUTION_START: EventTypeV0.EXECUTION_RESULT,
+            EventTypeV0.EXECUTION_RESULT: EventTypeV0.EVIDENCE_RECORD,
         }
         if event.event_type is not expected[self._events[self._head].event_type]:
             raise CausalOrderViolationError("event type violates the R0.2 causal order")
