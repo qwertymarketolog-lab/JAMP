@@ -31,11 +31,14 @@ def test_canonical_bytes_are_deterministic() -> None:
 
 def test_canonical_bytes_match_the_declared_hash_material() -> None:
     record = make_record()
-    assert compute_prediction_hash(
-        record.hypothesis_ref,
-        record.target_metric,
-        record.expected_direction,
-    ) == EXPECTED_HASH
+    assert (
+        compute_prediction_hash(
+            record.hypothesis_ref,
+            record.target_metric,
+            record.expected_direction,
+        )
+        == EXPECTED_HASH
+    )
 
 
 def test_each_mutable_input_changes_content_hash() -> None:
