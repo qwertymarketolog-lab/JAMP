@@ -38,7 +38,7 @@ A chain is canonically published only when this index names its exact ref and ev
 - Evidence: `docs/research/EXP-04-EVIDENCE.md`
 - Evidence blob: `8ea4ce018edd14d854b706a3518b4006df50e4a3`
 - Execution commit: `0b12d63a49cab7fbb804f9fad29a3dbaa68ccb3d`
-- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bf8a`
 - Adapter blob: `f0f210359297abc0e327921599a6b3ff01b08af1`
 - Test blob: `74d2249835bf13a78d2ed90d73c539c5de1cf244`
 - Workflow blob: `251d1d5f4f93593e784f80dea19f0ea435ca9a3f`
@@ -60,7 +60,7 @@ A chain is canonically published only when this index names its exact ref and ev
 - Evidence: `docs/research/EXP-05-EVIDENCE.md`
 - Evidence blob: `a187e32111fe210ecf1c76e49530cb04c97a3dc9`
 - Execution commit: `df93172980c365eea9b370cf06a1de5bfbd36694`
-- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bf8a`
 - Adapter blob: `907ecd9f257b338bf0dd1413edafefc3129ec960`
 - Test blob: `a6e18f6b2774981bd535a1cc3c68501af6e3aec7`
 - Workflow blob: `4547902d5f7ead17215dc27af52af20fe210b5aa`
@@ -96,3 +96,21 @@ A chain is canonically published only when this index names its exact ref and ev
 - B-audit result: `PASS — RECONSTRUCTIBLE`
 - Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/feature/exp-06-parallel-frontier/docs/research/EXP-06-EVIDENCE.md
 - B-audit link: https://github.com/qwertymarketolog-lab/JAMP/blob/main/docs/research/EXP-06-B-AUDIT.md
+
+## EXP-07
+
+- Ref: `49e811a4420a95feebf64952e5842eae616d104e`
+- Evidence: `docs/research/EXP-07-EVIDENCE.md`
+- Evidence blob: `6d50e170df6514acacb8e18d9b701727e6a6f3dc`
+- Execution commit: `e241872ab3ed12d09a050e46c6259082e745ab0e`
+- Run Core blob at execution: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+- Adapter blob: `4654c19abe7038830b109531de7105f65defb06e`
+- Replay implementation blob: `3094a3fac59e712a556d32918946defe70aa5eb7`
+- Test blob: `7bdb5ff7300682b743ce57c2085e9c3604623930`
+- Workflow blob: `3dad7dd31ffb830e51c495a1bf30e168d5d96307`
+- CI run: `35056249176`
+- CI result: `success`
+- Pytest result: `5 passed in 0.04s`
+- Recorded outcome: `CLOSED — PASS`
+- Scope note: bounded to Replay R0 log reconstruction, deterministic canonicalization, no-worker-execution guard, provenance/DAG preservation, and Core immutability; does not establish universal replayability.
+- Evidence link: https://github.com/qwertymarketolog-lab/JAMP/blob/49e811a4420a95feebf64952e5842eae616d104e/docs/research/EXP-07-EVIDENCE.md
