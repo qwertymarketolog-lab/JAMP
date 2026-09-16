@@ -23,7 +23,7 @@ def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tup
     else:
         acceptance = {"field": "x", "op": "eq", "value": 2}
         rejection = {"field": "x", "op": "eq", "value": 3}
-        pass_sample, fail_sample = 2, 3
+        pass_sample, fail_sample = (3, 3) if self_test_failure else (2, 3)
     inconclusive = {"field": "x", "op": "eq", "value": 0}
     criterion = {
         "criterion_id": "criterion-1",
@@ -69,15 +69,15 @@ def _source(*, overlap: bool = False, self_test_failure: bool = False, bad_spec_
         "frozen_at": "2026-09-16T00:00:00Z",
     }
     spec_hash = _digest(specification)
-    specification["spec_hash"] = "0" * 64 if bad_spec_hash else spec_hash
-    ref_hash = spec_hash
+    declared_spec_hash = "0" * 64 if bad_spec_hash else spec_hash
+    specification["spec_hash"] = declared_spec_hash
     source = MappingArtifactSource(
-        specifications={ref_hash: specification},
+        specifications={declared_spec_hash: specification},
         criterion_sets={criterion_set_hash: criterion_set},
         criteria={criterion_hash: criterion},
         aggregation_rules={aggregation_hash: aggregation},
     )
-    return source, SpecificationRef("spec-1", "0", ref_hash)
+    return source, SpecificationRef("spec-1", "0", declared_spec_hash)
 
 
 def test_ce01_happy_path_passes_gate() -> None:
