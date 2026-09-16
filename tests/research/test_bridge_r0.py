@@ -83,9 +83,7 @@ class StochasticGridworldAdapter:
     def candidates(self, state: StochasticGridworldState) -> tuple[str, ...]:
         return (state.intended_sequence[state.step_count],)
 
-    def admissible(
-        self, state: StochasticGridworldState, action: str
-    ) -> bool:
+    def admissible(self, state: StochasticGridworldState, action: str) -> bool:
         return action in self.OFFSETS
 
     def strategy(
@@ -245,9 +243,9 @@ def test_bridge_r0_t3_ledger_binding() -> None:
 
 
 def test_bridge_r0_t4_ledger_blindness() -> None:
-    ledger_source = Path(
-        "src/jamp/research/causal_ledger.py"
-    ).read_text(encoding="utf-8")
+    ledger_source = Path("src/jamp/research/causal_ledger.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "StochasticGridworld" not in ledger_source
     assert "intended_action" not in ledger_source
