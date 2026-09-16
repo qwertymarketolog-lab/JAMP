@@ -15,6 +15,7 @@ from tests.research.test_contingency_causality_r0 import (
     CausalCandidateR0,
     CausalDecisionR0,
     _candidate,
+    evaluate_causal_candidate,
 )
 
 
@@ -100,9 +101,7 @@ def _candidate_ref(candidate: CausalCandidateR0) -> str:
 
 def evaluate_evidence_r0(candidate: CausalCandidateR0) -> EvidenceDecisionR0:
     """Convert a causal result to evidence status without promoting replay alone."""
-    causal_status = __import__(
-        "tests.research.test_contingency_causality_r0", fromlist=["evaluate_causal_candidate"]
-    ).evaluate_causal_candidate(candidate)
+    causal_status = evaluate_causal_candidate(candidate)
     if causal_status is CausalDecisionR0.NOT_SUPPORTED:
         return EvidenceDecisionR0.NOT_SUPPORTED
     if causal_status is CausalDecisionR0.INCONCLUSIVE:
