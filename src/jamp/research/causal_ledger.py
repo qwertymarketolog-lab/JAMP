@@ -6,10 +6,11 @@ single append-only hash chain; it does not claim external existence or time.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-import re
-from typing import Any, Mapping
+from typing import Any
 
 from .canonical import replay_hash
 
@@ -99,7 +100,11 @@ class CausalEventV0:
         object.__setattr__(self, "event_type", event_type)
         if self.event_version != "0":
             raise LedgerError("event_version must be '0'")
-        if not isinstance(self.sequence_index, int) or isinstance(self.sequence_index, bool) or self.sequence_index < 0:
+        if (
+            not isinstance(self.sequence_index, int)
+            or isinstance(self.sequence_index, bool)
+            or self.sequence_index < 0
+        ):
             raise LedgerError("sequence_index must be a non-negative integer")
         _validate_hash(self.parent_hash, "parent_hash")
         _validate_hash(self.payload_hash, "payload_hash")
