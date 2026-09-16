@@ -86,14 +86,10 @@ class StochasticGridworldAdapter:
     def admissible(self, state: StochasticGridworldState, action: str) -> bool:
         return action in self.OFFSETS
 
-    def strategy(
-        self, state: StochasticGridworldState, candidates: tuple[str, ...]
-    ) -> str:
+    def strategy(self, state: StochasticGridworldState, candidates: tuple[str, ...]) -> str:
         return candidates[0]
 
-    def apply(
-        self, state: StochasticGridworldState, action: str
-    ) -> StochasticGridworldState:
+    def apply(self, state: StochasticGridworldState, action: str) -> StochasticGridworldState:
         state_before = StateSnapshot(
             agent_pos=state.agent_pos,
             rng_state=state.rng_state,
@@ -225,12 +221,8 @@ def test_bridge_r0_t3_ledger_binding() -> None:
     ledger = CausalLedger()
     ledger.append_genesis()
     prediction = ledger.append_prediction_commit("1" * 64)
-    execution_start = ledger.append_execution_start(
-        prediction.event_hash, "bridge-r0-seed-1"
-    )
-    execution_result = ledger.append_execution_result(
-        execution_start.event_hash, result_ref
-    )
+    execution_start = ledger.append_execution_start(prediction.event_hash, "bridge-r0-seed-1")
+    execution_result = ledger.append_execution_result(execution_start.event_hash, result_ref)
 
     assert ledger.get(execution_result.event_hash) == execution_result
     assert execution_result.payload_hash == replay_hash(
@@ -243,9 +235,7 @@ def test_bridge_r0_t3_ledger_binding() -> None:
 
 
 def test_bridge_r0_t4_ledger_blindness() -> None:
-    ledger_source = Path("src/jamp/research/causal_ledger.py").read_text(
-        encoding="utf-8"
-    )
+    ledger_source = Path("src/jamp/research/causal_ledger.py").read_text(encoding="utf-8")
 
     assert "StochasticGridworld" not in ledger_source
     assert "intended_action" not in ledger_source
