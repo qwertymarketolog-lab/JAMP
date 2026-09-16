@@ -1,0 +1,28 @@
+name: EXP-08 Execution
+
+on:
+  push:
+    branches:
+      - research/exp-08-mutation-resistance-execution-commit
+  workflow_dispatch:
+
+jobs:
+  execution:
+    name: mutation-execution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install development dependencies
+        run: python -m pip install ".[dev]"
+
+      - name: Run EXP-08 execution tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_exp08_mutation_execution.py
