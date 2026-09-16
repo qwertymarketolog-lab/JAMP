@@ -44,19 +44,19 @@ def test_r29a_median_and_p_plus(values, expected_median, expected_p_plus) -> Non
 
 
 # R2.9b: complete sign-boundary matrix for the two decision coordinates.
-# Five observations are used so p_+ can only take the reachable values
-# {0, 0.2, 0.4, 0.6, 0.8, 1.0}; this keeps n fixed in the self-test contract.
+# The boundary cases use n=4 because, for odd n=5, m > 0 necessarily implies
+# p_+ > 0.5, and m < 0 necessarily implies p_+ < 0.5.
 
 
 @pytest.mark.parametrize(
     ("values", "expected"),
     [
-        ([0.1, 0.2, 0.3, 0.4, 0.5], "PASS"),       # m > 0, p_+ > 0.5
-        ([0.1, 0.2, 0.3, -0.1, -0.2], "INCONCLUSIVE"),  # m > 0, p_+ <= 0.5
-        ([0.1, 0.2, -0.3, -0.4, -0.5], "INCONCLUSIVE"), # m < 0, p_+ >= 0.5
-        ([-0.1, -0.2, -0.3, -0.4, -0.5], "FAIL"),    # m < 0, p_+ < 0.5
-        ([-0.2, -0.1, 0.0, 0.1, 0.2], "INCONCLUSIVE"), # m = 0
-        ([0.1, 0.2, 0.0, -0.1, -0.2], "INCONCLUSIVE"), # m = 0, p_+ = 0.4
+        ([0.1, 0.2, 0.3, 0.4], "PASS"),                    # m > 0, p_+ > 0.5
+        ([0.4, 0.3, -0.1, -0.2], "INCONCLUSIVE"),          # m > 0, p_+ = 0.5
+        ([0.1, 0.2, -0.3, -0.4], "INCONCLUSIVE"),          # m < 0, p_+ = 0.5
+        ([-0.1, -0.2, -0.3, -0.4], "FAIL"),                # m < 0, p_+ < 0.5
+        ([-0.2, -0.1, 0.1, 0.2], "INCONCLUSIVE"),          # m = 0, p_+ = 0.5
+        ([-0.3, -0.1, 0.1, 0.3], "INCONCLUSIVE"),          # m = 0, p_+ = 0.5
     ],
 )
 def test_r29b_classifier_boundary_matrix(values, expected) -> None:
@@ -65,11 +65,11 @@ def test_r29b_classifier_boundary_matrix(values, expected) -> None:
 
 def test_r29b_classifier_is_complete_and_pairwise_disjoint() -> None:
     cases = [
-        [0.1, 0.2, 0.3, 0.4, 0.5],
-        [0.1, 0.2, 0.3, -0.1, -0.2],
-        [0.1, 0.2, -0.3, -0.4, -0.5],
-        [-0.1, -0.2, -0.3, -0.4, -0.5],
-        [-0.2, -0.1, 0.0, 0.1, 0.2],
+        [0.1, 0.2, 0.3, 0.4],
+        [0.4, 0.3, -0.1, -0.2],
+        [0.1, 0.2, -0.3, -0.4],
+        [-0.1, -0.2, -0.3, -0.4],
+        [-0.2, -0.1, 0.1, 0.2],
     ]
     assert all(classify_effects(case) in {"PASS", "FAIL", "INCONCLUSIVE"} for case in cases)
 
