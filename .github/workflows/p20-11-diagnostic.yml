@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/p20-11-research-loop
+      - main
   pull_request:
     branches:
       - feature/p20-11-research-loop
