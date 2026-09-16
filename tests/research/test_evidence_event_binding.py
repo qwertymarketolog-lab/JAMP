@@ -131,7 +131,6 @@ def test_t5_replay_restores_and_verifies_chain() -> None:
 
 def test_t5_replay_detects_tampered_state() -> None:
     event_a = ResearchEvent(evidence_ref=EXPECTED_HASH)
-    event_b = ResearchEvent(evidence_ref=_event_ref(event_a))
     persisted = [
         {"evidence_ref": event_a.evidence_ref},
         {"evidence_ref": "tampered"},
