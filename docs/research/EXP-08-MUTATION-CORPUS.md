@@ -1,6 +1,6 @@
 # EXP-08 — Mutation Corpus
 
-**Status:** DRAFT  
+**Status:** REVIEWED  
 **Parent experiment:** EXP-08 Mutation Resistance  
 **Specification:** frozen EXP-08 contract, blob `c505ffd1ca0a2e7071313c95b6d8a75b19ac5641`  
 **Baseline:** EXP-07 Replay R0 verified implementation at commit `e241872ab3ed12d09a050e46c6259082e745ab0e`
@@ -35,9 +35,9 @@ The baseline event definitions are:
 | Event | Parents | Type | Worker | Clock | Payload |
 |---|---|---|---|---:|---|
 | `evt_P` | `()` | `FORK` | `coordinator` | 1 | `Parent root initialized` |
-| `evt_WORKER_A` | `(``evt_P``,)` | `WORKER_COMPLETION` | `worker_a` | 2 | `Result=20` |
-| `evt_WORKER_B` | `(``evt_P``,)` | `WORKER_COMPLETION` | `worker_b` | 2 | `Result=40` |
-| `evt_M` | `(``evt_WORKER_A``, ``evt_WORKER_B``)` | `JOIN` | `coordinator` | 3 | `Merged=60` |
+| `evt_WORKER_A` | (`evt_P`,) | `WORKER_COMPLETION` | `worker_a` | 2 | `Result=20` |
+| `evt_WORKER_B` | (`evt_P`,) | `WORKER_COMPLETION` | `worker_b` | 2 | `Result=40` |
+| `evt_M` | (`evt_WORKER_A`, `evt_WORKER_B`) | `JOIN` | `coordinator` | 3 | `Merged=60` |
 
 For physical-order mutations, event identity and all event fields remain unchanged; only the order of the recorded event tuple is changed.
 
@@ -112,7 +112,7 @@ This mutation probes the existing canonicalization property independently of eve
 #### `M3-PARENT-REMOVE`
 
 - Source event: `evt_M`
-- Exact mutation: `parent_event_ids` changes from `(``evt_WORKER_A``, ``evt_WORKER_B``)` to `(``evt_WORKER_A`` ,)`
+- Exact mutation: `parent_event_ids` changes from (`evt_WORKER_A`, `evt_WORKER_B`) to (`evt_WORKER_A`,)
 - All other fields: unchanged
 - Observable surfaces: replay success/rejection, canonical DAG hash, merged result
 - Allowed reaction categories: A / B / C / D
@@ -121,7 +121,7 @@ This mutation probes the existing canonicalization property independently of eve
 
 - Source event: `evt_M`
 - Exact mutation: append non-existent parent ID `evt_NONEXISTENT` to `parent_event_ids`
-- Resulting parents: `(``evt_WORKER_A``, ``evt_WORKER_B``, ``evt_NONEXISTENT``)`
+- Resulting parents: (`evt_WORKER_A`, `evt_WORKER_B`, `evt_NONEXISTENT`)
 - All other fields: unchanged
 - Observable surfaces: replay success/rejection, canonical DAG hash, merged result
 - Allowed reaction categories: A / B / C / D
@@ -200,8 +200,8 @@ The implementation and execution stages must consume this frozen corpus without 
 
 ## 7. Lifecycle boundary
 
-Current status is **DRAFT**.
+Current status is **REVIEWED**.
 
-The next permitted transition is substantive review to determine whether all 12 mutations are precise, non-overlapping enough for the intended experiment, and fully traceable to the frozen EXP-08 specification.
+The substantive review found all 12 mutations precise enough for the defined bounded experiment, with deterministic source fields, isolated mutation scope, explicit observable surfaces, and no premature experimental verdicts.
 
-Implementation of mutators, test code, execution, evidence publication, and changes to `docs/research/evidence-index.md` are out of scope for this DRAFT artifact.
+The next permitted transition is formal freezing of this reviewed corpus. Implementation of mutators, test code, execution, evidence publication, and changes to `docs/research/evidence-index.md` remain out of scope until the corpus is FROZEN.
