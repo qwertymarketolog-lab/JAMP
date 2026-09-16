@@ -395,6 +395,8 @@ class CausalLedger:
             EventTypeV0.EXECUTION_START: EventTypeV0.EXECUTION_RESULT,
             EventTypeV0.EXECUTION_RESULT: EventTypeV0.EVIDENCE_RECORD,
         }
+        if parent_type is EventTypeV0.EVIDENCE_RECORD:
+            raise CausalOrderViolationError("event type violates the R0.2 causal order")
         if event.event_type is EventTypeV0.EXECUTION_START:
             if parent_type is not EventTypeV0.PREDICTION_COMMIT:
                 raise PredictionCommitMissingError(
