@@ -30,7 +30,10 @@ def _event(ledger: CausalLedger, parent_hash: str):
 
 
 def _assert_rejected_without_mutation(
-    ledger: CausalLedger, event, payload, expected: type[LedgerError]
+    ledger: CausalLedger,
+    event,
+    payload,
+    expected: type[LedgerError],
 ) -> None:
     before = ledger.snapshot()
     with pytest.raises(expected) as exc_info:
