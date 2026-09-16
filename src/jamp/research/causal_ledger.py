@@ -1,4 +1,4 @@
-"""EXP-10 / R0.4 append-only causal ledger.
+"""EXP-10 / R0.5 append-only causal ledger.
 
 The ledger is a local, deterministic integrity layer. It binds events into a
 single append-only hash chain; it does not claim external existence or time.
@@ -76,6 +76,14 @@ class ExecutionResultDuplicateError(LedgerError):
     code = "EXECUTION_RESULT_DUPLICATE"
 
 
+class EvidenceDuplicateError(LedgerError):
+    code = "EVIDENCE_DUPLICATE"
+
+
+class ExecutionResultMissingError(LedgerError):
+    code = "EXECUTION_RESULT_MISSING"
+
+
 class EventTypeV0(str, Enum):  # noqa: UP042
     GENESIS = "GENESIS"
     PREDICTION_COMMIT = "PREDICTION_COMMIT"
@@ -135,6 +143,24 @@ class ExecutionResultV0:
 
 
 @dataclass(frozen=True, slots=True)
+class EvidenceRecordV0:
+    """R0.5 payload binding an evidence artifact to an ExecutionResult event."""
+
+    execution_result_hash: str
+    evidence_ref: str
+
+    def __post_init__(self) -> None:
+        _validate_hash(self.execution_result_hash, "execution_result_hash")
+        _validate_hash(self.evidence_ref, "evidence_ref")
+
+    def canonical_payload(self) -> dict[str, str]:
+        return {
+            "execution_result_hash": self.execution_result_hash,
+            "evidence_ref": self.evidence_ref,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class CausalEventV0:
     """Immutable hash-chained event envelope defined by R0.2."""
 
@@ -185,13 +211,14 @@ class LedgerSnapshot:
 
 
 class CausalLedger:
-    """Single-head, append-only causal ledger for EXP-10 R0.4."""
+    """Single-head, append-only causal ledger for EXP-10 R0.5."""
 
     def __init__(self) -> None:
         self._events: dict[str, CausalEventV0] = {}
         self._head = ZERO_HASH
         self._execution_ids: set[str] = set()
         self._execution_result_starts: set[str] = set()
+        self._evidence_results: set[str] = set()
 
     @property
     def head(self) -> str:
@@ -298,6 +325,28 @@ class CausalLedger:
             payload=payload,
         )
 
+    def append_evidence_record(
+        self,
+        execution_result_hash: str,
+        evidence_ref: str,
+    ) -> CausalEventV0:
+        payload_model = EvidenceRecordV0(
+            execution_result_hash=execution_result_hash,
+            evidence_ref=evidence_ref,
+        )
+        if execution_result_hash in self._evidence_results:
+            raise EvidenceDuplicateError("evidence record already exists")
+        payload = payload_model.canonical_payload()
+        return self.append(
+            self.build_event(
+                EventTypeV0.EVIDENCE_RECORD,
+                len(self._events),
+                self._head,
+                payload,
+            ),
+            payload=payload,
+        )
+
     def append(self, event: CausalEventV0, *, payload: Mapping[str, Any]) -> CausalEventV0:
         """Validate every condition before mutating state (L0)."""
         self._validate(event, payload)
@@ -308,6 +357,9 @@ class CausalLedger:
         elif event.event_type is EventTypeV0.EXECUTION_RESULT:
             execution_result = ExecutionResultV0(**dict(payload))
             self._execution_result_starts.add(execution_result.execution_start_hash)
+        elif event.event_type is EventTypeV0.EVIDENCE_RECORD:
+            evidence = EvidenceRecordV0(**dict(payload))
+            self._evidence_results.add(evidence.execution_result_hash)
         self._head = event.event_hash
         return event
 
@@ -367,6 +419,18 @@ class CausalLedger:
                 )
             if execution_result.execution_start_hash in self._execution_result_starts:
                 raise ExecutionResultDuplicateError("execution result already exists")
+        elif event.event_type is EventTypeV0.EVIDENCE_RECORD:
+            if parent_type is not EventTypeV0.EXECUTION_RESULT:
+                raise ExecutionResultMissingError(
+                    "evidence_record requires an EXECUTION_RESULT parent"
+                )
+            evidence = EvidenceRecordV0(**dict(payload))
+            if evidence.execution_result_hash != event.parent_hash:
+                raise ExecutionResultMissingError(
+                    "evidence_record must bind to its immediate execution result parent"
+                )
+            if evidence.execution_result_hash in self._evidence_results:
+                raise EvidenceDuplicateError("evidence record already exists")
         elif event.event_type is not expected[parent_type]:
             raise CausalOrderViolationError("event type violates the R0.2 causal order")
 
@@ -384,8 +448,11 @@ __all__ = (
     "DuplicateEventError",
     "EventHashMismatchError",
     "EventTypeV0",
+    "EvidenceDuplicateError",
+    "EvidenceRecordV0",
     "ExecutionIdDuplicateError",
     "ExecutionResultDuplicateError",
+    "ExecutionResultMissingError",
     "ExecutionResultV0",
     "ExecutionStartMissingError",
     "ExecutionStartV0",
