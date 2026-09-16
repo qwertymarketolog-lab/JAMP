@@ -45,13 +45,14 @@ class EvidenceRecordR0:
         required = {
             "contingency_ref": self.contingency_ref,
             "causal_candidate_ref": self.causal_candidate_ref,
-            "intervention": self.intervention,
             "control_outcome": self.control_outcome,
             "intervention_outcome": self.intervention_outcome,
             "evidence_ref": self.evidence_ref,
         }
         if any(not isinstance(value, str) or not value for value in required.values()):
             raise ValueError("all EvidenceRecord R0 identity fields are required")
+        if not isinstance(self.intervention, str):
+            raise TypeError("intervention must be a string")
         if not self.contingency_ref.startswith("sha256:"):
             raise ValueError("contingency_ref must be a canonical hash reference")
         if not self.causal_candidate_ref.startswith("sha256:"):
@@ -139,9 +140,7 @@ def freeze_evidence(candidate: CausalCandidateR0) -> EvidenceRecordR0:
 
 def test_exp16_positive_controlled_causal_result_becomes_supported_evidence() -> None:
     candidate = _candidate(repeated_observation=True, replay_successful=True)
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.epistemic_status is EvidenceDecisionR0.SUPPORTED
     assert evidence.differential_outcome is True
     assert evidence.contingency_ref == candidate.contingency_ref
@@ -150,7 +149,6 @@ def test_exp16_positive_controlled_causal_result_becomes_supported_evidence() ->
 def test_exp16_evidence_preserves_full_provenance_boundary() -> None:
     candidate = _candidate(repeated_observation=True)
     evidence = freeze_evidence(candidate)
-
     assert evidence.contingency_ref.startswith("sha256:")
     assert evidence.causal_candidate_ref.startswith("sha256:")
     assert evidence.evidence_ref.startswith("sha256:")
@@ -158,17 +156,13 @@ def test_exp16_evidence_preserves_full_provenance_boundary() -> None:
 
 def test_exp16_replay_only_remains_inconclusive() -> None:
     candidate = _candidate(repeated_observation=False, replay_successful=True)
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
 
 
 def test_exp16_repetition_without_intervention_is_not_supported() -> None:
     candidate = _candidate(intervention="", repeated_observation=True)
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.epistemic_status is EvidenceDecisionR0.NOT_SUPPORTED
 
 
@@ -178,9 +172,7 @@ def test_exp16_intervention_without_differential_outcome_is_not_supported() -> N
         intervention_outcome="same",
         repeated_observation=True,
     )
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.differential_outcome is False
     assert evidence.epistemic_status is EvidenceDecisionR0.NOT_SUPPORTED
 
@@ -190,17 +182,13 @@ def test_exp16_unresolved_confounder_is_inconclusive() -> None:
         confounders=("untracked-environment-change",),
         repeated_observation=True,
     )
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
 
 
 def test_exp16_single_observation_is_inconclusive() -> None:
     candidate = _candidate(repeated_observation=False, replay_successful=False)
-
     evidence = freeze_evidence(candidate)
-
     assert evidence.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
 
 
@@ -208,7 +196,6 @@ def test_exp16_replay_does_not_promote_an_evidence_record() -> None:
     candidate = _candidate(repeated_observation=False, replay_successful=True)
     first = freeze_evidence(candidate)
     second = freeze_evidence(candidate)
-
     assert first == second
     assert first.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
 
@@ -216,7 +203,6 @@ def test_exp16_replay_does_not_promote_an_evidence_record() -> None:
 def test_exp16_evidence_record_is_immutable() -> None:
     candidate = _candidate(repeated_observation=True)
     evidence = freeze_evidence(candidate)
-
     try:
         evidence.epistemic_status = EvidenceDecisionR0.SUPPORTED
     except (AttributeError, TypeError):
@@ -233,7 +219,6 @@ def test_exp16_evidence_identity_changes_when_payload_changes() -> None:
         repeated_observation=True,
     )
     changed = freeze_evidence(changed_candidate)
-
     assert original.evidence_ref != changed.evidence_ref
 
 
@@ -245,7 +230,6 @@ def test_exp16_existing_production_evidence_ledger_verifies_research_binding() -
     state_hash = replay_hash({"epistemic_status": evidence.epistemic_status.value})
     production_record = EvidenceRecord(source_hash, payload_hash, state_hash, 0)
     ledger = build_evidence_ledger((production_record,))
-
     assert verify_evidence(ledger) is True
 
 
@@ -263,7 +247,6 @@ def test_exp16_conflicting_evidence_is_not_silently_resolved() -> None:
         evidence_ref=_hash_ref({"conflict": True, "source": first.evidence_ref}),
         epistemic_status=EvidenceDecisionR0.INCONCLUSIVE,
     )
-
     assert conflicting.evidence_ref != first.evidence_ref
     assert conflicting.intervention_outcome != first.intervention_outcome
     assert conflicting.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
@@ -272,7 +255,6 @@ def test_exp16_conflicting_evidence_is_not_silently_resolved() -> None:
 def test_exp16_status_is_not_derived_from_evidence_hash() -> None:
     candidate = _candidate(repeated_observation=False, replay_successful=True)
     evidence = freeze_evidence(candidate)
-
     assert evidence.evidence_ref
     assert evidence.epistemic_status is EvidenceDecisionR0.INCONCLUSIVE
     assert evidence.evidence_ref != f"sha256:{replay_hash(evidence.epistemic_status.value)}"
