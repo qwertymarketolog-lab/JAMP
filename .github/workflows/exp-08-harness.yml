@@ -1,0 +1,24 @@
+name: EXP-08 Harness Verification
+
+on:
+  push:
+    branches:
+      - research/exp-08-mutation-resistance
+  workflow_dispatch:
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated developer environment
+        run: python -m pip install ".[dev]"
+      - name: Run EXP-08 mutation harness tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/research/test_exp08_mutation_harness.py
