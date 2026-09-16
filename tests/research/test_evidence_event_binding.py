@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, fields
+
 import pytest
 
 from jamp.research.canonical import replay_hash
 from tests.research.test_evidence_record_v0 import EXPECTED_HASH, V0_001
+
+
+@dataclass(frozen=True)
+class ResearchEvent:
+    """Minimal research-only provenance event boundary."""
+
+    evidence_ref: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.evidence_ref, str):
+            raise TypeError("ResearchEvent.evidence_ref must be a hash reference string")
 
 
 def test_t1_evidence_binding_is_deterministic() -> None:
@@ -31,3 +44,27 @@ def test_t2_semantic_change_changes_evidence_ref(field: str, value: object) -> N
     modified[field] = value
 
     assert replay_hash(modified) != EXPECTED_HASH
+
+
+def test_t3_a_event_accepts_hash_reference_not_raw_evidence() -> None:
+    event = ResearchEvent(evidence_ref=EXPECTED_HASH)
+
+    assert event.evidence_ref == EXPECTED_HASH
+
+    with pytest.raises(TypeError, match="must be a hash reference string"):
+        ResearchEvent(evidence_ref=V0_001)  # type: ignore[arg-type]
+
+
+def test_t3_b_event_contains_only_evidence_ref() -> None:
+    assert [field.name for field in fields(ResearchEvent)] == ["evidence_ref"]
+    assert set(ResearchEvent.__annotations__) == {"evidence_ref"}
+
+
+def test_t3_c_event_is_independent_of_evidence_structure() -> None:
+    event = ResearchEvent(evidence_ref=replay_hash(V0_001))
+    modified = dict(V0_001)
+    modified["payload"] = {"value": 999, "unit": "count"}
+
+    assert event.evidence_ref == EXPECTED_HASH
+    assert replay_hash(modified) != event.evidence_ref
+    assert event == ResearchEvent(evidence_ref=EXPECTED_HASH)
