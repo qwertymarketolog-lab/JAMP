@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from jamp.research.causal_ledger import (
+    ZERO_HASH,
     CausalLedger,
     CausalOrderViolationError,
     DuplicateEventError,
@@ -16,7 +17,6 @@ from jamp.research.causal_ledger import (
     ParentMissingError,
     PayloadHashMismatchError,
     SequenceDiscontinuityError,
-    ZERO_HASH,
 )
 
 _HASH = "1" * 64
@@ -45,7 +45,9 @@ def _event(
     )
 
 
-def _assert_rejected_without_mutation(ledger: CausalLedger, event, payload, expected: type[LedgerError]) -> None:
+def _assert_rejected_without_mutation(
+    ledger: CausalLedger, event, payload, expected: type[LedgerError]
+) -> None:
     before = ledger.snapshot()
     with pytest.raises(expected) as exc_info:
         ledger.append(event, payload=payload)
