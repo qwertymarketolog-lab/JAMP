@@ -198,4 +198,6 @@ def test_t4_dag_replay_and_verification() -> None:
     assert _verify_dag(restored_refs)
     assert {
         ref: event.canonical_parents for ref, event in restored_refs.items()
-    } == {ref: event.canonical_parents for ref, event in original.items()}
+    } == {
+        ref: event.canonical_parents for ref, event in original.items()
+    }
