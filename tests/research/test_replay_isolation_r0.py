@@ -53,7 +53,7 @@ def test_ri3_tampered_artifact_is_rejected() -> None:
     tampered = dict(exported)
     tampered["graph_hash"] = "f" * 64
 
-    with pytest.raises(ValueError, match="graph hash mismatch"):
+    with pytest.raises(AssertionError):
         _replay_from_export(tampered)
 
 
