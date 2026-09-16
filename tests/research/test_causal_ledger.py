@@ -1,4 +1,4 @@
-"""EXP-10 / R0.4 contract tests for the append-only causal ledger."""
+"""EXP-10 / R0.5 contract tests for the append-only causal ledger."""
 
 from dataclasses import replace
 
@@ -11,8 +11,10 @@ from jamp.research.causal_ledger import (
     DuplicateEventError,
     EventHashMismatchError,
     EventTypeV0,
+    EvidenceDuplicateError,
     ExecutionIdDuplicateError,
     ExecutionResultDuplicateError,
+    ExecutionResultMissingError,
     ExecutionStartMissingError,
     GenesisViolationError,
     HeadViolationError,
@@ -25,6 +27,7 @@ from jamp.research.causal_ledger import (
 
 _HASH = "1" * 64
 _RESULT_REF = "2" * 64
+_EVIDENCE_REF = "3" * 64
 _PAYLOAD = {"prediction_hash": _HASH}
 
 
@@ -321,3 +324,128 @@ def test_z_execution_result_old_parent_is_rejected_atomically() -> None:
     event = ledger.build_event(EventTypeV0.EXECUTION_RESULT, 3, genesis.event_hash, payload)
     assert execution_start.event_hash == ledger.head
     _assert_rejected_without_mutation(ledger, event, payload, HeadViolationError)
+
+
+def _execution_result() -> tuple[CausalLedger, object]:
+    ledger, execution_start = _execution_start()
+    execution_result = ledger.append_execution_result(execution_start.event_hash, _RESULT_REF)
+    return ledger, execution_result
+
+
+def test_aa_evidence_record_binds_to_execution_result() -> None:
+    ledger, execution_result = _execution_result()
+    event = ledger.append_evidence_record(execution_result.event_hash, _EVIDENCE_REF)
+    assert event.event_type is EventTypeV0.EVIDENCE_RECORD
+    assert event.parent_hash == execution_result.event_hash
+    assert event.sequence_index == 4
+    assert ledger.head == event.event_hash
+    assert ledger.event_count == 5
+
+
+def test_ab_evidence_without_execution_result_is_rejected_atomically() -> None:
+    ledger = _ledger()
+    prediction = ledger.append_prediction_commit(_HASH)
+    payload = {"execution_result_hash": prediction.event_hash, "evidence_ref": _EVIDENCE_REF}
+    event = _event(ledger, EventTypeV0.EVIDENCE_RECORD, payload=payload)
+    _assert_rejected_without_mutation(ledger, event, payload, ExecutionResultMissingError)
+
+
+def test_ac_missing_execution_result_reference_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": "4" * 64, "evidence_ref": _EVIDENCE_REF}
+    event = _event(ledger, EventTypeV0.EVIDENCE_RECORD, payload=payload)
+    assert event.parent_hash == execution_result.event_hash
+    _assert_rejected_without_mutation(ledger, event, payload, ExecutionResultMissingError)
+
+
+def test_ad_wrong_execution_result_reference_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": "5" * 64, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        4,
+        execution_result.event_hash,
+        payload,
+    )
+    _assert_rejected_without_mutation(ledger, event, payload, ExecutionResultMissingError)
+
+
+def test_ae_duplicate_evidence_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    ledger.append_evidence_record(execution_result.event_hash, _EVIDENCE_REF)
+    before = ledger.snapshot()
+    with pytest.raises(EvidenceDuplicateError):
+        ledger.append_evidence_record(execution_result.event_hash, _EVIDENCE_REF)
+    assert ledger.snapshot() == before
+
+
+def test_af_evidence_payload_hash_mismatch_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": execution_result.event_hash, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        4,
+        execution_result.event_hash,
+        payload,
+    )
+    forged_payload = {
+        "execution_result_hash": execution_result.event_hash,
+        "evidence_ref": "6" * 64,
+    }
+    _assert_rejected_without_mutation(ledger, event, forged_payload, PayloadHashMismatchError)
+
+
+def test_ag_evidence_event_hash_mismatch_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": execution_result.event_hash, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        4,
+        execution_result.event_hash,
+        payload,
+    )
+    forged = replace(event, event_hash="7" * 64)
+    _assert_rejected_without_mutation(ledger, forged, payload, EventHashMismatchError)
+
+
+def test_ah_evidence_sequence_gap_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": execution_result.event_hash, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        9,
+        execution_result.event_hash,
+        payload,
+    )
+    _assert_rejected_without_mutation(ledger, event, payload, SequenceDiscontinuityError)
+
+
+def test_ai_evidence_old_parent_is_rejected_atomically() -> None:
+    ledger, execution_result = _execution_result()
+    prediction = ledger.get(ledger.genesis().event_hash)
+    assert prediction is not None
+    payload = {"execution_result_hash": prediction.event_hash, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        4,
+        prediction.event_hash,
+        payload,
+    )
+    assert execution_result.event_hash == ledger.head
+    _assert_rejected_without_mutation(ledger, event, payload, HeadViolationError)
+
+
+def test_aj_evidence_rejection_preserves_ledger_state() -> None:
+    ledger, execution_result = _execution_result()
+    payload = {"execution_result_hash": "8" * 64, "evidence_ref": _EVIDENCE_REF}
+    event = ledger.build_event(
+        EventTypeV0.EVIDENCE_RECORD,
+        4,
+        execution_result.event_hash,
+        payload,
+    )
+    before = ledger.snapshot()
+    with pytest.raises(ExecutionResultMissingError):
+        ledger.append(event, payload=payload)
+    assert ledger.snapshot() == before
+    assert ledger.get(event.event_hash) is None
