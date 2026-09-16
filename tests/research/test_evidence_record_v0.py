@@ -40,7 +40,6 @@ def _validate_v0(record: dict[str, object]) -> None:
         raise ValueError(f"EvidenceRecordV0 missing required fields: {sorted(missing)}")
 
 
-
 def test_t1_v0_001_is_deterministic() -> None:
     _validate_v0(V0_001)
     assert canonical_bytes(V0_001) == EXPECTED_CANONICAL
