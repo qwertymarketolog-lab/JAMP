@@ -1,4 +1,4 @@
-"""EXP-10 / R0.3 contract tests for the append-only causal ledger."""
+"""EXP-10 / R0.4 contract tests for the append-only causal ledger."""
 
 from dataclasses import replace
 
@@ -12,6 +12,8 @@ from jamp.research.causal_ledger import (
     EventHashMismatchError,
     EventTypeV0,
     ExecutionIdDuplicateError,
+    ExecutionResultDuplicateError,
+    ExecutionStartMissingError,
     GenesisViolationError,
     HeadViolationError,
     LedgerError,
@@ -22,6 +24,7 @@ from jamp.research.causal_ledger import (
 )
 
 _HASH = "1" * 64
+_RESULT_REF = "2" * 64
 _PAYLOAD = {"prediction_hash": _HASH}
 
 
@@ -244,3 +247,77 @@ def test_r_execution_start_rejection_preserves_ledger_state() -> None:
         ledger.append(event, payload=payload)
     assert ledger.snapshot() == before
     assert ledger.get(event.event_hash) is None
+
+
+def _execution_start() -> tuple[CausalLedger, object]:
+    ledger = _ledger()
+    prediction = ledger.append_prediction_commit(_HASH)
+    execution_start = ledger.append_execution_start(prediction.event_hash, "exec-a")
+    return ledger, execution_start
+
+
+def test_s_execution_result_binds_to_execution_start() -> None:
+    ledger, execution_start = _execution_start()
+    event = ledger.append_execution_result(execution_start.event_hash, _RESULT_REF)
+    assert event.event_type is EventTypeV0.EXECUTION_RESULT
+    assert event.parent_hash == execution_start.event_hash
+    assert event.sequence_index == 3
+    assert ledger.head == event.event_hash
+    assert ledger.event_count == 4
+
+
+def test_t_execution_result_without_execution_start_is_rejected_atomically() -> None:
+    ledger = _ledger()
+    prediction = ledger.append_prediction_commit(_HASH)
+    payload = {"execution_start_hash": prediction.event_hash, "result_ref": _RESULT_REF}
+    event = _event(ledger, EventTypeV0.EXECUTION_RESULT, payload=payload)
+    _assert_rejected_without_mutation(ledger, event, payload, ExecutionStartMissingError)
+
+
+def test_u_execution_result_wrong_execution_start_reference_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    payload = {"execution_start_hash": "3" * 64, "result_ref": _RESULT_REF}
+    event = _event(ledger, EventTypeV0.EXECUTION_RESULT, payload=payload)
+    assert event.parent_hash == execution_start.event_hash
+    _assert_rejected_without_mutation(ledger, event, payload, ExecutionStartMissingError)
+
+
+def test_v_duplicate_execution_result_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    ledger.append_execution_result(execution_start.event_hash, _RESULT_REF)
+    before = ledger.snapshot()
+    with pytest.raises(ExecutionResultDuplicateError):
+        ledger.append_execution_result(execution_start.event_hash, _RESULT_REF)
+    assert ledger.snapshot() == before
+
+
+def test_w_execution_result_payload_hash_mismatch_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    payload = {"execution_start_hash": execution_start.event_hash, "result_ref": _RESULT_REF}
+    event = ledger.build_event(EventTypeV0.EXECUTION_RESULT, 3, execution_start.event_hash, payload)
+    forged_payload = {"execution_start_hash": execution_start.event_hash, "result_ref": "4" * 64}
+    _assert_rejected_without_mutation(ledger, event, forged_payload, PayloadHashMismatchError)
+
+
+def test_x_execution_result_event_hash_mismatch_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    payload = {"execution_start_hash": execution_start.event_hash, "result_ref": _RESULT_REF}
+    event = ledger.build_event(EventTypeV0.EXECUTION_RESULT, 3, execution_start.event_hash, payload)
+    forged = replace(event, event_hash="5" * 64)
+    _assert_rejected_without_mutation(ledger, forged, payload, EventHashMismatchError)
+
+
+def test_y_execution_result_sequence_gap_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    payload = {"execution_start_hash": execution_start.event_hash, "result_ref": _RESULT_REF}
+    event = ledger.build_event(EventTypeV0.EXECUTION_RESULT, 8, execution_start.event_hash, payload)
+    _assert_rejected_without_mutation(ledger, event, payload, SequenceDiscontinuityError)
+
+
+def test_z_execution_result_old_parent_is_rejected_atomically() -> None:
+    ledger, execution_start = _execution_start()
+    genesis = ledger.genesis()
+    payload = {"execution_start_hash": genesis.event_hash, "result_ref": _RESULT_REF}
+    event = ledger.build_event(EventTypeV0.EXECUTION_RESULT, 3, genesis.event_hash, payload)
+    assert execution_start.event_hash == ledger.head
+    _assert_rejected_without_mutation(ledger, event, payload, HeadViolationError)
