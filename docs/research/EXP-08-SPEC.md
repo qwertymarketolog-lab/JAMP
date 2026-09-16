@@ -1,6 +1,6 @@
 # EXP-08 — Mutation Resistance
 
-**Status:** DRAFT  
+**Status:** REVIEWED  
 **Parent:** EXP-07 Replay R0
 
 ## 1. Purpose
@@ -141,4 +141,4 @@ No experimental result becomes canonically published without its complete eviden
 
 `DRAFT → REVIEWED → FROZEN → IMPLEMENTED → EXECUTED → EVIDENCE → PUBLISHED`
 
-The current document is **DRAFT**. Its status must not be advanced until the corresponding repository artifact and review state are explicitly verified.
+The current document is **REVIEWED**. Its status must not be advanced until the corresponding repository artifact and review state are explicitly verified.
