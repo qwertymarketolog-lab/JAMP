@@ -45,13 +45,14 @@ class CausalCandidateR0:
             "contingency_ref": self.contingency_ref,
             "hypothesis": self.hypothesis,
             "control_state": self.control_state,
-            "intervention": self.intervention,
             "observed_outcome_control": self.observed_outcome_control,
             "observed_outcome_intervention": self.observed_outcome_intervention,
             "provenance_ref": self.provenance_ref,
         }
         if any(not isinstance(value, str) or not value for value in required.values()):
             raise ContractViolationError("all mandatory CausalCandidate R0 fields are required")
+        if not isinstance(self.intervention, str):
+            raise ContractViolationError("intervention must be a string when present")
         if not self.contingency_ref.startswith("sha256:"):
             raise ContractViolationError("contingency_ref must be a canonical hash reference")
         if not self.provenance_ref.startswith("sha256:"):
