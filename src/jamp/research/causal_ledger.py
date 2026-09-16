@@ -1,4 +1,4 @@
-"""EXP-10 / R0.2 append-only causal ledger.
+"""EXP-10 / R0.3 append-only causal ledger.
 
 The ledger is a local, deterministic integrity layer. It binds events into a
 single append-only hash chain; it does not claim external existence or time.
@@ -19,7 +19,7 @@ ZERO_HASH = "0" * 64
 
 
 class LedgerError(ValueError):
-    """Base error for rejected R0.2 ledger operations."""
+    """Base error for rejected causal-ledger operations."""
 
     code = "LEDGER_ERROR"
 
@@ -60,6 +60,14 @@ class CausalOrderViolationError(LedgerError):
     code = "CAUSAL_ORDER_VIOLATION"
 
 
+class ExecutionIdDuplicateError(LedgerError):
+    code = "EXECUTION_ID_DUPLICATE"
+
+
+class PredictionCommitMissingError(LedgerError):
+    code = "PREDICTION_COMMIT_MISSING"
+
+
 class EventTypeV0(str, Enum):  # noqa: UP042
     GENESIS = "GENESIS"
     PREDICTION_COMMIT = "PREDICTION_COMMIT"
@@ -79,6 +87,25 @@ class PredictionCommitV0:
 
     def canonical_payload(self) -> dict[str, str]:
         return {"prediction_hash": self.prediction_hash}
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionStartV0:
+    """R0.3 payload binding execution identity to a PredictionCommit event."""
+
+    prediction_commit_hash: str
+    execution_id: str
+
+    def __post_init__(self) -> None:
+        _validate_hash(self.prediction_commit_hash, "prediction_commit_hash")
+        if not isinstance(self.execution_id, str) or not self.execution_id.strip():
+            raise LedgerError("execution_id must be a non-empty string")
+
+    def canonical_payload(self) -> dict[str, str]:
+        return {
+            "execution_id": self.execution_id,
+            "prediction_commit_hash": self.prediction_commit_hash,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,11 +159,12 @@ class LedgerSnapshot:
 
 
 class CausalLedger:
-    """Single-head, append-only causal ledger for R0.2."""
+    """Single-head, append-only causal ledger for EXP-10 R0.3."""
 
     def __init__(self) -> None:
         self._events: dict[str, CausalEventV0] = {}
         self._head = ZERO_HASH
+        self._execution_ids: set[str] = set()
 
     @property
     def head(self) -> str:
@@ -199,10 +227,32 @@ class CausalLedger:
             payload=payload,
         )
 
+    def append_execution_start(
+        self,
+        prediction_commit_hash: str,
+        execution_id: str,
+    ) -> CausalEventV0:
+        payload = ExecutionStartV0(
+            prediction_commit_hash=prediction_commit_hash,
+            execution_id=execution_id,
+        ).canonical_payload()
+        return self.append(
+            self.build_event(
+                EventTypeV0.EXECUTION_START,
+                len(self._events),
+                self._head,
+                payload,
+            ),
+            payload=payload,
+        )
+
     def append(self, event: CausalEventV0, *, payload: Mapping[str, Any]) -> CausalEventV0:
         """Validate every condition before mutating state (L0)."""
         self._validate(event, payload)
         self._events[event.event_hash] = event
+        if event.event_type is EventTypeV0.EXECUTION_START:
+            execution_start = ExecutionStartV0(**dict(payload))
+            self._execution_ids.add(execution_start.execution_id)
         self._head = event.event_hash
         return event
 
@@ -231,13 +281,26 @@ class CausalLedger:
         if event.sequence_index != self._events[self._head].sequence_index + 1:
             raise SequenceDiscontinuityError("sequence_index must follow the current head")
 
+        parent_type = self._events[self._head].event_type
         expected = {
             EventTypeV0.GENESIS: EventTypeV0.PREDICTION_COMMIT,
             EventTypeV0.PREDICTION_COMMIT: EventTypeV0.EXECUTION_START,
             EventTypeV0.EXECUTION_START: EventTypeV0.EXECUTION_RESULT,
             EventTypeV0.EXECUTION_RESULT: EventTypeV0.EVIDENCE_RECORD,
         }
-        if event.event_type is not expected[self._events[self._head].event_type]:
+        if parent_type is EventTypeV0.PREDICTION_COMMIT and event.event_type is EventTypeV0.EXECUTION_START:
+            execution_start = ExecutionStartV0(**dict(payload))
+            if execution_start.prediction_commit_hash != event.parent_hash:
+                raise PredictionCommitMissingError(
+                    "execution_start must bind to its immediate prediction commit parent"
+                )
+            if execution_start.execution_id in self._execution_ids:
+                raise ExecutionIdDuplicateError("execution_id already exists")
+        elif event.event_type is EventTypeV0.EXECUTION_START:
+            raise PredictionCommitMissingError(
+                "execution_start requires a PREDICTION_COMMIT parent"
+            )
+        elif event.event_type is not expected[parent_type]:
             raise CausalOrderViolationError("event type violates the R0.2 causal order")
 
 
@@ -254,6 +317,8 @@ __all__ = (
     "DuplicateEventError",
     "EventHashMismatchError",
     "EventTypeV0",
+    "ExecutionIdDuplicateError",
+    "ExecutionStartV0",
     "GenesisViolationError",
     "HeadViolationError",
     "LedgerError",
@@ -261,6 +326,7 @@ __all__ = (
     "NonHeadParentError",
     "ParentMissingError",
     "PayloadHashMismatchError",
+    "PredictionCommitMissingError",
     "PredictionCommitV0",
     "SequenceDiscontinuityError",
     "ZERO_HASH",
