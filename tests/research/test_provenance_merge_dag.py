@@ -1,4 +1,4 @@
-"""EXP-12-A research-only tests for structural provenance merge DAGs."""
+"""EXP-12-A/B research-only tests for structural provenance merge DAGs."""
 
 from __future__ import annotations
 
@@ -67,6 +67,34 @@ def _verify_dag(graph: dict[str, ResearchMergeEvent]) -> bool:
         return True
 
     return all(visit(node_ref) for node_ref in graph)
+
+
+def _merge_graphs(
+    left: dict[str, ResearchMergeEvent],
+    right: dict[str, ResearchMergeEvent],
+) -> dict[str, ResearchMergeEvent]:
+    """Research-only set-union merge implementing Merge Contract v0."""
+    merged = dict(left)
+    for node_ref, event in right.items():
+        existing = merged.get(node_ref)
+        if existing is None:
+            merged[node_ref] = event
+        elif existing != event:
+            raise ValueError("conflicting event identity")
+    return merged
+
+
+def _canonical_graph(graph: dict[str, ResearchMergeEvent]) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return tuple(
+        sorted(
+            (
+                node_ref,
+                event.evidence_ref,
+                event.canonical_parents,
+            )
+            for node_ref, event in graph.items()
+        )
+    )
 
 
 def _make_leaf(evidence_ref: str) -> ResearchMergeEvent:
@@ -199,3 +227,42 @@ def test_t4_dag_replay_and_verification() -> None:
     restored_parents = {ref: event.canonical_parents for ref, event in restored_refs.items()}
     original_parents = {ref: event.canonical_parents for ref, event in original.items()}
     assert restored_parents == original_parents
+
+
+def test_t5_merge_is_idempotent() -> None:
+    event_a = _make_leaf(replay_hash(V0_001))
+    event_b = _make_leaf(replay_hash({"evidence_ref": "evidence-b"}))
+    ref_a = _event_ref(event_a)
+    ref_b = _event_ref(event_b)
+    graph = {ref_a: event_a, ref_b: event_b}
+
+    merged = _merge_graphs(graph, graph)
+
+    assert _canonical_graph(merged) == _canonical_graph(graph)
+    assert merged.keys() == graph.keys()
+    assert _verify_dag(merged)
+
+
+def test_t6_merge_is_commutative_for_compatible_dags() -> None:
+    event_a = _make_leaf(replay_hash(V0_001))
+    event_b = _make_leaf(replay_hash({"evidence_ref": "evidence-b"}))
+    ref_a = _event_ref(event_a)
+    ref_b = _event_ref(event_b)
+    left = {ref_a: event_a}
+    right = {ref_b: event_b}
+
+    merged_ab = _merge_graphs(left, right)
+    merged_ba = _merge_graphs(right, left)
+
+    assert _canonical_graph(merged_ab) == _canonical_graph(merged_ba)
+    assert _verify_dag(merged_ab)
+    assert _verify_dag(merged_ba)
+
+
+def test_t7_merge_rejects_conflicting_event_identity() -> None:
+    event_a = _make_leaf(replay_hash(V0_001))
+    ref_a = _event_ref(event_a)
+    conflicting = _make_leaf("different-evidence-ref")
+
+    with pytest.raises(ValueError, match="conflicting event identity"):
+        _merge_graphs({ref_a: event_a}, {ref_a: conflicting})
