@@ -196,8 +196,6 @@ def test_t4_dag_replay_and_verification() -> None:
 
     assert restored_refs.keys() == original.keys()
     assert _verify_dag(restored_refs)
-    restored_parents = {
-        ref: event.canonical_parents for ref, event in restored_refs.items()
-    }
+    restored_parents = {ref: event.canonical_parents for ref, event in restored_refs.items()}
     original_parents = {ref: event.canonical_parents for ref, event in original.items()}
     assert restored_parents == original_parents
