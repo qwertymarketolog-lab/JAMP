@@ -21,10 +21,7 @@ def _sample_nodes() -> tuple[LineageNode, ...]:
 def _replay_from_export(exported: dict[str, object]):
     nodes_data = exported["nodes"]
     assert isinstance(nodes_data, list)
-    nodes = tuple(
-        LineageNode(item["node_hash"], tuple(item["parents"]))
-        for item in nodes_data
-    )
+    nodes = tuple(LineageNode(item["node_hash"], tuple(item["parents"])) for item in nodes_data)
     graph = build_lineage_graph(nodes)
     assert graph.graph_hash == exported["graph_hash"]
     return graph
@@ -70,6 +67,4 @@ def test_ri4_replay_is_independent_of_runtime_context(monkeypatch: pytest.Monkey
 
 def test_ri5_foreign_artifact_rejection_contract_is_not_defined() -> None:
     """A valid graph has no current namespace/scope marker for 'foreign'."""
-    pytest.skip(
-        "RI-5 contract gap: lineage_graph has no artifact namespace/scope boundary"
-    )
+    pytest.skip("RI-5 contract gap: lineage_graph has no artifact namespace/scope boundary")
