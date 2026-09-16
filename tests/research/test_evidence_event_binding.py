@@ -26,9 +26,7 @@ def test_t1_evidence_binding_is_deterministic() -> None:
         ("observed_at", "2026-09-16T16:00:01Z"),
     ],
 )
-def test_t2_semantic_change_changes_evidence_ref(
-    field: str, value: object
-) -> None:
+def test_t2_semantic_change_changes_evidence_ref(field: str, value: object) -> None:
     modified = dict(V0_001)
     modified[field] = value
 
