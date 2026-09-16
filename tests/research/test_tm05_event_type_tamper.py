@@ -3,8 +3,8 @@
 import pytest
 
 from jamp.research.causal_ledger import (
-    CausalLedger,
     CausalEventV0,
+    CausalLedger,
     CausalOrderViolationError,
     EventTypeV0,
     ExecutionStartMissingError,
