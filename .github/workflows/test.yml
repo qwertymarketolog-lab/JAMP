@@ -9,10 +9,10 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   test:
-    if: ${{ github.event_name == 'pull_request' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -32,6 +32,11 @@ jobs:
         PYTHONPATH: src
       run: |
         pytest -q tests/test_architectural_boundaries.py
+    - name: Run research regression suite
+      env:
+        PYTHONPATH: src
+      run: |
+        pytest -q tests/research/test_artifact.py tests/research/test_causal.py
     - name: Run full test suite
       env:
         PYTHONPATH: src
