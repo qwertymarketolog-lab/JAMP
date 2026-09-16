@@ -88,9 +88,7 @@ def test_b_execution_start_without_prediction_is_rejected_atomically() -> None:
     ledger = _ledger()
     payload = {"execution_id": "exec-a", "prediction_commit_hash": _HASH}
     event = _event(ledger, EventTypeV0.EXECUTION_START, payload=payload)
-    _assert_rejected_without_mutation(
-        ledger, event, payload, PredictionCommitMissingError
-    )
+    _assert_rejected_without_mutation(ledger, event, payload, PredictionCommitMissingError)
 
 
 def test_c_missing_parent_is_rejected_atomically() -> None:
@@ -207,9 +205,7 @@ def test_n_execution_start_payload_hash_mismatch_is_rejected_atomically() -> Non
     payload = {"execution_id": "exec-a", "prediction_commit_hash": prediction.event_hash}
     event = ledger.build_event(EventTypeV0.EXECUTION_START, 2, prediction.event_hash, payload)
     forged_payload = {"execution_id": "exec-b", "prediction_commit_hash": prediction.event_hash}
-    _assert_rejected_without_mutation(
-        ledger, event, forged_payload, PayloadHashMismatchError
-    )
+    _assert_rejected_without_mutation(ledger, event, forged_payload, PayloadHashMismatchError)
 
 
 def test_o_execution_start_event_hash_mismatch_is_rejected_atomically() -> None:
