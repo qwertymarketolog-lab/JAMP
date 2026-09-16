@@ -9,8 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-import pytest
-
 from jamp.research.canonical import replay_hash
 from tests.research.test_contingency_r0 import (
     ContingencyEventR0,
@@ -91,7 +89,9 @@ def _candidate(
 ) -> CausalCandidateR0:
     event = _contingency()
     return CausalCandidateR0(
-        contingency_ref=_hash_ref({"event": event.contingency_event, "event_ref": event.provenance_ref}),
+        contingency_ref=_hash_ref(
+            {"event": event.contingency_event, "event_ref": event.provenance_ref}
+        ),
         hypothesis="the intervention changes the observed outcome",
         control_state="mechanism enabled",
         intervention=intervention,
@@ -145,8 +145,7 @@ def test_exp15_negative_repeated_contingency_is_not_causality() -> None:
         intervention="",
     )
 
-    with pytest.raises(ContractViolationError):
-        evaluate_causal_candidate(candidate)
+    assert evaluate_causal_candidate(candidate) is CausalDecisionR0.NOT_SUPPORTED
 
 
 def test_exp15_negative_successful_replay_is_not_causality() -> None:
@@ -164,8 +163,7 @@ def test_exp15_negative_correlation_without_intervention_is_not_supported() -> N
         repeated_observation=True,
     )
 
-    with pytest.raises(ContractViolationError):
-        evaluate_causal_candidate(candidate)
+    assert evaluate_causal_candidate(candidate) is CausalDecisionR0.NOT_SUPPORTED
 
 
 def test_exp15_negative_intervention_without_differential_outcome_is_not_supported() -> None:
@@ -213,8 +211,7 @@ def test_exp15_invariant_repetition_without_intervention_does_not_promote_status
         intervention="",
     )
 
-    with pytest.raises(ContractViolationError):
-        evaluate_causal_candidate(candidate)
+    assert evaluate_causal_candidate(candidate) is CausalDecisionR0.NOT_SUPPORTED
 
 
 def test_exp15_contingency_event_is_provenance_input_not_causal_status() -> None:
