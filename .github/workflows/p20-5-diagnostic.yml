@@ -2,7 +2,9 @@ name: P20.5 Hypothesis Lifecycle Diagnostic
 
 on:
   push:
-    branches: [feature/p20-5-hypothesis-lifecycle]
+    branches:
+      - feature/p20-5-hypothesis-lifecycle
+      - main
   pull_request:
     branches: [main]
   workflow_dispatch:
