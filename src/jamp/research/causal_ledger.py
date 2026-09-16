@@ -222,7 +222,7 @@ class CausalLedger:
         if event.parent_hash not in self._events:
             raise ParentMissingError("parent_hash is not present in the ledger")
         if event.parent_hash != self._head:
-            raise NonHeadParentError("event must extend the current ledger head")
+            raise HeadViolationError("event must extend the current ledger head")
         if event.sequence_index != self._events[self._head].sequence_index + 1:
             raise SequenceDiscontinuityError("sequence_index must follow the current head")
 
