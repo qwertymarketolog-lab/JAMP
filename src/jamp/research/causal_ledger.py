@@ -1,0 +1,262 @@
+"""EXP-10 / R0.2 append-only causal ledger.
+
+The ledger is a local, deterministic integrity layer. It binds events into a
+single append-only hash chain; it does not claim external existence or time.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+import re
+from typing import Any, Mapping
+
+from .canonical import replay_hash
+
+_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+ZERO_HASH = "0" * 64
+
+
+class LedgerError(ValueError):
+    """Base error for rejected R0.2 ledger operations."""
+
+    code = "LEDGER_ERROR"
+
+
+class GenesisViolationError(LedgerError):
+    code = "GENESIS_VIOLATION"
+
+
+class ParentMissingError(LedgerError):
+    code = "PARENT_MISSING"
+
+
+class NonHeadParentError(LedgerError):
+    code = "NON_HEAD_PARENT"
+
+
+class PayloadHashMismatchError(LedgerError):
+    code = "PAYLOAD_HASH_MISMATCH"
+
+
+class EventHashMismatchError(LedgerError):
+    code = "EVENT_HASH_MISMATCH"
+
+
+class SequenceDiscontinuityError(LedgerError):
+    code = "SEQUENCE_DISCONTINUITY"
+
+
+class HeadViolationError(LedgerError):
+    code = "HEAD_VIOLATION"
+
+
+class DuplicateEventError(LedgerError):
+    code = "DUPLICATE_EVENT"
+
+
+class CausalOrderViolationError(LedgerError):
+    code = "CAUSAL_ORDER_VIOLATION"
+
+
+class EventTypeV0(str, Enum):  # noqa: UP042
+    GENESIS = "GENESIS"
+    PREDICTION_COMMIT = "PREDICTION_COMMIT"
+    EXECUTION_START = "EXECUTION_START"
+    EXECUTION_RESULT = "EXECUTION_RESULT"
+    EVIDENCE_RECORD = "EVIDENCE_RECORD"
+
+
+@dataclass(frozen=True, slots=True)
+class PredictionCommitV0:
+    """R0.2 payload linking the ledger to an immutable PredictionRecord."""
+
+    prediction_hash: str
+
+    def __post_init__(self) -> None:
+        _validate_hash(self.prediction_hash, "prediction_hash")
+
+    def canonical_payload(self) -> dict[str, str]:
+        return {"prediction_hash": self.prediction_hash}
+
+
+@dataclass(frozen=True, slots=True)
+class CausalEventV0:
+    """Immutable hash-chained event envelope defined by R0.2."""
+
+    event_type: EventTypeV0
+    event_version: str
+    sequence_index: int
+    parent_hash: str
+    payload_hash: str
+    event_hash: str
+
+    def __post_init__(self) -> None:
+        try:
+            event_type = EventTypeV0(self.event_type)
+        except ValueError as exc:
+            raise LedgerError("invalid event_type") from exc
+        object.__setattr__(self, "event_type", event_type)
+        if self.event_version != "0":
+            raise LedgerError("event_version must be '0'")
+        if not isinstance(self.sequence_index, int) or isinstance(self.sequence_index, bool) or self.sequence_index < 0:
+            raise LedgerError("sequence_index must be a non-negative integer")
+        _validate_hash(self.parent_hash, "parent_hash")
+        _validate_hash(self.payload_hash, "payload_hash")
+        _validate_hash(self.event_hash, "event_hash")
+
+    def hash_material(self) -> dict[str, Any]:
+        return {
+            "event_type": self.event_type.value,
+            "event_version": self.event_version,
+            "parent_hash": self.parent_hash,
+            "payload_hash": self.payload_hash,
+            "sequence_index": self.sequence_index,
+        }
+
+    def verify_event_hash(self) -> bool:
+        return replay_hash(self.hash_material()) == self.event_hash
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerSnapshot:
+    """Read-only ledger state useful for atomicity assertions."""
+
+    head: str
+    event_count: int
+
+
+class CausalLedger:
+    """Single-head, append-only causal ledger for R0.2."""
+
+    def __init__(self) -> None:
+        self._events: dict[str, CausalEventV0] = {}
+        self._head = ZERO_HASH
+
+    @property
+    def head(self) -> str:
+        return self._head
+
+    @property
+    def event_count(self) -> int:
+        return len(self._events)
+
+    def snapshot(self) -> LedgerSnapshot:
+        return LedgerSnapshot(self._head, len(self._events))
+
+    def get(self, event_hash: str) -> CausalEventV0 | None:
+        return self._events.get(event_hash)
+
+    @staticmethod
+    def payload_hash(payload: Mapping[str, Any]) -> str:
+        return replay_hash(dict(payload))
+
+    @staticmethod
+    def build_event(
+        event_type: EventTypeV0,
+        sequence_index: int,
+        parent_hash: str,
+        payload: Mapping[str, Any],
+    ) -> CausalEventV0:
+        payload_hash = replay_hash(dict(payload))
+        material = {
+            "event_type": EventTypeV0(event_type).value,
+            "event_version": "0",
+            "parent_hash": parent_hash,
+            "payload_hash": payload_hash,
+            "sequence_index": sequence_index,
+        }
+        return CausalEventV0(
+            event_type=EventTypeV0(event_type),
+            event_version="0",
+            sequence_index=sequence_index,
+            parent_hash=parent_hash,
+            payload_hash=payload_hash,
+            event_hash=replay_hash(material),
+        )
+
+    @classmethod
+    def genesis(cls) -> CausalEventV0:
+        return cls.build_event(EventTypeV0.GENESIS, 0, ZERO_HASH, {})
+
+    def append_genesis(self) -> CausalEventV0:
+        return self.append(self.genesis(), payload={})
+
+    def append_prediction_commit(self, prediction_hash: str) -> CausalEventV0:
+        payload = PredictionCommitV0(prediction_hash).canonical_payload()
+        return self.append(
+            self.build_event(
+                EventTypeV0.PREDICTION_COMMIT,
+                len(self._events),
+                self._head,
+                payload,
+            ),
+            payload=payload,
+        )
+
+    def append(self, event: CausalEventV0, *, payload: Mapping[str, Any]) -> CausalEventV0:
+        """Validate every condition before mutating state (L0)."""
+        self._validate(event, payload)
+        self._events[event.event_hash] = event
+        self._head = event.event_hash
+        return event
+
+    def _validate(self, event: CausalEventV0, payload: Mapping[str, Any]) -> None:
+        if event.event_hash in self._events:
+            raise DuplicateEventError("event already exists")
+        if not event.verify_event_hash():
+            raise EventHashMismatchError("event_hash does not match canonical event material")
+        actual_payload_hash = replay_hash(dict(payload))
+        if actual_payload_hash != event.payload_hash:
+            raise PayloadHashMismatchError("payload_hash does not match canonical payload")
+
+        if not self._events:
+            if event.event_type is not EventTypeV0.GENESIS:
+                raise GenesisViolationError("first event must be GENESIS")
+            if event.sequence_index != 0 or event.parent_hash != ZERO_HASH:
+                raise GenesisViolationError("GENESIS must have sequence 0 and zero parent")
+            return
+
+        if event.event_type is EventTypeV0.GENESIS:
+            raise GenesisViolationError("GENESIS may occur only once")
+        if event.parent_hash not in self._events:
+            raise ParentMissingError("parent_hash is not present in the ledger")
+        if event.parent_hash != self._head:
+            raise NonHeadParentError("event must extend the current ledger head")
+        if event.sequence_index != self._events[self._head].sequence_index + 1:
+            raise SequenceDiscontinuityError("sequence_index must follow the current head")
+
+        expected = {
+            EventTypeV0.PREDICTION_COMMIT: EventTypeV0.GENESIS,
+            EventTypeV0.EXECUTION_START: EventTypeV0.PREDICTION_COMMIT,
+            EventTypeV0.EXECUTION_RESULT: EventTypeV0.EXECUTION_START,
+            EventTypeV0.EVIDENCE_RECORD: EventTypeV0.EXECUTION_RESULT,
+        }
+        if event.event_type is not expected[self._events[self._head].event_type]:
+            raise CausalOrderViolationError("event type violates the R0.2 causal order")
+
+
+def _validate_hash(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not _HASH_RE.fullmatch(value):
+        raise LedgerError(f"{field} must be lowercase SHA-256")
+    return value
+
+
+__all__ = (
+    "CausalEventV0",
+    "CausalLedger",
+    "CausalOrderViolationError",
+    "DuplicateEventError",
+    "EventHashMismatchError",
+    "EventTypeV0",
+    "GenesisViolationError",
+    "HeadViolationError",
+    "LedgerError",
+    "LedgerSnapshot",
+    "NonHeadParentError",
+    "ParentMissingError",
+    "PayloadHashMismatchError",
+    "PredictionCommitV0",
+    "SequenceDiscontinuityError",
+    "ZERO_HASH",
+)
