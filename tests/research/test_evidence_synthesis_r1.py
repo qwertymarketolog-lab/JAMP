@@ -42,9 +42,7 @@ def synthesize_evidence(data: SynthesisInputR1) -> SynthesisResultR1:
     """
 
     if data.observation_confidences:
-        composite_score = sum(data.observation_confidences) / len(
-            data.observation_confidences
-        )
+        composite_score = sum(data.observation_confidences) / len(data.observation_confidences)
     else:
         composite_score = 0.0
 
@@ -108,3 +106,4 @@ def test_empty_observation_set_is_safe() -> None:
 
     assert result.composite_score == 0.0
     assert result.epistemic_status is EpistemicStatus.INCONCLUSIVE
+``
