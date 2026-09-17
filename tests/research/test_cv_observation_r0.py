@@ -131,8 +131,12 @@ def test_exp17_inference_parameter_change_creates_new_provenance() -> None:
         "confidence": 0.94,
     }
 
-    first = ObservationRecordR0(inference_params=(("threshold", "0.50"),), **common)
-    second = ObservationRecordR0(inference_params=(("threshold", "0.75"),), **common)
+    first = ObservationRecordR0(
+        inference_params=(("threshold", "0.50"),), **common
+    )
+    second = ObservationRecordR0(
+        inference_params=(("threshold", "0.75"),), **common
+    )
 
     assert first.provenance_ref != second.provenance_ref
 
