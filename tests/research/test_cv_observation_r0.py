@@ -1,4 +1,5 @@
 """Research-only EXP-17-CV-R0 Visual Observation contract tests."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
