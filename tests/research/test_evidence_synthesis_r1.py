@@ -106,4 +106,3 @@ def test_empty_observation_set_is_safe() -> None:
 
     assert result.composite_score == 0.0
     assert result.epistemic_status is EpistemicStatus.INCONCLUSIVE
-``
