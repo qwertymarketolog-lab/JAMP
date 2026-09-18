@@ -17,16 +17,36 @@ PLAN_HASH = "d5f2d66dc38e1f7a0904c987e5d6827ca965e9edcf2e775d8fdb0c14161319dd"
 # for acquisition was mpmath.zetazero(n); the values are stored here so CI does
 # not depend on the external numerical package.
 OBSERVATIONS = [
-    {"zero_index": 1, "real_part": 0.5, "imag_part": 14.1347251417346937904572519835617,
-     "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30}},
-    {"zero_index": 2, "real_part": 0.5, "imag_part": 21.0220396387715549926284795938965,
-     "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30}},
-    {"zero_index": 3, "real_part": 0.5, "imag_part": 25.010857580145688763213790992564,
-     "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30}},
-    {"zero_index": 4, "real_part": 0.5, "imag_part": 30.4248761258595132103118975305851,
-     "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30}},
-    {"zero_index": 5, "real_part": 0.5, "imag_part": 32.9350615877391896906623689640763,
-     "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30}},
+    {
+        "zero_index": 1,
+        "real_part": 0.5,
+        "imag_part": 14.1347251417346937904572519835617,
+        "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30},
+    },
+    {
+        "zero_index": 2,
+        "real_part": 0.5,
+        "imag_part": 21.0220396387715549926284795938965,
+        "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30},
+    },
+    {
+        "zero_index": 3,
+        "real_part": 0.5,
+        "imag_part": 25.010857580145688763213790992564,
+        "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30},
+    },
+    {
+        "zero_index": 4,
+        "real_part": 0.5,
+        "imag_part": 30.4248761258595132103118975305851,
+        "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30},
+    },
+    {
+        "zero_index": 5,
+        "real_part": 0.5,
+        "imag_part": 32.9350615877391896906623689640763,
+        "metadata": {"acquisition_method": "mpmath.zetazero", "precision_dps": 30},
+    },
 ]
 
 
