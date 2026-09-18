@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from tests.research.exp20.fixtures_text import FIXTURES as TEXT_FIXTURES
-from tests.research.exp20.fixtures_transcript import FIXTURES as TRANSCRIPT_FIXTURES
-from tests.research.exp20.text_adapter import adapt as adapt_text
-from tests.research.exp20.transcript_adapter import adapt as adapt_transcript
 from .atomic_observation import (
     SCHEMA_VERSION,
     from_text_record,
     from_transcript_record,
     observation_digest,
 )
+from tests.research.exp20.fixtures_text import FIXTURES as TEXT_FIXTURES
+from tests.research.exp20.fixtures_transcript import FIXTURES as TRANSCRIPT_FIXTURES
+from tests.research.exp20.text_adapter import adapt as adapt_text
+from tests.research.exp20.transcript_adapter import adapt as adapt_transcript
+
 
 def test_text_record_maps_to_immutable_observation() -> None:
     record = adapt_text(TEXT_FIXTURES[0])
@@ -20,11 +21,15 @@ def test_text_record_maps_to_immutable_observation() -> None:
         observation.source_ref, observation.payload
     )
 
+
 def test_transcript_segments_map_one_to_one() -> None:
     record = adapt_transcript(TRANSCRIPT_FIXTURES[0])
     observations = from_transcript_record(record)
     assert len(observations) == len(record["segments"])
-    assert [item.payload["segment_index"] for item in observations] == list(range(len(observations)))
+    assert [item.payload["segment_index"] for item in observations] == list(
+        range(len(observations))
+    )
+
 
 def test_source_change_changes_observation_identity() -> None:
     record = adapt_text(TEXT_FIXTURES[0])
