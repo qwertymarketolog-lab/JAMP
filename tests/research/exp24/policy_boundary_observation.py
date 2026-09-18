@@ -70,8 +70,10 @@ def build_policy_boundary_observation(
 ) -> PolicyBoundaryObservation:
     policy_record = record["policy"]
     permissions = tuple(
-        sorted((str(tool), str(permission))
-               for tool, permission in policy_record["permissions"].items())
+        sorted(
+            (str(tool), str(permission))
+            for tool, permission in policy_record["permissions"].items()
+        )
     )
     policy = PolicyBoundary(
         policy_id=policy_record["policy_id"],
