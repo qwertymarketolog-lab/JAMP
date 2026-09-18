@@ -2,7 +2,7 @@ name: EXP-19.R3 Benchmark
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, research/exp19-r3-benchmark]
 
 jobs:
   benchmark:
