@@ -1,5 +1,4 @@
 import ast
-import hashlib
 import subprocess
 from pathlib import Path
 
@@ -27,7 +26,9 @@ def test_research_modules_do_not_import_jamp():
             if isinstance(node, ast.Import)
             for alias in node.names
         ]
-        assert all(not name == "jamp" and not name.startswith("jamp.") for name in imports)
+        assert all(
+            name != "jamp" and not name.startswith("jamp.") for name in imports
+        )
 
 
 def test_frozen_core_run_py_blob_is_unchanged():
