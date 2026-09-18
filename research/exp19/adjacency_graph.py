@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+from types import MappingProxyType
 from collections.abc import Iterable
 
 from research.exp19.observation_relation import ObservationRelation
@@ -18,7 +19,8 @@ class ObservationAdjacencyGraph:
     )
 
     def __init__(self, edges: Iterable[ObservationRelation]) -> None:
-        self._edges = {edge.edge_hash: edge for edge in edges}
+        edges_by_hash = {edge.edge_hash: edge for edge in edges}
+        self._edges = MappingProxyType(edges_by_hash)
         nodes: set[str] = set()
         adj_map: dict[str, list[str]] = {}
         for relation in self._edges.values():
@@ -107,4 +109,4 @@ class ObservationAdjacencyGraph:
             for key, relation in self._edges.items()
             if relation.relation_type == relation_type
         }
-        return ObservationAdjacencyGraph(filtered_edges)
+        return ObservationAdjacencyGraph(tuple(filtered_edges.values()))
