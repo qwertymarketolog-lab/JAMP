@@ -2,7 +2,6 @@
 
 from .text_adapter import TextObservation
 
-
 FIXTURES = (
     TextObservation(
         source_ref="fixture:text:001",
