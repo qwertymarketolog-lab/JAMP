@@ -1,0 +1,47 @@
+name: EXP-19.MEM-OPT-1
+
+on:
+  push:
+    branches:
+      - research/exp19-mem-opt-1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  opt1-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psutil
+      - name: Run OPT-1 harness
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -m pytest -q tests/research/exp19/test_benchmark_memory_opt.py
+      - name: Generate OPT-1 artifact
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          from tests.research.exp19.test_benchmark_memory_opt import build_artifact
+
+          path = Path("artifacts/exp19-mem-opt/benchmark-memory-opt.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(build_artifact(), sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          print(path)
+          PY
+      - name: Upload OPT-1 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-mem-opt-1
+          path: artifacts/exp19-mem-opt/benchmark-memory-opt.json
