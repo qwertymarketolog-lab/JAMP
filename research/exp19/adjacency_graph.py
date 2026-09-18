@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import deque
 from collections.abc import Iterable
 
 from research.exp19.observation_relation import ObservationRelation
@@ -16,37 +16,47 @@ class ObservationAdjacencyGraph:
             edge.edge_hash: edge
             for edge in edges
         }
-        adj: dict[str, list[str]] = defaultdict(list)
+        adj: dict[str, list[str]] = {}
         nodes: set[str] = set()
         for relation in self._edges.values():
             source, target = relation.source_id, relation.target_id
-            adj[source].append(target)
+            adj.setdefault(source, []).append(target)
             nodes.add(source)
             nodes.add(target)
-        self._adj: dict[str, list[str]] = dict(adj)
+        self._adj: dict[str, tuple[str, ...]] = {
+            source: tuple(targets)
+            for source, targets in adj.items()
+        }
         self._nodes: frozenset[str] = frozenset(nodes)
 
     def is_acyclic(self) -> bool:
         adj = self._adj
         color: dict[str, int] = {node: 0 for node in self._nodes}
+        nodes = tuple(self._nodes)
 
-        for start_node in self._nodes:
+        for start_node in nodes:
             if color[start_node] != 0:
                 continue
 
             color[start_node] = 1
-            stack = [(start_node, iter(adj.get(start_node, ())))]
+            children = adj.get(start_node, ())
+            stack = [[start_node, 0, children, len(children)]]
+
             while stack:
-                node, iterator = stack[-1]
-                try:
-                    target = next(iterator)
+                node, index, children, length = stack[-1]
+                if index < length:
+                    target = children[index]
+                    stack[-1][1] = index + 1
                     state = color.get(target, 2)
                     if state == 1:
                         return False
                     if state == 0:
                         color[target] = 1
-                        stack.append((target, iter(adj.get(target, ()))))
-                except StopIteration:
+                        target_children = adj.get(target, ())
+                        stack.append(
+                            [target, 0, target_children, len(target_children)]
+                        )
+                else:
                     stack.pop()
                     color[node] = 2
 
