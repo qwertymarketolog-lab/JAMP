@@ -97,6 +97,5 @@ def test_exp28_does_not_turn_finite_observation_into_a_theorem() -> None:
 
     assert exported["observation_status"] == "CAPTURED"
     assert all(
-        "claim" not in obs and "interpretation" not in obs
-        for obs in exported["observations"]
+        "claim" not in obs and "interpretation" not in obs for obs in exported["observations"]
     )
