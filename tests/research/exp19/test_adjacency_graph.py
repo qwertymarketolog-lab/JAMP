@@ -60,7 +60,9 @@ def test_g2_cycle_is_detected(edges: list[tuple[str, str]]) -> None:
         frozenset({"B", "C", "D", "E"}),
     ),
 ])
-def test_g3_reachability_is_exact(edges: list[tuple[str, str]], source: str, expected: frozenset[str]) -> None:
+def test_g3_reachability_is_exact(
+    edges: list[tuple[str, str]], source: str, expected: frozenset[str]
+) -> None:
     assert graph(edges).reachable(source) == expected
 
 
