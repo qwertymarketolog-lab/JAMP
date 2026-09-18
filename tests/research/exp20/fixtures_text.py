@@ -1,5 +1,4 @@
 """Fixed real-world-shaped text fixtures; no network access."""
-from __future__ import annotations
 
 from .text_adapter import TextObservation
 
