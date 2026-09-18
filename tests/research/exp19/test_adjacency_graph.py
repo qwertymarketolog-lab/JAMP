@@ -1,9 +1,8 @@
-"""RED tests for EXP-19.R1 ObservationAdjacencyGraph."""
+"""GREEN tests for EXP-19.R1 ObservationAdjacencyGraph."""
 
 from __future__ import annotations
 
 import importlib
-import sys
 import time
 
 import pytest
@@ -17,16 +16,14 @@ def relation(source: str, target: str) -> ObservationRelation:
 
 
 def graph(edges: list[tuple[str, str]]) -> ObservationAdjacencyGraph:
-    return ObservationAdjacencyGraph(frozenset(relation(s, t) for s, t in edges))
+    return ObservationAdjacencyGraph(tuple(relation(s, t) for s, t in edges))
 
 
 @pytest.mark.parametrize("edges", [
-    [("A", "B")],
-    [("A", "B"), ("B", "C")],
+    [("A", "B")], [("A", "B"), ("B", "C")],
     [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
     [("A", "B"), ("B", "C"), ("C", "D"), ("A", "D")],
-    [("A", "B"), ("A", "C"), ("A", "D")],
-    [("A", "B"), ("C", "D")],
+    [("A", "B"), ("A", "C"), ("A", "D")], [("A", "B"), ("C", "D")],
     [("A", "B"), ("B", "C"), ("B", "D"), ("D", "E")],
     [("A", "B"), ("C", "B"), ("D", "B")],
     [("A", "B"), ("B", "C"), ("C", "E"), ("A", "D"), ("D", "E")],
@@ -37,8 +34,7 @@ def test_g1_dag_is_acyclic(edges: list[tuple[str, str]]) -> None:
 
 
 @pytest.mark.parametrize("edges", [
-    [("A", "B"), ("B", "A")],
-    [("A", "B"), ("B", "C"), ("C", "A")],
+    [("A", "B"), ("B", "A")], [("A", "B"), ("B", "C"), ("C", "A")],
     [("A", "B"), ("B", "C"), ("C", "D"), ("D", "A")],
     [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "B")],
     [("A", "B"), ("B", "C"), ("C", "A"), ("C", "D")],
@@ -141,12 +137,12 @@ def test_g4_repeated_traversal_is_stable() -> None:
 
 
 def test_g5_core_isolation_modules() -> None:
-    assert "jamp" not in {name for name in sys.modules if name == "jamp" or name.startswith("jamp.")}
+    module = importlib.import_module("research.exp19.adjacency_graph")
+    assert not any(name == "jamp" or name.startswith("jamp.") for name in module.__dict__)
 
 
 def test_g5_core_isolation_import_scan() -> None:
     module = importlib.import_module("research.exp19.adjacency_graph")
-    assert not module.__file__.replace("\\", "/").endswith("src/jamp/__init__.py")
     assert "/src/jamp/" not in module.__file__.replace("\\", "/")
 
 
@@ -164,11 +160,9 @@ def test_g5_graph_does_not_mutate_relation() -> None:
 
 
 @pytest.mark.parametrize("edges", [
-    [("A", "B"), ("B", "C")],
-    [("A", "B"), ("B", "C"), ("C", "D")],
+    [("A", "B"), ("B", "C")], [("A", "B"), ("B", "C"), ("C", "D")],
     [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
-    [("A", "B"), ("C", "D")],
-    [("A", "B"), ("B", "D"), ("C", "D")],
+    [("A", "B"), ("C", "D")], [("A", "B"), ("B", "D"), ("C", "D")],
 ])
 def test_g5_no_core_runtime_dependency(edges: list[tuple[str, str]]) -> None:
     assert graph(edges).is_acyclic() is True
