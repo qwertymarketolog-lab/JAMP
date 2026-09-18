@@ -202,7 +202,3 @@ After a failure is fixed:
 5. only then advance the gate.
 
 Historical failures remain part of the evidence chain. Never overwrite their meaning by reporting only the final green attempt.
-
-## 11. Extensions
-
-Third-party engines and plugins belong above the verified core boundary. They may consume stable public contracts but must not mutate causal history, bypass provenance, or import private research implementation details. Start from `templates/jamp-plugin/` and keep extension-specific dependencies outside the core package.
