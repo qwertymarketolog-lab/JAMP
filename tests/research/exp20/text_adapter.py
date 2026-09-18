@@ -22,9 +22,10 @@ def normalize_text(raw_text: str) -> str:
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
+    payload = json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    )
+    return payload.encode("utf-8")
 
 
 def provenance_digest(
