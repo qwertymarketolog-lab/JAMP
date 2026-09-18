@@ -11,7 +11,7 @@ def test_ingested_signal_carries_required_provenance_fields():
         make_signal("sha256:source", "text", "X")
     )
 
-    assert REQUIRED <= normalized.keys()
+    assert normalized.keys() >= REQUIRED
     assert normalized["source_ref"] == "sha256:source"
 
 
