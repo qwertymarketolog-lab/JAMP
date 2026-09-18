@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from types import MappingProxyType
 
 from research.exp19.observation_relation import ObservationRelation
 
@@ -11,18 +12,17 @@ class ObservationAdjacencyGraph:
     __slots__ = ("_edges",)
 
     def __init__(self, edges: frozenset[ObservationRelation]) -> None:
-        self._edges = dict.fromkeys(edge.edge_hash for edge in edges)
-        self._relations = tuple(edges)
+        self._edges = MappingProxyType({edge.edge_hash: edge for edge in edges})
 
     def _build_adj(self) -> dict[str, list[str]]:
         adj: dict[str, list[str]] = defaultdict(list)
-        for relation in self._relations:
+        for relation in self._edges.values():
             adj[relation.source_id].append(relation.target_id)
         return adj
 
     def is_acyclic(self) -> bool:
         adj = self._build_adj()
-        nodes = {node for relation in self._relations for node in (relation.source_id, relation.target_id)}
+        nodes = {node for relation in self._edges.values() for node in (relation.source_id, relation.target_id)}
         color = {node: 0 for node in nodes}
 
         def dfs(node: str) -> bool:
