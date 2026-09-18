@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from types import MappingProxyType
+from collections.abc import Iterable
 
 from research.exp19.observation_relation import ObservationRelation
 
@@ -9,61 +9,63 @@ from research.exp19.observation_relation import ObservationRelation
 class ObservationAdjacencyGraph:
     """Isolated adjacency graph over canonical observation relations."""
 
-    __slots__ = ("_edges",)
+    __slots__ = ("_edges", "_adj", "_nodes")
 
-    def __init__(self, edges: frozenset[ObservationRelation]) -> None:
-        self._edges = MappingProxyType({edge.edge_hash: edge for edge in edges})
-
-    def _build_adj(self) -> dict[str, list[str]]:
+    def __init__(self, edges: Iterable[ObservationRelation]) -> None:
+        self._edges = {
+            edge.edge_hash: edge
+            for edge in edges
+        }
         adj: dict[str, list[str]] = defaultdict(list)
+        nodes: set[str] = set()
         for relation in self._edges.values():
-            adj[relation.source_id].append(relation.target_id)
-        return adj
+            source, target = relation.source_id, relation.target_id
+            adj[source].append(target)
+            nodes.add(source)
+            nodes.add(target)
+        self._adj: dict[str, list[str]] = dict(adj)
+        self._nodes: frozenset[str] = frozenset(nodes)
 
     def is_acyclic(self) -> bool:
-        adj = self._build_adj()
-        nodes = {
-            node
-            for relation in self._edges.values()
-            for node in (relation.source_id, relation.target_id)
-        }
-        color = {node: 0 for node in nodes}
+        adj = self._adj
+        color: dict[str, int] = {node: 0 for node in self._nodes}
 
-        for start in nodes:
-            if color[start] != 0:
+        for start_node in self._nodes:
+            if color[start_node] != 0:
                 continue
 
-            color[start] = 1
-            stack: list[tuple[str, int]] = [(start, 0)]
-
+            color[start_node] = 1
+            stack = [(start_node, iter(adj.get(start_node, ())))]
             while stack:
-                node, index = stack[-1]
-                targets = adj.get(node, ())
-
-                if index >= len(targets):
-                    color[node] = 2
+                node, iterator = stack[-1]
+                try:
+                    target = next(iterator)
+                    state = color.get(target, 2)
+                    if state == 1:
+                        return False
+                    if state == 0:
+                        color[target] = 1
+                        stack.append((target, iter(adj.get(target, ()))))
+                except StopIteration:
                     stack.pop()
-                    continue
-
-                target = targets[index]
-                stack[-1] = (node, index + 1)
-
-                if color[target] == 1:
-                    return False
-                if color[target] == 0:
-                    color[target] = 1
-                    stack.append((target, 0))
+                    color[node] = 2
 
         return True
 
     def reachable(self, start_id: str) -> frozenset[str]:
-        adj = self._build_adj()
-        visited: set[str] = set()
+        adj = self._adj
+        visited: set[str] = {start_id}
         queue = deque([start_id])
+        popleft = queue.popleft
+        visited_add = visited.add
+        queue_append = queue.append
+
         while queue:
-            node = queue.popleft()
+            node = popleft()
             for target in adj.get(node, ()):
                 if target not in visited:
-                    visited.add(target)
-                    queue.append(target)
+                    visited_add(target)
+                    queue_append(target)
+
+        visited.discard(start_id)
         return frozenset(visited)
