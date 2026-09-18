@@ -35,18 +35,21 @@ def _measure(edge_count: int, repeats: int = 25) -> tuple[list[float], list[floa
 
     for iteration in range(repeats + 5):
         gc.collect()
+        gc.disable()
+        try:
+            start = time.perf_counter()
+            graph = _graph(edge_count)
+            build_elapsed = time.perf_counter() - start
 
-        start = time.perf_counter()
-        graph = _graph(edge_count)
-        build_elapsed = time.perf_counter() - start
+            start = time.perf_counter()
+            assert graph.is_acyclic() is True
+            acyclic_elapsed = time.perf_counter() - start
 
-        start = time.perf_counter()
-        assert graph.is_acyclic() is True
-        acyclic_elapsed = time.perf_counter() - start
-
-        start = time.perf_counter()
-        graph.reachable("0")
-        reachable_elapsed = time.perf_counter() - start
+            start = time.perf_counter()
+            graph.reachable("0")
+            reachable_elapsed = time.perf_counter() - start
+        finally:
+            gc.enable()
 
         if iteration >= 5:
             build.append(build_elapsed)
