@@ -135,6 +135,7 @@ def test_g3_branching_chain() -> None:
     assert graph(edges).reachable("A") == frozenset({"B", "C", "D", "E", "F"})
 
 
+@pytest.mark.exp19_perf
 def test_g4_large_graph_is_linear_scale() -> None:
     edges = [(str(i), str(i + 1)) for i in range(10_000)]
     edges.extend((str(i), str(i + 10_000)) for i in range(10_000))
