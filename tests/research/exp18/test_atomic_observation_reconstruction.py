@@ -121,11 +121,7 @@ def test_mutating_one_atom_changes_hash_and_localizes_difference():
     baseline_atoms = {atom["id"]: atom for atom in baseline["atoms"]}
     mutated_atoms = {atom["id"]: atom for atom in mutated["atoms"]}
 
-    changed_ids = {
-        atom_id
-        for atom_id in baseline_atoms
-        if baseline_atoms[atom_id] != mutated_atoms[atom_id]
-    }
+    changed_ids = {atom_id for atom_id in baseline_atoms if baseline_atoms[atom_id] != mutated_atoms[atom_id]}
 
     assert changed_ids == {"O4"}
     assert baseline["provenance"] == mutated["provenance"]
