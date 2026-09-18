@@ -1,4 +1,5 @@
 """Research-only deterministic text adapter harness for EXP-20 Step 1."""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,9 +23,7 @@ def normalize_text(raw_text: str) -> str:
 
 
 def canonical_bytes(value: Any) -> bytes:
-    payload = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return payload.encode("utf-8")
 
 
@@ -57,7 +56,5 @@ def adapt(observation: TextObservation) -> dict[str, Any]:
         "adapter_version": adapter_version,
         "normalized_text": normalized,
         "metadata": dict(observation.metadata),
-        "provenance_hash": provenance_digest(
-            observation, normalized, adapter_id, adapter_version
-        ),
+        "provenance_hash": provenance_digest(observation, normalized, adapter_id, adapter_version),
     }
