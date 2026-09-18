@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 from tests.research.exp19.conftest_bench import PROFILES, build_graph
+from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 
 
 pytestmark = pytest.mark.skipif(
