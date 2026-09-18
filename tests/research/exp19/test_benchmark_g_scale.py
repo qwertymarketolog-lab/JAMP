@@ -8,9 +8,16 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 from tests.research.exp19.conftest_bench import PROFILES, build_graph
 
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("JAMP_R3_BENCHMARK") != "1",
+    reason="EXP-19.R3 benchmark runs only in the dedicated benchmark job",
+)
 
 SAMPLES = 10
 TARGET_TYPE = "CTRL"
