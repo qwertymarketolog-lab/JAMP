@@ -121,12 +121,8 @@ def compare_traces(left: TraceStream, right: TraceStream) -> TraceComparison:
 
     if len(left.steps) != len(right.steps):
         for index in range(common_length, max(len(left.steps), len(right.steps))):
-            left_digest = (
-                left.steps[index].payload_digest if index < len(left.steps) else ""
-            )
-            right_digest = (
-                right.steps[index].payload_digest if index < len(right.steps) else ""
-            )
+            left_digest = left.steps[index].payload_digest if index < len(left.steps) else ""
+            right_digest = right.steps[index].payload_digest if index < len(right.steps) else ""
             differences.append(
                 StructuralDifference(
                     step_index=index,
