@@ -79,7 +79,8 @@ def reconstruction_loss(
     actual: tuple[TranscriptSegment, ...],
 ) -> int:
     sentinel = object()
-    return sum(left != right for left, right in itertools.zip_longest(expected, actual, fillvalue=sentinel))
+    pairs = itertools.zip_longest(expected, actual, fillvalue=sentinel)
+    return sum(left != right for left, right in pairs)
 
 
 def provenance_digest(
