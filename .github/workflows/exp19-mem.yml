@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - research/exp19-mem-benchmark
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
