@@ -1,4 +1,5 @@
 """Fresh-process worker for P23.0-B cold replay."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,16 +16,12 @@ from tests.benchmarks.harness.snapshot_schema import load_snapshot
 def _restore(payload: dict[str, object]):
     graph_data = payload["graph"]
     graph_nodes = tuple(
-        LineageNode(item["node_hash"], tuple(item["parents"]))
-        for item in graph_data["nodes"]
+        LineageNode(item["node_hash"], tuple(item["parents"])) for item in graph_data["nodes"]
     )
     graph = build_lineage_graph(graph_nodes)
     stored_hash = graph_data["graph_hash"]
     if graph.graph_hash != stored_hash:
-        raise ValueError(
-            f"Snapshot commitment mismatch: stored={stored_hash}, "
-            f"recomputed={graph.graph_hash}"
-        )
+        raise ValueError(f"Snapshot commitment mismatch: stored={stored_hash}, recomputed={graph.graph_hash}")
 
     ledger_data = payload["ledger"]
     records: list[EvidenceRecord] = []
