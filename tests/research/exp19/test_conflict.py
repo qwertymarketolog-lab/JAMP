@@ -21,24 +21,18 @@ def resolve_signals(signals):
 
 
 def test_agreement_preserves_both_sources():
-    result = resolve_signals(
-        [make_assertion("sha256:a", "X"), make_assertion("sha256:b", "X")]
-    )
+    result = resolve_signals([make_assertion("sha256:a", "X"), make_assertion("sha256:b", "X")])
     assert result["status"] == "AGREEMENT"
     assert set(result["sources"]) == {"sha256:a", "sha256:b"}
 
 
 def test_contradiction_localizes_conflict_without_supported_transition():
-    result = resolve_signals(
-        [make_assertion("sha256:a", "X"), make_assertion("sha256:b", "Y")]
-    )
+    result = resolve_signals([make_assertion("sha256:a", "X"), make_assertion("sha256:b", "Y")])
     assert result["status"] == "INCONCLUSIVE"
     assert result["conflict"]["type"] == "CONTRADICTION"
     assert "status" not in result or result["status"] != "SUPPORTED"
 
 
 def test_conflict_retains_source_provenance():
-    result = resolve_signals(
-        [make_assertion("sha256:a", "X"), make_assertion("sha256:b", "Y")]
-    )
+    result = resolve_signals([make_assertion("sha256:a", "X"), make_assertion("sha256:b", "Y")])
     assert set(result["conflict"]["sources"]) == {"sha256:a", "sha256:b"}
