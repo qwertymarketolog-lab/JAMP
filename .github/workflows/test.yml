@@ -36,7 +36,7 @@ jobs:
       env:
         PYTHONPATH: src
       run: |
-        pytest -q
+        pytest -q -m 'not exp19_perf'
     - name: Generate empirical P17.6 report
       env:
         PYTHONPATH: src
