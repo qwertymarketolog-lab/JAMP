@@ -58,3 +58,6 @@ no_site_packages = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+  "exp19_perf: EXP-19 synthetic scale benchmark (non-blocking diagnostic contour)",
+]
