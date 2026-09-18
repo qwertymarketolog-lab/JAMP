@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-
 from dataclasses import dataclass
 from typing import Any
-
 
 ALLOWED_TYPES = frozenset(
     {"text_token", "semantic_chunk", "structural_node"}
