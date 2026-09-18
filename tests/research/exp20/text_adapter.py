@@ -22,10 +22,18 @@ def normalize_text(raw_text: str) -> str:
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return payload.encode("utf-8")
 
 
-def provenance_digest(observation: TextObservation, normalized_text: str, adapter_id: str, adapter_version: str) -> str:
+def provenance_digest(
+    observation: TextObservation,
+    normalized_text: str,
+    adapter_id: str,
+    adapter_version: str,
+) -> str:
     """P1/P2 binding over source identity, adapter identity, metadata and normalized payload."""
     envelope = {
         "source_ref": observation.source_ref,
@@ -49,5 +57,7 @@ def adapt(observation: TextObservation) -> dict[str, Any]:
         "adapter_version": adapter_version,
         "normalized_text": normalized,
         "metadata": dict(observation.metadata),
-        "provenance_hash": provenance_digest(observation, normalized, adapter_id, adapter_version),
+        "provenance_hash": provenance_digest(
+            observation, normalized, adapter_id, adapter_version
+        ),
     }
