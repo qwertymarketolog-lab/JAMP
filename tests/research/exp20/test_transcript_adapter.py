@@ -6,8 +6,8 @@ from .transcript_adapter import (
     adapt,
     parse_segments,
     provenance_digest,
-    reconstruction_loss,
     reconstruct_timeline,
+    reconstruction_loss,
 )
 
 
