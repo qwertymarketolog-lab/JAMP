@@ -1,0 +1,27 @@
+name: EXP-19.R3 Benchmark
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated developer environment
+        run: python -m pip install ".[dev]"
+      - name: Run EXP-19.R3 G-scale benchmark
+        env:
+          PYTHONPATH: src:.
+          JAMP_R3_BENCHMARK: "1"
+        run: python -m pytest -q tests/research/exp19/test_benchmark_g_scale.py
+      - name: Upload EXP-19.R3 benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-r3-benchmark
+          path: artifacts/exp19-r3/benchmark.json
+          if-no-files-found: error
