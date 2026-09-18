@@ -9,7 +9,7 @@ from tests.benchmarks.harness.cold_replay_worker import _restore
 
 
 def test_snapshot_commitment_tampering_behavior() -> None:
-    """Mutate graph nodes while retaining the snapshot's original graph_hash."""
+    """Record whether _restore() rejects or accepts a stale graph commitment."""
     fixture = create_tick_1_fixture()
     payload = {
         "graph": fixture.graph.export(),
@@ -29,7 +29,7 @@ def test_snapshot_commitment_tampering_behavior() -> None:
 
     restored_graph, _, _ = _restore(tampered_payload)
 
+    # Empirical outcome: _restore() accepts the tampered nodes and reconstructs
+    # a different commitment without comparing it with the stale snapshot hash.
+    assert len(restored_graph.nodes) == len(fixture.graph.nodes) + 1
     assert restored_graph.graph_hash != original_graph_hash
-    assert restored_graph.graph_hash == fixture.graph.graph_hash or (
-        restored_graph.graph_hash != fixture.graph.graph_hash
-    )
