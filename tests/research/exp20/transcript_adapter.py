@@ -33,7 +33,12 @@ class TranscriptSegment:
 def timestamp_to_ms(value: str) -> int:
     hours, minutes, seconds = value.split(":")
     whole_seconds, millis = seconds.split(".")
-    return int(hours) * 3_600_000 + int(minutes) * 60_000 + int(whole_seconds) * 1_000 + int(millis)
+    return (
+        int(hours) * 3_600_000
+        + int(minutes) * 60_000
+        + int(whole_seconds) * 1_000
+        + int(millis)
+    )
 
 
 def parse_segments(raw_text: str) -> tuple[TranscriptSegment, ...]:
@@ -79,7 +84,12 @@ def reconstruction_loss(
     actual: tuple[TranscriptSegment, ...],
 ) -> int:
     sentinel = object()
-    return sum(left != right for left, right in itertools.zip_longest(expected, actual, fillvalue=sentinel))
+    return sum(
+        left != right
+        for left, right in itertools.zip_longest(
+            expected, actual, fillvalue=sentinel
+        )
+    )
 
 
 def provenance_digest(
