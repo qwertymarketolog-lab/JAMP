@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from collections import deque
-from types import MappingProxyType
 from collections.abc import Iterable
+from types import MappingProxyType
 
 from research.exp19.observation_relation import ObservationRelation
 
