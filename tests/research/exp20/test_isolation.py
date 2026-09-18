@@ -42,9 +42,5 @@ def test_exp20_contains_only_research_harness_files():
         "test_isolation.py",
         "test_text_adapter.py",
     }
-    actual = {
-        path.name
-        for path in RESEARCH.iterdir()
-        if path.is_file()
-    }
+    actual = {path.name for path in RESEARCH.iterdir() if path.is_file()}
     assert actual == allowed
