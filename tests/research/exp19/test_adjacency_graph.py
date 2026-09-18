@@ -99,16 +99,12 @@ def test_g3_does_not_include_source() -> None:
 
 
 def test_g3_disconnected_component_does_not_leak() -> None:
-    assert (
-        graph([("A", "B"), ("X", "Y"), ("Y", "Z")]).reachable("A")
-        == frozenset({"B"})
-    )
+    assert graph([("A", "B"), ("X", "Y"), ("Y", "Z")]).reachable("A") == frozenset({"B"})
 
 
 def test_g3_diamond_has_no_duplicates() -> None:
-    assert (
-        graph([("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")]).reachable("A")
-        == frozenset({"B", "C", "D"})
+    assert graph([("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")]).reachable("A") == frozenset(
+        {"B", "C", "D"}
     )
 
 
@@ -174,9 +170,7 @@ def test_g4_repeated_traversal_is_stable() -> None:
 
 def test_g5_core_isolation_modules() -> None:
     module = importlib.import_module("research.exp19.adjacency_graph")
-    assert not any(
-        name == "jamp" or name.startswith("jamp.") for name in module.__dict__
-    )
+    assert not any(name == "jamp" or name.startswith("jamp.") for name in module.__dict__)
 
 
 def test_g5_core_isolation_import_scan() -> None:
