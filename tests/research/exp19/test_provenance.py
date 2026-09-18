@@ -6,9 +6,7 @@ REQUIRED = {"source_ref", "source_type", "adapter_id", "adapter_version"}
 
 
 def test_ingested_signal_carries_required_provenance_fields():
-    normalized = adapters()["text"].normalize(
-        make_signal("sha256:source", "text", "X")
-    )
+    normalized = adapters()["text"].normalize(make_signal("sha256:source", "text", "X"))
 
     assert normalized.keys() >= REQUIRED
     assert normalized["source_ref"] == "sha256:source"
