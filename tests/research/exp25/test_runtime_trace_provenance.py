@@ -76,11 +76,14 @@ def test_semantic_verdict_keys_are_not_trace_fields() -> None:
         ],
         "cumulative_digest": observation.cumulative_digest,
     }
-    assert not {
-        "goal_met",
-        "error_bad",
-        "policy_violated",
-    } & serialized.keys()
+    assert (
+        not {
+            "goal_met",
+            "error_bad",
+            "policy_violated",
+        }
+        & serialized.keys()
+    )
 
 
 def test_runtime_and_core_isolation() -> None:
