@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -82,9 +83,13 @@ def reconstruction_loss(
     expected: tuple[TranscriptSegment, ...],
     actual: tuple[TranscriptSegment, ...],
 ) -> int:
+    sentinel = object()
     return sum(
-        left != right for left, right in zip(expected, actual, strict=True)
-    ) + abs(len(expected) - len(actual))
+        left != right
+        for left, right in itertools.zip_longest(
+            expected, actual, fillvalue=sentinel
+        )
+    )
 
 
 def provenance_digest(
