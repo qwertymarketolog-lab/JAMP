@@ -38,9 +38,10 @@ def test_deterministic_edge_hash(index: int) -> None:
 
 @pytest.mark.parametrize("index", range(20))
 def test_directed_relation_changes_with_reversed_endpoints(index: int) -> None:
-    assert _relation(f"a-{index}", f"b-{index}").edge_hash != _relation(
-        f"b-{index}", f"a-{index}"
-    ).edge_hash
+    assert (
+        _relation(f"a-{index}", f"b-{index}").edge_hash
+        != _relation(f"b-{index}", f"a-{index}").edge_hash
+    )
 
 
 @pytest.mark.parametrize("index", range(20))
@@ -95,12 +96,15 @@ def test_edge_hash_is_canonical_sha256(index: int) -> None:
         ensure_ascii=False,
     )
     expected = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    assert compute_edge_hash(
-        payload["s"],
-        payload["t"],
-        payload["r"],
-        payload["p"],
-    ) == expected
+    assert (
+        compute_edge_hash(
+            payload["s"],
+            payload["t"],
+            payload["r"],
+            payload["p"],
+        )
+        == expected
+    )
 
 
 def test_mapping_order_does_not_change_hash() -> None:
