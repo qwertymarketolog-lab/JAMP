@@ -100,5 +100,6 @@ class ObservationAdjacencyGraph:
                     visited_add(target)
                     queue_append(target)
 
+        visited.discard(start_idx)
         idx_to_node = self._idx_to_node
         return frozenset(idx_to_node[index] for index in visited)
