@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from ..exp20.fixtures_text import FIXTURES as TEXT_FIXTURES
-from ..exp20.fixtures_transcript import FIXTURES as TRANSCRIPT_FIXTURES
-from ..exp20.text_adapter import adapt as adapt_text
-from ..exp20.transcript_adapter import adapt as adapt_transcript
+from tests.research.exp20.fixtures_text import FIXTURES as TEXT_FIXTURES
+from tests.research.exp20.fixtures_transcript import FIXTURES as TRANSCRIPT_FIXTURES
+from tests.research.exp20.text_adapter import adapt as adapt_text
+from tests.research.exp20.transcript_adapter import adapt as adapt_transcript
 from .atomic_observation import (
     SCHEMA_VERSION,
     from_text_record,
