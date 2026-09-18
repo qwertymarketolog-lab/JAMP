@@ -30,8 +30,12 @@ def test_p1_p2_provenance_recomputes_exactly() -> None:
 def test_p1_p2_source_or_payload_change_changes_identity() -> None:
     fixture = FIXTURES[0]
     original = adapt(fixture)
-    changed_source = adapt(TextObservation("fixture:text:changed", fixture.raw_text, fixture.metadata))
-    changed_payload = adapt(TextObservation(fixture.source_ref, fixture.raw_text + "x", fixture.metadata))
+    changed_source = adapt(
+        TextObservation("fixture:text:changed", fixture.raw_text, fixture.metadata)
+    )
+    changed_payload = adapt(
+        TextObservation(fixture.source_ref, fixture.raw_text + "x", fixture.metadata)
+    )
     assert original["provenance_hash"] != changed_source["provenance_hash"]
     assert original["provenance_hash"] != changed_payload["provenance_hash"]
 
