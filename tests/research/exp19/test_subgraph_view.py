@@ -14,13 +14,13 @@ def base_graph() -> tuple[
     ObservationRelation,
 ]:
     r1 = ObservationRelation(
-        source_id="node_a", target_id="node_b", relation_type="DEP"
+        source_id="node_a", target_id="node_b", relation_type="DEP", params={}
     )
     r2 = ObservationRelation(
-        source_id="node_b", target_id="node_c", relation_type="REF"
+        source_id="node_b", target_id="node_c", relation_type="REF", params={}
     )
     r3 = ObservationRelation(
-        source_id="node_c", target_id="node_d", relation_type="DEP"
+        source_id="node_c", target_id="node_d", relation_type="DEP", params={}
     )
     return ObservationAdjacencyGraph((r1, r2, r3)), r1, r2, r3
 
