@@ -70,9 +70,7 @@ class ObservationAdjacencyGraph:
                     if state == 0:
                         color[target] = 1
                         target_children = adj[target]
-                        stack.append(
-                            [target, 0, target_children, len(target_children)]
-                        )
+                        stack.append([target, 0, target_children, len(target_children)])
                 else:
                     stack.pop()
                     color[frame[0]] = 2
