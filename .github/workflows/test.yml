@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    if: ${{ github.event_name == 'pull_request' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
     runs-on: ubuntu-latest
 
     steps:
