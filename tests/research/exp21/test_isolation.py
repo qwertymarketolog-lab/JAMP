@@ -26,7 +26,5 @@ def test_research_modules_do_not_import_jamp() -> None:
 
 def test_frozen_core_run_py_blob_is_unchanged() -> None:
     run_py = ROOT / "src" / "jamp" / "run.py"
-    actual = subprocess.check_output(
-        ["git", "hash-object", str(run_py)], text=True
-    ).strip()
+    actual = subprocess.check_output(["git", "hash-object", str(run_py)], text=True).strip()
     assert actual == FROZEN_RUN_PY_SHA
