@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -34,7 +36,7 @@ def test_determinism_over_deterministic_graph_set(seed: int) -> None:
         assert first == second
 
 
-# B. Directedness: reversing endpoints changes the canonical edge identity.
+# B. Directedness.
 @pytest.mark.parametrize("index", range(20))
 def test_directedness_changes_hash(index: int) -> None:
     params = {"index": index, "kind": "x"}
@@ -86,14 +88,30 @@ def test_cycle_of_length_is_rejected(length: int) -> None:
     assert validate_acyclic_subset(relations) is False
 
 
-# F. Isolation / delta: this research module must not import JAMP core.
+# F. Isolation: AST import scan and repository-boundary checks.
 @pytest.mark.parametrize("module_name", ["research.exp19", "research.exp19.observation_relation"])
 def test_research_module_has_no_core_imports(module_name: str) -> None:
-    import importlib
+    relative = Path(module_name.replace(".", "/") + ".py")
+    if module_name.endswith(".observation_relation"):
+        path = relative
+    else:
+        path = Path("research/exp19/__init__.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            names = [node.module or ""]
+        else:
+            continue
+        assert all(name != "jamp" and not name.startswith("jamp.") for name in names)
 
-    module = importlib.import_module(module_name)
-    loaded = set(module.__dict__.get("__name__", "").split())
-    assert not any(name == "jamp" or name.startswith("jamp.") for name in loaded)
+
+@pytest.mark.parametrize("path", ["src/jamp/run.py", "src/jamp/__init__.py"])
+def test_core_files_are_not_part_of_exp19(path: str) -> None:
+    assert not Path("research/exp19/observation_relation.py").samefile(
+        Path(path)
+    )
 
 
 @pytest.mark.parametrize("index", range(14))
