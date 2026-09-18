@@ -58,15 +58,15 @@ def test_g2_cycle_is_detected(edges: list[tuple[str, str]]) -> None:
 @pytest.mark.parametrize(
     "edges, source, expected",
     [
-        ([( "A", "B"), ("B", "C"), ("C", "D")], "A", frozenset({"B", "C", "D"})),
-        ([( "A", "B"), ("B", "C"), ("X", "Y")], "A", frozenset({"B", "C"})),
+        ([("A", "B"), ("B", "C"), ("C", "D")], "A", frozenset({"B", "C", "D"})),
+        ([("A", "B"), ("B", "C"), ("X", "Y")], "A", frozenset({"B", "C"})),
         (
             [("A", "B"), ("A", "C"), ("B", "D"), ("C", "E")],
             "A",
             frozenset({"B", "C", "D", "E"}),
         ),
-        ([( "A", "B"), ("B", "C"), ("X", "C")], "X", frozenset({"C"})),
-        ([( "A", "B"), ("C", "D")], "B", frozenset()),
+        ([("A", "B"), ("B", "C"), ("X", "C")], "X", frozenset({"C"})),
+        ([("A", "B"), ("C", "D")], "B", frozenset()),
         (
             [("A", "B"), ("B", "C"), ("C", "D"), ("X", "Y")],
             "C",
