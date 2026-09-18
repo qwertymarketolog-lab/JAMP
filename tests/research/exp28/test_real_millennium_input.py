@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from jamp.research.execution import make_execution
 
-
 QUESTION_HASH = "80b978e61655aebf83d2ee50d56dfd870847faf14846992edd5fc9521c01f0d1"
 PLAN_HASH = "d5f2d66dc38e1f7a0904c987e5d6827ca965e9edcf2e775d8fdb0c14161319dd"
 
@@ -77,4 +76,7 @@ def test_exp28_does_not_turn_finite_observation_into_a_theorem() -> None:
     exported = execution.export()
 
     assert exported["observation_status"] == "CAPTURED"
-    assert all("claim" not in obs and "interpretation" not in obs for obs in exported["observations"])
+    assert all(
+        "claim" not in obs and "interpretation" not in obs
+        for obs in exported["observations"]
+    )
