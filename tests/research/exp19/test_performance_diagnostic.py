@@ -11,6 +11,7 @@ import json
 import os
 import statistics
 import time
+import warnings
 
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 from research.exp19.observation_relation import ObservationRelation
@@ -65,7 +66,11 @@ def _summary(values: list[float]) -> tuple[float, float, float]:
 
 def _export_summary(rows: list[dict[str, object]]) -> None:
     payload = json.dumps(rows, separators=(",", ":"), sort_keys=True)
-    print(f"EXP19_DIAG_PAYLOAD: {payload}")
+    warnings.warn(
+        f"EXP19_DIAG_PAYLOAD: {payload}",
+        UserWarning,
+        stacklevel=2,
+    )
 
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_path:
