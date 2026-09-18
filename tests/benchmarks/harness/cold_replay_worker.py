@@ -22,8 +22,7 @@ def _restore(payload: dict[str, object]):
     stored_hash = graph_data["graph_hash"]
     if graph.graph_hash != stored_hash:
         raise ValueError(
-            f"Snapshot commitment mismatch: stored={stored_hash}, "
-            f"recomputed={graph.graph_hash}"
+            f"Snapshot commitment mismatch: stored={stored_hash}, recomputed={graph.graph_hash}"
         )
 
     ledger_data = payload["ledger"]
