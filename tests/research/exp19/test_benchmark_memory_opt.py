@@ -18,14 +18,78 @@ from types import MappingProxyType
 import psutil
 
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
-from tests.research.exp19.test_benchmark_memory_g_scale import (
-    E,
-    PROFILES,
-    SEED,
-    TARGET_RELATION,
-    V,
-    build_relations,
-)
+from research.exp19.observation_relation import ObservationRelation
+
+RELATION_TYPES = ("DEP", "REF", "DATA", "CTRL")
+PROFILES = ("single", "mixed", "rare", "dominant", "empty", "near-complete")
+SEED = 42
+V = 10_000
+E = 20_000
+TARGET_RELATION = "CTRL"
+
+
+def _relation_types(profile: str, count: int) -> list[str]:
+    if profile == "single":
+        return ["CTRL"] * count
+    if profile == "mixed":
+        return [RELATION_TYPES[index % len(RELATION_TYPES)] for index in range(count)]
+    if profile == "rare":
+        rare_count = max(1, count // 200)
+        return ["CTRL"] * rare_count + ["DEP"] * (count - rare_count)
+    if profile == "dominant":
+        dominant_count = int(count * 0.96)
+        return ["CTRL"] * dominant_count + [
+            RELATION_TYPES[index % 3] for index in range(count - dominant_count)
+        ]
+    if profile == "empty":
+        return ["DEP"] * count
+    if profile == "near-complete":
+        return [RELATION_TYPES[index % 2] for index in range(count)]
+    raise ValueError(f"Unknown benchmark profile: {profile}")
+
+
+def _edge_pairs(profile: str, vertices: int, edges: int, seed: int) -> list[tuple[int, int]]:
+    import random
+
+    rng = random.Random(seed)
+    pairs: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    if profile == "near-complete":
+        dense_vertices = max(200, min(vertices, 300))
+        candidates = [
+            (source, target)
+            for source in range(dense_vertices)
+            for target in range(source + 1, dense_vertices)
+        ]
+        rng.shuffle(candidates)
+        pairs.extend(candidates[: min(edges, len(candidates))])
+        seen.update(pairs)
+    while len(pairs) < edges:
+        source = rng.randrange(vertices - 1)
+        target = rng.randrange(source + 1, vertices)
+        pair = (source, target)
+        if pair not in seen:
+            seen.add(pair)
+            pairs.append(pair)
+    return pairs
+
+
+def build_relations(profile: str) -> tuple[ObservationRelation, ...]:
+    if profile not in PROFILES:
+        raise ValueError(f"Unknown benchmark profile: {profile}")
+    pairs = _edge_pairs(profile, V, E, SEED)
+    types = _relation_types(profile, E)
+    return tuple(
+        ObservationRelation(
+            source_id=f"n{source:05d}",
+            target_id=f"n{target:05d}",
+            relation_type=relation_type,
+            params={"seed": SEED, "ordinal": index},
+        )
+        for index, ((source, target), relation_type) in enumerate(
+            zip(pairs, types, strict=True)
+        )
+    )
 
 
 ARTIFACT_PATH = Path("artifacts/exp19-mem-opt/benchmark-memory-opt.json")
