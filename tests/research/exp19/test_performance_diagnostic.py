@@ -16,8 +16,7 @@ from research.exp19.observation_relation import ObservationRelation
 
 def _graph(edge_count: int) -> ObservationAdjacencyGraph:
     edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(edge_count // 2)
+        ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(edge_count // 2)
     ]
     edges.extend(
         ObservationRelation(str(i), str(i + edge_count // 2), "adjacent", {})
@@ -26,9 +25,7 @@ def _graph(edge_count: int) -> ObservationAdjacencyGraph:
     return ObservationAdjacencyGraph(tuple(edges))
 
 
-def _measure(
-    edge_count: int, repeats: int = 25
-) -> tuple[list[float], list[float], list[float]]:
+def _measure(edge_count: int, repeats: int = 25) -> tuple[list[float], list[float], list[float]]:
     build: list[float] = []
     acyclic: list[float] = []
     reachable: list[float] = []
