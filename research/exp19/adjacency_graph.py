@@ -28,7 +28,9 @@ class ObservationAdjacencyGraph:
             adj_map.setdefault(source, []).append(target)
 
         sorted_nodes = sorted(nodes)
-        self._node_to_idx: dict[str, int] = {node: index for index, node in enumerate(sorted_nodes)}
+        self._node_to_idx: dict[str, int] = {
+            node: index for index, node in enumerate(sorted_nodes)
+        }
         self._idx_to_node: tuple[str, ...] = tuple(sorted_nodes)
         self._v_count = len(sorted_nodes)
 
@@ -37,7 +39,9 @@ class ObservationAdjacencyGraph:
         for source, targets in adj_map.items():
             source_idx = node_to_idx[source]
             adj_int[source_idx] = [node_to_idx[target] for target in targets]
-        self._adj_int: tuple[tuple[int, ...], ...] = tuple(tuple(targets) for targets in adj_int)
+        self._adj_int: tuple[tuple[int, ...], ...] = tuple(
+            tuple(targets) for targets in adj_int
+        )
 
     def is_acyclic(self) -> bool:
         adj = self._adj_int
@@ -64,7 +68,9 @@ class ObservationAdjacencyGraph:
                     if state == 0:
                         color[target] = 1
                         target_children = adj[target]
-                        stack.append([target, 0, target_children, len(target_children)])
+                        stack.append(
+                            [target, 0, target_children, len(target_children)]
+                        )
                 else:
                     stack.pop()
                     color[frame[0]] = 2
@@ -94,3 +100,11 @@ class ObservationAdjacencyGraph:
         visited.discard(start_idx)
         idx_to_node = self._idx_to_node
         return frozenset(idx_to_node[index] for index in visited)
+
+    def subgraph_view(self, relation_type: str) -> ObservationAdjacencyGraph:
+        filtered_edges = {
+            key: relation
+            for key, relation in self._edges.items()
+            if relation.relation_type == relation_type
+        }
+        return ObservationAdjacencyGraph(filtered_edges)
