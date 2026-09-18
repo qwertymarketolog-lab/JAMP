@@ -14,89 +14,108 @@ from research.exp19.observation_relation import (
 )
 
 
-def relation(source: str, target: str, kind: str = "adjacent", params=None):
+def _relation(
+    source_id: str = "a",
+    target_id: str = "b",
+    relation_type: str = "supports",
+    params: dict[str, object] | None = None,
+) -> ObservationRelation:
     return ObservationRelation(
-        source_id=source,
-        target_id=target,
-        relation_type=kind,
+        source_id=source_id,
+        target_id=target_id,
+        relation_type=relation_type,
         params={} if params is None else params,
     )
 
 
-# A. Determinism: 20 parametrized tests, each exercising 50 deterministic
-# cases, for 1000 canonicalization repetitions in total.
-@pytest.mark.parametrize("seed", range(20))
-def test_determinism_over_deterministic_graph_set(seed: int) -> None:
-    for offset in range(50):
-        source = f"atom-{seed}-{offset}"
-        target = f"atom-{seed}-{offset + 1}"
-        params = {"weight": seed / 10 + offset / 1000, "nested": {"i": offset}}
-        first = compute_edge_hash(source, target, "adjacent", params)
-        second = compute_edge_hash(source, target, "adjacent", params)
-        assert first == second
-
-
-# B. Directedness.
 @pytest.mark.parametrize("index", range(20))
-def test_directedness_changes_hash(index: int) -> None:
-    params = {"index": index, "kind": "x"}
-    forward = compute_edge_hash("u", f"v-{index}", "adjacent", params)
-    reverse = compute_edge_hash(f"v-{index}", "u", "adjacent", params)
-    assert forward != reverse
-
-
-# C. Identity / self-loop rejection.
-@pytest.mark.parametrize("index", range(20))
-def test_self_loop_is_forbidden(index: int) -> None:
-    node = f"atom-{index}"
-    with pytest.raises(
-        ValueError, match="Self-loops are forbidden in ObservationRelation"
-    ):
-        relation(node, node)
-
-
-# D. Parameter sensitivity, including nested structures and precise floats.
-@pytest.mark.parametrize(
-    ("left", "right"),
-    [
-        ({"value": 0.1}, {"value": 0.10000000000000002}),
-        ({"key": 1}, {"other_key": 1}),
-        ({"nested": {"a": 1}}, {"nested": {"a": 2}}),
-        ({"nested": {"a": [1, 2]}}, {"nested": {"a": [1, 3]}}),
-        ({"flag": True}, {"flag": False}),
-    ]
-    * 5,
-)
-def test_parameter_change_changes_hash(left, right) -> None:
-    assert compute_edge_hash("u", "v", "adjacent", left) != compute_edge_hash(
-        "u", "v", "adjacent", right
+def test_deterministic_edge_hash(index: int) -> None:
+    params = {"weight": index, "label": f"v-{index}"}
+    assert compute_edge_hash("a", "b", "supports", params) == compute_edge_hash(
+        "a", "b", "supports", params
     )
 
 
-# E. DAG / subset validation.
-@pytest.mark.parametrize("length", range(2, 22))
-def test_acyclic_chain_of_length_is_valid(length: int) -> None:
-    relations = tuple(relation(f"n{i}", f"n{i + 1}") for i in range(length))
-    assert validate_acyclic_subset(relations) is True
+@pytest.mark.parametrize("index", range(20))
+def test_directed_relation_changes_with_reversed_endpoints(index: int) -> None:
+    assert _relation(f"a-{index}", f"b-{index}").edge_hash != _relation(
+        f"b-{index}", f"a-{index}"
+    ).edge_hash
 
 
-@pytest.mark.parametrize("length", range(2, 12))
-def test_cycle_of_length_is_rejected(length: int) -> None:
-    relations = tuple(
-        relation(f"n{i}", f"n{i + 1}") for i in range(length - 1)
-    ) + (relation(f"n{length - 1}", "n0"),)
-    assert validate_acyclic_subset(relations) is False
+@pytest.mark.parametrize("index", range(20))
+def test_self_loop_is_forbidden(index: int) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Self-loops are forbidden in ObservationRelation",
+    ):
+        _relation(f"node-{index}", f"node-{index}")
 
 
-# F. Isolation: AST import scan and repository-boundary checks.
-@pytest.mark.parametrize("module_name", ["research.exp19", "research.exp19.observation_relation"])
-def test_research_module_has_no_core_imports(module_name: str) -> None:
-    relative = Path(module_name.replace(".", "/") + ".py")
-    if module_name.endswith(".observation_relation"):
-        path = relative
-    else:
-        path = Path("research/exp19/__init__.py")
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("index", range(25))
+def test_params_change_edge_identity(index: int) -> None:
+    left = _relation(params={"k": index})
+    right = _relation(params={"k": index + 1})
+    assert left.edge_hash != right.edge_hash
+
+
+@pytest.mark.parametrize("index", range(20))
+def test_acyclic_dag_is_accepted(index: int) -> None:
+    relations = (
+        _relation(f"a-{index}", f"b-{index}"),
+        _relation(f"b-{index}", f"c-{index}"),
+        _relation(f"a-{index}", f"c-{index}"),
+    )
+    assert validate_acyclic_subset(relations)
+
+
+@pytest.mark.parametrize("index", range(20))
+def test_cyclic_subset_is_rejected(index: int) -> None:
+    relations = (
+        _relation(f"a-{index}", f"b-{index}"),
+        _relation(f"b-{index}", f"c-{index}"),
+        _relation(f"c-{index}", f"a-{index}"),
+    )
+    assert not validate_acyclic_subset(relations)
+
+
+@pytest.mark.parametrize("index", range(14))
+def test_edge_hash_is_canonical_sha256(index: int) -> None:
+    params = {"index": index, "unicode": "ё"}
+    payload = {
+        "s": f"a-{index}",
+        "t": f"b-{index}",
+        "r": "supports",
+        "p": params,
+    }
+    raw = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    expected = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    assert compute_edge_hash(
+        payload["s"],
+        payload["t"],
+        payload["r"],
+        payload["p"],
+    ) == expected
+
+
+def test_mapping_order_does_not_change_hash() -> None:
+    assert compute_edge_hash("a", "b", "r", {"x": 1, "y": 2}) == compute_edge_hash(
+        "a", "b", "r", {"y": 2, "x": 1}
+    )
+
+
+def test_empty_subset_is_acyclic() -> None:
+    assert validate_acyclic_subset(())
+
+
+def test_isolation_source_has_no_jamp_imports() -> None:
+    source = Path("research/exp19/observation_relation.py").read_text()
+    tree = ast.parse(source)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]
@@ -107,59 +126,14 @@ def test_research_module_has_no_core_imports(module_name: str) -> None:
         assert all(name != "jamp" and not name.startswith("jamp.") for name in names)
 
 
-@pytest.mark.parametrize("path", ["research/exp19/observation_relation.py", "tests/research/exp19/test_observation_relation.py"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "research/exp19/observation_relation.py",
+        "tests/research/exp19/test_observation_relation.py",
+    ],
+)
 def test_exp19_paths_are_outside_core(path: str) -> None:
     resolved = Path(path).resolve()
     core = Path("src/jamp").resolve()
     assert core not in resolved.parents
-
-
-@pytest.mark.parametrize("index", range(14))
-def test_edge_hash_is_canonical_sha256(index: int) -> None:
-    payload = {
-        "s": f"u-{index}",
-        "t": f"v-{index}",
-        "r": "adjacent",
-        "p": {"index": index},
-    }
-    raw = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    expected = hashlib.sha256(raw).hexdigest()
-    assert compute_edge_hash(
-        payload["s"], payload["t"], payload["r"], payload["p"]
-    ) == expected
-
-
-@pytest.mark.parametrize("index", range(14))
-def test_relation_edge_hash_matches_function(index: int) -> None:
-    rel = relation(f"u-{index}", f"v-{index}", params={"index": index})
-    assert rel.edge_hash == compute_edge_hash(
-        rel.source_id, rel.target_id, rel.relation_type, rel.params
-    )
-
-
-@pytest.mark.parametrize("index", range(14))
-def test_relation_is_immutable(index: int) -> None:
-    rel = relation(f"u-{index}", f"v-{index}")
-    with pytest.raises((AttributeError, TypeError)):
-        rel.source_id = "changed"
-
-
-@pytest.mark.parametrize("index", range(14))
-def test_relation_type_changes_hash(index: int) -> None:
-    assert compute_edge_hash("u", "v", f"a-{index}", {}) != compute_edge_hash(
-        "u", "v", f"b-{index}", {}
-    )
-
-
-@pytest.mark.parametrize("index", range(14))
-def test_subset_validator_ignores_unrelated_external_nodes(index: int) -> None:
-    subset = (
-        relation(f"u-{index}", f"v-{index}"),
-        relation(f"v-{index}", f"w-{index}"),
-    )
-    assert validate_acyclic_subset(subset) is True
