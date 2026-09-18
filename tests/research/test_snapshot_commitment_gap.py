@@ -33,4 +33,3 @@ def test_snapshot_commitment_mismatch_is_rejected() -> None:
 
     with pytest.raises(ValueError):
         _restore(tampered_payload)
-
