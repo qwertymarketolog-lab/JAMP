@@ -87,8 +87,7 @@ def test_atomization_has_no_semantic_verdict_fields() -> None:
     forbidden = {"SUPPORTED", "REJECTED", "INCONCLUSIVE"}
     assert not forbidden.intersection(observation.payload)
     assert not any(
-        isinstance(value, str) and value in forbidden
-        for value in observation.payload.values()
+        isinstance(value, str) and value in forbidden for value in observation.payload.values()
     )
 
 
