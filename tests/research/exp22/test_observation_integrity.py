@@ -53,11 +53,14 @@ def test_transcript_boundary_fields_change_identity() -> None:
         ("text", segment.text + " changed"),
     ):
         changed = deepcopy(record)
-        changed["segments"][0] = segment.__class__(
+        replacement = segment.__class__(
             start_ms=value if field == "start_ms" else segment.start_ms,
             end_ms=value if field == "end_ms" else segment.end_ms,
             text=value if field == "text" else segment.text,
         )
+        segments = list(changed["segments"])
+        segments[0] = replacement
+        changed["segments"] = tuple(segments)
         assert from_transcript_record(changed)[0].immutable_hash != baseline[0].immutable_hash
 
 
