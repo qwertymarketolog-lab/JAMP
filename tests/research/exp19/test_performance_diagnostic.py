@@ -7,6 +7,8 @@ It reports build/acyclic/reachable timings and scale behavior.
 from __future__ import annotations
 
 import gc
+import json
+import os
 import statistics
 import time
 
@@ -30,7 +32,7 @@ def _measure(edge_count: int, repeats: int = 25) -> tuple[list[float], list[floa
     acyclic: list[float] = []
     reachable: list[float] = []
 
-    for _ in range(repeats + 5):
+    for iteration in range(repeats + 5):
         gc.collect()
 
         start = time.perf_counter()
@@ -45,12 +47,12 @@ def _measure(edge_count: int, repeats: int = 25) -> tuple[list[float], list[floa
         graph.reachable("0")
         reachable_elapsed = time.perf_counter() - start
 
-        if len(build) >= 0:
+        if iteration >= 5:
             build.append(build_elapsed)
             acyclic.append(acyclic_elapsed)
             reachable.append(reachable_elapsed)
 
-    return build[5:], acyclic[5:], reachable[5:]
+    return build, acyclic, reachable
 
 
 def _summary(values: list[float]) -> tuple[float, float, float]:
@@ -61,15 +63,53 @@ def _summary(values: list[float]) -> tuple[float, float, float]:
     return p50, p95, p99
 
 
+def _export_summary(rows: list[dict[str, object]]) -> None:
+    payload = json.dumps(rows, separators=(",", ":"), sort_keys=True)
+    print(f"EXP19_DIAG_PAYLOAD: {payload}")
+
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+
+    lines = [
+        "## EXP-19 performance diagnostic",
+        "",
+        "| Edges | build p50/p95/p99 | acyclic p50/p95/p99 | reachable p50/p95/p99 |",
+        "| ---: | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['edges']} | "
+            f"{row['build_p50']:.6f}/{row['build_p95']:.6f}/{row['build_p99']:.6f} | "
+            f"{row['acyclic_p50']:.6f}/{row['acyclic_p95']:.6f}/{row['acyclic_p99']:.6f} | "
+            f"{row['reachable_p50']:.6f}/{row['reachable_p95']:.6f}/{row['reachable_p99']:.6f} |"
+        )
+
+    with open(summary_path, "a", encoding="utf-8") as summary:
+        summary.write("\n".join(lines) + "\n")
+
+
 def test_exp19_performance_diagnostic() -> None:
+    rows: list[dict[str, object]] = []
+
     for edge_count in (5_000, 10_000, 20_000, 40_000):
         build, acyclic, reachable = _measure(edge_count)
         b = _summary(build)
         a = _summary(acyclic)
         r = _summary(reachable)
-        print(
-            f"EXP19_DIAG E={edge_count} "
-            f"build_p50/p95/p99={b[0]:.6f}/{b[1]:.6f}/{b[2]:.6f} "
-            f"acyclic_p50/p95/p99={a[0]:.6f}/{a[1]:.6f}/{a[2]:.6f} "
-            f"reachable_p50/p95/p99={r[0]:.6f}/{r[1]:.6f}/{r[2]:.6f}"
+        rows.append(
+            {
+                "edges": edge_count,
+                "build_p50": b[0],
+                "build_p95": b[1],
+                "build_p99": b[2],
+                "acyclic_p50": a[0],
+                "acyclic_p95": a[1],
+                "acyclic_p99": a[2],
+                "reachable_p50": r[0],
+                "reachable_p95": r[1],
+                "reachable_p99": r[2],
+            }
         )
+
+    _export_summary(rows)
