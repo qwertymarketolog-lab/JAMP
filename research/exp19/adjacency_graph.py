@@ -22,20 +22,39 @@ class ObservationAdjacencyGraph:
 
     def is_acyclic(self) -> bool:
         adj = self._build_adj()
-        nodes = {node for relation in self._edges.values() for node in (relation.source_id, relation.target_id)}
+        nodes = {
+            node
+            for relation in self._edges.values()
+            for node in (relation.source_id, relation.target_id)
+        }
         color = {node: 0 for node in nodes}
 
-        def dfs(node: str) -> bool:
-            color[node] = 1
-            for target in adj.get(node, ()):
+        for start in nodes:
+            if color[start] != 0:
+                continue
+
+            color[start] = 1
+            stack: list[tuple[str, int]] = [(start, 0)]
+
+            while stack:
+                node, index = stack[-1]
+                targets = adj.get(node, ())
+
+                if index >= len(targets):
+                    color[node] = 2
+                    stack.pop()
+                    continue
+
+                target = targets[index]
+                stack[-1] = (node, index + 1)
+
                 if color[target] == 1:
                     return False
-                if color[target] == 0 and not dfs(target):
-                    return False
-            color[node] = 2
-            return True
+                if color[target] == 0:
+                    color[target] = 1
+                    stack.append((target, 0))
 
-        return all(color[node] != 0 or dfs(node) for node in nodes)
+        return True
 
     def reachable(self, start_id: str) -> frozenset[str]:
         adj = self._build_adj()
