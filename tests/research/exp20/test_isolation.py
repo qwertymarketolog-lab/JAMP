@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import ast
 import subprocess
 from pathlib import Path
+
 
 ROOT = Path(__file__).resolve().parents[3]
 RESEARCH = ROOT / "tests" / "research" / "exp20"
@@ -44,5 +43,9 @@ def test_exp20_contains_only_research_harness_files():
         "test_isolation.py",
         "test_text_adapter.py",
     }
-    actual = {path.name for path in RESEARCH.iterdir() if path.is_file()}
+    actual = {
+        path.name
+        for path in RESEARCH.iterdir()
+        if path.is_file()
+    }
     assert actual == allowed
