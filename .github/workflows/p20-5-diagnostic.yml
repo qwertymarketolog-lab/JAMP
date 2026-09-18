@@ -6,7 +6,7 @@ on:
       - feature/p20-5-hypothesis-lifecycle
       - main
   pull_request:
-    branches: [main]
+    branches: [main, 'research/**']
   workflow_dispatch:
 
 jobs:
