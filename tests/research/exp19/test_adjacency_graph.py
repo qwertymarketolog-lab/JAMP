@@ -1,4 +1,4 @@
-"""GREEN tests for EXP-19.R1 ObservationAdjacencyGraph."""
+""""GREEN tests for EXP-19.R1 ObservationAdjacencyGraph."""
 
 from __future__ import annotations
 
@@ -54,7 +54,11 @@ def test_g2_cycle_is_detected(edges: list[tuple[str, str]]) -> None:
     ([("A", "B"), ("C", "D")], "B", frozenset()),
     ([("A", "B"), ("B", "C"), ("C", "D"), ("X", "Y")], "C", frozenset({"D"})),
     ([("A", "B"), ("A", "C"), ("C", "D"), ("D", "E")], "B", frozenset()),
-    ([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D"), ("D", "E")], "A", frozenset({"B", "C", "D", "E"})),
+    (
+        [("A", "B"), ("B", "D"), ("A", "C"), ("C", "D"), ("D", "E")],
+        "A",
+        frozenset({"B", "C", "D", "E"}),
+    ),
 ])
 def test_g3_reachability_is_exact(edges: list[tuple[str, str]], source: str, expected: frozenset[str]) -> None:
     assert graph(edges).reachable(source) == expected
@@ -73,7 +77,10 @@ def test_g3_disconnected_component_does_not_leak() -> None:
 
 
 def test_g3_diamond_has_no_duplicates() -> None:
-    assert graph([("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")]).reachable("A") == frozenset({"B", "C", "D"})
+    assert (
+        graph([("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")]).reachable("A")
+        == frozenset({"B", "C", "D"})
+    )
 
 
 def test_g3_returns_frozenset() -> None:
