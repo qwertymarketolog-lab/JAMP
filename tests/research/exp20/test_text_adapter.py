@@ -13,7 +13,7 @@ def test_a1_a2_normalization_is_deterministic_and_idempotent() -> None:
 
 
 def test_a1_a2_unicode_equivalent_inputs_share_normalized_payload() -> None:
-    assert normalize_text("Caf\\u00e9") == normalize_text("Cafe\\u0301")
+    assert normalize_text("Café") == normalize_text("Café")
 
 
 def test_p1_p2_provenance_recomputes_exactly() -> None:
