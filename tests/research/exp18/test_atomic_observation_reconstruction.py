@@ -1,4 +1,4 @@
-""""EXP-18.R1 lossless reconstruction harness.
+"""EXP-18.R1 lossless reconstruction harness.
 
 This module is intentionally test-local: it defines a deterministic reference
 decomposition/reconstruction pair for fixed mock observations.  It does not
@@ -122,7 +122,9 @@ def test_mutating_one_atom_changes_hash_and_localizes_difference():
     mutated_atoms = {atom["id"]: atom for atom in mutated["atoms"]}
 
     changed_ids = {
-        atom_id for atom_id in baseline_atoms if baseline_atoms[atom_id] != mutated_atoms[atom_id]
+        atom_id
+        for atom_id in baseline_atoms
+        if baseline_atoms[atom_id] != mutated_atoms[atom_id]
     }
 
     assert changed_ids == {"O4"}
