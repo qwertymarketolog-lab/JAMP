@@ -25,16 +25,12 @@ def test_research_modules_do_not_import_jamp():
             if isinstance(node, ast.Import)
             for alias in node.names
         ]
-        assert all(
-            name != "jamp" and not name.startswith("jamp.") for name in imports
-        )
+        assert all(name != "jamp" and not name.startswith("jamp.") for name in imports)
 
 
 def test_frozen_core_run_py_blob_is_unchanged():
     run_py = ROOT / "src" / "jamp" / "run.py"
-    actual = subprocess.check_output(
-        ["git", "hash-object", str(run_py)], text=True
-    ).strip()
+    actual = subprocess.check_output(["git", "hash-object", str(run_py)], text=True).strip()
     assert actual == FROZEN_RUN_PY_SHA
 
 
