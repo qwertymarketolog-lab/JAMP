@@ -1,61 +1,94 @@
 """Research-only atomicity checks for EXP-22 observation vectors.
 
-This module does not modify production/runtime behavior or define semantic
-acceptance. It probes identity, determinism, composite transparency,
-provenance binding, and layer separation using the existing research layer.
+These tests exercise the existing EXP-21 atomization layer without changing
+production/runtime behavior or defining semantic acceptance.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
+from copy import deepcopy
 
-from research.exp22.test_observation_integrity import _observation_identity
-
-
-def _atom(value: object) -> str:
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def test_identity_shifts_when_one_atomic_component_changes() -> None:
-    base = {"source": "s1", "payload": {"a": 1, "b": 2}}
-    changed = {"source": "s1", "payload": {"a": 1, "b": 3}}
-
-    assert _atom(base) != _atom(changed)
+from tests.research.exp20.fixtures_text import FIXTURES as TEXT_FIXTURES
+from tests.research.exp20.fixtures_transcript import FIXTURES as TRANSCRIPT_FIXTURES
+from tests.research.exp20.text_adapter import adapt as adapt_text
+from tests.research.exp20.transcript_adapter import adapt as adapt_transcript
+from tests.research.exp21.atomic_observation import (
+    from_text_record,
+    from_transcript_record,
+)
 
 
-def test_unchanged_atomic_component_is_deterministic() -> None:
-    value = {"source": "s1", "payload": {"a": 1, "b": 2}}
+def test_atomic_payload_component_shift_changes_identity() -> None:
+    record = adapt_text(TEXT_FIXTURES[0])
+    baseline = from_text_record(record)
 
-    assert _atom(value) == _atom(value)
+    changed = deepcopy(record)
+    changed["normalized_text"] = "changed atomic payload"
+    candidate = from_text_record(changed)
 
-
-def test_composite_change_is_visible_without_tail_masking() -> None:
-    base = {"a": 1, "b": 2, "c": 3}
-    changed = {"a": 1, "b": 9, "c": 3}
-
-    base_parts = tuple(_atom(base[key]) for key in ("a", "b", "c"))
-    changed_parts = tuple(_atom(changed[key]) for key in ("a", "b", "c"))
-
-    assert base_parts[0] == changed_parts[0]
-    assert base_parts[1] != changed_parts[1]
-    assert base_parts[2] == changed_parts[2]
-    assert base_parts != changed_parts
+    assert candidate.immutable_hash != baseline.immutable_hash
 
 
-def test_provenance_binding_remains_source_specific() -> None:
-    payload = {"claim": "x"}
-    left = _observation_identity("source-a", payload)
-    right = _observation_identity("source-b", payload)
+def test_unchanged_atomization_is_deterministic() -> None:
+    record = adapt_text(TEXT_FIXTURES[0])
 
-    assert left != right
+    first = from_text_record(record)
+    second = from_text_record(deepcopy(record))
+
+    assert first == second
+    assert first.immutable_hash == second.immutable_hash
 
 
-def test_atomization_vector_contains_no_semantic_verdict() -> None:
-    observation = {"source": "s1", "payload": {"a": 1}}
-    identity = _atom(observation)
+def test_composite_mutation_does_not_mask_unchanged_components() -> None:
+    record = adapt_text(TEXT_FIXTURES[0])
+    baseline = from_text_record(record)
 
-    assert "supported" not in identity.lower()
-    assert "inconclusive" not in identity.lower()
-    assert "refuted" not in identity.lower()
+    changed = deepcopy(record)
+    changed["metadata"] = {
+        **record["metadata"],
+        "atomicity_probe": "changed",
+    }
+    candidate = from_text_record(changed)
+
+    assert candidate.immutable_hash != baseline.immutable_hash
+    assert candidate.source_ref == baseline.source_ref
+    assert candidate.payload["normalized_text"] == baseline.payload["normalized_text"]
+
+
+def test_provenance_binding_survives_transformation() -> None:
+    record = adapt_text(TEXT_FIXTURES[0])
+    baseline = from_text_record(record)
+
+    changed = deepcopy(record)
+    changed["source_ref"] = "fixture:text:atomicity-source-b"
+    candidate = from_text_record(changed)
+
+    assert candidate.source_ref != baseline.source_ref
+    assert candidate.immutable_hash != baseline.immutable_hash
+
+
+def test_transcript_atomic_boundary_changes_identity() -> None:
+    record = adapt_transcript(TRANSCRIPT_FIXTURES[0])
+    baseline = from_transcript_record(record)
+
+    segment = record["segments"][0]
+    changed = deepcopy(record)
+    segments = list(changed["segments"])
+    segments[0] = segment.__class__(
+        start_ms=segment.start_ms + 1,
+        end_ms=segment.end_ms,
+        text=segment.text,
+    )
+    changed["segments"] = tuple(segments)
+
+    candidate = from_transcript_record(changed)
+
+    assert candidate[0].immutable_hash != baseline[0].immutable_hash
+
+
+def test_atomization_payload_has_no_semantic_verdict() -> None:
+    record = adapt_text(TEXT_FIXTURES[0])
+    observation = from_text_record(record)
+
+    forbidden = {"SUPPORTED", "REJECTED", "INCONCLUSIVE"}
+    assert not forbidden.intersection(observation.payload)
