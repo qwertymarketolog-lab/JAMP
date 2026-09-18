@@ -1,4 +1,4 @@
-""""GREEN tests for EXP-19.R1 ObservationAdjacencyGraph."""
+"""GREEN tests for EXP-19.R1 ObservationAdjacencyGraph."""
 
 from __future__ import annotations
 
@@ -19,47 +19,71 @@ def graph(edges: list[tuple[str, str]]) -> ObservationAdjacencyGraph:
     return ObservationAdjacencyGraph(tuple(relation(s, t) for s, t in edges))
 
 
-@pytest.mark.parametrize("edges", [
-    [("A", "B")], [("A", "B"), ("B", "C")],
-    [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("A", "D")],
-    [("A", "B"), ("A", "C"), ("A", "D")], [("A", "B"), ("C", "D")],
-    [("A", "B"), ("B", "C"), ("B", "D"), ("D", "E")],
-    [("A", "B"), ("C", "B"), ("D", "B")],
-    [("A", "B"), ("B", "C"), ("C", "E"), ("A", "D"), ("D", "E")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F")],
-])
+@pytest.mark.parametrize(
+    "edges",
+    [
+        [("A", "B")],
+        [("A", "B"), ("B", "C")],
+        [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("A", "D")],
+        [("A", "B"), ("A", "C"), ("A", "D")],
+        [("A", "B"), ("C", "D")],
+        [("A", "B"), ("B", "C"), ("B", "D"), ("D", "E")],
+        [("A", "B"), ("C", "B"), ("D", "B")],
+        [("A", "B"), ("B", "C"), ("C", "E"), ("A", "D"), ("D", "E")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F")],
+    ],
+)
 def test_g1_dag_is_acyclic(edges: list[tuple[str, str]]) -> None:
     assert graph(edges).is_acyclic() is True
 
 
-@pytest.mark.parametrize("edges", [
-    [("A", "B"), ("B", "A")], [("A", "B"), ("B", "C"), ("C", "A")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("D", "A")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "B")],
-    [("A", "B"), ("B", "C"), ("C", "A"), ("C", "D")],
-    [("A", "B"), ("C", "D"), ("D", "E"), ("E", "C")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("D", "B"), ("D", "E")],
-    [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "A")],
-])
+@pytest.mark.parametrize(
+    "edges",
+    [
+        [("A", "B"), ("B", "A")],
+        [("A", "B"), ("B", "C"), ("C", "A")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("D", "A")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "B")],
+        [("A", "B"), ("B", "C"), ("C", "A"), ("C", "D")],
+        [("A", "B"), ("C", "D"), ("D", "E"), ("E", "C")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("D", "B"), ("D", "E")],
+        [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "A")],
+    ],
+)
 def test_g2_cycle_is_detected(edges: list[tuple[str, str]]) -> None:
     assert graph(edges).is_acyclic() is False
 
 
-@pytest.mark.parametrize("edges, source, expected", [
-    ([("A", "B"), ("B", "C"), ("C", "D")], "A", frozenset({"B", "C", "D"})),
-    ([("A", "B"), ("B", "C"), ("X", "Y")], "A", frozenset({"B", "C"})),
-    ([("A", "B"), ("A", "C"), ("B", "D"), ("C", "E")], "A", frozenset({"B", "C", "D", "E"})),
-    ([("A", "B"), ("B", "C"), ("X", "C")], "X", frozenset({"C"})),
-    ([("A", "B"), ("C", "D")], "B", frozenset()),
-    ([("A", "B"), ("B", "C"), ("C", "D"), ("X", "Y")], "C", frozenset({"D"})),
-    ([("A", "B"), ("A", "C"), ("C", "D"), ("D", "E")], "B", frozenset()),
-    (
-        [("A", "B"), ("B", "D"), ("A", "C"), ("C", "D"), ("D", "E")],
-        "A",
-        frozenset({"B", "C", "D", "E"}),
-    ),
-])
+@pytest.mark.parametrize(
+    "edges, source, expected",
+    [
+        ([( "A", "B"), ("B", "C"), ("C", "D")], "A", frozenset({"B", "C", "D"})),
+        ([( "A", "B"), ("B", "C"), ("X", "Y")], "A", frozenset({"B", "C"})),
+        (
+            [("A", "B"), ("A", "C"), ("B", "D"), ("C", "E")],
+            "A",
+            frozenset({"B", "C", "D", "E"}),
+        ),
+        ([( "A", "B"), ("B", "C"), ("X", "C")], "X", frozenset({"C"})),
+        ([( "A", "B"), ("C", "D")], "B", frozenset()),
+        (
+            [("A", "B"), ("B", "C"), ("C", "D"), ("X", "Y")],
+            "C",
+            frozenset({"D"}),
+        ),
+        (
+            [("A", "B"), ("A", "C"), ("C", "D"), ("D", "E")],
+            "B",
+            frozenset(),
+        ),
+        (
+            [("A", "B"), ("B", "D"), ("A", "C"), ("C", "D"), ("D", "E")],
+            "A",
+            frozenset({"B", "C", "D", "E"}),
+        ),
+    ],
+)
 def test_g3_reachability_is_exact(
     edges: list[tuple[str, str]], source: str, expected: frozenset[str]
 ) -> None:
@@ -75,7 +99,10 @@ def test_g3_does_not_include_source() -> None:
 
 
 def test_g3_disconnected_component_does_not_leak() -> None:
-    assert graph([("A", "B"), ("X", "Y"), ("Y", "Z")]).reachable("A") == frozenset({"B"})
+    assert (
+        graph([("A", "B"), ("X", "Y"), ("Y", "Z")]).reachable("A")
+        == frozenset({"B"})
+    )
 
 
 def test_g3_diamond_has_no_duplicates() -> None:
@@ -147,7 +174,9 @@ def test_g4_repeated_traversal_is_stable() -> None:
 
 def test_g5_core_isolation_modules() -> None:
     module = importlib.import_module("research.exp19.adjacency_graph")
-    assert not any(name == "jamp" or name.startswith("jamp.") for name in module.__dict__)
+    assert not any(
+        name == "jamp" or name.startswith("jamp.") for name in module.__dict__
+    )
 
 
 def test_g5_core_isolation_import_scan() -> None:
@@ -168,10 +197,15 @@ def test_g5_graph_does_not_mutate_relation() -> None:
     assert edge.source_id == "A" and edge.target_id == "B"
 
 
-@pytest.mark.parametrize("edges", [
-    [("A", "B"), ("B", "C")], [("A", "B"), ("B", "C"), ("C", "D")],
-    [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
-    [("A", "B"), ("C", "D")], [("A", "B"), ("B", "D"), ("C", "D")],
-])
+@pytest.mark.parametrize(
+    "edges",
+    [
+        [("A", "B"), ("B", "C")],
+        [("A", "B"), ("B", "C"), ("C", "D")],
+        [("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")],
+        [("A", "B"), ("C", "D")],
+        [("A", "B"), ("B", "D"), ("C", "D")],
+    ],
+)
 def test_g5_no_core_runtime_dependency(edges: list[tuple[str, str]]) -> None:
     assert graph(edges).is_acyclic() is True
