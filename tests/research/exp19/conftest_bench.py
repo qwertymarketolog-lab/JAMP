@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import random
 
-from research.exp19.observation_relation import ObservationRelation
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
+from research.exp19.observation_relation import ObservationRelation
 
 RELATION_TYPES = ("DEP", "REF", "DATA", "CTRL")
 PROFILES = ("single", "mixed", "rare", "dominant", "empty", "near-complete")
@@ -29,7 +29,9 @@ def _relation_types(profile: str, count: int, rng: random.Random) -> list[str]:
     raise ValueError(f"Unknown benchmark profile: {profile}")
 
 
-def _edge_pairs(profile: str, vertices: int, edges: int, rng: random.Random) -> list[tuple[int, int]]:
+def _edge_pairs(
+    profile: str, vertices: int, edges: int, rng: random.Random
+) -> list[tuple[int, int]]:
     pairs: list[tuple[int, int]] = []
     seen: set[tuple[int, int]] = set()
 
@@ -76,6 +78,8 @@ def build_graph(
             relation_type=relation_type,
             params={"seed": seed, "ordinal": index},
         )
-        for index, ((source, target), relation_type) in enumerate(zip(pairs, types))
+        for index, ((source, target), relation_type) in enumerate(
+            zip(pairs, types, strict=True)
+        )
     )
     return ObservationAdjacencyGraph(relations)
