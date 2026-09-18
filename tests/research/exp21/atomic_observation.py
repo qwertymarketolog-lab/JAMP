@@ -9,6 +9,7 @@ from typing import Any
 
 SCHEMA_VERSION = "exp21.observation.v0"
 
+
 @dataclass(frozen=True)
 class AtomicObservation:
     observation_id: str
@@ -17,12 +18,28 @@ class AtomicObservation:
     payload: dict[str, Any]
     immutable_hash: str
 
-def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
-def observation_digest(source_ref: str, payload: dict[str, Any], schema_version: str = SCHEMA_VERSION) -> str:
-    envelope = {"schema_version": schema_version, "source_ref": source_ref, "payload": payload}
+def canonical_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def observation_digest(
+    source_ref: str,
+    payload: dict[str, Any],
+    schema_version: str = SCHEMA_VERSION,
+) -> str:
+    envelope = {
+        "schema_version": schema_version,
+        "source_ref": source_ref,
+        "payload": payload,
+    }
     return hashlib.sha256(canonical_bytes(envelope)).hexdigest()
+
 
 def from_text_record(record: dict[str, Any]) -> AtomicObservation:
     payload = {
@@ -33,6 +50,7 @@ def from_text_record(record: dict[str, Any]) -> AtomicObservation:
     }
     digest = observation_digest(record["source_ref"], payload)
     return AtomicObservation(digest, SCHEMA_VERSION, record["source_ref"], payload, digest)
+
 
 def from_transcript_record(record: dict[str, Any]) -> tuple[AtomicObservation, ...]:
     observations = []
