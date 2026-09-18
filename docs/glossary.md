@@ -82,6 +82,64 @@ evidence-first
   definition: Следуй evidence-first: сначала зафиксируй наблюдение и доступное доказательство, затем формулируй вывод.
   not:        не подгоняй evidence под заранее выбранный вывод.
 
+## Provenance Contract and derivability
+
+specification
+  definition: Specification — frozen description of the research question, hypothesis, prediction, applicable criteria and protocol for an execution.
+  not:        не изменяй frozen specification задним числом для объяснения уже полученного результата.
+
+criterion
+  definition: Criterion — детерминированное правило, связывающее наблюдение с допустимым результатом проверки.
+  not:        не заменяй criterion ручной post-hoc интерпретацией.
+
+criterion set
+  definition: Criterion Set — immutable набор критериев и aggregation rule, используемый конкретным execution.
+  not:        не считай изменение одного criterion совместимым с прежним criterion_set_hash.
+
+raw evidence
+  definition: Raw Evidence — неклассифицированные наблюдения, непосредственно произведённые execution.
+  not:        не включай в Raw Evidence verdict-bearing classification как источник истины.
+
+classification
+  definition: Classification — детерминированное применение frozen criteria к Raw Evidence.
+  not:        не считай записанную classification достоверной без возможности её recomputation.
+
+verdict
+  definition: Verdict — детерминированная агрегация Classification по frozen aggregation rule.
+  not:        не считай записанный verdict authoritative без проверки его воспроизводимости.
+
+hash / reference chain
+  definition: Hash/reference chain — цепочка хешей и ссылок, связывающая frozen artifacts, execution, evidence, classification и verdict.
+  not:        не считай hash сам по себе доказательством логической корректности.
+
+deterministic derivability
+  definition: Deterministic derivability — возможность независимо получить тот же classification и verdict из тех же frozen rules и recorded evidence.
+  not:        не означает эмпирическую истинность результата.
+
+fail-closed
+  definition: Fail-closed — правило, при котором отсутствие, неоднозначность или нарушение обязательного evidence/provenance условия приводит к invalid/blocked результату вместо молчаливого принятия.
+  not:        не подменяй fail-closed восстановлением недостающих данных по предположению.
+
+execution identity
+  definition: Execution identity — идентификатор конкретного execution в пределах определённого протокола и его identity rules.
+  not:        не считай execution identity автоматически lineage-bound, если соответствующая связь не определена формально и не проверена.
+
+content identity
+  definition: Content identity — идентичность execution по его содержательному payload согласно явно заданной hash/identity function.
+  not:        не добавляй lineage в content identity без отдельного определения контракта.
+
+lineage identity
+  definition: Lineage identity — идентичность execution с учётом явно определённого контекста происхождения или parent references.
+  not:        не утверждай, что текущая реализация поддерживает lineage identity, пока это не подтверждено implementation evidence.
+
+context grafting
+  definition: Context grafting — перенос или связывание содержательно идентичного объекта с иным lineage/context таким образом, что provenance meaning может измениться при сохранении content identity.
+  not:        не называй это фактической атакой без наблюдаемого exploit evidence.
+
+UNKNOWN
+  definition: UNKNOWN — состояние, для которого frozen contract не позволяет детерминированно установить допустимую классификацию.
+  not:        не превращай UNKNOWN автоматически в PASS, FAIL или INCONCLUSIVE.
+
 ## Experiments and scope
 
 EXP / experiment
