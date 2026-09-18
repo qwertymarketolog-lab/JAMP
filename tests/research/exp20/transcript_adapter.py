@@ -82,9 +82,9 @@ def reconstruction_loss(
     expected: tuple[TranscriptSegment, ...],
     actual: tuple[TranscriptSegment, ...],
 ) -> int:
-    return sum(left != right for left, right in zip(expected, actual)) + abs(
-        len(expected) - len(actual)
-    )
+    return sum(
+        left != right for left, right in zip(expected, actual, strict=True)
+    ) + abs(len(expected) - len(actual))
 
 
 def provenance_digest(
