@@ -28,9 +28,7 @@ class ObservationAdjacencyGraph:
             adj_map.setdefault(source, []).append(target)
 
         sorted_nodes = sorted(nodes)
-        self._node_to_idx: dict[str, int] = {
-            node: index for index, node in enumerate(sorted_nodes)
-        }
+        self._node_to_idx: dict[str, int] = {node: index for index, node in enumerate(sorted_nodes)}
         self._idx_to_node: tuple[str, ...] = tuple(sorted_nodes)
         self._v_count = len(sorted_nodes)
 
@@ -39,9 +37,7 @@ class ObservationAdjacencyGraph:
         for source, targets in adj_map.items():
             source_idx = node_to_idx[source]
             adj_int[source_idx] = [node_to_idx[target] for target in targets]
-        self._adj_int: tuple[tuple[int, ...], ...] = tuple(
-            tuple(targets) for targets in adj_int
-        )
+        self._adj_int: tuple[tuple[int, ...], ...] = tuple(tuple(targets) for targets in adj_int)
 
     def is_acyclic(self) -> bool:
         adj = self._adj_int
