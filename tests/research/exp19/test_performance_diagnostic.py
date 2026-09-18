@@ -26,7 +26,9 @@ def _graph(edge_count: int) -> ObservationAdjacencyGraph:
     return ObservationAdjacencyGraph(tuple(edges))
 
 
-def _measure(edge_count: int, repeats: int = 25) -> tuple[list[float], list[float], list[float]]:
+def _measure(
+    edge_count: int, repeats: int = 25
+) -> tuple[list[float], list[float], list[float]]:
     build: list[float] = []
     acyclic: list[float] = []
     reachable: list[float] = []
