@@ -63,11 +63,17 @@ def test_g_scale_benchmark(tmp_path: Path) -> None:
         _ = warm_view.is_acyclic()
         _ = warm_view.reachable(_representative_node(warm_view))
 
-        view_samples = _measure(lambda: graph.subgraph_view(TARGET_TYPE))
+        view_samples = _measure(
+            lambda graph=graph: graph.subgraph_view(TARGET_TYPE)
+        )
         active_view = graph.subgraph_view(TARGET_TYPE)
         acyclic_samples = _measure(active_view.is_acyclic)
         sample_node = _representative_node(active_view)
-        reachable_samples = _measure(lambda: active_view.reachable(sample_node))
+        reachable_samples = _measure(
+            lambda active_view=active_view, sample_node=sample_node: active_view.reachable(
+                sample_node
+            )
+        )
 
         for operation, samples in (
             ("subgraph_view", view_samples),
