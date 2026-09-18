@@ -1,4 +1,4 @@
-from copy import deepcopy
+import copy
 
 from .mock_adapters import adapters, make_signal
 
@@ -18,7 +18,7 @@ def test_ingested_signal_carries_required_provenance_fields():
 def test_source_mutation_does_not_mutate_normalized_signal():
     signal = make_signal("sha256:source", "text", "X")
     normalized = adapters()["text"].normalize(signal)
-    original = deepcopy(normalized)
+    original = copy.deepcopy(normalized)
 
     signal.payload["content"] = "MUTATED"
     signal.metadata["fixture"] = "MUTATED"
