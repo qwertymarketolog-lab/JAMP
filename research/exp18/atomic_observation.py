@@ -5,9 +5,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-ALLOWED_TYPES = frozenset(
-    {"text_token", "semantic_chunk", "structural_node"}
-)
+ALLOWED_TYPES = frozenset({"text_token", "semantic_chunk", "structural_node"})
 
 
 @dataclass(frozen=True)
