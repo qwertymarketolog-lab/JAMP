@@ -2,7 +2,6 @@ import copy
 
 from .mock_adapters import adapters, make_signal
 
-
 REQUIRED = {"source_ref", "source_type", "adapter_id", "adapter_version"}
 
 
