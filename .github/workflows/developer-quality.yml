@@ -2,7 +2,7 @@ name: Developer Quality
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'research/**']
   push:
     branches: [main]
 
