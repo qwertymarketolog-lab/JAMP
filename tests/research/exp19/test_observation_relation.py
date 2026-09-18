@@ -107,11 +107,11 @@ def test_research_module_has_no_core_imports(module_name: str) -> None:
         assert all(name != "jamp" and not name.startswith("jamp.") for name in names)
 
 
-@pytest.mark.parametrize("path", ["src/jamp/run.py", "src/jamp/__init__.py"])
-def test_core_files_are_not_part_of_exp19(path: str) -> None:
-    assert not Path("research/exp19/observation_relation.py").samefile(
-        Path(path)
-    )
+@pytest.mark.parametrize("path", ["research/exp19/observation_relation.py", "tests/research/exp19/test_observation_relation.py"])
+def test_exp19_paths_are_outside_core(path: str) -> None:
+    resolved = Path(path).resolve()
+    core = Path("src/jamp").resolve()
+    assert core not in resolved.parents
 
 
 @pytest.mark.parametrize("index", range(14))
