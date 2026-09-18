@@ -1,5 +1,4 @@
 from copy import deepcopy
-
 from .mock_adapters import adapters, make_signal
 
 
