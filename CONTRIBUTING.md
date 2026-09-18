@@ -110,3 +110,99 @@ A clean result means the checks passed; it does not mean a research milestone is
 ## 9. Extensions
 
 Third-party engines and plugins belong above the verified core boundary. They may consume stable public contracts but must not mutate causal history, bypass provenance, or import private research implementation details. Start from `templates/jamp-plugin/` and keep extension-specific dependencies outside the core package.
+
+## 10. CI failure and telemetry recovery playbook
+
+When a test, check, or workflow appears stuck, diagnose the evidence path before changing code.
+
+### 10.1 First classify the failure
+
+Use this order:
+
+1. **Code/contract failure** — a workflow exists, ran against the target SHA, and produced a failing job.
+2. **Static-quality failure** — the contract tests pass but Ruff/mypy/pre-commit blocks the developer-quality gate.
+3. **Workflow telemetry failure** — the target SHA has no registered workflow run, or the expected check has not been emitted.
+4. **Post-merge registration delay** — the merge commit exists but its `workflow_runs`/check-runs are temporarily empty.
+5. **Evidence mismatch** — a run belongs to another SHA, branch, or historical attempt.
+
+Do not treat cases 3–5 as application failures.
+
+### 10.2 Always bind CI evidence to the exact SHA
+
+For every gate record:
+
+- target commit SHA;
+- workflow/run ID;
+- job/check-run ID when available;
+- conclusion;
+- relevant log evidence.
+
+A green run on an earlier commit does not verify a later commit. A PR-head run does not by itself verify the merge commit. Never substitute a nearby SHA because it is convenient.
+
+### 10.3 If workflow runs are empty
+
+If the GitHub API returns no workflow runs for the exact target SHA:
+
+- do not claim PASS or VERIFIED;
+- do not invent a run ID;
+- do not rewrite tests merely to provoke CI;
+- inspect workflow triggers and the target commit first;
+- if the event is a push/merge event, allow for registration delay;
+- only change workflow configuration after the trigger failure is evidenced.
+
+A harmless documentation/research commit must not be created solely to manufacture evidence.
+
+### 10.4 If Ruff is the only blocker
+
+Do not weaken Ruff configuration or disable rules just to obtain GREEN.
+
+For common `I001` import-order failures:
+
+1. inspect the exact Ruff output;
+2. separate standard-library and local imports;
+3. use the repository's formatter/import ordering;
+4. rerun the narrow affected tests and Ruff;
+5. preserve the contract unchanged.
+
+For `E501`, shorten or structurally reformat the affected line; do not remove assertions or reduce test coverage.
+
+### 10.5 If tests pass but a gate is red
+
+Inspect the failing gate's job log. Distinguish:
+
+- test failure;
+- lint/format failure;
+- mypy failure;
+- baseline/Frozen Core integrity failure;
+- SBOM failure;
+- workflow/infrastructure failure.
+
+Only the first four may justify source/test changes, and the exact log must support the change. Infrastructure failures require infrastructure/trigger diagnosis, not test mutation.
+
+### 10.6 Full-suite result is not milestone verification
+
+`pytest` passing is necessary evidence when required, but it is not sufficient for VERIFIED. The required five gates and their exact target SHA must agree with the acceptance contract.
+
+### 10.7 Frozen Core emergency rule
+
+Before every research change, verify that `src/jamp` remains outside the change set. The canonical Frozen Core `src/jamp/run.py` blob is:
+
+`0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
+
+Do not modify, rehash-substitute, or “temporarily” patch Frozen Core to make a research experiment or CI gate pass. A core change requires separate evidence that the research contract cannot be satisfied at the existing boundary.
+
+### 10.8 Recovery rule
+
+After a failure is fixed:
+
+1. create a new commit;
+2. run the relevant contract again;
+3. wait for CI on that exact commit;
+4. record the new run IDs and conclusions;
+5. only then advance the gate.
+
+Historical failures remain part of the evidence chain. Never overwrite their meaning by reporting only the final green attempt.
+
+## 11. Extensions
+
+Third-party engines and plugins belong above the verified core boundary. They may consume stable public contracts but must not mutate causal history, bypass provenance, or import private research implementation details. Start from `templates/jamp-plugin/` and keep extension-specific dependencies outside the core package.
