@@ -10,7 +10,7 @@
 
 ## 0. Executive forensic status
 
-PR #111 remains **OPEN / DRAFT / HOLD**. The staging branch is five commits ahead of main and zero behind. Its purpose is forensic restoration and evidence collection, not production promotion.
+PR #111 remains **OPEN / DRAFT / HOLD**. The staging branch is six commits ahead of main and zero behind. Its purpose is forensic restoration and evidence collection, not production promotion.
 
 The protected Frozen Core invariant is:
 
@@ -229,7 +229,7 @@ Supported by current evidence:
 
 - 41/41 historical promotion blobs have recorded content-addressed matches.
 - Frozen Core `src/jamp/run.py` remains locked at blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8`.
-- staging is five commits ahead of main and zero behind.
+- staging is six commits ahead of main and zero behind.
 - current CI is mixed: five named diagnostic runs successful, Developer Quality failed.
 - Developer Quality log records 132 Ruff errors.
 - branch-protection requiredness is not currently verifiable through the available integration (HTTP 403).
@@ -259,3 +259,36 @@ This ledger does not:
 - promote PR #111 to main.
 
 **Ledger classification:** EVIDENCE-ONLY / FORENSIC / STAGING.
+
+
+## 10. Terminal CI Gate Audit — HEAD 79798dcd
+
+**Terminal evidence lock:** commit `79798dcd038ffd0a81b89656d816c3748d201db1`.
+
+The six workflow runs associated with this ledger HEAD reached terminal state:
+
+| Workflow | Run ID | Conclusion | Evidence |
+|---|---:|---|---|
+| P20.11 Diagnostic | `35436819636` | **success** | terminal CI pass |
+| P20.5 Hypothesis Lifecycle Diagnostic | `35436819632` | **success** | terminal CI pass |
+| SBOM | `35436819675` | **success** | terminal CI pass |
+| EXP-19 Performance Diagnostic | `35436819674` | **success** | terminal CI pass |
+| P23.0-B Cold Replay Diagnostic | `35436819627` | **success** | terminal CI pass |
+| Developer Quality | `35436819661` | **failure** | job `105880788126`; Ruff reported 132 errors |
+
+Developer Quality job evidence:
+
+- architectural isolation tests: **success**
+- full test suite: **success**
+- Ruff changed Python files: **failure**
+- Mypy: skipped after DQ failure path
+- Baseline integrity: skipped after DQ failure path
+- terminal log: `Found 132 errors.`
+
+**Terminal CI conclusion:** functional and architectural test execution is green, but the Developer Quality gate remains failed. The 132 Ruff findings are retained as historical lint debt under D-02; no historical blob mutation is authorized solely to clear this gate.
+
+**Governance D-01:** **HOLD / BLOCK MERGE**.
+
+**Core invariant:** `src/jamp/run.py` remains unchanged; Frozen Core Δ = 0 and production/runtime patch to main = 0.
+
+**Important:** this section records terminal evidence for the ledger HEAD above. Any subsequent ledger commit creates a new HEAD and requires a fresh CI terminal slice; this record must not be silently transferred to a later SHA.
