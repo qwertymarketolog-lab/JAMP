@@ -47,6 +47,15 @@ class ExperimentResult:
             return 0.0
         return self.iterations[-1].causal_efficiency - self.iterations[0].causal_efficiency
 
+    def to_artifact(self, *, experiment_id: str, problem_id: str, task_family: str, seed: int,
+                    experiment_config: Mapping[str, Any] | None = None):
+        """Pure P18 projection; P17.6 execution state is not recomputed."""
+        from ..p18.experiment_registry import ExperimentArtifact
+        return ExperimentArtifact.from_experiment_result(
+            self, experiment_id=experiment_id, problem_id=problem_id,
+            task_family=task_family, seed=seed, experiment_config=experiment_config,
+        )
+
     def report(self) -> dict[str, object]:
         from .experiment_report import build_report
         return build_report(self)
