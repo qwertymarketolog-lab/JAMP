@@ -10,7 +10,7 @@
 
 ## 0. Executive forensic status
 
-PR #111 remains **OPEN / DRAFT / HOLD**. The staging branch is six commits ahead of main and zero behind. Its purpose is forensic restoration and evidence collection, not production promotion.
+PR #111 remains **OPEN / DRAFT / HOLD**. The staging branch is seven commits ahead of main and zero behind. Its purpose is forensic restoration and evidence collection, not production promotion.
 
 The protected Frozen Core invariant is:
 
@@ -229,7 +229,7 @@ Supported by current evidence:
 
 - 41/41 historical promotion blobs have recorded content-addressed matches.
 - Frozen Core `src/jamp/run.py` remains locked at blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8`.
-- staging is six commits ahead of main and zero behind.
+- staging is seven commits ahead of main and zero behind.
 - current CI is mixed: five named diagnostic runs successful, Developer Quality failed.
 - Developer Quality log records 132 Ruff errors.
 - branch-protection requiredness is not currently verifiable through the available integration (HTTP 403).
@@ -292,3 +292,33 @@ Developer Quality job evidence:
 **Core invariant:** `src/jamp/run.py` remains unchanged; Frozen Core Δ = 0 and production/runtime patch to main = 0.
 
 **Important:** this section records terminal evidence for the ledger HEAD above. Any subsequent ledger commit creates a new HEAD and requires a fresh CI terminal slice; this record must not be silently transferred to a later SHA.
+
+
+## 11. Independent Terminal CI Verification — HEAD c898ae2
+
+**Terminal evidence lock:** `c898ae2472fa798c4bfb7547f22354a2a7c59ea2`.
+
+This section records an independent terminal CI slice for the current staging HEAD. Results from `79798dcd` are not inherited or interpolated.
+
+| Check | Run ID | Conclusion | Evidence |
+|---|---:|---|---|
+| SBOM | `35437297432` | **success** | terminal check-run for current HEAD |
+| P20.11 Diagnostic | `35437297280` | **success** | terminal check-run for current HEAD |
+| P20.5 Hypothesis Lifecycle Diagnostic | `35437297386` | **success** | terminal check-run for current HEAD |
+| EXP-19 Performance Diagnostic | `35437297294` | **success** | terminal check-run for current HEAD |
+| P23.0-B Cold Replay Diagnostic | `35437297309` | **success** | terminal check-run for current HEAD |
+| Developer Quality | `35437297295` | **failure** | job `105882026774`; Ruff step failed |
+
+Developer Quality job `105882026774` terminal steps:
+
+- architectural isolation tests: **success**
+- full test suite: **success**
+- Ruff changed Python files: **failure**
+- Mypy: **skipped**
+- Baseline integrity: **skipped**
+
+**Independent terminal conclusion:** 5/6 checks are successful; Developer Quality remains failed. The governance gate therefore remains **HOLD / BLOCK MERGE / ARCHIVAL-ONLY**.
+
+**Core invariant:** `src/jamp/run.py` remains at the Frozen Core blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8`; no runtime or Frozen Core patch was made.
+
+**Non-inheritance rule:** this record is valid only for `c898ae2`. Any later ledger commit creates a new HEAD and requires a new terminal CI slice before its CI state can be asserted.
