@@ -140,10 +140,12 @@ def test_exp19_tail_trigger_probe_n40() -> None:
     print(f"max_ms={max(elapsed):.3f}")
     print(f"pearson_elapsed_gen0={_pearson(elapsed, [float(x) for x in gen0])}")
     print(f"pearson_elapsed_gen1={_pearson(elapsed, [float(x) for x in gen1])}")
-    print(
-        "tail_gc_triggered="
-        f"{[(row['i'], row['gc_gen0'], row['gc_gen1']) for row, tail in zip(rows, tails, strict=True) if tail]}"
-    )
+    tail_gc = [
+        (row["i"], row["gc_gen0"], row["gc_gen1"])
+        for row, tail in zip(rows, tails, strict=True)
+        if tail
+    ]
+    print(f"tail_gc_triggered={tail_gc}")
     print("rows:")
     for row in rows:
         print(row)
