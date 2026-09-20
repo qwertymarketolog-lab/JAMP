@@ -107,7 +107,7 @@ def run_r0():
     with OUTPUT_REPORT.open("w", encoding="utf-8") as out:
         json.dump(report, out, indent=2, sort_keys=True)
 
-    print(f"[R0-SHADOW-ALIGNED] Report generated: {OUTPUT_REPORT} | Global D = {global_density:.4f}")
+    print(\n        f"[R0-SHADOW-ALIGNED] Report generated: {OUTPUT_REPORT} | Global D = "\n        f"{global_density:.4f}"\n    )
 
 
 if __name__ == "__main__":
