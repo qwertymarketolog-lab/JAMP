@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: Fetch target base branch
-        run: git fetch origin main --no-tags
+        run: git fetch origin "${{ github.event.pull_request.base.ref }}" --no-tags
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -33,7 +33,7 @@ jobs:
       - name: Ruff changed Python files
         shell: bash
         run: |
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
+          mapfile -t files < <(git diff --name-only "origin/${{ github.event.pull_request.base.ref }}...HEAD" -- '*.py')
           if ((${#files[@]})); then
             ruff check "${files[@]}"
             ruff format --check "${files[@]}"
@@ -44,7 +44,7 @@ jobs:
       - name: Mypy changed Python files
         shell: bash
         run: |
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
+          mapfile -t files < <(git diff --name-only "origin/${{ github.event.pull_request.base.ref }}...HEAD" -- '*.py')
           if ((${#files[@]})); then
             root_files=()
             template_files=()
