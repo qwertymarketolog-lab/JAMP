@@ -60,13 +60,13 @@ def run_r0():
 
             record = json.loads(line)
             vector = str(record.get("vector", "GENERAL")).strip()
-            seed = record.get("seed", line_idx)
+            _seed = record.get("seed", line_idx)
 
             exp_slots = EXPECTED_SLOTS_PER_VECTOR.get(vector, 1)
             atoms = decompose_record(record)
 
             valid_count = len(atoms)
-            density = valid_count / exp_slots if exp_slots > 0 else 0.0
+            _density = valid_count / exp_slots if exp_slots > 0 else 0.0
 
             total_records += 1
             total_valid_atoms += valid_count
