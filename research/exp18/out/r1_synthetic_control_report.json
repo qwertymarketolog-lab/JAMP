@@ -1,0 +1,11 @@
+{
+  "D_semantic": 1.0,
+  "declared_logical_slots": 2,
+  "extracted_atoms": 2,
+  "ground_truth_atoms": 2,
+  "matched_atoms": 2,
+  "spec": "EXP18-R1",
+  "stage": "SYNTHETIC_CONTROL",
+  "status": "PASS",
+  "type_role_discrepancies": []
+}

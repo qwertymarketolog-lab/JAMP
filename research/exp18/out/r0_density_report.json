@@ -1,0 +1,71 @@
+{
+  "global_metrics": {
+    "global_density": 1.0,
+    "total_expected_slots": 100,
+    "total_records": 100,
+    "total_valid_atoms": 100
+  },
+  "r0_status": "UNVERIFIED_PENDING_INSPECTION",
+  "vector_breakdown": {
+    "1": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "10": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "2": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "3": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "4": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "5": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "6": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "7": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "8": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    },
+    "9": {
+      "density": 1.0,
+      "expected_slots": 10,
+      "records": 10,
+      "valid_atoms": 10
+    }
+  }
+}

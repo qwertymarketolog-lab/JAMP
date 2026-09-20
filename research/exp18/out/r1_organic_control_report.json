@@ -1,0 +1,9 @@
+{
+  "D_semantic": 0.8,
+  "declared_logical_slots": 5,
+  "dropped_invalid_atoms": 1,
+  "extracted_valid_atoms": 4,
+  "spec": "EXP18-R1",
+  "stage": "ORGANIC_STRUCTURED",
+  "status": "UNVERIFIED_ORGANIC_PENDING"
+}
