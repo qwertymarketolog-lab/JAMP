@@ -214,7 +214,7 @@ def n2_gate(payload: dict[str, Any], n1: dict[str, Any]) -> dict[str, Any]:
         return {"status": "FAIL", "diagnostic_code": "HOMOGENEITY_VIOLATION"}
 
     if len({a["source_ref"] for a in atoms}) != len(atoms):
-        return {"status": "FAIL", "diagnostic_code": "UNIQUENESS_VIOLATION"}
+        return {"status": "FAIL", "diagnostic_code": "DUPLICATE_SOURCE_REF"}
 
     if len({a["observation_id"] for a in atoms}) != len(atoms):
         return {"status": "FAIL", "diagnostic_code": "DUPLICATE_OBSERVATION_ID"}
