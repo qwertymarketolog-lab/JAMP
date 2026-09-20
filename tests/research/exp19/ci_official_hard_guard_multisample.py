@@ -5,7 +5,9 @@ import statistics
 import time
 from unittest.mock import patch
 
-from tests.research.exp19.test_adjacency_graph import test_g4_large_graph_is_linear_scale
+from tests.research.exp19.test_adjacency_graph import (
+    test_g4_large_graph_is_linear_scale as canonical_g4,
+)
 
 REAL_PERF_COUNTER = time.perf_counter
 
@@ -20,7 +22,7 @@ def run_once() -> float:
 
     with patch("time.perf_counter", side_effect=traced_perf_counter):
         try:
-            test_g4_large_graph_is_linear_scale()
+            canonical_g4()
         except AssertionError:
             pass
 
