@@ -1,8 +1,7 @@
-""""Vector #5: sequential-state / dispatch-order probe.
+"""Vector #5: sequential-state / dispatch-order probe.
 
 Research-only test. Frozen core is intentionally untouched.
 """
-from __future__ import annotations
 
 import random
 from dataclasses import dataclass
