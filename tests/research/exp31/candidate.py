@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 VERIFIER_VERSION = "exp31-contract-v0"
 REQUIRED_NODES = {
     "source_ref",
