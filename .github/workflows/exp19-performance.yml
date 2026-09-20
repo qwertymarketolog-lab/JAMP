@@ -60,6 +60,11 @@ jobs:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/ci_in_place_lap_replication.py -s
+      - name: Run EXP-19 official hard-guard multi-sample
+        env:
+          PYTHONPATH: .:src
+        run: |
+          pytest -q tests/research/exp19/ci_official_hard_guard_multisample.py -s
       - name: Upload EXP-19 forensic boundary evidence
         uses: actions/upload-artifact@v4
         with:
