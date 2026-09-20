@@ -1,0 +1,94 @@
+{
+  "spec": "PRE-EXP-19-DATASET-R0",
+  "status": "PREDECLARED_EXPECTATION",
+  "anti_extrapolation": "Zero extrapolation; conclusions require traced intersection to specific slots.",
+  "classes": {
+    "temporal_conflict": [
+      {
+        "object": "obj-b",
+        "parameter": "pressure",
+        "expected": "conflict_type=temporal_value_divergence; intersection=true"
+      },
+      {
+        "object": "obj-h",
+        "parameter": "temperature",
+        "expected": "conflict_type=temporal_value_divergence; intersection=true"
+      },
+      {
+        "object": "obj-i",
+        "parameter": "flow",
+        "expected": "conflict_type=temporal_value_divergence; intersection=true"
+      }
+    ],
+    "provenance_break": [
+      {
+        "object": "obj-d",
+        "parameter": "temperature",
+        "expected": "conflict_type=missing_provenance; action=drop_or_flag"
+      },
+      {
+        "object": "obj-e",
+        "parameter": "humidity",
+        "expected": "conflict_type=invalid_provenance; action=drop_or_flag"
+      },
+      {
+        "object": "obj-k",
+        "parameter": "pressure",
+        "expected": "conflict_type=ambiguous_provenance; action=drop_or_flag"
+      },
+      {
+        "object": "obj-l",
+        "parameter": "vibration",
+        "expected": "conflict_type=invalid_provenance; action=drop_or_flag"
+      },
+      {
+        "object": "obj-m",
+        "parameter": "voltage",
+        "expected": "conflict_type=invalid_provenance; action=drop_or_flag"
+      }
+    ],
+    "duplicate_observation": [
+      {
+        "object": "obj-c",
+        "parameter": "temperature",
+        "expected": "conflict_type=exact_duplicate; deduplication=candidate"
+      },
+      {
+        "object": "obj-n",
+        "parameter": "pressure",
+        "expected": "conflict_type=exact_duplicate; deduplication=candidate"
+      }
+    ],
+    "insufficient_overlap": [
+      {
+        "object": "obj-f",
+        "parameter": "temperature",
+        "expected": "status=INCONCLUSIVE; reason=INSUFFICIENT_OVERLAP"
+      },
+      {
+        "object": "obj-g",
+        "parameter": "temperature",
+        "expected": "status=INCONCLUSIVE; reason=INSUFFICIENT_OVERLAP"
+      },
+      {
+        "object": "obj-o",
+        "parameter": "pressure",
+        "expected": "status=INCONCLUSIVE; reason=INSUFFICIENT_OVERLAP"
+      },
+      {
+        "object": "obj-p",
+        "parameter": "humidity",
+        "expected": "status=INCONCLUSIVE; reason=INSUFFICIENT_OVERLAP"
+      },
+      {
+        "object": "obj-q",
+        "parameter": "vibration",
+        "expected": "status=INCONCLUSIVE; reason=INSUFFICIENT_OVERLAP"
+      }
+    ]
+  },
+  "forbidden_inferences": [
+    "No causal attribution to any sensor/source.",
+    "No claim of calibration error, network retry, transmission failure, or source fault without independent evidence."
+  ]
+}
