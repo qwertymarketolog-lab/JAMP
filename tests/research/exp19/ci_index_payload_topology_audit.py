@@ -15,8 +15,9 @@ N = 40
 
 
 def _fingerprint(graph: ObservationAdjacencyGraph) -> tuple[int, int, tuple[int, ...]]:
-    edges = graph._edges.values()  # noqa: SLF001
-    out_degrees = tuple(sorted(len(targets) for targets in graph._adj_int))  # noqa: SLF001
+    out_degrees = tuple(
+        sorted(len(targets) for targets in graph._adj_int)  # noqa: SLF001
+    )
     return len(graph._idx_to_node), len(graph._edges), out_degrees  # noqa: SLF001
 
 
