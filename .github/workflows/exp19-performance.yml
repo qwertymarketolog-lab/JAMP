@@ -34,6 +34,19 @@ jobs:
         run: |
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
 
+      - name: Run EXP-19 forensic boundary benchmark
+        env:
+          PYTHONPATH: .:src
+        run: |
+          python tests/research/exp19/forensic_boundary_benchmark.py 2>&1 | tee exp19-forensic-boundary.txt
+
+      - name: Upload EXP-19 forensic boundary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-forensic-boundary
+          path: exp19-forensic-boundary.txt
+          if-no-files-found: error
+
       - name: Upload EXP-19 diagnostic evidence
         uses: actions/upload-artifact@v4
         with:
