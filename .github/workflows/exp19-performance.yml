@@ -55,6 +55,11 @@ jobs:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/ci_pytest_wall_cpu_diagnostic.py -s
+      - name: Run EXP-19 in-place lap replication
+        env:
+          PYTHONPATH: .:src
+        run: |
+          pytest -q tests/research/exp19/ci_in_place_lap_replication.py -s
       - name: Upload EXP-19 forensic boundary evidence
         uses: actions/upload-artifact@v4
         with:
