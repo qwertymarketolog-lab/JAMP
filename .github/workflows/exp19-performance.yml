@@ -10,6 +10,7 @@ on:
     branches:
       - main
 
+# CI-only dispatchability preserved; no production/runtime changes.
 jobs:
   exp19-performance:
     runs-on: ubuntu-latest
