@@ -38,9 +38,7 @@ def _run_mode(interval: float) -> list[dict[str, float]]:
                 try:
                     return original_acyclic(self)
                 finally:
-                    lap["acyclic_ns"] = int(
-                        (REAL_PERF_COUNTER() - start) * 1_000_000_000
-                    )
+                    lap["acyclic_ns"] = int((REAL_PERF_COUNTER() - start) * 1_000_000_000)
 
             def traced_reachable(
                 self: ObservationAdjacencyGraph,
@@ -58,12 +56,8 @@ def _run_mode(interval: float) -> list[dict[str, float]]:
             wall_start = REAL_PERF_COUNTER()
             cpu_start = REAL_PROCESS_TIME()
             with (
-                patch.object(
-                    ObservationAdjacencyGraph, "is_acyclic", traced_acyclic
-                ),
-                patch.object(
-                    ObservationAdjacencyGraph, "reachable", traced_reachable
-                ),
+                patch.object(ObservationAdjacencyGraph, "is_acyclic", traced_acyclic),
+                patch.object(ObservationAdjacencyGraph, "reachable", traced_reachable),
                 contextlib.suppress(AssertionError),
             ):
                 canonical_g4()
@@ -74,9 +68,7 @@ def _run_mode(interval: float) -> list[dict[str, float]]:
                     "i": index + 1,
                     "acyclic_ms": lap["acyclic_ns"] / 1_000_000,
                     "reachable_ms": lap["reachable_ns"] / 1_000_000,
-                    "elapsed_ms": (
-                        lap["acyclic_ns"] + lap["reachable_ns"]
-                    ) / 1_000_000,
+                    "elapsed_ms": (lap["acyclic_ns"] + lap["reachable_ns"]) / 1_000_000,
                     "wall_cpu_delta_ms": (wall_ns - cpu_ns) / 1_000_000,
                 }
             )
@@ -94,15 +86,12 @@ def _summarize(interval: float, rows: list[dict[str, float]]) -> None:
     print(f"tail_count={len(tails)}")
     print(f"tail_indices={[int(row['i']) for row in tails]}")
     print(f"p50_ms={statistics.median(elapsed):.3f}")
-    print(
-        f"p95_ms={statistics.quantiles(elapsed, n=20, method='inclusive')[-1]:.3f}"
-    )
+    print(f"p95_ms={statistics.quantiles(elapsed, n=20, method='inclusive')[-1]:.3f}")
     print(f"max_ms={max(elapsed):.3f}")
     print(f"acyclic_p50_ms={statistics.median(acyclic):.3f}")
     print(f"reachable_p50_ms={statistics.median(reachable):.3f}")
     print(
-        f"wall_cpu_delta_abs_max_ms="
-        f"{max(abs(row['wall_cpu_delta_ms']) for row in rows):.3f}"
+        f"wall_cpu_delta_abs_max_ms={max(abs(row['wall_cpu_delta_ms']) for row in rows):.3f}"
     )
     print(f"rows={rows}")
 
