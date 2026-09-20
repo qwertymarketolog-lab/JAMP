@@ -57,13 +57,6 @@ def test_vector5_tail_positions_are_treated_as_observations_not_causes() -> None
     assert TAIL_POSITIONS.issubset(set(range(N)))
 
 
-def test_vector5_core_import_surface_is_research_only() -> None:
-    # No src/jamp import is performed by this driver. The runtime experiment
-    # will be wired through the existing research harness/CI without modifying
-    # the frozen core.
-    assert True
-
-
 def test_vector5_r0_contract() -> None:
     assert N == 40
     assert SEED == 1905
