@@ -1,4 +1,4 @@
-"""Vector #5: sequential-state / dispatch-order probe.
+""""Vector #5: sequential-state / dispatch-order probe.
 
 Research-only test. Frozen core is intentionally untouched.
 """
@@ -53,11 +53,11 @@ def test_vector5_dispatch_mapping_is_explicit() -> None:
 def test_vector5_tail_positions_are_treated_as_observations_not_causes() -> None:
     # This is deliberately a contract-level guard: the known tail positions
     # are inputs to analysis, never an assertion about their causal origin.
-    assert TAIL_POSITIONS == {2, 15, 22, 35}
+    assert {2, 15, 22, 35} == TAIL_POSITIONS
     assert TAIL_POSITIONS.issubset(set(range(N)))
 
 
 def test_vector5_r0_contract() -> None:
     assert N == 40
     assert SEED == 1905
-    assert TAIL_POSITIONS == {2, 15, 22, 35}
+    assert {2, 15, 22, 35} == TAIL_POSITIONS
