@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import gc
 import statistics
 import sys
 import time
