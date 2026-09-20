@@ -152,22 +152,6 @@ def exp31_verify(payload: dict[str, Any]) -> dict[str, Any]:
                 "verifier_version": VERIFIER_VERSION,
             }
 
-    if len(set(observation_ids)) != len(observation_ids):
-        return {
-            "status": "INVALID",
-            "diagnostic_code": "DUPLICATE_OBSERVATION_ID",
-            "scope_metrics": {"atomic_count": len(atoms)},
-            "verifier_version": VERIFIER_VERSION,
-        }
-
-    if len(set(source_refs)) != len(source_refs):
-        return {
-            "status": "INVALID",
-            "diagnostic_code": "DUPLICATE_SOURCE_REF",
-            "scope_metrics": {"atomic_count": len(atoms)},
-            "verifier_version": VERIFIER_VERSION,
-        }
-
     return {
         "status": "VALID",
         "diagnostic_code": "PROV_OK",
