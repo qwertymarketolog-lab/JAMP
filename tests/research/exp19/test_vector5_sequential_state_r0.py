@@ -3,8 +3,8 @@
 Research-only test. Frozen core is intentionally untouched.
 """
 
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
 
 
 N = 40
