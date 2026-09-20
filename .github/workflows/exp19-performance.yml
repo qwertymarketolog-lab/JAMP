@@ -30,7 +30,7 @@ jobs:
 
       - name: Run EXP-19 scale diagnostic
         env:
-          PYTHONPATH: src
+          PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
 
