@@ -71,11 +71,22 @@ jobs:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/ci_tail_trigger_probe.py -s 2>&1 | tee exp19-tail-trigger-probe.txt
+      - name: Run EXP-19 Vector #3 switchinterval sweep
+        env:
+          PYTHONPATH: .:src
+        run: |
+          pytest -q tests/research/exp19/ci_switchinterval_sweep.py -s 2>&1 | tee exp19-switchinterval-sweep.txt
       - name: Upload EXP-19 tail-trigger evidence
         uses: actions/upload-artifact@v4
         with:
           name: exp19-tail-trigger-probe
           path: exp19-tail-trigger-probe.txt
+          if-no-files-found: error
+      - name: Upload EXP-19 Vector #3 switchinterval evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-switchinterval-sweep
+          path: exp19-switchinterval-sweep.txt
           if-no-files-found: error
       - name: Upload EXP-19 forensic boundary evidence
         uses: actions/upload-artifact@v4
