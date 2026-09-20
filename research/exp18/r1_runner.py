@@ -52,11 +52,7 @@ def main():
         if atom not in ground_truth:
             type_role_discrepancies.append("GROUND_TRUTH_MISMATCH")
 
-    status = (
-        "PASS"
-        if density == 1.0 and not type_role_discrepancies
-        else "FAIL"
-    )
+    status = "PASS" if density == 1.0 and not type_role_discrepancies else "FAIL"
 
     report = {
         "spec": "EXP18-R1",
@@ -80,22 +76,13 @@ def main():
 
 
 def run_organic(fixture_name="organic_sample_01.json", output_name="r1_organic_report.json"):
-    schema = json.loads(
-        Path("research/exp18/fixtures/schema_map.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    schema = json.loads(Path("research/exp18/fixtures/schema_map.json").read_text(encoding="utf-8"))
     fixture = json.loads(
-        (Path("research/exp18/fixtures") / fixture_name).read_text(
-            encoding="utf-8"
-        )
+        (Path("research/exp18/fixtures") / fixture_name).read_text(encoding="utf-8")
     )
 
     declared_slots = schema["declared_logical_slots"]
-    declared = {
-        (slot["object_ref"], slot["property"])
-        for slot in schema["slots"]
-    }
+    declared = {(slot["object_ref"], slot["property"]) for slot in schema["slots"]}
 
     extracted = []
 
