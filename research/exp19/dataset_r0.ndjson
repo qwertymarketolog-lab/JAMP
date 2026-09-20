@@ -1,0 +1,20 @@
+{"object":"obj-b","parameter":"pressure","value":1012,"timestamp":"2026-09-20T07:00:00Z","source":"sensor-B"}
+{"object":"obj-b","parameter":"pressure","value":1025,"timestamp":"2026-09-20T07:03:00Z","source":"sensor-C"}
+{"object":"obj-h","parameter":"temperature","value":20,"timestamp":"2026-09-20T07:10:00Z","source":"sensor-H1"}
+{"object":"obj-h","parameter":"temperature","value":21.2,"timestamp":"2026-09-20T07:13:00Z","source":"sensor-H2"}
+{"object":"obj-i","parameter":"flow","value":5,"timestamp":"2026-09-20T07:20:00Z","source":"sensor-I1"}
+{"object":"obj-i","parameter":"flow","value":5.5,"timestamp":"2026-09-20T07:23:00Z","source":"sensor-I2"}
+{"object":"obj-d","parameter":"temperature","value":24.5,"timestamp":"2026-09-20T07:30:00Z","source":""}
+{"object":"obj-e","parameter":"humidity","value":41,"timestamp":"2026-09-20T07:31:00Z","source":"unknown"}
+{"object":"obj-k","parameter":"pressure","value":1001,"timestamp":"2026-09-20T07:32:00Z","source":"ambiguous"}
+{"object":"obj-l","parameter":"vibration","value":0.18,"timestamp":"2026-09-20T07:33:00Z","source":" "}
+{"object":"obj-m","parameter":"voltage","value":220,"timestamp":"2026-09-20T07:34:00Z","source":"unresolved"}
+{"object":"obj-c","parameter":"temperature","value":18,"timestamp":"2026-09-20T07:40:00Z","source":"sensor-C"}
+{"object":"obj-c","parameter":"temperature","value":18,"timestamp":"2026-09-20T07:40:00Z","source":"sensor-C"}
+{"object":"obj-n","parameter":"pressure","value":1005,"timestamp":"2026-09-20T07:45:00Z","source":"sensor-N"}
+{"object":"obj-n","parameter":"pressure","value":1005,"timestamp":"2026-09-20T07:45:00Z","source":"sensor-N"}
+{"object":"obj-f","parameter":"temperature","value":19,"timestamp":"2026-09-20T07:50:00Z","source":"sensor-F"}
+{"object":"obj-g","parameter":"temperature","value":22,"timestamp":"2026-09-20T07:51:00Z","source":"sensor-G"}
+{"object":"obj-o","parameter":"pressure","value":1008,"timestamp":"2026-09-20T07:52:00Z","source":"sensor-O"}
+{"object":"obj-p","parameter":"humidity","value":38,"timestamp":"2026-09-20T07:53:00Z","source":"sensor-P"}
+{"object":"obj-q","parameter":"vibration","value":0.11,"timestamp":"2026-09-20T07:54:00Z","source":"sensor-Q"}
