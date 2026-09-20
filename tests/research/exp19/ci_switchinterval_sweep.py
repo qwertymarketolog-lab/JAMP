@@ -49,9 +49,7 @@ def _run_mode(interval: float) -> list[dict[str, float]]:
                 try:
                     return original_reachable(self, start_id)
                 finally:
-                    lap["reachable_ns"] = int(
-                        (REAL_PERF_COUNTER() - start) * 1_000_000_000
-                    )
+                    lap["reachable_ns"] = int((REAL_PERF_COUNTER() - start) * 1_000_000_000)
 
             wall_start = REAL_PERF_COUNTER()
             cpu_start = REAL_PROCESS_TIME()
@@ -90,9 +88,7 @@ def _summarize(interval: float, rows: list[dict[str, float]]) -> None:
     print(f"max_ms={max(elapsed):.3f}")
     print(f"acyclic_p50_ms={statistics.median(acyclic):.3f}")
     print(f"reachable_p50_ms={statistics.median(reachable):.3f}")
-    print(
-        f"wall_cpu_delta_abs_max_ms={max(abs(row['wall_cpu_delta_ms']) for row in rows):.3f}"
-    )
+    print(f"wall_cpu_delta_abs_max_ms={max(abs(row['wall_cpu_delta_ms']) for row in rows):.3f}")
     print(f"rows={rows}")
 
 
