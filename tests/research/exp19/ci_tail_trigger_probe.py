@@ -112,7 +112,8 @@ def test_exp19_tail_trigger_probe_n40() -> None:
                 "reachable_ms": lap["reachable_ns"] / 1_000_000,
                 "canonical_elapsed_ms": (
                     lap["acyclic_ns"] + lap["reachable_ns"]
-                ) / 1_000_000,
+                )
+                / 1_000_000,
                 "wall_call_ms": wall_ns / 1_000_000,
                 "cpu_call_ms": cpu_ns / 1_000_000,
                 "wall_cpu_delta_ms": (wall_ns - cpu_ns) / 1_000_000,
@@ -136,10 +137,18 @@ def test_exp19_tail_trigger_probe_n40() -> None:
     )
     print(f"canonical_ms={[round(x, 3) for x in elapsed]}")
     print(f"p50_ms={statistics.median(elapsed):.3f}")
-    print(f"p95_ms={statistics.quantiles(elapsed, n=20, method='inclusive')[-1]:.3f}")
+    print(
+        f"p95_ms={statistics.quantiles(elapsed, n=20, method='inclusive')[-1]:.3f}"
+    )
     print(f"max_ms={max(elapsed):.3f}")
-    print(f"pearson_elapsed_gen0={_pearson(elapsed, [float(x) for x in gen0])}")
-    print(f"pearson_elapsed_gen1={_pearson(elapsed, [float(x) for x in gen1])}")
+    print(
+        f"pearson_elapsed_gen0="
+        f"{_pearson(elapsed, [float(x) for x in gen0])}"
+    )
+    print(
+        f"pearson_elapsed_gen1="
+        f"{_pearson(elapsed, [float(x) for x in gen1])}"
+    )
     tail_gc = [
         (row["i"], row["gc_gen0"], row["gc_gen1"])
         for row, tail in zip(rows, tails, strict=True)
