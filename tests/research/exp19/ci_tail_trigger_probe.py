@@ -93,9 +93,9 @@ def test_exp19_tail_trigger_probe_n40() -> None:
         with (
             patch.object(ObservationAdjacencyGraph, "is_acyclic", capture_acyclic),
             patch.object(ObservationAdjacencyGraph, "reachable", traced_reachable),
+            contextlib.suppress(AssertionError),
         ):
-            with contextlib.suppress(AssertionError):
-                canonical_g4()
+            canonical_g4()
         wall_ns = int((REAL_PERF_COUNTER() - wall_start) * 1_000_000_000)
         cpu_ns = int((REAL_PROCESS_TIME() - cpu_start) * 1_000_000_000)
 
