@@ -1,0 +1,43 @@
+{
+  "objects": [
+    {
+      "object_ref": "obj-alpha",
+      "properties": {
+        "temperature": {
+          "val_prev": 21.0,
+          "val_curr": 24.5,
+          "provenance_link": "ref-alpha-01"
+        },
+        "humidity": {
+          "val_prev": 45.0,
+          "val_curr": 40.0,
+          "provenance_link": "ref-alpha-02"
+        }
+      }
+    },
+    {
+      "object_ref": "obj-beta",
+      "properties": {
+        "pressure": {
+          "val_prev": 101.2,
+          "val_curr": 100.8
+        },
+        "vibration": {
+          "val_prev": 0.12,
+          "val_curr": 0.18,
+          "provenance_link": "ref-beta-02"
+        }
+      }
+    },
+    {
+      "object_ref": "obj-gamma",
+      "properties": {
+        "temperature": {
+          "val_prev": 19.0,
+          "val_curr": 22.0,
+          "provenance_link": "ref-gamma-01"
+        }
+      }
+    }
+  ]
+}
