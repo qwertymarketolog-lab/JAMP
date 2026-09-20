@@ -3,8 +3,8 @@
 Research-only test. Frozen core is intentionally untouched.
 """
 
+import dataclasses
 import random
-from dataclasses import dataclass
 
 
 N = 40
@@ -12,7 +12,7 @@ SEED = 1905
 TAIL_POSITIONS = {2, 15, 22, 35}
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class DispatchRecord:
     dispatch_position: int
     iteration_id: int
