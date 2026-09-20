@@ -45,6 +45,11 @@ jobs:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/ci_pytest_lap_diagnostic.py -s
+      - name: Run EXP-19 pytest GC-stats no-preclean diagnostic
+        env:
+          PYTHONPATH: .:src
+        run: |
+          pytest -q tests/research/exp19/ci_pytest_gc_stats_diagnostic.py -s
       - name: Upload EXP-19 forensic boundary evidence
         uses: actions/upload-artifact@v4
         with:
