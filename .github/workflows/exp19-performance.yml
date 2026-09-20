@@ -16,37 +16,42 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-mock
-
       - name: Run EXP-19 scale diagnostic
         env:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
-
       - name: Run EXP-19 forensic boundary benchmark
         env:
           PYTHONPATH: .:src
         run: |
           python tests/research/exp19/forensic_boundary_benchmark.py 2>&1 | tee exp19-forensic-boundary.txt
-
+      - name: Run EXP-19 CI lap GC diagnostic
+        env:
+          PYTHONPATH: .:src
+        run: |
+          python tests/research/exp19/ci_lap_gc_diagnostic.py 2>&1 | tee exp19-ci-lap-gc.txt
       - name: Upload EXP-19 forensic boundary evidence
         uses: actions/upload-artifact@v4
         with:
           name: exp19-forensic-boundary
           path: exp19-forensic-boundary.txt
           if-no-files-found: error
-
+      - name: Upload EXP-19 CI lap GC evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-ci-lap-gc
+          path: exp19-ci-lap-gc.txt
+          if-no-files-found: error
       - name: Upload EXP-19 diagnostic evidence
         uses: actions/upload-artifact@v4
         with:
