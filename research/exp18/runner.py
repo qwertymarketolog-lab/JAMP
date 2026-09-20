@@ -83,11 +83,7 @@ def run_r0():
             vector_stats[vector]["valid_atoms"] += valid_count
             vector_stats[vector]["expected_slots"] += exp_slots
 
-    global_density = (
-        total_valid_atoms / total_expected_slots
-        if total_expected_slots > 0
-        else 0.0
-    )
+    global_density = total_valid_atoms / total_expected_slots if total_expected_slots > 0 else 0.0
 
     report = {
         "r0_status": "UNVERIFIED_PENDING_INSPECTION",
@@ -111,11 +107,8 @@ def run_r0():
     with OUTPUT_REPORT.open("w", encoding="utf-8") as out:
         json.dump(report, out, indent=2, sort_keys=True)
 
-    summary_line = (
-        f"[R0-SHADOW-ALIGNED] Report generated: {OUTPUT_REPORT}"
-        f" | Global D = {global_density:.4f}"
-    )
-    print(summary_line)
+    print(f"[R0-SHADOW-ALIGNED] Report generated: {OUTPUT_REPORT}")
+    print(f"Global D = {global_density:.4f}")
 
 
 if __name__ == "__main__":
