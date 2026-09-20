@@ -1,0 +1,27 @@
+{
+  "spec": "EXP18-R1",
+  "status": "LOCAL_EVIDENCE",
+  "synthetic_control": {
+    "D_semantic": 1.0,
+    "atoms": "2/2",
+    "status": "PASS"
+  },
+  "organic_sample_01": {
+    "D_semantic": 0.8,
+    "atoms": "4/5",
+    "status": "UNVERIFIED_ORGANIC_PENDING"
+  },
+  "organic_control_sample_02": {
+    "D_semantic": 0.8,
+    "atoms": "4/5",
+    "status": "UNVERIFIED_ORGANIC_PENDING"
+  },
+  "positional_invariance": {
+    "assertion": "D_semantic(sample_01) == D_semantic(sample_02)",
+    "value": 0.8,
+    "status": "PASS"
+  },
+  "core_invariant": {
+    "src_jamp_delta": 0
+  }
+}
