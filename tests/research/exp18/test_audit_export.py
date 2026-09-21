@@ -24,8 +24,7 @@ def test_tc_e02_manifest_stability(sample_r0_ledger):
 def test_tc_e03_atom_mutation_changes_manifest(sample_r0_ledger):
     view_a = query_subgraph(sample_r0_ledger, object_ref="obj_01")
     view_b = tuple(
-        {**item, "value": "mutated"} if index == 0 else item
-        for index, item in enumerate(view_a)
+        {**item, "value": "mutated"} if index == 0 else item for index, item in enumerate(view_a)
     )
     export_a = export_audit_manifest(view_a)
     export_b = export_audit_manifest(view_b)
