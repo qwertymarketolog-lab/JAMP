@@ -39,6 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -64,32 +65,51 @@ jobs:
         env:
           PYTHONPATH: src:.
         run: |
-          python -m pytest -q -s tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale 2>&1 | tee g4.log
+          python - <<'PY' 2>&1 | tee g4.log
+          import gc
+          import pytest
+
+          before_gen2 = gc.get_stats()[2]["collections"]
+          exit_code = pytest.main([
+              "-q", "-s",
+              "tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale",
+          ])
+          after_gen2 = gc.get_stats()[2]["collections"]
+          print(f"[N20_GC_TELEMETRY] n_gc_gen2={after_gen2 - before_gen2}")
+          raise SystemExit(exit_code)
+          PY
 
       - name: Materialize raw observation
         env:
           RUN_ID: ${{ matrix.run_id }}
           STRATUM: ${{ matrix.os }}
-          TARGET_COMMIT: ${{ github.sha }}
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python - <<'PY'
           import json, os, re
           from pathlib import Path
+
           text = Path("g4.log").read_text(encoding="utf-8", errors="replace")
-          m = re.search(r"wall_ms=([0-9.]+) \\| cpu_ms=([0-9.]+) \\| non_cpu_delta_ms=([-0-9.]+)", text)
-          if not m:
+          telemetry = re.search(
+              r"wall_ms=([0-9.]+) \\| cpu_ms=([0-9.]+) \\| non_cpu_delta_ms=([-0-9.]+)",
+              text,
+          )
+          gc_match = re.search(r"\[N20_GC_TELEMETRY\] n_gc_gen2=(\d+)", text)
+          if not telemetry:
               raise SystemExit("G4_IN_SITU_TELEMETRY not found")
-          cpu_count = os.cpu_count()
+          if not gc_match:
+              raise SystemExit("N20_GC_TELEMETRY not found")
+
           observation = {
               "sample_id": f"{os.environ['STRATUM']}-{os.environ['RUN_ID']}",
               "stratum": os.environ["STRATUM"],
               "run_id": int(os.environ["RUN_ID"]),
               "target_commit": os.environ["TARGET_COMMIT"],
-              "wall_ms": float(m.group(1)),
-              "cpu_ms": float(m.group(2)),
-              "non_cpu_delta_ms": float(m.group(3)),
-              "runner_cpu_count": cpu_count,
-              "n_gc_gen2": None,
+              "wall_ms": float(telemetry.group(1)),
+              "cpu_ms": float(telemetry.group(2)),
+              "non_cpu_delta_ms": float(telemetry.group(3)),
+              "runner_cpu_count": os.cpu_count(),
+              "n_gc_gen2": int(gc_match.group(1)),
           }
           Path("raw").mkdir()
           Path("raw/observation.json").write_text(
@@ -112,6 +132,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -127,7 +148,7 @@ jobs:
 
       - name: Aggregate stratified distribution
         env:
-          TARGET_COMMIT: ${{ github.sha }}
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python scripts/research/aggregate_n20_telemetry.py raw-observations --target-commit "$TARGET_COMMIT"
 
