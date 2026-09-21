@@ -88,8 +88,3 @@ jobs:
           name: exp-gc-causality-results-n${{ github.event_name == 'workflow_dispatch' && inputs.n || '30' }}
           path: artifacts/research/exp_gc_causality_results.json
           if-no-files-found: error
-        uses: actions/upload-artifact@v4
-        with:
-          name: exp-gc-causality-dry-run-n1
-          path: artifacts/research/exp_gc_causality_dry_run_n1.json
-          if-no-files-found: error
