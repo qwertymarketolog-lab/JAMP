@@ -51,16 +51,8 @@ def run_organic(
     fixture_name="organic_sample_01.json",
     output_name="r1_organic_report.json",
 ):
-    schema = json.loads(
-        Path("research/exp18/fixtures/schema_map.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    fixture = json.loads(
-        (Path("research/exp18/fixtures") / fixture_name).read_text(
-            encoding="utf-8"
-        )
-    )
+    schema = json.loads(Path("research/exp18/fixtures/schema_map.json").read_text(encoding="utf-8"))
+    fixture = json.loads((Path("research/exp18/fixtures") / fixture_name).read_text(encoding="utf-8"))
     declared = {
         (slot["object_ref"], slot["property"]) for slot in schema["slots"]
     }
@@ -101,8 +93,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if not args:
         raise SystemExit(
-            "usage: python3 research/exp18/r1_runner.py "
-            "[synthetic|organic] [--fixture=FILE]"
+            "usage: python3 research/exp18/r1_runner.py [synthetic|organic] [--fixture=FILE]"
         )
     mode = args[0].lower()
     fixture_name = "organic_sample_01.json"
