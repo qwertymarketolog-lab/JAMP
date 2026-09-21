@@ -1,4 +1,4 @@
-""""EXP-21 Phase 2 Step 3 — Intervention A telemetry.
+"""EXP-21 Phase 2 Step 3 — Intervention A telemetry.
 
 Research-only causal intervention harness.
 
@@ -48,9 +48,7 @@ relations = tuple(
 )
 graph = ObservationAdjacencyGraph(relations)
 """
-WORKLOAD_DEFINITION_HASH = hashlib.sha256(
-    CANONICAL_WORKLOAD_DEFINITION.encode("utf-8")
-).hexdigest()
+WORKLOAD_DEFINITION_HASH = hashlib.sha256(CANONICAL_WORKLOAD_DEFINITION.encode("utf-8")).hexdigest()
 
 
 def resolve_target_commit() -> str:
@@ -61,9 +59,7 @@ def resolve_target_commit() -> str:
     if len(actual) != 40 or any(c not in "0123456789abcdef" for c in actual):
         raise RuntimeError("git rev-parse HEAD returned an invalid SHA")
     if expected and expected != actual:
-        raise RuntimeError(
-            f"TARGET_COMMIT mismatch: expected {expected}, actual {actual}"
-        )
+        raise RuntimeError(f"TARGET_COMMIT mismatch: expected {expected}, actual {actual}")
     return actual
 
 
@@ -71,8 +67,7 @@ def build_graph() -> ObservationAdjacencyGraph:
     edges = [(str(i), str(i + 1)) for i in range(CHAIN_EDGES)]
     edges.extend((str(i), str(i + CHAIN_EDGES)) for i in range(OFFSET_EDGES))
     relations = tuple(
-        ObservationRelation(source, target, "adjacent", {})
-        for source, target in edges
+        ObservationRelation(source, target, "adjacent", {}) for source, target in edges
     )
     return ObservationAdjacencyGraph(relations)
 
@@ -103,9 +98,7 @@ def control_is_acyclic(graph: ObservationAdjacencyGraph) -> bool:
                 if state == 0:
                     color[target] = 1
                     target_children = adj[target]
-                    stack.append(
-                        [target, 0, target_children, len(target_children)]
-                    )
+                    stack.append([target, 0, target_children, len(target_children)])
             else:
                 stack.pop()
                 color[frame[0]] = 2
@@ -177,9 +170,7 @@ def descriptive(samples: list[int]) -> dict[str, float | int | list[int]]:
     }
 
 
-def run_pairs(
-    graph: ObservationAdjacencyGraph, repeats: int
-) -> tuple[list[int], list[int]]:
+def run_pairs(graph: ObservationAdjacencyGraph, repeats: int) -> tuple[list[int], list[int]]:
     # Warm-up is deliberately outside timed samples.
     for _ in range(3):
         control = control_is_acyclic(graph)
@@ -192,9 +183,7 @@ def run_pairs(
 
     for _ in range(repeats):
         control_ns, control = timed_call(control_is_acyclic, graph)
-        intervention_ns, intervention = timed_call(
-            intervention_a_is_acyclic, graph
-        )
+        intervention_ns, intervention = timed_call(intervention_a_is_acyclic, graph)
         if control != intervention:
             raise AssertionError("control/intervention semantic mismatch")
         control_samples.append(control_ns)
@@ -219,11 +208,7 @@ def main() -> int:
     control = descriptive(control_samples)
     intervention = descriptive(intervention_samples)
     median_delta = intervention["median_ns"] - control["median_ns"]
-    relative_delta = (
-        median_delta / control["median_ns"]
-        if control["median_ns"]
-        else 0.0
-    )
+    relative_delta = median_delta / control["median_ns"] if control["median_ns"] else 0.0
 
     payload = {
         "experiment": "EXP-21-PHASE2-STEP3-INTERVENTION-A",
@@ -259,9 +244,7 @@ def main() -> int:
             "median_delta_ns": median_delta,
             "relative_delta": relative_delta,
             "direction_observed": (
-                "INTERVENTION_LOWER"
-                if median_delta < 0
-                else "INTERVENTION_NOT_LOWER"
+                "INTERVENTION_LOWER" if median_delta < 0 else "INTERVENTION_NOT_LOWER"
             ),
         },
         "interpretation": {
