@@ -51,18 +51,10 @@ def run_r0():
             stats["records"] += 1
             stats["valid_atoms"] += len(atoms)
             stats["expected_slots"] += exp_slots
-    global_density = (
-        total_valid_atoms / total_expected_slots
-        if total_expected_slots
-        else 0.0
-    )
+    global_density = total_valid_atoms / total_expected_slots if total_expected_slots else 0.0
     breakdown = {}
     for vector, stats in vector_stats.items():
-        density = (
-            stats["valid_atoms"] / stats["expected_slots"]
-            if stats["expected_slots"]
-            else 0.0
-        )
+        density = stats["valid_atoms"] / stats["expected_slots"] if stats["expected_slots"] else 0.0
         breakdown[vector] = {**stats, "density": round(density, 4)}
     report = {
         "r0_status": "UNVERIFIED_PENDING_INSPECTION",
