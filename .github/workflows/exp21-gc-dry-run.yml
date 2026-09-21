@@ -1,0 +1,77 @@
+name: EXP-21 GC Causality Dry-Run
+
+on:
+  pull_request:
+    paths:
+      - "scripts/research/exp_gc_causality.py"
+      - ".github/workflows/exp21-gc-dry-run.yml"
+      - "src/jamp/research/exp19/**"
+      - "research/exp19/**"
+  workflow_dispatch:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install research dependency
+        run: python -m pip install scipy
+
+      - name: Targeted Ruff check
+        run: |
+          ruff check scripts/research/exp_gc_causality.py
+          ruff format --check scripts/research/exp_gc_causality.py
+
+      - name: Dry-run N=1
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXPERIMENT_SEED: "1905"
+        run: |
+          python scripts/research/exp_gc_causality.py \
+            --n 1 \
+            --output artifacts/research/exp_gc_causality_dry_run_n1.json
+
+      - name: Validate dry-run artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/research/exp_gc_causality_dry_run_n1.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+
+          assert payload["n_pairs"] == 1
+          assert len(payload["workload_definition_sha256"]) == 64
+          assert payload["target_commit"] == "${{ github.event.pull_request.head.sha || github.sha }}"
+          pair = payload["pairs"][0]
+          for condition in ("BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH"):
+              assert "n_gc_gen2" in pair[condition]
+              assert isinstance(pair[condition]["n_gc_gen2"], int)
+
+          delta = pair["DISABLED_HOTPATH"]["wall_ms"] - pair["BASELINE"]["wall_ms"]
+          print(json.dumps({
+              "workload_definition_sha256": payload["workload_definition_sha256"],
+              "gen2_collections": {
+                  k: pair[k]["n_gc_gen2"]
+                  for k in ("BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH")
+              },
+              "delta_1_ms": delta,
+              "status": payload["status"],
+          }, indent=2))
+          PY
+
+      - name: Upload dry-run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-gc-causality-dry-run-n1
+          path: artifacts/research/exp_gc_causality_dry_run_n1.json
+          if-no-files-found: error
