@@ -6,7 +6,6 @@ Research-only test. Frozen core is intentionally untouched.
 import dataclasses
 import random
 
-
 N = 40
 SEED = 1905
 TAIL_POSITIONS = {2, 15, 22, 35}
