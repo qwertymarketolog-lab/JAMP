@@ -54,12 +54,7 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
 
     if not sources or any(not source for source in sources):
         provenance = tuple(
-            sorted(
-                atom.provenance
-                for source in sources
-                for atom in source
-                if atom.provenance
-            )
+            sorted(atom.provenance for source in sources for atom in source if atom.provenance)
         )
         return ConflictResult(
             status=EpistemicStatus.INCONCLUSIVE,
@@ -96,12 +91,7 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
             )
 
     provenance = tuple(
-        sorted(
-            atom.provenance
-            for source in sources
-            for atom in source
-            if atom.provenance
-        )
+        sorted(atom.provenance for source in sources for atom in source if atom.provenance)
     )
     if discrepancies:
         return ConflictResult(
