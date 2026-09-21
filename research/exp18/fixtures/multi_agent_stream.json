@@ -1,0 +1,31 @@
+{
+  "schema_version": "r0",
+  "sources": [
+    {
+      "source_id": "ai-1",
+      "kind": "ai",
+      "model_id": "model-a",
+      "inference_params": {"temperature": 0.0, "prompt_id": "fixture-a"},
+      "observations": [
+        {"object_ref": "object-1", "property": "status", "val_curr": "green", "provenance": "prov-ai-1"}
+      ]
+    },
+    {
+      "source_id": "ai-2",
+      "kind": "ai",
+      "model_id": "model-b",
+      "inference_params": {"temperature": 0.0, "prompt_id": "fixture-b"},
+      "observations": [
+        {"object_ref": "object-1", "property": "status", "val_curr": "red", "provenance": "prov-ai-2"}
+      ]
+    },
+    {
+      "source_id": "human",
+      "kind": "human",
+      "annotator_id": "human-1",
+      "observations": [
+        {"object_ref": "object-1", "property": "status", "val_curr": "green", "provenance": "prov-human"}
+      ]
+    }
+  ]
+}
