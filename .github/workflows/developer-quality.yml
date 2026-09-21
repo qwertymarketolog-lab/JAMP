@@ -60,7 +60,7 @@ jobs:
             for file in "${files[@]}"; do
               case "$file" in
                 templates/jamp-plugin/*)
-                  template_files+=("${{file#templates/jamp-plugin/}")
+                  template_files+=("${file#templates/jamp-plugin/}")
                   ;;
                 tools/*)
                   root_files+=("$file")
