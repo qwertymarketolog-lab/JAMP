@@ -94,6 +94,8 @@ def test_09_provenance_or_input_mutation_changes_identity():
 def test_10_conflicting_atom_sets_remain_inconclusive():
     from research.exp18.conflict_node import (
         AtomicObservation as ConflictAtom,
+    )
+    from research.exp18.conflict_node import (
         EpistemicStatus,
         classify,
     )
