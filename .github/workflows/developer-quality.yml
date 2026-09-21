@@ -34,6 +34,10 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -v tests/research/exp18/test_dag_query.py
+      - name: Run EXP-18 R2.1 audit export target tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -v tests/research/exp18/test_audit_export.py
       - name: Ruff changed Python files
         shell: bash
         run: |
