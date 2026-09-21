@@ -30,10 +30,10 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -q -m "not exp19_perf"
-      - name: Run EXP-18 Multi-Agent DAG target tests
+      - name: Run EXP-18 R1 DAG query target tests
         env:
           PYTHONPATH: src
-        run: python -m pytest -v tests/research/exp18/test_dag_aggregator.py
+        run: python -m pytest -v tests/research/exp18/test_dag_query.py
       - name: Ruff changed Python files
         shell: bash
         run: |
