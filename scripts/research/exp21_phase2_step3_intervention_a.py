@@ -1,4 +1,4 @@
-"""EXP-21 Phase 2 Step 3 — Intervention A telemetry.
+""""EXP-21 Phase 2 Step 3 — Intervention A telemetry.
 
 Research-only causal intervention harness.
 
@@ -21,11 +21,10 @@ import os
 import platform
 import statistics
 import subprocess
-import time
-from pathlib import Path
-from typing import Callable
-
 import sys
+import time
+from collections.abc import Callable
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -150,8 +149,10 @@ def intervention_a_is_acyclic(graph: ObservationAdjacencyGraph) -> bool:
     return True
 
 
-def timed_call(fn: Callable[[ObservationAdjacencyGraph], bool],
-               graph: ObservationAdjacencyGraph) -> tuple[int, bool]:
+def timed_call(
+    fn: Callable[[ObservationAdjacencyGraph], bool],
+    graph: ObservationAdjacencyGraph,
+) -> tuple[int, bool]:
     start = time.perf_counter_ns()
     result = fn(graph)
     elapsed = time.perf_counter_ns() - start
