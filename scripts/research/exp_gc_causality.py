@@ -45,9 +45,7 @@ wall_end = time.perf_counter()
 gc_gen2_after = gc.get_stats()[2]["collections"]
 """
 
-WORKLOAD_DEFINITION_HASH = hashlib.sha256(
-    CANONICAL_G4_WORKLOAD_CODE.encode("utf-8")
-).hexdigest()
+WORKLOAD_DEFINITION_HASH = hashlib.sha256(CANONICAL_G4_WORKLOAD_CODE.encode("utf-8")).hexdigest()
 
 
 def resolve_target_commit() -> str:
@@ -59,9 +57,7 @@ def resolve_target_commit() -> str:
             ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
         ).strip()
         if actual != env_sha:
-            raise RuntimeError(
-                f"TARGET_COMMIT mismatch: expected {env_sha}, actual {actual}"
-            )
+            raise RuntimeError(f"TARGET_COMMIT mismatch: expected {env_sha}, actual {actual}")
         return env_sha
 
     actual = subprocess.check_output(
@@ -148,8 +144,7 @@ def analyse(pairs: list[dict[str, object]]) -> dict[str, object]:
         }
 
     deltas = [
-        float(pair["DISABLED_HOTPATH"]["wall_ms"])
-        - float(pair["BASELINE"]["wall_ms"])
+        float(pair["DISABLED_HOTPATH"]["wall_ms"]) - float(pair["BASELINE"]["wall_ms"])
         for pair in pairs
     ]
     median_delta = statistics.median(deltas)
@@ -224,16 +219,19 @@ def main() -> int:
     }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    print(json.dumps({
-        "status": analysis["verdict"],
-        "target_commit": target_commit,
-        "workload_definition_sha256": WORKLOAD_DEFINITION_HASH,
-        "n_pairs": args.n,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": analysis["verdict"],
+                "target_commit": target_commit,
+                "workload_definition_sha256": WORKLOAD_DEFINITION_HASH,
+                "n_pairs": args.n,
+            },
+            indent=2,
+        )
+    )
 
     return 1 if analysis["verdict"] == "ANALYSIS_UNAVAILABLE" else 0
 
