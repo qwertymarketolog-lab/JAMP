@@ -62,11 +62,7 @@ def inspect_lineage(
             visited.add(neighbor)
 
             source = records[neighbor]
-            item = {
-                key: value
-                for key, value in source.items()
-                if key not in forbidden
-            }
+            item = {key: value for key, value in source.items() if key not in forbidden}
             item["node_id"] = neighbor
 
             if conflict_context is not None:
