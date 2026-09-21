@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 
-def derive_verdict(matrix: Any) -> Any:
-    """R0 placeholder: verdict logic is intentionally unimplemented."""
-    raise NotImplementedError("EXP-21 R0 verdict contract")
+def derive_verdict(matrix: Iterable[Mapping[str, Any]]) -> str:
+    """Keep R0 conservative: federation evidence alone never becomes SUPPORTED."""
+    for row in matrix:
+        if row.get("classification") == "CONFLICT":
+            return "INCONCLUSIVE"
+    return "INCONCLUSIVE"
