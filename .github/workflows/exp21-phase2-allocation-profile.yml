@@ -1,0 +1,86 @@
+name: EXP-21 Phase 2 Allocation Profile
+
+on:
+  pull_request:
+    branches:
+      - 'research/**'
+    paths:
+      - 'scripts/research/exp_alloc_profile.py'
+      - '.github/workflows/exp21-phase2-allocation-profile.yml'
+  workflow_dispatch:
+
+jobs:
+  allocation-profile:
+    name: Allocation Profile / canonical G4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record provenance
+        id: provenance
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_COMMIT"
+          echo "target_commit=$TARGET_COMMIT" >> "$GITHUB_OUTPUT"
+          python --version
+          python -c "import platform; print(platform.platform()); print(platform.machine())"
+
+      - name: Verify Frozen Core is unchanged
+        env:
+          BASE_SHA: af2292bbfc8518716bdf5b76614efb33ed9496f0
+        run: |
+          git diff --exit-code "$BASE_SHA" HEAD -- src/jamp
+          test ! -d src/jamp/__pycache__
+
+      - name: Run isolated Allocation Profile
+        env:
+          PYTHONPATH: src:.
+          TARGET_COMMIT: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python scripts/research/exp_alloc_profile.py | tee allocation-profile.log
+
+      - name: Validate artifact contract
+        env:
+          EXPECTED_TARGET: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/research/exp_alloc_profile_results.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+
+          assert payload["target_commit"] == __import__("os").environ["EXPECTED_TARGET"]
+          assert payload["workload_spec_id"] == "EXP-21-PHASE2-ALLOCATION-PROFILE-G4-V1"
+          assert len(payload["workload_definition_hash"]) == 64
+          assert payload["alloc_metrics"]["delta_blocks"] is not None
+          assert payload["alloc_metrics"]["peak_memory_bytes"] >= 0
+          assert payload["alloc_metrics"]["objects_count_delta"] is not None
+          assert payload["frozen_core_delta_zero"] is True
+          assert payload["epistemic_boundary"]["wall_clock_causality"] == "NOT_ESTABLISHED"
+          print("ALLOCATION_PROFILE_CONTRACT=PASS")
+          PY
+
+      - name: Materialize artifact SHA-256
+        run: |
+          sha256sum artifacts/research/exp_alloc_profile_results.json | tee artifacts/research/exp_alloc_profile_results.json.sha256
+
+      - name: Upload independent evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-alloc-profile-results
+          path: |
+            artifacts/research/exp_alloc_profile_results.json
+            artifacts/research/exp_alloc_profile_results.json.sha256
+            allocation-profile.log
+          if-no-files-found: error
