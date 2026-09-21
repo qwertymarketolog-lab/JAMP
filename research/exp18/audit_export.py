@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import Any
 
 _FORBIDDEN_KEYS = frozenset({"score", "confidence", "rank", "voting_weight"})
