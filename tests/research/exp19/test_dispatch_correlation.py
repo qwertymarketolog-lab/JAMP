@@ -38,8 +38,7 @@ def pearson_correlation(xs: Sequence[float], ys: Sequence[float]) -> float:
     centered_x = [x - mean_x for x in xs]
     centered_y = [y - mean_y for y in ys]
     denominator = math.sqrt(
-        sum(value * value for value in centered_x)
-        * sum(value * value for value in centered_y)
+        sum(value * value for value in centered_x) * sum(value * value for value in centered_y)
     )
     if denominator == 0.0:
         raise ValueError("correlation is undefined for a constant sequence")
@@ -62,8 +61,7 @@ def correlation_pair(
 
 def _graph() -> ObservationAdjacencyGraph:
     edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(EDGE_COUNT // 2)
+        ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(EDGE_COUNT // 2)
     ]
     edges.extend(
         ObservationRelation(str(i), str(i + EDGE_COUNT // 2), "adjacent", {})
