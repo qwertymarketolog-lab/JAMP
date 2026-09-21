@@ -1,0 +1,100 @@
+name: EXP-21 Phase 2 Hot-Path Cost
+
+on:
+  pull_request:
+    branches:
+      - 'research/**'
+    paths:
+      - 'scripts/research/exp21_phase2_hotpath_cost.py'
+      - '.github/workflows/exp21-phase2-hotpath-cost.yml'
+  workflow_dispatch:
+
+jobs:
+  hotpath-cost:
+    name: Hot-Path Cost / canonical G4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record provenance
+        id: provenance
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_COMMIT"
+          echo "target_commit=$TARGET_COMMIT" >> "$GITHUB_OUTPUT"
+          python --version
+
+      - name: Verify Frozen Core is unchanged
+        env:
+          BASE_SHA: af2292bbfc8518716bdf5b76614efb33ed9496f0
+        run: |
+          git diff --exit-code "$BASE_SHA" HEAD -- src/jamp
+          test ! -d src/jamp/__pycache__
+
+      - name: Run hot-path decomposition
+        env:
+          PYTHONPATH: src:.
+          TARGET_COMMIT: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python scripts/research/exp21_phase2_hotpath_cost.py --repeats 11 --inner 1
+
+      - name: Validate artifact contract
+        env:
+          EXPECTED_TARGET: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("artifacts/research/exp21_phase2_hotpath_cost.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+
+          assert payload["target_commit"] == os.environ["EXPECTED_TARGET"]
+          assert payload["workload_spec_id"] == "EXP-21-PHASE2-HOTPATH-COST-G4-V1"
+          assert len(payload["workload_definition_hash"]) == 64
+          assert payload["workload"]["edge_count"] == 20_000
+          assert payload["measurement"]["clock"] == "time.perf_counter_ns"
+          assert payload["measurement"]["instrumentation_in_timed_regions"] == []
+          assert payload["measurement"]["tracemalloc"] is False
+          assert payload["measurement"]["cProfile"] is False
+          assert payload["interpretation"]["causality"] == "NOT_ESTABLISHED"
+          assert payload["frozen_core"]["expected_delta"] == "ZERO"
+
+          required = {
+              "string_dict_lookup",
+              "adjacency_access",
+              "adjacency_iteration",
+              "state_membership",
+              "state_update",
+              "index_to_string_lookup",
+              "empty_function_calls",
+              "is_acyclic_hotpath",
+              "reachable_hotpath",
+          }
+          assert required == set(payload["benchmarks"])
+          print("HOTPATH_COST_CONTRACT=PASS")
+          PY
+
+      - name: Materialize artifact SHA-256
+        run: |
+          sha256sum artifacts/research/exp21_phase2_hotpath_cost.json | tee artifacts/research/exp21_phase2_hotpath_cost.json.sha256
+
+      - name: Upload independent evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-phase2-hotpath-cost
+          path: |
+            artifacts/research/exp21_phase2_hotpath_cost.json
+            artifacts/research/exp21_phase2_hotpath_cost.json.sha256
+          if-no-files-found: error
