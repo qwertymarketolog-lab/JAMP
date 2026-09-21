@@ -3,8 +3,8 @@
 These tests intentionally target the not-yet-implemented export layer.
 """
 
-from research.exp18.dag_query import query_subgraph
 from research.exp18.audit_export import export_audit_manifest, parse_audit_manifest
+from research.exp18.dag_query import query_subgraph
 
 
 def test_tc_e01_byte_determinism(sample_r0_ledger):
