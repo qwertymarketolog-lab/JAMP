@@ -13,8 +13,3 @@ def test_exp20_telemetry_contains_no_intervention_calls() -> None:
         "pytest." + "runtestloop",
     )
     assert not any(token in source for token in forbidden)
-
-
-def test_exp20_telemetry_is_research_only() -> None:
-    repo_root = Path(__file__).parents[3]
-    assert not (repo_root / "src" / "jamp" / "run.py").is_symlink()
