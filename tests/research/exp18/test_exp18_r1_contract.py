@@ -1,4 +1,4 @@
-"""EXP-18 R1 contract tests: red phase for atomic observation semantics.""
+"""EXP-18 R1 contract tests: red phase for atomic observation semantics."""
 
 import pytest
 
