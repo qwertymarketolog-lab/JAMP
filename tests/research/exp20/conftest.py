@@ -41,12 +41,13 @@ def pytest_runtest_setup(item) -> None:
 
 
 def pytest_runtest_call(item):
-    if item.nodeid != _G4_NODEID:
-        return
-    started = time.perf_counter()
-    yield
-    elapsed_ms = (time.perf_counter() - started) * 1000.0
-    _emit("after", elapsed_ms)
+    if item.nodeid == _G4_NODEID:
+        started = time.perf_counter()
+        yield
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        _emit("after", elapsed_ms)
+    else:
+        yield
 
 
 pytest_runtest_call.hookwrapper = True
