@@ -19,6 +19,7 @@ from pathlib import Path
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 from research.exp19.observation_relation import ObservationRelation
 
+
 def resolve_target_commit() -> str:
     """Resolve the profiled commit with fail-closed provenance."""
     env_sha = os.getenv("TARGET_COMMIT", "").strip()
