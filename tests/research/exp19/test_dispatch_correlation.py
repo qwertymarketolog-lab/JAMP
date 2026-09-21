@@ -69,5 +69,5 @@ def test_vector5_correlation_contract_preserves_two_axes() -> None:
 
 
 def test_vector5_tail_positions_are_data_labels_not_causes() -> None:
-    assert TAIL_POSITIONS == frozenset({2, 15, 22, 35})
+    assert frozenset({2, 15, 22, 35}) == TAIL_POSITIONS
     assert TAIL_POSITIONS.issubset(range(N))
