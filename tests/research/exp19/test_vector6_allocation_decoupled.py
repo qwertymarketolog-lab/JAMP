@@ -24,13 +24,10 @@ WARMUP = 5
 
 def _graph() -> ObservationAdjacencyGraph:
     edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(EDGE_COUNT // 2)
+        ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(EDGE_COUNT // 2)
     ]
     edges.extend(
-        ObservationRelation(
-            str(i), str(i + EDGE_COUNT // 2), "adjacent", {}
-        )
+        ObservationRelation(str(i), str(i + EDGE_COUNT // 2), "adjacent", {})
         for i in range(EDGE_COUNT // 2)
     )
     return ObservationAdjacencyGraph(tuple(edges))
@@ -70,12 +67,8 @@ def _phase_b() -> list[tuple[int, int]]:
             after = tracemalloc.take_snapshot()
             if position >= WARMUP:
                 stats = after.compare_to(before, "lineno")
-                allocated_bytes = sum(
-                    max(stat.size_diff, 0) for stat in stats
-                )
-                allocated_blocks = sum(
-                    max(stat.count_diff, 0) for stat in stats
-                )
+                allocated_bytes = sum(max(stat.size_diff, 0) for stat in stats)
+                allocated_blocks = sum(max(stat.count_diff, 0) for stat in stats)
                 deltas.append((allocated_bytes, allocated_blocks))
     finally:
         tracemalloc.stop()
@@ -90,14 +83,11 @@ def _pearson(xs: list[float], ys: list[float]) -> float:
     centered_x = [x - mean_x for x in xs]
     centered_y = [y - mean_y for y in ys]
     denominator = math.sqrt(
-        sum(value * value for value in centered_x)
-        * sum(value * value for value in centered_y)
+        sum(value * value for value in centered_x) * sum(value * value for value in centered_y)
     )
     if denominator == 0.0:
         raise ValueError("correlation is undefined for a constant sequence")
-    return sum(
-        x * y for x, y in zip(centered_x, centered_y, strict=True)
-    ) / denominator
+    return sum(x * y for x, y in zip(centered_x, centered_y, strict=True)) / denominator
 
 
 def test_vector6_decoupled_allocation_probe() -> None:
@@ -109,12 +99,8 @@ def test_vector6_decoupled_allocation_probe() -> None:
     assert all(math.isfinite(value) and value >= 0.0 for value in phase_a)
     assert all(bytes_ >= 0 and blocks >= 0 for bytes_, blocks in phase_b)
 
-    bytes_corr = _pearson(
-        phase_a, [bytes_ for bytes_, _blocks in phase_b]
-    )
-    blocks_corr = _pearson(
-        phase_a, [blocks for _bytes, blocks in phase_b]
-    )
+    bytes_corr = _pearson(phase_a, [bytes_ for bytes_, _blocks in phase_b])
+    blocks_corr = _pearson(phase_a, [blocks for _bytes, blocks in phase_b])
 
     payload = {
         "edge_count": EDGE_COUNT,
@@ -127,8 +113,7 @@ def test_vector6_decoupled_allocation_probe() -> None:
         "allocation_blocks_correlation": blocks_corr,
     }
     warnings.warn(
-        "EXP19_VECTOR6_ALLOCATION: "
-        + json.dumps(payload, separators=(",", ":"), sort_keys=True),
+        "EXP19_VECTOR6_ALLOCATION: " + json.dumps(payload, separators=(",", ":"), sort_keys=True),
         UserWarning,
         stacklevel=2,
     )
