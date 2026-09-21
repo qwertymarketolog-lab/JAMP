@@ -1,18 +1,25 @@
-"""EXP-19 Vector #5: dispatch/iteration correlation analysis contract.
+"""EXP-19 Vector #5: real dispatch/iteration correlation probe.
 
-Research-only. This module does not execute JAMP production code and does not
-manufacture latency observations. A future runtime/driver probe can feed
-observations into the correlation helpers.
+Research-only. Samples the existing EXP-19 research runtime without importing
+or mutating production JAMP code.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
 import math
+import random
+import time
+import warnings
 from collections.abc import Sequence
+
+from research.exp19.adjacency_graph import ObservationAdjacencyGraph
+from research.exp19.observation_relation import ObservationRelation
 
 N = 40
 SEED = 1905
+EDGE_COUNT = 10_000
 TAIL_POSITIONS = frozenset({2, 15, 22, 35})
 
 
@@ -53,19 +60,73 @@ def correlation_pair(
     )
 
 
-def test_vector5_correlation_contract_preserves_two_axes() -> None:
-    observations = [
-        DispatchObservation(
-            iteration_id=iteration_id,
-            dispatch_position=dispatch_position,
-            tail_latency_ms=float(iteration_id + dispatch_position),
-        )
-        for dispatch_position, iteration_id in enumerate(range(N))
+def _graph() -> ObservationAdjacencyGraph:
+    edges = [
+        ObservationRelation(str(i), str(i + 1), "adjacent", {})
+        for i in range(EDGE_COUNT // 2)
     ]
+    edges.extend(
+        ObservationRelation(str(i), str(i + EDGE_COUNT // 2), "adjacent", {})
+        for i in range(EDGE_COUNT // 2)
+    )
+    return ObservationAdjacencyGraph(tuple(edges))
+
+
+def _sample_dispatch_runtime() -> list[DispatchObservation]:
+    iteration_ids = list(range(N))
+    random.Random(SEED).shuffle(iteration_ids)
+
+    graph = _graph()
+    observations: list[DispatchObservation] = []
+    for dispatch_position, iteration_id in enumerate(iteration_ids):
+        start = time.perf_counter()
+        assert graph.is_acyclic() is True
+        graph.reachable("0")
+        elapsed_ms = (time.perf_counter() - start) * 1_000.0
+        observations.append(
+            DispatchObservation(
+                iteration_id=iteration_id,
+                dispatch_position=dispatch_position,
+                tail_latency_ms=elapsed_ms,
+            )
+        )
+    return observations
+
+
+def _export_observations(
+    observations: Sequence[DispatchObservation],
+    dispatch_corr: float,
+    iteration_corr: float,
+) -> None:
+    payload = {
+        "edge_count": EDGE_COUNT,
+        "iteration_count": N,
+        "seed": SEED,
+        "tail_positions": sorted(TAIL_POSITIONS),
+        "correlation": {
+            "tail_latency_vs_dispatch_position": dispatch_corr,
+            "tail_latency_vs_iteration_id": iteration_corr,
+        },
+        "observations": [dataclasses.asdict(item) for item in observations],
+    }
+    warnings.warn(
+        f"EXP19_DISPATCH_CORRELATION: {json.dumps(payload, separators=(',', ':'), sort_keys=True)}",
+        UserWarning,
+        stacklevel=2,
+    )
+
+
+def test_vector5_real_dispatch_correlation_probe() -> None:
+    observations = _sample_dispatch_runtime()
     dispatch_corr, iteration_corr = correlation_pair(observations)
 
-    assert math.isclose(dispatch_corr, 1.0)
-    assert math.isclose(iteration_corr, 1.0)
+    assert len(observations) == N
+    assert {item.dispatch_position for item in observations} == set(range(N))
+    assert {item.iteration_id for item in observations} == set(range(N))
+    assert all(math.isfinite(item.tail_latency_ms) for item in observations)
+    assert all(item.tail_latency_ms >= 0.0 for item in observations)
+
+    _export_observations(observations, dispatch_corr, iteration_corr)
 
 
 def test_vector5_tail_positions_are_data_labels_not_causes() -> None:
