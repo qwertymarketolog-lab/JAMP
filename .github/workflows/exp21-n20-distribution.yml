@@ -91,7 +91,7 @@ jobs:
 
           text = Path("g4.log").read_text(encoding="utf-8", errors="replace")
           telemetry = re.search(
-              r"wall_ms=([0-9.]+) \\| cpu_ms=([0-9.]+) \\| non_cpu_delta_ms=([-0-9.]+)",
+              r"wall_ms=([0-9.]+) \| cpu_ms=([0-9.]+) \| non_cpu_delta_ms=([-0-9.]+)",
               text,
           )
           gc_match = re.search(r"\[N20_GC_TELEMETRY\] n_gc_gen2=(\d+)", text)
