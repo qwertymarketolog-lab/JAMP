@@ -18,6 +18,8 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
 from research.exp19.observation_relation import ObservationRelation
 
@@ -237,6 +239,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    # The repository root is required for research.exp19 imports.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     raise SystemExit(main())
