@@ -108,9 +108,7 @@ def parse_audit_manifest(payload: bytes) -> tuple[dict[str, Any], ...]:
     _assert_no_forbidden_keys(manifest)
 
     records = manifest.get("records")
-    if not isinstance(records, list) or not all(
-        isinstance(item, dict) for item in records
-    ):
+    if not isinstance(records, list) or not all(isinstance(item, dict) for item in records):
         raise ValueError("Invalid audit manifest records")
 
     return tuple(records)
