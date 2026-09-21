@@ -55,9 +55,7 @@ def run_organic(
     fixture = json.loads(
         (Path("research/exp18/fixtures") / fixture_name).read_text(encoding="utf-8")
     )
-    declared = {
-        (slot["object_ref"], slot["property"]) for slot in schema["slots"]
-    }
+    declared = {(slot["object_ref"], slot["property"]) for slot in schema["slots"]}
     extracted = []
     for obj in fixture["objects"]:
         for property_name, state in obj.get("properties", {}).items():
