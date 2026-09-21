@@ -143,15 +143,36 @@ def test_g4_large_graph_is_linear_scale() -> None:
     g = graph(edges)
     start_wall = time.perf_counter()
     start_cpu = time.process_time()
+
+    acyclic_start_wall = time.perf_counter()
+    acyclic_start_cpu = time.process_time()
     assert g.is_acyclic() is True
+    acyclic_end_wall = time.perf_counter()
+    acyclic_end_cpu = time.process_time()
+
+    reachable_start_wall = time.perf_counter()
+    reachable_start_cpu = time.process_time()
     g.reachable("0")
-    wall_ms = (time.perf_counter() - start_wall) * 1000.0
-    cpu_ms = (time.process_time() - start_cpu) * 1000.0
+    reachable_end_wall = time.perf_counter()
+    reachable_end_cpu = time.process_time()
+
+    end_wall = time.perf_counter()
+    end_cpu = time.process_time()
+    is_acyclic_wall_ms = (acyclic_end_wall - acyclic_start_wall) * 1000.0
+    is_acyclic_cpu_ms = (acyclic_end_cpu - acyclic_start_cpu) * 1000.0
+    reachable_wall_ms = (reachable_end_wall - reachable_start_wall) * 1000.0
+    reachable_cpu_ms = (reachable_end_cpu - reachable_start_cpu) * 1000.0
+    wall_ms = (end_wall - start_wall) * 1000.0
+    cpu_ms = (end_cpu - start_cpu) * 1000.0
     warnings.warn(
         (
-            "[G4_IN_SITU_TELEMETRY] "
-            f"wall_ms={wall_ms:.3f} | "
-            f"cpu_ms={cpu_ms:.3f} | "
+            "[G4_SPLIT_TELEMETRY] "
+            f"is_acyclic_wall_ms={is_acyclic_wall_ms:.3f} | "
+            f"is_acyclic_cpu_ms={is_acyclic_cpu_ms:.3f} | "
+            f"reachable_wall_ms={reachable_wall_ms:.3f} | "
+            f"reachable_cpu_ms={reachable_cpu_ms:.3f} | "
+            f"composite_wall_ms={wall_ms:.3f} | "
+            f"composite_cpu_ms={cpu_ms:.3f} | "
             f"non_cpu_delta_ms={wall_ms - cpu_ms:.3f}"
         ),
         UserWarning,
