@@ -31,12 +31,28 @@ For the 20,000-edge target, the combined acyclic + reachable medians are approxi
 
 The preceding GC-enabled profile on commit `fd1252b9fe0c75c177381b0de5c35dfd2d9a8801` measured approximately 13.95 ms combined p50, 15.72 ms p95, and 16.20 ms p99 at 20,000 edges.
 
-## Interpretation
+## Vector exhaustion ledger
 
-The GC-disabled run shows substantially lower timing tails and approximately linear growth across the tested 5k–40k range. This is evidence against an algorithmic scaling degradation in the tested range and supports an environment/GC contribution to the earlier contract failure.
+The following records the EXP-19 research conclusions reached on the isolated `tests/research/exp19/` contour. These are diagnostic conclusions for the tested configurations, not universal causal claims.
 
-This is not a universal proof of asymptotic complexity or a proof that GC is the sole source of all runner variance. The comparison consists of separate CI runs, so runner noise remains a possible contributor.
+- **Vector #3 — `sys.setswitchinterval` sweep:** rejected as an explanation for the observed tail behavior; tested tail position/amplitude remained stable.
+- **Vector #4 — topology drift:** exhausted for the tested target; `unique_topology_count == 1` at V=20,000 and E=20,000.
+- **Vector #5 / #5-B — dispatch/order permutation:** null signal. The multi-seed probe (K=10, N=40, E=10,000) produced confidence intervals crossing zero for the tested dispatch-position and iteration-id correlations.
+- **Vector #6 — decoupled allocation/timing probe:** null signal in the tested seed/session. Phase A latency was measured independently from Phase B `tracemalloc` allocation deltas after a 5-iteration warm-up; 35 samples were paired by iteration index. The observed Pearson correlations were approximately -0.023 for allocation bytes and -0.018 for allocation blocks, below the diagnostic `|r| >= 0.3` signal criterion.
 
-## Contract handling
+### Epistemic interpretation
 
-No production threshold or Frozen Core code is changed by this diagnostic. The existing EXP-19 contract remains the subject of a separate decision based on this evidence.
+Across the tested Vectors #3–#6, no systematic signal was detected that justifies a production/runtime modification. The Vector #6 result does not establish causality and does not prove that all residual latency variance is caused by a particular OS or CPython mechanism. It only reports a null allocation-latency correlation for the tested configuration.
+
+Accordingly, EXP-19 is marked **EXHAUSTED** for the tested hypothesis vectors. Further probing requires a new reproducible symptom or a new falsifiable hypothesis.
+
+## Contract and core invariants
+
+- No production threshold or Frozen Core code is changed by this research.
+- `src/jamp` remains unchanged by the EXP-19 vector probes.
+- The 15.000 ms contract remains locked; no production threshold adjustment is made as part of this closure.
+- Research artifacts remain isolated under `tests/research/exp19/` and their CI evidence remains in Git history.
+
+## Closure
+
+The EXP-19 research cycle is considered **EXHAUSTED** on this branch after the Vector #6 diagnostic and mandatory CI verification. PR #123 is to be closed without merge so that the research branch and its CI evidence remain preserved in Git history.
