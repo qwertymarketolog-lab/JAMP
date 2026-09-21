@@ -1,7 +1,8 @@
-"""Passive macro-suite telemetry for EXP-19 G4.
+"""Controlled GC intervention for EXP-19 G4 attribution.
 
-This hook observes process state immediately before and after the G4 test
-without changing the test body, timer, GC state, or production runtime.
+This research-only hook performs one explicit gc.collect() immediately before
+the existing G4 test body. The G4 body, timer, threshold, and production
+runtime remain unchanged.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ def _emit(phase: str) -> None:
 
 def pytest_runtest_setup(item) -> None:
     if item.nodeid.endswith(_G4_NODEID):
+        gc.collect()
         _emit("before")
 
 
