@@ -1,0 +1,138 @@
+name: EXP-21 N=20 Distribution Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - 'research/**'
+
+jobs:
+  sample:
+    name: N20 / ${{ matrix.os }} / run-${{ matrix.run_id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, run_id: 1}
+          - {os: ubuntu-latest, run_id: 2}
+          - {os: ubuntu-latest, run_id: 3}
+          - {os: ubuntu-latest, run_id: 4}
+          - {os: ubuntu-latest, run_id: 5}
+          - {os: ubuntu-latest, run_id: 6}
+          - {os: ubuntu-latest, run_id: 7}
+          - {os: ubuntu-latest, run_id: 8}
+          - {os: ubuntu-latest, run_id: 9}
+          - {os: ubuntu-latest, run_id: 10}
+          - {os: macos-latest, run_id: 1}
+          - {os: macos-latest, run_id: 2}
+          - {os: macos-latest, run_id: 3}
+          - {os: macos-latest, run_id: 4}
+          - {os: macos-latest, run_id: 5}
+          - {os: macos-latest, run_id: 6}
+          - {os: macos-latest, run_id: 7}
+          - {os: macos-latest, run_id: 8}
+          - {os: macos-latest, run_id: 9}
+          - {os: macos-latest, run_id: 10}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record environment
+        run: |
+          echo "TARGET_COMMIT=$(git rev-parse HEAD)"
+          echo "RUN_ID=${{ matrix.run_id }}"
+          echo "RUNNER_OS=$RUNNER_OS"
+          echo "RUNNER_ARCH=$RUNNER_ARCH"
+          echo "ImageOS=$ImageOS"
+          echo "ImageVersion=$ImageVersion"
+          python --version
+          python -c "import os,platform; print('CPU_COUNT=', os.cpu_count()); print('platform=', platform.platform()); print('machine=', platform.machine())"
+
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+
+      - name: Run exact G4 target and capture telemetry
+        continue-on-error: true
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -m pytest -q -s tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale 2>&1 | tee g4.log
+
+      - name: Materialize raw observation
+        env:
+          RUN_ID: ${{ matrix.run_id }}
+          STRATUM: ${{ matrix.os }}
+          TARGET_COMMIT: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          text = Path("g4.log").read_text(encoding="utf-8", errors="replace")
+          m = re.search(r"wall_ms=([0-9.]+) \\| cpu_ms=([0-9.]+) \\| non_cpu_delta_ms=([-0-9.]+)", text)
+          if not m:
+              raise SystemExit("G4_IN_SITU_TELEMETRY not found")
+          cpu_count = os.cpu_count()
+          observation = {
+              "sample_id": f"{os.environ['STRATUM']}-{os.environ['RUN_ID']}",
+              "stratum": os.environ["STRATUM"],
+              "run_id": int(os.environ["RUN_ID"]),
+              "target_commit": os.environ["TARGET_COMMIT"],
+              "wall_ms": float(m.group(1)),
+              "cpu_ms": float(m.group(2)),
+              "non_cpu_delta_ms": float(m.group(3)),
+              "runner_cpu_count": cpu_count,
+              "n_gc_gen2": None,
+          }
+          Path("raw").mkdir()
+          Path("raw/observation.json").write_text(
+              json.dumps({"raw_observations": [observation]}, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g4-n20-${{ matrix.os }}-${{ matrix.run_id }}
+          path: raw/observation.json
+          if-no-files-found: error
+
+  aggregate:
+    name: Aggregate N=20 stratified evidence
+    needs: sample
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download all raw observations
+        uses: actions/download-artifact@v4
+        with:
+          path: raw-observations
+          pattern: g4-n20-*
+          merge-multiple: false
+
+      - name: Aggregate stratified distribution
+        env:
+          TARGET_COMMIT: ${{ github.sha }}
+        run: |
+          python scripts/research/aggregate_n20_telemetry.py raw-observations --target-commit "$TARGET_COMMIT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: g4-distribution-n20
+          path: g4_distribution_n20.json
+          if-no-files-found: error
