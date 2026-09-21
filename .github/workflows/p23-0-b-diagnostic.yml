@@ -53,4 +53,4 @@ jobs:
       - name: Run full test suite
         env:
           PYTHONPATH: src
-        run: python -m pytest -q
+        run: python -m pytest -q -s -p tests.research.exp20.conftest
