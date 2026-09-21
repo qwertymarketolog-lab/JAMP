@@ -1,4 +1,4 @@
-"""EXP-18 R1 contract tests: red phase for atomic observation semantics."""
+"""EXP-18 R1 contract tests: red phase for atomic observation semantics.""
 
 import pytest
 
@@ -94,8 +94,8 @@ def test_09_provenance_or_input_mutation_changes_identity():
 def test_10_conflicting_atom_sets_remain_inconclusive():
     from research.exp18.conflict_node import (
         AtomicObservation as ConflictAtom,
-        classify,
         EpistemicStatus,
+        classify,
     )
 
     left = ConflictAtom(
