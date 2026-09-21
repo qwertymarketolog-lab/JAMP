@@ -212,7 +212,7 @@ def main() -> int:
         "experiment_seed": EXPERIMENT_SEED,
         "n_pairs": args.n,
         "timed_region": ["g.is_acyclic()", 'g.reachable("0")'],
-        "gc_gen2_telemetry": "gc.get_stats()[2][\"collections\"] delta",
+        "gc_gen2_telemetry": 'gc.get_stats()[2]["collections"] delta',
         "conditions": ["BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH"],
         "pairs": pairs,
         "analysis": analysis,
