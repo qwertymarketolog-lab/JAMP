@@ -170,11 +170,7 @@ def test_vector5b_multi_seed_dispatch_correlation_probe() -> None:
 
     aggregate = _aggregate(correlations)
     assert len(seed_results) == len(SEEDS)
-    assert all(
-        math.isfinite(value)
-        for result in aggregate.values()
-        for value in result.values()
-    )
+    assert all(math.isfinite(value) for result in aggregate.values() for value in result.values())
 
     _export_sweep(seed_results, aggregate)
 
