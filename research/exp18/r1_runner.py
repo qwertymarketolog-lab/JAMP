@@ -100,7 +100,9 @@ if __name__ == "__main__":
 
     args = sys.argv[1:]
     if not args:
-        raise SystemExit("usage: python3 research/exp18/r1_runner.py [synthetic|organic] [--fixture=FILE]")
+        usage = "usage: python3 research/exp18/r1_runner.py [synthetic|organic]"
+        usage += " [--fixture=FILE]"
+        raise SystemExit(usage)
     mode = args[0].lower()
     fixture_name = "organic_sample_01.json"
     for arg in args[1:]:
