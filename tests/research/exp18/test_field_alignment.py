@@ -14,7 +14,9 @@ def load(name):
 def organic_atoms(name):
     fixture = load(name)
     schema = load("schema_map.json")
-    declared = {(slot["object_ref"], slot["property"]) for slot in schema["slots"]}
+    declared = {
+        (slot["object_ref"], slot["property"]) for slot in schema["slots"]
+    }
     atoms = []
     for obj in fixture["objects"]:
         for prop, state in obj.get("properties", {}).items():
@@ -23,7 +25,15 @@ def organic_atoms(name):
             link = state.get("provenance_link")
             if not isinstance(link, str) or not link:
                 continue
-            atoms.append({"object_ref": obj["object_ref"], "property": prop, "val_prev": state.get("val_prev"), "val_curr": state.get("val_curr"), "provenance_link": link})
+            atoms.append(
+                {
+                    "object_ref": obj["object_ref"],
+                    "property": prop,
+                    "val_prev": state.get("val_prev"),
+                    "val_curr": state.get("val_curr"),
+                    "provenance_link": link,
+                }
+            )
     return atoms
 
 
@@ -49,10 +59,25 @@ def test_field_alignment_is_fixture_order_invariant():
     baseline = organic_atoms("organic_sample_01.json")
     fixture = load("organic_sample_01.json")
     fixture["objects"] = list(reversed(fixture["objects"]))
-    declared = {(slot["object_ref"], slot["property"]) for slot in load("schema_map.json")["slots"]}
+    schema = load("schema_map.json")
+    declared = {
+        (slot["object_ref"], slot["property"]) for slot in schema["slots"]
+    }
     reordered = []
     for obj in fixture["objects"]:
         for prop, state in obj.get("properties", {}).items():
-            if (obj.get("object_ref"), prop) in declared and state.get("provenance_link"):
-                reordered.append({"object_ref": obj["object_ref"], "property": prop, "val_prev": state.get("val_prev"), "val_curr": state.get("val_curr"), "provenance_link": state["provenance_link"]})
-    assert sorted(baseline, key=lambda x: (x["object_ref"], x["property"])) == sorted(reordered, key=lambda x: (x["object_ref"], x["property"]))
+            if (obj.get("object_ref"), prop) not in declared:
+                continue
+            if not state.get("provenance_link"):
+                continue
+            reordered.append(
+                {
+                    "object_ref": obj["object_ref"],
+                    "property": prop,
+                    "val_prev": state.get("val_prev"),
+                    "val_curr": state.get("val_curr"),
+                    "provenance_link": state["provenance_link"],
+                }
+            )
+    key = lambda x: (x["object_ref"], x["property"])
+    assert sorted(baseline, key=key) == sorted(reordered, key=key)
