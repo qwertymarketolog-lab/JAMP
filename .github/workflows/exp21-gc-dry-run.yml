@@ -1,4 +1,4 @@
-name: EXP-21 GC Causality Dry-Run
+name: EXP-21 GC Causality Evidence
 
 on:
   pull_request:
@@ -8,6 +8,12 @@ on:
       - "src/jamp/research/exp19/**"
       - "research/exp19/**"
   workflow_dispatch:
+    inputs:
+      n:
+        description: "Number of randomized paired blocks"
+        required: true
+        default: "30"
+        type: string
 
 jobs:
   dry-run:
@@ -32,45 +38,56 @@ jobs:
           ruff check scripts/research/exp_gc_causality.py
           ruff format --check scripts/research/exp_gc_causality.py
 
-      - name: Dry-run N=1
+      - name: Run Phase 1B paired experiment
         env:
           TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
           EXPERIMENT_SEED: "1905"
+          EXPERIMENT_N: ${{ github.event_name == 'workflow_dispatch' && inputs.n || '30' }}
         run: |
           python scripts/research/exp_gc_causality.py \
-            --n 1 \
-            --output artifacts/research/exp_gc_causality_dry_run_n1.json
+            --n "$EXPERIMENT_N" \
+            --output artifacts/research/exp_gc_causality_results.json
 
-      - name: Validate dry-run artifact
+      - name: Validate Phase 1B artifact
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXPERIMENT_N: ${{ github.event_name == 'workflow_dispatch' && inputs.n || '30' }}
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
-          path = Path("artifacts/research/exp_gc_causality_dry_run_n1.json")
+          path = Path("artifacts/research/exp_gc_causality_results.json")
           payload = json.loads(path.read_text(encoding="utf-8"))
 
-          assert payload["n_pairs"] == 1
+          assert payload["n_pairs"] == int(os.environ["EXPERIMENT_N"])
           assert len(payload["workload_definition_sha256"]) == 64
-          assert payload["target_commit"] == "${{ github.event.pull_request.head.sha || github.sha }}"
-          pair = payload["pairs"][0]
-          for condition in ("BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH"):
-              assert "n_gc_gen2" in pair[condition]
-              assert isinstance(pair[condition]["n_gc_gen2"], int)
+          assert payload["target_commit"] == os.environ["TARGET_COMMIT"]
+          assert payload["experiment_seed"] == 1905
+          assert payload["analysis"]["wilcoxon"]["zero_method"] == "wilcox"
+          assert payload["analysis"]["wilcoxon"]["alternative"] == "two-sided"
+          assert len(payload["pairs"]) == payload["n_pairs"]
+          for pair in payload["pairs"]:
+              for condition in ("BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH"):
+                  assert isinstance(pair[condition]["n_gc_gen2"], int)
 
-          delta = pair["DISABLED_HOTPATH"]["wall_ms"] - pair["BASELINE"]["wall_ms"]
           print(json.dumps({
+              "target_commit": payload["target_commit"],
               "workload_definition_sha256": payload["workload_definition_sha256"],
-              "gen2_collections": {
-                  k: pair[k]["n_gc_gen2"]
-                  for k in ("BASELINE", "DISABLED_HOTPATH", "THRESHOLD_HIGH")
-              },
-              "delta_1_ms": delta,
+              "n_pairs": payload["n_pairs"],
               "status": payload["status"],
+              "median_delta_ms": payload["analysis"].get("median_delta_ms"),
+              "p_value": payload["analysis"].get("wilcoxon", {}).get("p_value"),
           }, indent=2))
           PY
 
-      - name: Upload dry-run artifact
+      - name: Upload Phase 1B artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-gc-causality-results-n${{ github.event_name == 'workflow_dispatch' && inputs.n || '30' }}
+          path: artifacts/research/exp_gc_causality_results.json
+          if-no-files-found: error
         uses: actions/upload-artifact@v4
         with:
           name: exp-gc-causality-dry-run-n1
