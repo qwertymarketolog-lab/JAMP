@@ -37,6 +37,10 @@ def organic_atoms(name):
     return atoms
 
 
+def atom_key(atom):
+    return atom["object_ref"], atom["property"]
+
+
 def test_synthetic_alignment_is_deterministic_and_complete():
     fixture = load("synthetic_control_01.json")
     payload = fixture["raw_observation_payload"]
@@ -79,5 +83,4 @@ def test_field_alignment_is_fixture_order_invariant():
                     "provenance_link": state["provenance_link"],
                 }
             )
-    key = lambda x: (x["object_ref"], x["property"])
-    assert sorted(baseline, key=key) == sorted(reordered, key=key)
+    assert sorted(baseline, key=atom_key) == sorted(reordered, key=atom_key)
