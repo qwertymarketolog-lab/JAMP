@@ -1,0 +1,30 @@
+{
+  "fixture_meta": {
+    "mode": "synthetic_control",
+    "declared_logical_slots": 2
+  },
+  "raw_observation_payload": {
+    "object_ref": "obj-sensor-99",
+    "properties": {
+      "temperature": {"val_prev": 21.0, "val_curr": 24.5},
+      "humidity": {"val_prev": 45.0, "val_curr": 40.0}
+    },
+    "provenance_link": "ref-source-alpha-01"
+  },
+  "expected_atoms_ground_truth": [
+    {
+      "object_ref": "obj-sensor-99",
+      "property": "temperature",
+      "val_prev": 21.0,
+      "val_curr": 24.5,
+      "provenance_link": "ref-source-alpha-01"
+    },
+    {
+      "object_ref": "obj-sensor-99",
+      "property": "humidity",
+      "val_prev": 45.0,
+      "val_curr": 40.0,
+      "provenance_link": "ref-source-alpha-01"
+    }
+  ]
+}

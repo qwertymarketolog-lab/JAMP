@@ -1,0 +1,12 @@
+{
+  "spec": "EXP18-R1-ORGANIC",
+  "mode": "organic",
+  "declared_logical_slots": 5,
+  "slots": [
+    {"object_ref": "obj-alpha", "property": "temperature"},
+    {"object_ref": "obj-alpha", "property": "humidity"},
+    {"object_ref": "obj-beta", "property": "pressure"},
+    {"object_ref": "obj-beta", "property": "vibration"},
+    {"object_ref": "obj-gamma", "property": "temperature"}
+  ]
+}
