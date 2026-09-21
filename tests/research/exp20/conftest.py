@@ -19,7 +19,7 @@ def _context() -> dict[str, object]:
         "python": sys.version,
         "python_implementation": platform.python_implementation(),
         "os": platform.platform(),
-        "runner_image": os.environ.get("ImageOS"),
+        "runner_image": os.environ.get("IMAGEOS"),
         "runner_name": os.environ.get("RUNNER_NAME"),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
