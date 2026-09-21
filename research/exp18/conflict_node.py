@@ -68,7 +68,7 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
             provenance=provenance,
         )
 
-    by_source = [{_atom_key(atom): atom} for atom in sources]
+    by_source = [{_atom_key(atom): atom for atom in source} for source in sources]
     all_keys = set().union(*(source.keys() for source in by_source))
     discrepancies: list[dict[str, Any]] = []
 
