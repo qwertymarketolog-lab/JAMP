@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import time
+import warnings
 
 import pytest
 
@@ -140,11 +141,23 @@ def test_g4_large_graph_is_linear_scale() -> None:
     edges = [(str(i), str(i + 1)) for i in range(10_000)]
     edges.extend((str(i), str(i + 10_000)) for i in range(10_000))
     g = graph(edges)
-    start = time.perf_counter()
+    start_wall = time.perf_counter()
+    start_cpu = time.process_time()
     assert g.is_acyclic() is True
     g.reachable("0")
-    elapsed = time.perf_counter() - start
-    assert elapsed <= 0.015
+    wall_ms = (time.perf_counter() - start_wall) * 1000.0
+    cpu_ms = (time.process_time() - start_cpu) * 1000.0
+    warnings.warn(
+        (
+            "[G4_IN_SITU_TELEMETRY] "
+            f"wall_ms={wall_ms:.3f} | "
+            f"cpu_ms={cpu_ms:.3f} | "
+            f"non_cpu_delta_ms={wall_ms - cpu_ms:.3f}"
+        ),
+        UserWarning,
+        stacklevel=1,
+    )
+    assert (wall_ms / 1000.0) <= 0.015
 
 
 def test_g4_large_reachability_has_expected_size() -> None:
