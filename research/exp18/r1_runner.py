@@ -52,7 +52,9 @@ def run_organic(
     output_name="r1_organic_report.json",
 ):
     schema = json.loads(Path("research/exp18/fixtures/schema_map.json").read_text(encoding="utf-8"))
-    fixture = json.loads((Path("research/exp18/fixtures") / fixture_name).read_text(encoding="utf-8"))
+    fixture = json.loads(
+        (Path("research/exp18/fixtures") / fixture_name).read_text(encoding="utf-8")
+    )
     declared = {
         (slot["object_ref"], slot["property"]) for slot in schema["slots"]
     }
