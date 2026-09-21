@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import importlib
 import time
 import warnings
@@ -141,6 +142,8 @@ def test_g4_large_graph_is_linear_scale() -> None:
     edges = [(str(i), str(i + 1)) for i in range(10_000)]
     edges.extend((str(i), str(i + 10_000)) for i in range(10_000))
     g = graph(edges)
+    # Stabilize the cold-replay measurement boundary against pending cyclic GC.
+    gc.collect()
     start_wall = time.perf_counter()
     start_cpu = time.process_time()
 
