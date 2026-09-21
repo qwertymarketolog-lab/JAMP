@@ -28,12 +28,12 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-mock
 
-      - name: Run EXP-19 scale diagnostic
+      - name: Run EXP-19 scale and dispatch diagnostics
         env:
           PYTHONPATH: .:src
         run: |
           set -o pipefail
-          pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
+          pytest -q tests/research/exp19/test_performance_diagnostic.py tests/research/exp19/test_dispatch_correlation.py -s 2>&1 | tee exp19-performance.txt
 
       - name: Upload EXP-19 diagnostic evidence
         uses: actions/upload-artifact@v4
