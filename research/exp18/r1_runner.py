@@ -114,6 +114,5 @@ if __name__ == "__main__":
         run_organic(fixture_name, output_name)
     else:
         raise SystemExit(
-            "usage: python3 research/exp18/r1_runner.py "
-            "[synthetic|organic] [--fixture=FILE]"
+            "usage: python3 research/exp18/r1_runner.py [synthetic|organic] [--fixture=FILE]"
         )
