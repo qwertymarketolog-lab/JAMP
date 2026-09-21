@@ -14,9 +14,7 @@ def load(name):
 def organic_atoms(name):
     fixture = load(name)
     schema = load("schema_map.json")
-    declared = {
-        (slot["object_ref"], slot["property"]) for slot in schema["slots"]
-    }
+    declared = {(slot["object_ref"], slot["property"]) for slot in schema["slots"]}
     atoms = []
     for obj in fixture["objects"]:
         for prop, state in obj.get("properties", {}).items():
@@ -64,9 +62,7 @@ def test_field_alignment_is_fixture_order_invariant():
     fixture = load("organic_sample_01.json")
     fixture["objects"] = list(reversed(fixture["objects"]))
     schema = load("schema_map.json")
-    declared = {
-        (slot["object_ref"], slot["property"]) for slot in schema["slots"]
-    }
+    declared = {(slot["object_ref"], slot["property"]) for slot in schema["slots"]}
     reordered = []
     for obj in fixture["objects"]:
         for prop, state in obj.get("properties", {}).items():
