@@ -55,7 +55,10 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
     if not sources or any(not source for source in sources):
         provenance = tuple(
             sorted(
-                atom.provenance for source in sources for atom in source if atom.provenance
+                atom.provenance
+                for source in sources
+                for atom in source
+                if atom.provenance
             )
         )
         return ConflictResult(
@@ -65,7 +68,7 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
             provenance=provenance,
         )
 
-    by_source = [{_atom_key(atom): atom for atom in source} for source in sources]
+    by_source = [{_atom_key(atom): atom} for atom in sources]
     all_keys = set().union(*(source.keys() for source in by_source))
     discrepancies: list[dict[str, Any]] = []
 
@@ -94,7 +97,10 @@ def classify(sources: tuple[tuple[AtomicObservation, ...], ...]) -> ConflictResu
 
     provenance = tuple(
         sorted(
-            atom.provenance for source in sources for atom in source if atom.provenance
+            atom.provenance
+            for source in sources
+            for atom in source
+            if atom.provenance
         )
     )
     if discrepancies:
