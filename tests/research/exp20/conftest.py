@@ -9,6 +9,8 @@ import platform
 import sys
 import time
 
+import pytest
+
 _G4_NODEID = "tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale"
 
 
@@ -40,6 +42,7 @@ def pytest_runtest_setup(item) -> None:
         _emit("before")
 
 
+@pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item):
     if item.nodeid == _G4_NODEID:
         started = time.perf_counter()
@@ -48,9 +51,6 @@ def pytest_runtest_call(item):
         _emit("after", elapsed_ms)
     else:
         yield
-
-
-pytest_runtest_call.hookwrapper = True
 
 
 def pytest_runtest_teardown(item, nextitem) -> None:
