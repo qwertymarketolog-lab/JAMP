@@ -1,0 +1,70 @@
+name: EXP-21 N=3 Environment Matrix G4 Telemetry
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - 'research/**'
+
+jobs:
+  g4-matrix:
+    name: OS-MATRIX / run-${{ matrix.run_id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            run_id: 1
+          - os: ubuntu-latest
+            run_id: 2
+          - os: ubuntu-latest
+            run_id: 3
+          - os: macos-latest
+            run_id: 1
+          - os: macos-latest
+            run_id: 2
+          - os: macos-latest
+            run_id: 3
+
+    steps:
+      - name: Checkout fixed EXP-21 revision
+        uses: actions/checkout@v4
+        with:
+          ref: d15312ae17a6564f2b519a2753cd332cb43d8327
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record runner environment
+        run: |
+          echo "EXP21_TARGET_HEAD=d15312ae17a6564f2b519a2753cd332cb43d8327"
+          echo "RUN_ID=${{ matrix.run_id }}"
+          echo "RUNNER_OS=$RUNNER_OS"
+          echo "RUNNER_ARCH=$RUNNER_ARCH"
+          echo "ImageOS=$ImageOS"
+          echo "ImageVersion=$ImageVersion"
+          python --version
+          python -c "import platform; print('platform=', platform.platform()); print('machine=', platform.machine()); print('processor=', platform.processor()); print('python=', platform.python_version())"
+          uname -a
+          if command -v nproc >/dev/null 2>&1; then nproc; fi
+          if command -v sysctl >/dev/null 2>&1; then sysctl -n hw.ncpu 2>/dev/null || true; fi
+
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+
+      - name: Run exact G4 target telemetry
+        continue-on-error: true
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q -s tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale
+
+      - name: Record experiment identity
+        run: |
+          echo "CHECKED_OUT_HEAD=$(git rev-parse HEAD)"
+          git status --short
