@@ -1,0 +1,108 @@
+name: EXP-22 Phase 0 Measurement Boundary Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: "Exact commit SHA to audit"
+        required: true
+        type: string
+      seed:
+        description: "Experiment seed"
+        required: false
+        default: "2201"
+        type: string
+
+jobs:
+  measurement-boundary-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact target commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_commit }}
+          fetch-depth: 0
+
+      - name: Materialize harness from workflow revision
+        env:
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          git show "$WORKFLOW_SHA:scripts/research/exp22/phase0_measurement_boundary.py" > "$RUNNER_TEMP/phase0_measurement_boundary.py"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Verify target commit identity
+        env:
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+        run: |
+          test -n "$TARGET_COMMIT"
+          test "$TARGET_COMMIT" = "$(git rev-parse HEAD)"
+
+      - name: Verify Frozen Core identity
+        run: |
+          test "$(git hash-object src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Run EXP-22 Phase 0 audit
+        env:
+          PYTHONPATH: .:src
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+          EXPERIMENT_SEED: ${{ inputs.seed }}
+        run: |
+          python "$RUNNER_TEMP/phase0_measurement_boundary.py" \
+            --target-commit "$TARGET_COMMIT" \
+            --seed "$EXPERIMENT_SEED"
+
+      - name: Validate terminal artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/research/exp22_phase0_measurement_boundary.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          required = {
+              "experiment_id",
+              "phase",
+              "target_commit",
+              "workload_spec_id",
+              "workload_definition_hash",
+              "experiment_seed",
+              "observations",
+              "measurement_boundary",
+              "environment_summary",
+              "n_observations",
+              "status",
+              "validation_errors",
+          }
+          missing = sorted(required - data.keys())
+          if missing:
+              raise SystemExit(f"missing_artifact_fields={missing}")
+          if data["status"] not in {"VERIFIED", "INCONCLUSIVE"}:
+              raise SystemExit(f"invalid_terminal_status={data['status']}")
+          if data["status"] != "VERIFIED":
+              raise SystemExit(f"phase0_inconclusive={data['validation_errors']}")
+          if data["target_commit"] != "${{ inputs.target_commit }}":
+              raise SystemExit("artifact_target_commit_mismatch")
+          if data["workload_spec_id"] != "EXP-21-PHASE0-G4-CANONICAL-V1":
+              raise SystemExit("artifact_workload_spec_mismatch")
+          if data["workload_definition_hash"] != "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92":
+              raise SystemExit("artifact_workload_hash_mismatch")
+          if data["n_observations"] != 1:
+              raise SystemExit("artifact_observation_count_mismatch")
+          print("EXP-22_PHASE0_TERMINAL=VERIFIED")
+          PY
+
+      - name: Upload EXP-22 Phase 0 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase0-measurement-boundary
+          path: artifacts/research/exp22_phase0_measurement_boundary.json
+          if-no-files-found: error
