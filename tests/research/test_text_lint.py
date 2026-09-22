@@ -76,7 +76,7 @@ def test_detector_is_deterministic() -> None:
     assert left.id == right.id
 
 
-def test_contextual_metadata_is_operational_and_does_not_change_identity() -> None:
+def test_context_changes_identity() -> None:
     base = create_pattern_observation(
         source_ref="document://acceptance-001",
         pattern_id="P38",
@@ -95,4 +95,4 @@ def test_contextual_metadata_is_operational_and_does_not_change_identity() -> No
         evidence_type="sentence-structure",
         context={"sentence_count": 4},
     )
-    assert base.id == changed.id
+    assert base.id != changed.id
