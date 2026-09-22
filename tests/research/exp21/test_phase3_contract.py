@@ -55,9 +55,7 @@ def test_observation_accepts_verified_topology():
 def test_observation_rejects_unverified_topology():
     item = _observation()
     item["topology_verified"] = False
-    assert "topology_not_verified" in validate_observation(
-        item, expected_target_commit="abc"
-    )
+    assert "topology_not_verified" in validate_observation(item, expected_target_commit="abc")
 
 
 def test_artifact_requires_thirty_pairs():
