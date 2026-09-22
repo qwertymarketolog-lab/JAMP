@@ -1,7 +1,7 @@
 """Research-only Phase 3 treatment candidate.
 
-This module never imports or modifies src/jamp. It evaluates a memoized
-reachability strategy against the canonical research graph.
+The candidate never imports or modifies src/jamp. Cache scope is explicit:
+each measured query receives a fresh candidate instance.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from research.exp19.observation_relation import ObservationRelation
 
 
 class MemoizedReachabilityCandidate:
-    """Memoized component lookup isolated from the production graph."""
+    """Memoized reachability candidate with explicit query isolation."""
 
     def __init__(self, relations: Iterable[ObservationRelation]) -> None:
         self._adj: dict[str, tuple[str, ...]] = {}
@@ -39,12 +39,6 @@ class MemoizedReachabilityCandidate:
             node = queue.popleft()
             for target in self._adj.get(node, ()):
                 inspections += 1
-                if target in self._cache:
-                    cached = self._cache[target]
-                    for cached_node in cached:
-                        if cached_node not in visited:
-                            visited.add(cached_node)
-                    continue
                 if target not in visited:
                     visited.add(target)
                     queue.append(target)
