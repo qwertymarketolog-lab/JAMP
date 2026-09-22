@@ -149,9 +149,7 @@ def _run_size(layer_size: int) -> dict[str, object]:
         "visited": counters["visited"],
         "discovered": counters["discovered"],
         "visited_discovered_ratio": (
-            counters["visited"] / counters["discovered"]
-            if counters["discovered"]
-            else 0.0
+            counters["visited"] / counters["discovered"] if counters["discovered"] else 0.0
         ),
         "reachable_seconds": _stats(timings),
         "tracemalloc_current_bytes_p50": statistics.median(current_bytes),
@@ -159,8 +157,7 @@ def _run_size(layer_size: int) -> dict[str, object]:
         "gc_count_before": list(gc_before),
         "gc_count_after": list(gc_after),
         "gc_collections_delta": [
-            after - before
-            for before, after in zip(gc_stats_before, gc_stats_after, strict=True)
+            after - before for before, after in zip(gc_stats_before, gc_stats_after, strict=True)
         ],
         "profiled_reachable_seconds": profiled_elapsed,
         "profiled_python_call_events": frame_calls,
