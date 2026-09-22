@@ -1,0 +1,112 @@
+name: EXP-21 Phase 2 Step 3 Intervention A
+
+on:
+  pull_request:
+    branches:
+      - 'research/**'
+    paths:
+      - 'scripts/research/exp21_phase2_step3_intervention_a.py'
+      - '.github/workflows/exp21-phase2-step3-intervention-a.yml'
+  workflow_dispatch:
+
+jobs:
+  intervention-a:
+    name: Intervention A / canonical G4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record provenance
+        id: provenance
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_COMMIT"
+          echo "target_commit=$TARGET_COMMIT" >> "$GITHUB_OUTPUT"
+          python --version
+
+      - name: Verify Frozen Core is unchanged
+        env:
+          BASE_SHA: af2292bbfc8518716bdf5b76614efb33ed9496f0
+        run: |
+          git diff --exit-code "$BASE_SHA" HEAD -- src/jamp
+          test ! -d src/jamp/__pycache__
+
+      - name: Verify Step 3 source scope
+        run: |
+          test -f scripts/research/exp21_phase2_step3_intervention_a.py
+          test -f .github/workflows/exp21-phase2-step3-intervention-a.yml
+          test ! -d src/jamp/__pycache__
+
+      - name: Run Intervention A telemetry
+        env:
+          PYTHONPATH: src:.
+          TARGET_COMMIT: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python scripts/research/exp21_phase2_step3_intervention_a.py --repeats 11
+
+      - name: Validate artifact contract
+        env:
+          EXPECTED_TARGET: ${{ steps.provenance.outputs.target_commit }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("artifacts/research/exp21_phase2_step3_intervention_a.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+
+          assert payload["target_commit"] == os.environ["EXPECTED_TARGET"]
+          assert payload["workload_spec_id"] == "EXP-21-PHASE2-HOTPATH-COST-G4-V1"
+          assert len(payload["workload_definition_hash"]) == 64
+          assert payload["workload"]["edge_count"] == 20_000
+          assert payload["workload"]["chain_edges"] == 10_000
+          assert payload["workload"]["offset_edges"] == 10_000
+          assert payload["workload"]["graph_construction"] == "UNTIMED"
+          assert payload["measurement"]["clock"] == "time.perf_counter_ns"
+          assert payload["measurement"]["repeats"] >= 11
+          assert payload["measurement"]["warmup_runs_per_variant"] == 3
+          assert payload["measurement"]["instrumentation_in_timed_regions"] == []
+          assert payload["measurement"]["tracemalloc"] is False
+          assert payload["measurement"]["cProfile"] is False
+          assert payload["intervention"]["component"] == "is_acyclic color buffer"
+          assert payload["intervention"]["control"] == "list[int], states 0/1/2"
+          assert payload["intervention"]["treatment"] == "bytearray, states 0/1/2"
+          assert payload["intervention"]["algorithm_otherwise_identical"] is True
+          assert payload["interpretation"]["verdict"] == "NOT_EVALUATED"
+          assert payload["interpretation"]["causal_acceptance_threshold"] == "EXTERNAL_PREDEFINED_CONTRACT"
+          assert payload["frozen_core"]["base_commit"] == "af2292bbfc8518716bdf5b76614efb33ed9496f0"
+          assert payload["frozen_core"]["expected_delta"] == "ZERO"
+
+          assert len(payload["control"]["samples_ns"]) == payload["measurement"]["repeats"]
+          assert len(payload["intervention_a"]["samples_ns"]) == payload["measurement"]["repeats"]
+          assert all(isinstance(x, int) and x > 0 for x in payload["control"]["samples_ns"])
+          assert all(isinstance(x, int) and x > 0 for x in payload["intervention_a"]["samples_ns"])
+          assert payload["comparison"]["relative_delta"] == (
+              payload["comparison"]["median_delta_ns"] / payload["control"]["median_ns"]
+          )
+          print("EXP21_PHASE2_STEP3_INTERVENTION_A_CONTRACT=PASS")
+          PY
+
+      - name: Materialize artifact SHA-256
+        run: |
+          sha256sum artifacts/research/exp21_phase2_step3_intervention_a.json | tee artifacts/research/exp21_phase2_step3_intervention_a.json.sha256
+
+      - name: Upload independent evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-phase2-step3-intervention-a
+          path: |
+            artifacts/research/exp21_phase2_step3_intervention_a.json
+            artifacts/research/exp21_phase2_step3_intervention_a.json.sha256
+          if-no-files-found: error
