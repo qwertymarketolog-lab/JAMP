@@ -9,7 +9,6 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-
 CANONICAL_DELIMITER = "||"
 SCHEMA_VERSION = "v0"
 
