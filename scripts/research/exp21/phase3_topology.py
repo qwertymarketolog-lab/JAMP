@@ -163,9 +163,7 @@ def run(pairs: int, target_commit: str, output: Path) -> int:
     except TopologyUnavailable as exc:
         artifact = _inconclusive(target_commit, pairs, [str(exc)])
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(artifact, indent=2), encoding="utf-8"
-        )
+        output.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
         return 0
 
     rng = random.Random(SEED)
