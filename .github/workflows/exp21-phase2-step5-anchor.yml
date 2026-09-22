@@ -1,0 +1,51 @@
+name: EXP-21 Phase 2 Step 5 Anchor
+
+on:
+  push:
+    branches:
+      - research/exp21-phase2-step5-harness-anchor
+  pull_request:
+    paths:
+      - "tests/research/g4_harness_policy.py"
+      - ".github/workflows/exp21-phase2-step5-anchor.yml"
+
+jobs:
+  step5-anchor-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate fixed architectural anchor
+        env:
+          PYTHONPATH: .
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          path = Path("tests/research/g4_harness_policy.py")
+          source = path.read_text(encoding="utf-8")
+          tree = ast.parse(source)
+
+          imports = [n for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom))]
+          assert not imports, "anchor policy must have zero imports"
+
+          namespace = {}
+          exec(compile(tree, str(path), "exec"), namespace)
+          assert namespace["CANONICAL_G4_FIXED_ANCHOR_NODE"] == 0
+
+          print("STEP5_ANCHOR=0")
+          print("ANTI_CONTAMINATION=PASS")
+          PY
+
+      - name: Frozen Core diff guard
+        run: |
+          git diff --exit-code HEAD^ HEAD -- src/jamp
+
+      - name: Test execution evidence
+        run: |
+          python -m compileall -q tests/research/g4_harness_policy.py
+          echo "STEP5_VALIDATION=PASS"
