@@ -194,7 +194,6 @@ def _run_start_node_dispersion(sample_size: int = 100) -> dict[str, object]:
             },
         },
         "rows": rows,
-        "start_node_dispersion": dispersion_stats,
     }
 
 
@@ -265,6 +264,7 @@ def main() -> None:
         "frozen_core_scope": "src/jamp unchanged",
         "python": sys.version,
         "rows": rows,
+        "start_node_dispersion": dispersion_stats,
     }
 
     output = Path(
