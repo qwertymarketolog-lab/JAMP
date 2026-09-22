@@ -1,4 +1,5 @@
 """EXP-21 Phase 3 paired CPU-topology execution harness."""
+
 from __future__ import annotations
 
 import argparse
@@ -44,9 +45,7 @@ def _topology(cpu: int) -> dict:
     siblings = tuple(
         sorted(
             int(x)
-            for x in _read(root / "thread_siblings_list")
-            .replace("-", ",")
-            .split(",")
+            for x in _read(root / "thread_siblings_list").replace("-", ",").split(",")
             if x.strip().isdigit()
         )
     )
@@ -69,30 +68,23 @@ def _sibling_pair(allowed: set[int]) -> tuple[int, int]:
 
 def _workload() -> ObservationAdjacencyGraph:
     edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(EDGE_COUNT // 2)
+        ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(EDGE_COUNT // 2)
     ]
     edges += [
-        ObservationRelation(
-            str(i), str(i + EDGE_COUNT // 2), "adjacent", {}
-        )
+        ObservationRelation(str(i), str(i + EDGE_COUNT // 2), "adjacent", {})
         for i in range(EDGE_COUNT // 2)
     ]
     return ObservationAdjacencyGraph(edges)
 
 
-def _measure(
-    cpu: int, pair_id: int, condition: str, target_commit: str
-) -> dict:
+def _measure(cpu: int, pair_id: int, condition: str, target_commit: str) -> dict:
     original = sorted(os.sched_getaffinity(0))
     os.sched_setaffinity(0, {cpu})
     try:
         after_affinity = sorted(os.sched_getaffinity(0))
         placement = _topology(cpu)
         if after_affinity != [cpu]:
-            raise TopologyUnavailable(
-                f"affinity verification failed for cpu {cpu}"
-            )
+            raise TopologyUnavailable(f"affinity verification failed for cpu {cpu}")
         gc.collect()
         g0 = gc.get_stats()[2]["collections"]
         c0 = time.process_time_ns()
@@ -138,9 +130,7 @@ def _measure(
         os.sched_setaffinity(0, set(original))
 
 
-def _inconclusive(
-    target_commit: str, pairs: int, errors: list[str]
-) -> dict:
+def _inconclusive(target_commit: str, pairs: int, errors: list[str]) -> dict:
     return {
         "experiment_id": EXPERIMENT_ID,
         "phase": PHASE,
@@ -157,30 +147,19 @@ def _inconclusive(
 
 def run(pairs: int, target_commit: str, output: Path) -> int:
     if pairs != REQUIRED_PAIRS:
-        raise ValueError(
-            f"Phase 3 requires exactly {REQUIRED_PAIRS} pairs"
-        )
+        raise ValueError(f"Phase 3 requires exactly {REQUIRED_PAIRS} pairs)
     if platform.system() != "Linux":
-        artifact = _inconclusive(
-            target_commit, pairs, ["linux_required_for_topology_verification"]
-        )
+        artifact = _inconclusive(target_commit, pairs, ["linux_required_for_topology_verification"])
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(artifact, indent=2), encoding="utf-8"
-        )
+        output.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
         return 0
 
     allowed = set(os.sched_getaffinity(0))
     try:
         cpu_a, cpu_b = _sibling_pair(allowed)
         topo_a, topo_b = _topology(cpu_a), _topology(cpu_b)
-        if (
-            topo_a["package"] != topo_b["package"]
-            or topo_a["core"] != topo_b["core"]
-        ):
-            raise TopologyUnavailable(
-                "selected CPUs are not verified SMT siblings"
-            )
+        if topo_a["package"] != topo_b["package"] or topo_a["core"] != topo_b["core"]:
+            raise TopologyUnavailable("selected CPUs are not verified SMT siblings")
     except TopologyUnavailable as exc:
         artifact = _inconclusive(target_commit, pairs, [str(exc)])
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -195,30 +174,17 @@ def run(pairs: int, target_commit: str, output: Path) -> int:
         conditions = [("CONTROL", cpu_a), ("TOPOLOGY_TREATMENT", cpu_b)]
         rng.shuffle(conditions)
         for condition, cpu in conditions:
-            observations.append(
-                _measure(cpu, pair, condition, target_commit)
-            )
+            observations.append(_measure(cpu, pair, condition, target_commit))
 
     by_pair = {}
     for item in observations:
         by_pair.setdefault(item["pair_id"], {})[item["condition"]] = item["wall_ms"]
-    deltas = [
-        value["TOPOLOGY_TREATMENT"] - value["CONTROL"]
-        for value in by_pair.values()
-    ]
+    deltas = [value["TOPOLOGY_TREATMENT"] - value["CONTROL"] for value in by_pair.values()]
     try:
         from scipy.stats import wilcoxon
 
-        p = float(
-            wilcoxon(
-                deltas, alternative="two-sided", method="auto"
-            ).pvalue
-        )
-        status = (
-            "TOPOLOGY_EFFECT_SUPPORTED"
-            if p < ALPHA
-            else "TOPOLOGY_EFFECT_NOT_SUPPORTED"
-        )
+        p = float(wilcoxon(deltas, alternative="two-sided", method="auto").pvalue)
+        status = "TOPOLOGY_EFFECT_SUPPORTED" if p < ALPHA else "TOPOLOGY_EFFECT_NOT_SUPPORTED"
         errors = []
     except ImportError:
         p = float("nan")
@@ -244,16 +210,12 @@ def run(pairs: int, target_commit: str, output: Path) -> int:
         "observations": observations,
         "errors": errors,
     }
-    valid, validation_errors = validate_artifact(
-        artifact, expected_target_commit=target_commit
-    )
+    valid, validation_errors = validate_artifact(artifact, expected_target_commit=target_commit)
     if not valid:
         artifact["status"] = "INCONCLUSIVE"
         artifact["validation_errors"] = validation_errors
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    output.write_text(json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8")
     return 0
 
 
