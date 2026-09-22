@@ -34,15 +34,11 @@ def _graph(layer_size: int) -> ObservationAdjacencyGraph:
             source = source_base + i
             for offset in (0, 1):
                 target = target_base + ((2 * i + offset) % layer_size)
-                edges.append(
-                    ObservationRelation(str(source), str(target), "adjacent", {})
-                )
+                edges.append(ObservationRelation(str(source), str(target), "adjacent", {}))
     return ObservationAdjacencyGraph(tuple(edges))
 
 
-def _instrumented_traversal(
-    graph: ObservationAdjacencyGraph, start_id: str
-) -> dict[str, int]:
+def _instrumented_traversal(graph: ObservationAdjacencyGraph, start_id: str) -> dict[str, int]:
     """Mirror reachable() locally so counters do not alter production code."""
     node_to_idx = graph._node_to_idx
     start_idx = node_to_idx.get(start_id)
@@ -85,9 +81,7 @@ def _instrumented_traversal(
     }
 
 
-def _profiled_reachable(
-    graph: ObservationAdjacencyGraph, start_id: str
-) -> tuple[float, int]:
+def _profiled_reachable(graph: ObservationAdjacencyGraph, start_id: str) -> tuple[float, int]:
     calls = 0
 
     def profiler(frame, event, arg):  # type: ignore[no-untyped-def]
