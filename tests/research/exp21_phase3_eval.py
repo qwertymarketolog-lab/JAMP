@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import statistics
+import subprocess
 from pathlib import Path
 
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
@@ -16,6 +17,9 @@ from research.exp19.observation_relation import ObservationRelation
 from tests.research.candidates.g4_bounded_treatment import MemoizedReachabilityCandidate
 
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
+CANONICAL_SOURCE_REF = "research/exp21-phase0-harness"
+CANONICAL_SOURCE_PATH = "scripts/research/exp_gc_causality.py"
+CANONICAL_SOURCE_BLOB_SHA = "5995fc4c73a985585abe99f3eea393ef60c857a9"
 WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 SAMPLE_SIZE = 100
 TARGET_MAX_THRESHOLD = 10_000
@@ -23,6 +27,37 @@ TARGET_P50_THRESHOLD = 102
 ANCHOR_NODE = 0
 DEFAULT_SEED_FILE = Path("tests/research/fixtures/phase2_n100_seeds.json")
 
+
+def load_canonical_workload_provenance() -> dict[str, str]:
+    """Bind the registered definition digest to the exact historical Git blob."""
+    source_ref = f"{CANONICAL_SOURCE_REF}:{CANONICAL_SOURCE_PATH}"
+    try:
+        source = subprocess.check_output(["git", "show", source_ref], text=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"Fatal: canonical source unavailable: {source_ref}: {exc.output.strip()}") from exc
+
+    blob_sha = subprocess.check_output(["git", "rev-parse", source_ref], text=True, stderr=subprocess.STDOUT).strip()
+    if blob_sha != CANONICAL_SOURCE_BLOB_SHA:
+        raise RuntimeError(f"canonical source blob mismatch: expected {CANONICAL_SOURCE_BLOB_SHA}, actual {blob_sha}")
+
+    marker = "CANONICAL_G4_WORKLOAD_CODE = "
+    end_marker = "\\n\\nWORKLOAD_DEFINITION_HASH"
+    start = source.find(marker)
+    end = source.find(end_marker, start)
+    if start < 0 or end < 0:
+        raise RuntimeError("Fatal: canonical workload literal not found in source blob")
+
+    literal = source[start + len(marker):end].strip()
+    try:
+        workload_code = json.loads(literal)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Fatal: canonical workload literal is not valid JSON/Python string") from exc
+
+    digest = hashlib.sha256(workload_code.encode("utf-8")).hexdigest()
+    if digest != WORKLOAD_DEFINITION_HASH:
+        raise RuntimeError(f"canonical workload definition digest mismatch: expected {WORKLOAD_DEFINITION_HASH}, actual {digest}")
+
+    return {"source_ref": CANONICAL_SOURCE_REF, "source_path": CANONICAL_SOURCE_PATH, "source_blob_sha": CANONICAL_SOURCE_BLOB_SHA, "workload_definition_sha256": digest}
 
 def load_canonical_seeds(path: Path = DEFAULT_SEED_FILE) -> list[int]:
     """Load the frozen Phase 2 N=100 seed fixture; never accept external seeds."""
@@ -121,11 +156,13 @@ def summarize(counts: list[int]) -> dict[str, int]:
 
 
 def evaluate(output_path: Path | None = None) -> dict[str, object]:
+    provenance = load_canonical_workload_provenance()
     start_nodes = load_canonical_seeds()
 
     relations = build_canonical_relations()
-    if workload_identity(relations) != WORKLOAD_DEFINITION_HASH:
-        raise RuntimeError("workload_definition_hash mismatch")
+    payload_hash = workload_identity(relations)
+    if payload_hash == WORKLOAD_DEFINITION_HASH:
+        raise RuntimeError("payload hash unexpectedly equals definition hash")
 
     graph = ObservationAdjacencyGraph(relations)
     control = control_counts(graph, start_nodes)
@@ -151,6 +188,8 @@ def evaluate(output_path: Path | None = None) -> dict[str, object]:
         "status": "EVALUATED",
         "workload_spec_id": WORKLOAD_SPEC_ID,
         "workload_definition_hash": WORKLOAD_DEFINITION_HASH,
+        "workload_payload_sha256": payload_hash,
+        "canonical_source": provenance,
         "sample_size": SAMPLE_SIZE,
         "anchor_node": ANCHOR_NODE,
         "start_nodes": start_nodes,
