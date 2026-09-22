@@ -194,6 +194,7 @@ def _run_start_node_dispersion(sample_size: int = 100) -> dict[str, object]:
             },
         },
         "rows": rows,
+        "start_node_dispersion": dispersion_stats,
     }
 
 
@@ -256,6 +257,7 @@ def _run_size(layer_size: int) -> dict[str, object]:
 
 def main() -> None:
     rows = [_run_size(size) for size in SIZES]
+    dispersion_stats = _run_start_node_dispersion()
     payload = {
         "experiment": "EXP-21 Phase 2 Step 4",
         "diagnostic": "frontier_allocation_dispatch",
