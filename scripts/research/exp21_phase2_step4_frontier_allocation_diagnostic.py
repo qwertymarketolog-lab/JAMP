@@ -40,7 +40,9 @@ def _graph(layer_size: int) -> ObservationAdjacencyGraph:
     return ObservationAdjacencyGraph(tuple(edges))
 
 
-def _instrumented_traversal(graph: ObservationAdjacencyGraph, start_id: str) -> dict[str, int]:
+def _instrumented_traversal(
+    graph: ObservationAdjacencyGraph, start_id: str
+) -> dict[str, int]:
     """Mirror reachable() locally so counters do not alter production code."""
     node_to_idx = graph._node_to_idx
     start_idx = node_to_idx.get(start_id)
@@ -83,7 +85,9 @@ def _instrumented_traversal(graph: ObservationAdjacencyGraph, start_id: str) -> 
     }
 
 
-def _profiled_reachable(graph: ObservationAdjacencyGraph, start_id: str) -> tuple[float, int]:
+def _profiled_reachable(
+    graph: ObservationAdjacencyGraph, start_id: str
+) -> tuple[float, int]:
     calls = 0
 
     def profiler(frame, event, arg):  # type: ignore[no-untyped-def]
@@ -187,7 +191,10 @@ def main() -> None:
         )
     )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 
