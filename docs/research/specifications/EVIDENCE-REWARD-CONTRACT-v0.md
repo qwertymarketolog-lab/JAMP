@@ -82,6 +82,8 @@ The derivation MUST reference:
 
 The Criterion MUST be frozen before the Evidence execution being evaluated begins.
 
+**Normative Criterion binding:** `criterion_ref` MUST identify a frozen `CriterionSet.set_id`; `criterion_version` MUST equal the corresponding `CriterionSet.version`; and `criterion_hash` MUST equal the exact `CriterionSet.criterion_set_hash` resolved through that reference. A criterion identity MUST NOT be represented by an independently generated Reward-layer hash.
+
 The Criterion defines a deterministic mapping from admissible Evidence to the reward domain. It MUST NOT modify Evidence or historical provenance.
 
 ### 3.3 Provenance binding
@@ -91,6 +93,8 @@ The reward derivation MUST bind at minimum:
 - the ordered/canonical set of `evidence_hashes`;
 - `criterion_hash`;
 - `derivation_rule_hash`;
+
+**Normative derivation-rule binding:** `derivation_rule_ref` MUST identify one frozen, deterministic rule that directly defines the computation of `reward_value`. `derivation_rule_hash` MUST equal the canonical content hash of that exact frozen rule. `derivation_rule_hash` MUST NOT be inferred from, substituted by, or equated with `CriterionSet.criterion_set_hash` or `Provenance.aggregation_rule_hash` unless the referenced frozen rule is explicitly identical to that derivation rule. If an existing scoring contract such as P22.9 is used as the EvidenceReward derivation rule, the EvidenceReward contract MUST explicitly declare that binding and MUST bind `derivation_rule_ref` and `derivation_rule_hash` to that frozen scoring contract.
 - `source_execution_refs`, where applicable.
 
 A canonical provenance identity MUST be derivable from these inputs:
