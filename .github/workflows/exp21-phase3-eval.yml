@@ -59,7 +59,7 @@ jobs:
         run: |
           {
             echo "COMMIT_SHA=$(git rev-parse HEAD)"
-            echo "WORKFLOW_REF=abb9d449cfd0107f973e3bfde83adfc2232adfea"
+            echo "WORKFLOW_REF=$(git rev-parse HEAD)"
             date -u +"ISO_TIMESTAMP=%Y-%m-%dT%H:%M:%SZ"
           } | tee phase3_metadata.env
 
