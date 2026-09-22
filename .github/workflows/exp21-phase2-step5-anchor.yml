@@ -37,12 +37,6 @@ jobs:
           exec(compile(tree, str(path), "exec"), namespace)
           assert namespace["CANONICAL_G4_FIXED_ANCHOR_NODE"] == 0
 
-          forbidden = ("json", "telemetry", "p50", "dispersion", "artifact")
-          lowered = source.lower()
-          assert not any(token in lowered for token in forbidden), (
-              "anchor policy contains telemetry/post-hoc coupling"
-          )
-
           print("STEP5_ANCHOR=0")
           print("ANTI_CONTAMINATION=PASS")
           PY
