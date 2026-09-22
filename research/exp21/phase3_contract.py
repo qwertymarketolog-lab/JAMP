@@ -90,7 +90,7 @@ def validate_observation(observation: dict[str, Any], *, expected_target_commit:
         placement = observation.get("placement_after")
         if not isinstance(placement, dict):
             errors.append("treatment_placement_missing")
-        elif placement.get("cpu") != observation.get("topology_thread"):
+        elif placement.get("thread") != observation.get("topology_thread"):
             errors.append("treatment_cpu_topology_mismatch")
     return errors
 
