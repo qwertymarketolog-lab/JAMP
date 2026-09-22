@@ -31,15 +31,17 @@ def test_payload_sensitivity() -> None:
 
 
 def test_source_binding() -> None:
-    assert _make_atom(source_ref="sha256:source-a").id != _make_atom(
-        source_ref="sha256:source-b"
-    ).id
+    assert (
+        _make_atom(source_ref="sha256:source-a").id
+        != _make_atom(source_ref="sha256:source-b").id
+    )
 
 
 def test_transcript_boundaries() -> None:
-    assert _make_atom(params={"mode": "token", "segment_index": 0}).id != _make_atom(
-        params={"mode": "token", "segment_index": 1}
-    ).id
+    assert (
+        _make_atom(params={"mode": "token", "segment_index": 0}).id
+        != _make_atom(params={"mode": "token", "segment_index": 1}).id
+    )
 
 
 def test_identity_separation() -> None:
