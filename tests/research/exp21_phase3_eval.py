@@ -33,13 +33,22 @@ def load_canonical_workload_provenance() -> dict[str, str]:
     """Bind the registered definition digest to the exact historical Git blob."""
     source_ref = f"{CANONICAL_GIT_REF}:{CANONICAL_SOURCE_PATH}"
     try:
-        source = subprocess.check_output(["git", "show", source_ref], text=True, stderr=subprocess.STDOUT)
+        source = subprocess.check_output(
+            ["git", "show", source_ref], text=True, stderr=subprocess.STDOUT
+        )
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(f"Fatal: canonical source unavailable: {source_ref}: {exc.output.strip()}") from exc
+        raise RuntimeError(
+            f"Fatal: canonical source unavailable: {source_ref}: {exc.output.strip()}"
+        ) from exc
 
-    blob_sha = subprocess.check_output(["git", "rev-parse", source_ref], text=True, stderr=subprocess.STDOUT).strip()
+    blob_sha = subprocess.check_output(
+        ["git", "rev-parse", source_ref], text=True, stderr=subprocess.STDOUT
+    ).strip()
     if blob_sha != CANONICAL_SOURCE_BLOB_SHA:
-        raise RuntimeError(f"canonical source blob mismatch: expected {CANONICAL_SOURCE_BLOB_SHA}, actual {blob_sha}")
+        raise RuntimeError(
+            "canonical source blob mismatch: "
+            f"expected {CANONICAL_SOURCE_BLOB_SHA}, actual {blob_sha}"
+        )
 
     marker = "CANONICAL_G4_WORKLOAD_CODE = "
     end_marker = "\n\nWORKLOAD_DEFINITION_HASH"
@@ -52,13 +61,23 @@ def load_canonical_workload_provenance() -> dict[str, str]:
     try:
         workload_code = json.loads(literal)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("Fatal: canonical workload literal is not valid JSON/Python string") from exc
+        raise RuntimeError(
+            "Fatal: canonical workload literal is not valid JSON/Python string"
+        ) from exc
 
     digest = hashlib.sha256(workload_code.encode("utf-8")).hexdigest()
     if digest != WORKLOAD_DEFINITION_HASH:
-        raise RuntimeError(f"canonical workload definition digest mismatch: expected {WORKLOAD_DEFINITION_HASH}, actual {digest}")
+        raise RuntimeError(
+            "canonical workload definition digest mismatch: "
+            f"expected {WORKLOAD_DEFINITION_HASH}, actual {digest}"
+        )
 
-    return {"source_ref": CANONICAL_SOURCE_REF, "source_path": CANONICAL_SOURCE_PATH, "source_blob_sha": CANONICAL_SOURCE_BLOB_SHA, "workload_definition_sha256": digest}
+    return {
+        "source_ref": CANONICAL_SOURCE_REF,
+        "source_path": CANONICAL_SOURCE_PATH,
+        "source_blob_sha": CANONICAL_SOURCE_BLOB_SHA,
+        "workload_definition_sha256": digest,
+    }
 
 def load_canonical_seeds(path: Path = DEFAULT_SEED_FILE) -> list[int]:
     """Load the frozen Phase 2 N=100 seed fixture; never accept external seeds."""
