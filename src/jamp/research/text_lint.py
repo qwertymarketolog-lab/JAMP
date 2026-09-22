@@ -54,4 +54,10 @@ def create_pattern_observation(
     )
 
 
-__all__ = ["ATOM_TYPE", "OPERATOR_ID", "OPERATOR_VERSION", "PATTERN_IDS", "create_pattern_observation"]
+__all__ = [
+    "ATOM_TYPE",
+    "OPERATOR_ID",
+    "OPERATOR_VERSION",
+    "PATTERN_IDS",
+    "create_pattern_observation",
+]
