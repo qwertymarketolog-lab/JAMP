@@ -163,9 +163,7 @@ def _run_start_node_dispersion(sample_size: int = 100) -> dict[str, object]:
         "fixture": {
             "vertices": graph._v_count,
             "edges": sum(len(targets) for targets in graph._adj_int),
-            "source": (
-                "tests/research/exp19/test_adjacency_graph.py::"
-                "test_g4_large_graph_is_linear_scale",
+            "source": "tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale",  # noqa: E501
             ),
             "source_kind": "verified_canonical_fixture",
         },
