@@ -2,6 +2,9 @@ name: EXP-21 Phase 3 Evaluation Runner
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - research/exp21-phase3-bounding-proposal
 
 jobs:
   evaluate-phase3:
