@@ -8,11 +8,11 @@ Frozen Core: Delta src/jamp == 0; this harness imports research-only code.
 
 from __future__ import annotations
 
+from collections import deque
 import hashlib
 import json
 import statistics
 import time
-from collections import deque
 from typing import Any
 
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
