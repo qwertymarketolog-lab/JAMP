@@ -166,7 +166,7 @@ def _run_size(layer_size: int) -> dict[str, object]:
         "gc_count_after": list(gc_after),
         "gc_collections_delta": [
             after - before
-            for before, after in zip(gc_stats_before, gc_stats_after)
+            for before, after in zip(gc_stats_before, gc_stats_after, strict=True)
         ],
         "profiled_reachable_seconds": profiled_elapsed,
         "profiled_python_call_events": frame_calls,
