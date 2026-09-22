@@ -4,9 +4,8 @@ This module implements the locked EXP-22 v0 identity contract without
 modifying the JAMP run loop.
 """
 
-from __future__ import annotations
-
 import hashlib
+
 import json
 from dataclasses import dataclass
 from typing import Any
