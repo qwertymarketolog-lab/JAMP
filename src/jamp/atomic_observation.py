@@ -51,7 +51,7 @@ def _canonical_json(value: Any) -> str:
         raise ValueError("value is not canonically JSON-serializable") from exc
 
 
-def _extract_closed_identity_params(params: dict[str, Any]) -> Dict[str, Any]:
+def _extract_closed_identity_params(params: dict[str, Any]) -> dict[str, Any]:
     """Return only the closed structural parameter subset."""
     return {
         key: params[key]
@@ -66,7 +66,7 @@ def compute_canonical_preimage(
     operator_id: str,
     operator_version: str,
     content: Any,
-    params: Dict[str, Any],
+    params: dict[str, Any],
 ) -> str:
     """Build the exact seven-component EXP-22 v0 identity preimage."""
     if not isinstance(source_ref, str) or not source_ref:
@@ -108,7 +108,7 @@ class AtomicObservation:
     operator_id: str
     operator_version: str
     content: Any
-    params: Dict[str, Any]
+    params: dict[str, Any]
 
 
 def create_atomic_observation(
@@ -118,7 +118,7 @@ def create_atomic_observation(
     source_ref: str,
     operator_id: str,
     operator_version: str,
-    params: Dict[str, Any],
+    params: dict[str, Any],
 ) -> AtomicObservation:
     """Create an EXP-22 v0 atomic observation."""
     preimage = compute_canonical_preimage(
