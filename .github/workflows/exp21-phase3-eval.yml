@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - research/exp21-phase3-bounding-proposal
+  pull_request:
+    branches:
+      - main
 
 jobs:
   evaluate-phase3:
