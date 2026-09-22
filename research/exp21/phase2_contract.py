@@ -97,7 +97,11 @@ def validate_artifact(
         return False, ["observations_missing_or_not_list"]
 
     pair_ids = [item.get("pair_id") for item in observations if isinstance(item, dict)]
-    duplicates = [pair_id for pair_id, count in Counter(pair_ids).items() if pair_id and count > 2]
+    duplicates = [
+        pair_id
+        for pair_id, count in Counter(pair_ids).items()
+        if pair_id and count > 2
+    ]
     if duplicates:
         errors.append("duplicate_pair_observation")
 
