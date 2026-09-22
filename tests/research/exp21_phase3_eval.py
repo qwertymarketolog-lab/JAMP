@@ -21,6 +21,25 @@ SAMPLE_SIZE = 100
 TARGET_MAX_THRESHOLD = 10_000
 TARGET_P50_THRESHOLD = 102
 ANCHOR_NODE = 0
+DEFAULT_SEED_FILE = Path("tests/research/fixtures/phase2_n100_seeds.json")
+
+
+def load_canonical_seeds(path: Path = DEFAULT_SEED_FILE) -> list[int]:
+    """Load the frozen Phase 2 N=100 seed fixture; never accept external seeds."""
+    assert path.exists(), f"Fatal: Missing frozen Phase 2 seed fixture at {path}"
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    seeds = payload.get("start_nodes") if isinstance(payload, dict) else payload
+    assert isinstance(seeds, list), "Fixture payload must resolve to a list[int]"
+    assert len(seeds) == SAMPLE_SIZE, (
+        f"Expected N={SAMPLE_SIZE} unique seeds, got {len(seeds)}"
+    )
+    assert len(set(seeds)) == SAMPLE_SIZE, "Seed nodes contain duplicate entries"
+    assert all(isinstance(x, int) and not isinstance(x, bool) for x in seeds), (
+        "Seed nodes must be integers"
+    )
+    return seeds
 
 
 def build_canonical_relations() -> tuple[ObservationRelation, ...]:
@@ -101,15 +120,8 @@ def summarize(counts: list[int]) -> dict[str, int]:
     }
 
 
-def evaluate(
-    start_nodes: list[int],
-    output_path: Path | None = None,
-) -> dict[str, object]:
-    if len(start_nodes) != SAMPLE_SIZE:
-        raise ValueError(f"expected exactly {SAMPLE_SIZE} start nodes")
-
-    if len(set(start_nodes)) != SAMPLE_SIZE:
-        raise ValueError("start-node sample must contain 100 unique nodes")
+def evaluate(output_path: Path | None = None) -> dict[str, object]:
+    start_nodes = load_canonical_seeds()
 
     relations = build_canonical_relations()
     if workload_identity(relations) != WORKLOAD_DEFINITION_HASH:
