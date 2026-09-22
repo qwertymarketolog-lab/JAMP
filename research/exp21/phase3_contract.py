@@ -1,4 +1,5 @@
 """Fail-closed validation for EXP-21 Phase 3 topology evidence."""
+
 from __future__ import annotations
 
 import math
@@ -8,9 +9,7 @@ from typing import Any
 EXPERIMENT_ID = "EXP-21-PHASE3-TOPOLOGY-V1"
 PHASE = 3
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 ALPHA = 0.01
 REQUIRED_PAIRS = 30
 CONDITIONS = {"CONTROL", "TOPOLOGY_TREATMENT"}
@@ -48,9 +47,7 @@ REQUIRED_FIELDS = (
 )
 
 
-def validate_observation(
-    observation: dict[str, Any], *, expected_target_commit: str
-) -> list[str]:
+def validate_observation(observation: dict[str, Any], *, expected_target_commit: str) -> list[str]:
     errors: list[str] = []
     if observation.get("experiment_id") != EXPERIMENT_ID:
         errors.append("experiment_id_mismatch")
@@ -115,8 +112,7 @@ def validate_artifact(
         )
         if obs_errors:
             errors.extend(
-                f"pair_{observation.get('pair_id', 'UNKNOWN')}:{error}"
-                for error in obs_errors
+                f"pair_{observation.get('pair_id', 'UNKNOWN')}:{error}" for error in obs_errors
             )
         else:
             by_pair.setdefault(str(observation["pair_id"]), []).append(observation)
