@@ -267,15 +267,21 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(json.dumps({
-        "artifact": str(OUTPUT),
-        "target_commit": args.target_commit,
-        "n_pairs": artifact["n_pairs"],
-        "wilcoxon_p": artifact["wilcoxon_p"],
-        "median_delta_ms": artifact["median_delta_ms"],
-        "status": artifact["status"],
-        "validation_errors": artifact["validation_errors"],
-    }, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "artifact": str(OUTPUT),
+                "target_commit": args.target_commit,
+                "n_pairs": artifact["n_pairs"],
+                "wilcoxon_p": artifact["wilcoxon_p"],
+                "median_delta_ms": artifact["median_delta_ms"],
+                "status": artifact["status"],
+                "validation_errors": artifact["validation_errors"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
     if not valid:
         return 1
