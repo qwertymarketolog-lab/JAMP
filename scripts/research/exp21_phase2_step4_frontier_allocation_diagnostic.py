@@ -107,6 +107,95 @@ def _stats(values: list[float]) -> dict[str, float]:
     }
 
 
+def _canonical_g4_graph() -> ObservationAdjacencyGraph:
+    """Reproduce the verified EXP-19 G4 large-graph fixture read-only."""
+    edges: list[ObservationRelation] = []
+    for i in range(10_000):
+        edges.append(ObservationRelation(str(i), str(i + 1), "adjacent", {}))
+    for i in range(10_000):
+        edges.append(ObservationRelation(str(i), str(i + 10_000), "adjacent", {}))
+    return ObservationAdjacencyGraph(tuple(edges))
+
+
+def _run_start_node_dispersion(sample_size: int = 100) -> dict[str, object]:
+    """Sample deterministic start nodes across the verified canonical G4 node space."""
+    graph = _canonical_g4_graph()
+    node_ids = [str(i) for i in range(20_000)]
+    step = (len(node_ids) - 1) / (sample_size - 1)
+    starts = [node_ids[round(i * step)] for i in range(sample_size)]
+
+    rows: list[dict[str, object]] = []
+    for start_id in starts:
+        counters = _instrumented_traversal(graph, start_id)
+        peak_bytes: list[int] = []
+        for _ in range(3):
+            gc.collect()
+            tracemalloc.start()
+            try:
+                graph.reachable(start_id)
+                _, peak = tracemalloc.get_traced_memory()
+                peak_bytes.append(peak)
+            finally:
+                tracemalloc.stop()
+        rows.append(
+            {
+                "start_id": start_id,
+                "edge_inspections": counters["edge_inspections"],
+                "frontier_max": counters["frontier_max"],
+                "frontier_sum": counters["frontier_sum"],
+                "visited": counters["visited"],
+                "discovered": counters["discovered"],
+                "tracemalloc_peak_bytes_p50": statistics.median(peak_bytes),
+            }
+        )
+
+    def percentile(values: list[int], fraction: float) -> float:
+        ordered = sorted(values)
+        index = min(len(ordered) - 1, int(len(ordered) * fraction))
+        return float(ordered[index])
+
+    edge_values = [int(row["edge_inspections"]) for row in rows]
+    frontier_max_values = [int(row["frontier_max"]) for row in rows]
+    frontier_sum_values = [int(row["frontier_sum"]) for row in rows]
+    peak_values = [int(row["tracemalloc_peak_bytes_p50"]) for row in rows]
+
+    return {
+        "fixture": {
+            "vertices": graph._v_count,
+            "edges": sum(len(targets) for targets in graph._adj_int),
+            "source": "tests/research/exp19/test_adjacency_graph.py::test_g4_large_graph_is_linear_scale",
+        },
+        "sample_size": sample_size,
+        "summary": {
+            "edge_inspections": {
+                "p50": percentile(edge_values, 0.50),
+                "p95": percentile(edge_values, 0.95),
+                "p99": percentile(edge_values, 0.99),
+                "max": max(edge_values),
+            },
+            "frontier_max": {
+                "p50": percentile(frontier_max_values, 0.50),
+                "p95": percentile(frontier_max_values, 0.95),
+                "p99": percentile(frontier_max_values, 0.99),
+                "max": max(frontier_max_values),
+            },
+            "frontier_sum": {
+                "p50": percentile(frontier_sum_values, 0.50),
+                "p95": percentile(frontier_sum_values, 0.95),
+                "p99": percentile(frontier_sum_values, 0.99),
+                "max": max(frontier_sum_values),
+            },
+            "tracemalloc_peak_bytes_p50": {
+                "p50": percentile(peak_values, 0.50),
+                "p95": percentile(peak_values, 0.95),
+                "p99": percentile(peak_values, 0.99),
+                "max": max(peak_values),
+            },
+        },
+        "rows": rows,
+    }
+
+
 def _run_size(layer_size: int) -> dict[str, object]:
     graph = _graph(layer_size)
     start_id = "0"
