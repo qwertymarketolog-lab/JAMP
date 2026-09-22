@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 
 CANONICAL_DELIMITER = "||"
@@ -51,7 +51,7 @@ def _canonical_json(value: Any) -> str:
         raise ValueError("value is not canonically JSON-serializable") from exc
 
 
-def _extract_closed_identity_params(params: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_closed_identity_params(params: dict[str, Any]) -> Dict[str, Any]:
     """Return only the closed structural parameter subset."""
     return {
         key: params[key]
