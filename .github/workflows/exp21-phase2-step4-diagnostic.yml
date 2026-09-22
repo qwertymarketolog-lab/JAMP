@@ -1,0 +1,93 @@
+name: EXP-21 Phase 2 Step 4 Frontier Allocation Diagnostic
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - research/exp21-multi-ai-federation-r0
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR Head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Frozen Core Compliance
+        env:
+          BASELINE_SHA: 29ba828f7cea6e19b6a9a40f5dd9f35952c4959e
+        run: |
+          git fetch origin research/exp21-multi-ai-federation-r0 --depth=1
+          test "$(git rev-parse origin/research/exp21-multi-ai-federation-r0)" = "$BASELINE_SHA" || {
+            echo "FAIL: baseline branch moved; expected $BASELINE_SHA"
+            exit 1
+          }
+          git diff --quiet "$BASELINE_SHA" -- src/jamp || {
+            echo "FAIL: Unauthorized modification detected in src/jamp"
+            exit 1
+          }
+
+      - name: Execute Step 4 Diagnostic
+        env:
+          PYTHONPATH: .
+          EXP21_STEP4_OUTPUT: artifacts/exp21-step4/diagnostic.json
+        run: |
+          python scripts/research/exp21_phase2_step4_frontier_allocation_diagnostic.py
+
+      - name: Verify Diagnostic Artifact
+        run: |
+          test -s artifacts/exp21-step4/diagnostic.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("artifacts/exp21-step4/diagnostic.json").read_text())
+          assert payload["production_runtime_impact"] == 0.0
+          assert payload["frozen_core_scope"] == "src/jamp unchanged"
+          assert len(payload["rows"]) == 4
+          for row in payload["rows"]:
+              assert row["edge_inspections"] >= row["discovered"] - 1
+          print("Step 4 diagnostic artifact schema: PASS")
+          PY
+
+      - name: Capture Provenance
+        env:
+          BASELINE_SHA: 29ba828f7cea6e19b6a9a40f5dd9f35952c4959e
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          script = Path("scripts/research/exp21_phase2_step4_frontier_allocation_diagnostic.py")
+          payload = Path("artifacts/exp21-step4/diagnostic.json")
+          provenance = {
+              "commit_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "base_sha": os.environ["BASELINE_SHA"],
+              "script_sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
+              "payload_sha256": hashlib.sha256(payload.read_bytes()).hexdigest(),
+              "utc_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "eval_status": "NOT_EVALUATED_AUTOMATICALLY",
+          }
+          Path("artifacts/exp21-step4/provenance.json").write_text(
+              json.dumps(provenance, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(provenance, sort_keys=True))
+          PY
+
+      - name: Upload Diagnostic & Provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-step4-frontier-allocation-diagnostic
+          path: artifacts/exp21-step4/
+          retention-days: 14
