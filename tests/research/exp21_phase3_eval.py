@@ -42,7 +42,7 @@ def load_canonical_workload_provenance() -> dict[str, str]:
         raise RuntimeError(f"canonical source blob mismatch: expected {CANONICAL_SOURCE_BLOB_SHA}, actual {blob_sha}")
 
     marker = "CANONICAL_G4_WORKLOAD_CODE = "
-    end_marker = "\\n\\nWORKLOAD_DEFINITION_HASH"
+    end_marker = "\n\nWORKLOAD_DEFINITION_HASH"
     start = source.find(marker)
     end = source.find(end_marker, start)
     if start < 0 or end < 0:
