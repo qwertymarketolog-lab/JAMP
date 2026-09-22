@@ -35,9 +35,10 @@ jobs:
           }
 
       - name: Execute Intervention B Telemetry Harness (N=11 paired runs)
+        id: exec_harness
         run: |
           mkdir -p artifacts/exp21-b
-          python scripts/research/exp21_phase2_step3_intervention_b.py | tee artifacts/exp21-b/raw_telemetry.log
+          PYTHONPATH=. python scripts/research/exp21_phase2_step3_intervention_b.py | tee artifacts/exp21-b/raw_telemetry.log
 
       - name: Capture Provenance Metadata
         env:
