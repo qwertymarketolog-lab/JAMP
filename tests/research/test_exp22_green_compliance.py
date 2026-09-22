@@ -32,8 +32,7 @@ def test_payload_sensitivity() -> None:
 
 def test_source_binding() -> None:
     assert (
-        _make_atom(source_ref="sha256:source-a").id
-        != _make_atom(source_ref="sha256:source-b").id
+        _make_atom(source_ref="sha256:source-a").id != _make_atom(source_ref="sha256:source-b").id
     )
 
 
