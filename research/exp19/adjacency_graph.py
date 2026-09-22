@@ -43,35 +43,25 @@ class ObservationAdjacencyGraph:
 
     def is_acyclic(self) -> bool:
         adj = self._adj_int
-        v_count = self._v_count
-        color = [0] * v_count
+        indegree = [0] * self._v_count
+        for targets in adj:
+            for target in targets:
+                indegree[target] += 1
 
-        for start_node in range(v_count):
-            if color[start_node] != 0:
-                continue
+        queue = deque(index for index, degree in enumerate(indegree) if degree == 0)
+        visited = 0
+        popleft = queue.popleft
+        queue_append = queue.append
 
-            color[start_node] = 1
-            children = adj[start_node]
-            stack = [[start_node, 0, children, len(children)]]
+        while queue:
+            node = popleft()
+            visited += 1
+            for target in adj[node]:
+                indegree[target] -= 1
+                if indegree[target] == 0:
+                    queue_append(target)
 
-            while stack:
-                frame = stack[-1]
-                index = frame[1]
-                if index < frame[3]:
-                    target = frame[2][index]
-                    frame[1] = index + 1
-                    state = color[target]
-                    if state == 1:
-                        return False
-                    if state == 0:
-                        color[target] = 1
-                        target_children = adj[target]
-                        stack.append([target, 0, target_children, len(target_children)])
-                else:
-                    stack.pop()
-                    color[frame[0]] = 2
-
-        return True
+        return visited == self._v_count
 
     def reachable(self, start_id: str) -> frozenset[str]:
         node_to_idx = self._node_to_idx
