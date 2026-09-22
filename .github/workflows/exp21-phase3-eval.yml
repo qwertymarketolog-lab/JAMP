@@ -17,12 +17,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: abb9d449cfd0107f973e3bfde83adfc2232adfea
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Fetch canonical Phase-0 provenance source
+        run: |
+          git fetch --no-tags origin research/exp21-phase0-harness:refs/remotes/origin/research/exp21-phase0-harness
+          CANONICAL_BLOB="$(git rev-parse refs/remotes/origin/research/exp21-phase0-harness:scripts/research/exp_gc_causality.py)"
+          EXPECTED_BLOB="5995fc4c73a985585abe99f3eea393ef60c857a9"
+          if [ "$CANONICAL_BLOB" != "$EXPECTED_BLOB" ]; then
+            echo "FATAL: canonical Phase-0 source blob mismatch"
+            echo "expected=$EXPECTED_BLOB"
+            echo "actual=$CANONICAL_BLOB"
+            exit 1
+          fi
+          echo "canonical_source_blob_sha=$CANONICAL_BLOB"
 
       - name: Verify exact target commit
         run: |
           ACTUAL_SHA="$(git rev-parse HEAD)"
-          EXPECTED_SHA="abb9d449cfd0107f973e3bfde83adfc2232adfea"
+          EXPECTED_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
           if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
             echo "FATAL: target commit mismatch"
             echo "expected=$EXPECTED_SHA"
