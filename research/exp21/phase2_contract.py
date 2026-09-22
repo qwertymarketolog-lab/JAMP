@@ -9,9 +9,7 @@ from typing import Any
 EXPERIMENT_ID = "EXP-21-PHASE2-SCHEDULING-V1"
 PHASE = 2
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 ALPHA = 0.01
 REQUIRED_PAIRS = 30
 CONDITIONS = {"CONTROL", "CPU_AFFINITY"}
@@ -97,11 +95,7 @@ def validate_artifact(
         return False, ["observations_missing_or_not_list"]
 
     pair_ids = [item.get("pair_id") for item in observations if isinstance(item, dict)]
-    duplicates = [
-        pair_id
-        for pair_id, count in Counter(pair_ids).items()
-        if pair_id and count > 2
-    ]
+    duplicates = [pair_id for pair_id, count in Counter(pair_ids).items() if pair_id and count > 2]
     if duplicates:
         errors.append("duplicate_pair_observation")
 
@@ -116,8 +110,7 @@ def validate_artifact(
         )
         if obs_errors:
             errors.extend(
-                f"pair_{observation.get('pair_id', 'UNKNOWN')}:{item}"
-                for item in obs_errors
+                f"pair_{observation.get('pair_id', 'UNKNOWN')}:{item}" for item in obs_errors
             )
             continue
         by_pair.setdefault(str(observation["pair_id"]), []).append(observation)
