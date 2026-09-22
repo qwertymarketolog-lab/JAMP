@@ -1,0 +1,66 @@
+name: EXP-21 Phase 3 Evaluation Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  evaluate-phase3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact target revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: abb9d449cfd0107f973e3bfde83adfc2232adfea
+
+      - name: Verify exact target commit
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          EXPECTED_SHA="abb9d449cfd0107f973e3bfde83adfc2232adfea"
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "FATAL: target commit mismatch"
+            echo "expected=$EXPECTED_SHA"
+            echo "actual=$ACTUAL_SHA"
+            exit 1
+          fi
+          echo "target_commit=$ACTUAL_SHA"
+
+      - name: Enforce Frozen Core Invariant
+        run: |
+          BASE_SHA="6ed6be7baa4efe71fc07f984d9451e363cd7da94"
+          CHANGED_CORE="$(git diff --name-only "$BASE_SHA"...HEAD -- src/jamp/ || true)"
+          if [ -n "$CHANGED_CORE" ]; then
+            echo "FATAL: Frozen core violation detected:"
+            echo "$CHANGED_CORE"
+            exit 1
+          fi
+          echo "Frozen core invariant verified: delta(src/jamp)=0"
+
+      - name: Record Metadata
+        run: |
+          {
+            echo "COMMIT_SHA=$(git rev-parse HEAD)"
+            echo "WORKFLOW_REF=abb9d449cfd0107f973e3bfde83adfc2232adfea"
+            date -u +"ISO_TIMESTAMP=%Y-%m-%dT%H:%M:%SZ"
+          } | tee phase3_metadata.env
+
+      - name: Execute Phase 3 Evaluation Harness
+        env:
+          PYTHONPATH: .
+        run: |
+          python3 -c 'from pathlib import Path; from tests.research.exp21_phase3_eval import evaluate; evaluate(Path("docs/research/phase3_raw_evidence.json"))'
+
+      - name: Verify Raw Evidence Exists
+        run: |
+          test -s docs/research/phase3_raw_evidence.json
+          python3 -m json.tool docs/research/phase3_raw_evidence.json >/dev/null
+          echo "raw evidence JSON verified"
+
+      - name: Upload Raw Evidence Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-raw-evidence-json
+          path: |
+            docs/research/phase3_raw_evidence.json
+            phase3_metadata.env
+          if-no-files-found: error
