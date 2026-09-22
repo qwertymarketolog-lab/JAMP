@@ -78,3 +78,31 @@ Frozen Core remains LOCKED:
 - **VERIFIED:** current workflow/run/check-suite identities and current trigger configuration.
 - **INFERRED:** failure occurs before ordinary job execution/materialization.
 - **UNKNOWN:** GitHub Actions internal mechanism producing `conclusion=failure` with zero jobs; exact historical suite-to-workflow mapping.
+
+## Terminal CI snapshot for documentation commit
+
+Documentation commit: `fb0aa977b3e6b508a40bd98073da16a07935540c`.
+
+All eight push-triggered workflow runs for this commit reached terminal state:
+
+| Workflow | Run ID | Job ID | Conclusion | Scope |
+|---|---:|---:|---|---|
+| Developer Quality | `35778668186` | `106918248196` | success | post-merge main push |
+| P20.5 Hypothesis Lifecycle Diagnostic | `35778667974` | `106918247434` | success | post-merge main push |
+| P20.11 Diagnostic | `35778668082` | `106918247758` | success | post-merge main push |
+| SBOM | `35778668022` | `106918247544` | success | post-merge main push |
+| EXP-19 Performance Diagnostic | `35778668078` | `106918247530` | success | post-merge main push |
+| P23.0-B Cold Replay Diagnostic | `35778667949` | `106918246568` | success | post-merge main push |
+| `.github/workflows/test.yml` | `35778666431` | none | failure | zero-job workflow-level result |
+| `.github/workflows/import-historical.yml` | `35778665306` | none | failure | zero-job workflow-level result |
+
+For the last two runs, the GitHub jobs endpoint returned `total_count=0` and `jobs=[]`.
+
+Therefore the terminal evidence does not justify a GREEN post-merge verdict. The state remains:
+
+**Post-merge main: INCONCLUSIVE / HOLD**
+
+**ROOT CAUSE = UNRESOLVED**
+
+This snapshot records terminal evidence only; it does not claim that the two zero-job failures are test failures.
+
