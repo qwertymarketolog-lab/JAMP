@@ -103,14 +103,11 @@ def run_observation(
 
         if not affinity_verified:
             raise RuntimeError(
-                f"affinity verification failed: condition={condition} "
-                f"before={before} after={after}"
+                f"affinity verification failed: condition={condition} before={before} after={after}"
             )
 
         graph_for_measurement = build_graph()
-        wall_ms, cpu_ms, non_cpu_delta_ms, gc_gen2 = measure_target(
-            graph_for_measurement
-        )
+        wall_ms, cpu_ms, non_cpu_delta_ms, gc_gen2 = measure_target(graph_for_measurement)
     finally:
         if condition == "CPU_AFFINITY":
             os.sched_setaffinity(0, set(default_affinity))
@@ -152,9 +149,9 @@ def run_observation(
 def compute_result(observations: list[dict[str, Any]]) -> tuple[float, float, str]:
     by_pair: dict[str, dict[str, float]] = {}
     for observation in observations:
-        by_pair.setdefault(str(observation["pair_id"]), {})[
-            observation["condition"]
-        ] = float(observation["wall_ms"])
+        by_pair.setdefault(str(observation["pair_id"]), {})[observation["condition"]] = float(
+            observation["wall_ms"]
+        )
 
     deltas = [
         pair["CPU_AFFINITY"] - pair["CONTROL"]
@@ -170,13 +167,17 @@ def compute_result(observations: list[dict[str, Any]]) -> tuple[float, float, st
         method="auto",
     )
     del statistic
-    median_delta_ms = float(sorted(deltas)[len(deltas) // 2]) if len(deltas) % 2 else float(
-        (sorted(deltas)[len(deltas) // 2 - 1] + sorted(deltas)[len(deltas) // 2]) / 2.0
+    median_delta_ms = (
+        float(sorted(deltas)[len(deltas) // 2])
+        if len(deltas) % 2
+        else float((sorted(deltas)[len(deltas) // 2 - 1] + sorted(deltas)[len(deltas) // 2]) / 2.0)
     )
     if not math.isfinite(float(p_value)):
         raise RuntimeError("Wilcoxon returned a non-finite p-value")
-    status = "SCHEDULING_EFFECT_SUPPORTED" if float(p_value) < ALPHA else (
-        "SCHEDULING_EFFECT_NOT_SUPPORTED"
+    status = (
+        "SCHEDULING_EFFECT_SUPPORTED"
+        if float(p_value) < ALPHA
+        else ("SCHEDULING_EFFECT_NOT_SUPPORTED")
     )
     return float(p_value), median_delta_ms, status
 
@@ -197,11 +198,7 @@ def main() -> int:
     execution_errors: list[str] = []
 
     for pair_id in range(1, REQUIRED_PAIRS + 1):
-        order = (
-            ("CONTROL", "CPU_AFFINITY")
-            if pair_id % 2
-            else ("CPU_AFFINITY", "CONTROL")
-        )
+        order = ("CONTROL", "CPU_AFFINITY") if pair_id % 2 else ("CPU_AFFINITY", "CONTROL")
         for condition in order:
             try:
                 observation = run_observation(
@@ -217,8 +214,7 @@ def main() -> int:
                 )
                 if observation_errors:
                     execution_errors.extend(
-                        f"pair_{pair_id}:{condition}:{error}"
-                        for error in observation_errors
+                        f"pair_{pair_id}:{condition}:{error}" for error in observation_errors
                     )
                 observations.append(observation)
             except Exception as exc:
@@ -251,9 +247,7 @@ def main() -> int:
             artifact["median_delta_ms"] = median_delta_ms
             artifact["status"] = status
         except Exception as exc:
-            artifact["validation_errors"].append(
-                f"statistics_error:{type(exc).__name__}:{exc}"
-            )
+            artifact["validation_errors"].append(f"statistics_error:{type(exc).__name__}:{exc}")
     else:
         artifact["validation_errors"].append(
             f"observation_count={len(observations)};required={REQUIRED_PAIRS * 2}"
