@@ -18,6 +18,7 @@ from tests.research.candidates.g4_bounded_treatment import MemoizedReachabilityC
 
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
 CANONICAL_SOURCE_REF = "research/exp21-phase0-harness"
+CANONICAL_GIT_REF = "refs/remotes/origin/research/exp21-phase0-harness"
 CANONICAL_SOURCE_PATH = "scripts/research/exp_gc_causality.py"
 CANONICAL_SOURCE_BLOB_SHA = "5995fc4c73a985585abe99f3eea393ef60c857a9"
 WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
@@ -30,7 +31,7 @@ DEFAULT_SEED_FILE = Path("tests/research/fixtures/phase2_n100_seeds.json")
 
 def load_canonical_workload_provenance() -> dict[str, str]:
     """Bind the registered definition digest to the exact historical Git blob."""
-    source_ref = f"{CANONICAL_SOURCE_REF}:{CANONICAL_SOURCE_PATH}"
+    source_ref = f"{CANONICAL_GIT_REF}:{CANONICAL_SOURCE_PATH}"
     try:
         source = subprocess.check_output(["git", "show", source_ref], text=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
