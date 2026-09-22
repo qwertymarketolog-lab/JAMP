@@ -10,6 +10,7 @@ import hashlib
 import json
 import statistics
 import subprocess
+import ast
 from pathlib import Path
 
 from research.exp19.adjacency_graph import ObservationAdjacencyGraph
@@ -59,11 +60,13 @@ def load_canonical_workload_provenance() -> dict[str, str]:
 
     literal = source[start + len(marker):end].strip()
     try:
-        workload_code = json.loads(literal)
-    except json.JSONDecodeError as exc:
+        workload_code = ast.literal_eval(literal)
+    except (SyntaxError, ValueError) as exc:
         raise RuntimeError(
-            "Fatal: canonical workload literal is not valid JSON/Python string"
+            "Fatal: canonical workload literal is not a valid Python string literal"
         ) from exc
+    if not isinstance(workload_code, str):
+        raise RuntimeError("Fatal: canonical workload literal is not a string")
 
     digest = hashlib.sha256(workload_code.encode("utf-8")).hexdigest()
     if digest != WORKLOAD_DEFINITION_HASH:
