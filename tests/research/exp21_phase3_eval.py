@@ -83,9 +83,9 @@ def control_counts(
 def treatment_counts(
     relations: tuple[ObservationRelation, ...], start_nodes: list[int]
 ) -> list[int]:
-    candidate = MemoizedReachabilityCandidate(relations)
     counts: list[int] = []
     for start in start_nodes:
+        candidate = MemoizedReachabilityCandidate(relations)
         _, inspections = candidate.reachable(str(start))
         counts.append(inspections)
     return counts
