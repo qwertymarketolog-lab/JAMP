@@ -147,7 +147,7 @@ def _inconclusive(target_commit: str, pairs: int, errors: list[str]) -> dict:
 
 def run(pairs: int, target_commit: str, output: Path) -> int:
     if pairs != REQUIRED_PAIRS:
-        raise ValueError(f"Phase 3 requires exactly {REQUIRED_PAIRS} pairs)
+        raise ValueError(f"Phase 3 requires exactly {REQUIRED_PAIRS} pairs")
     if platform.system() != "Linux":
         artifact = _inconclusive(target_commit, pairs, ["linux_required_for_topology_verification"])
         output.parent.mkdir(parents=True, exist_ok=True)
