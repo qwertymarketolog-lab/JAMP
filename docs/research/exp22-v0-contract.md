@@ -62,6 +62,114 @@ Keys outside `ALLOWED_ID_PARAMS` are excluded from identity computation. Missing
 
 The serialized preimage MUST use an unambiguous, deterministic field encoding. Implementations MUST NOT depend on Python object representation, dictionary insertion order, memory addresses, timestamps, or other runtime noise.
 
+### v0 Canonical Preimage Serialization (Locked)
+
+For v0, the exact canonical identity preimage is the UTF-8 string formed by joining seven components with the literal delimiter `||`:
+
+```text
+v0||source_ref||atom_type||operator_id||operator_version||C(content)||C(filtered_params)
+```
+
+Component order and serialization are fixed as follows:
+
+| Index | Component | Canonical serialization | Null / missing handling |
+|---:|---|---|---|
+| 0 | Schema version | Literal string `v0` | Required |
+| 1 | `source_ref` | String value encoded as UTF-8 | Required; MUST be a non-empty string |
+| 2 | `atom_type` | String value encoded as UTF-8 | Required |
+| 3 | `operator_id` | String value encoded as UTF-8 | Required |
+| 4 | `operator_version` | String value encoded as UTF-8 | Required |
+| 5 | `content` | `C(content)` using canonical JSON below | Required |
+| 6 | filtered identity parameters | `C(filtered_params)` using canonical JSON below | Missing/empty allowlist serializes as `{}` |
+
+The canonical JSON function is exactly:
+
+```python
+json.dumps(
+    value,
+    sort_keys=True,
+    separators=(",", ":"),
+    ensure_ascii=True,
+    allow_nan=False,
+)
+```
+
+The filtered parameter object is exactly:
+
+```python
+ALLOWED_ID_PARAMS = {"segment_index", "span_start", "span_end"}
+
+filtered_params = {
+    k: params[k]
+    for k in sorted(params.keys())
+    if k in ALLOWED_ID_PARAMS and params[k] is not None
+}
+```
+
+The preimage construction is therefore normatively defined as:
+
+```python
+CANONICAL_DELIMITER = "||"
+
+def compute_canonical_preimage(
+    source_ref: str,
+    atom_type: str,
+    operator_id: str,
+    operator_version: str,
+    content: Any,
+    params: dict,
+) -> str:
+    allowed_keys = {"segment_index", "span_start", "span_end"}
+    filtered_params = {
+        k: params[k]
+        for k in sorted(params.keys())
+        if k in allowed_keys and params[k] is not None
+    }
+
+    c_content = json.dumps(
+        content,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
+    c_params = json.dumps(
+        filtered_params,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
+
+    parts = [
+        "v0",
+        source_ref,
+        atom_type,
+        operator_id,
+        operator_version,
+        c_content,
+        c_params,
+    ]
+    return CANONICAL_DELIMITER.join(parts)
+```
+
+The identity digest is exactly:
+
+```python
+observation_id = hashlib.sha256(
+    compute_canonical_preimage(
+        source_ref,
+        atom_type,
+        operator_id,
+        operator_version,
+        content,
+        params,
+    ).encode("utf-8")
+).hexdigest()
+```
+
+No alternative delimiter, field order, coercion, escaping scheme, serialization format, or implicit normalization is permitted for v0. This serialization definition is normative and closes the v0 preimage-format ambiguity.
+
 ## 3. Canonicalization
 
 Canonical JSON serialization MUST use:
