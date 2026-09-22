@@ -106,3 +106,27 @@ Therefore the terminal evidence does not justify a GREEN post-merge verdict. The
 
 This snapshot records terminal evidence only; it does not claim that the two zero-job failures are test failures.
 
+## Final forensic matrix
+
+This matrix closes the current evidence collection step without closing the underlying root-cause investigation.
+
+| Main commit | 1st zero-job run | 1st workflow | 2nd zero-job run | 2nd workflow | Jobs for both | Normal workflows on same push |
+|---|---:|---|---:|---|---|---|
+| `cb9dc767b0294d30c042a40c72a6503dab31a85e` | `35776095200` | `import-historical.yml` | `35776096278` | `test.yml` | `[]` / `[]` | materialized and successful |
+| `fb0aa977b3e6b508a40bd98073da16a07935540c` | `35778665306` | `import-historical.yml` | `35778666431` | `test.yml` | `[]` / `[]` | materialized and successful |
+| `7bd89b24272fef107da01503abe2d5bf8130febc` | `35779045627` | `import-historical.yml` | `35779047632` | `test.yml` | `[]` / `[]` | materialized and successful |
+
+For all six listed zero-job runs, the exact workflow-jobs endpoint returned `total_count=0` and `jobs=[]`. The first/second ordering is therefore stable across three consecutive `main` commits and is not unique to PR #147.
+
+### Final evidence classification
+
+- **OBSERVED:** the same ordered pair of zero-job workflow failures recurs on three consecutive `main` commits.
+- **VERIFIED:** exact run IDs, workflow identities, and zero-job results for all six runs; normal workflows on the same pushes materialized jobs and succeeded.
+- **INFERRED:** the anomaly is upstream of ordinary job execution and is consistent with workflow/check-suite materialization behavior.
+- **UNKNOWN:** the exact internal GitHub Actions mechanism that produces `failure` with zero jobs; the underlying causal mechanism remains unproven.
+
+**ROOT CAUSE = UNRESOLVED**
+
+**Post-merge main: INCONCLUSIVE / HOLD**
+
+No workflow, test, threshold, provenance identity, or Frozen Core change is authorized by this forensic record.
