@@ -54,10 +54,13 @@ def test_control_observation_validates() -> None:
 def test_treatment_requires_observed_single_cpu_affinity() -> None:
     observation = _observation("CPU_AFFINITY")
     observation["cpu_affinity_after"] = [0]
-    assert validate_observation(
-        observation,
-        expected_target_commit="a" * 40,
-    ) == []
+    assert (
+        validate_observation(
+            observation,
+            expected_target_commit="a" * 40,
+        )
+        == []
+    )
 
 
 def test_treatment_rejects_unverified_affinity() -> None:
