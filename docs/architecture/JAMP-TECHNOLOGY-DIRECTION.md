@@ -170,6 +170,120 @@ JAMP can then:
 
 This avoids treating model majority vote as automatic truth.
 
+### 3.7 Physical systems / JAMP Edge
+
+JAMP can also operate around physical devices and embedded systems as an **evidence layer for real-world observations**.
+
+The target is not to replace the device firmware or safety-critical controller. The preferred architecture is:
+
+```
+Device sensors / logs / events
+            │
+            ▼
+      Edge Adapter
+            │
+            ▼
+     JAMP Evidence Layer
+            │
+      ┌─────┴─────┐
+      │           │
+   AI sensors   Evidence UI
+      │           │
+      └─────┬─────┘
+            ▼
+   Provenance / Conflict /
+   Experiment / Replay
+```
+
+Possible device classes include:
+
+- smart TVs and media devices;
+- washing machines and household appliances;
+- refrigerators and HVAC systems;
+- robot vacuums and domestic robots;
+- vehicles and mobility systems;
+- industrial equipment and PLC-connected systems;
+- IoT devices and sensor networks;
+- embedded Linux and Android devices.
+
+The integration depends on the device platform.
+
+### Embedded MCU / RTOS
+
+Small controllers may have limited RAM, flash and CPU resources and therefore may not be suitable for the complete JAMP runtime. In that case, a lightweight device adapter can expose telemetry, events and diagnostics to a gateway running JAMP-compatible evidence infrastructure.
+
+Typical implementation environments may include:
+
+- STM32-class microcontrollers with vendor HAL/SDK and an RTOS;
+- ESP32-class devices with an embedded SDK/RTOS;
+- Zephyr or similar embedded operating systems;
+- proprietary appliance firmware.
+
+### Embedded Linux / Android
+
+Devices with Linux or Android-class operating systems may support a local JAMP adapter or service when the vendor platform permits third-party software.
+
+Examples include:
+
+- embedded Linux services;
+- Android applications or services;
+- gateway daemons;
+- local diagnostic collectors.
+
+The exact integration boundary must be verified per device and vendor; JAMP should not assume root access, firmware modification or unrestricted system APIs.
+
+### Gateway architecture
+
+For constrained devices, the preferred deployment is:
+
+```
+Device
+  │
+  ├── sensors
+  ├── events
+  └── diagnostics
+        │
+        ▼
+  JAMP Edge Adapter
+        │
+        ▼
+  Evidence / Provenance
+        │
+        ├── AI perception
+        ├── conflict detection
+        ├── experiments
+        └── replay
+```
+
+A gateway may be a phone, home server, router-class computer, Raspberry Pi-class device, industrial edge computer or cloud-connected service, depending on latency, privacy and connectivity requirements.
+
+### Safety boundary
+
+JAMP Edge is primarily **observational and evidentiary**.
+
+It must not silently become a safety-critical control system. For appliances, vehicles, industrial machinery and other systems where incorrect commands can create physical risk, control functions remain under the device's certified or independently engineered control layer.
+
+JAMP can record:
+
+- sensor observations;
+- operating states;
+- error codes;
+- timestamps;
+- network events;
+- maintenance events;
+- intervention history;
+- diagnostic evidence.
+
+It can then investigate questions such as:
+
+**“Why did the device stop?”**
+
+without converting an unsupported hypothesis into a causal conclusion.
+
+A physical-system result follows the same JAMP epistemic rule as software experiments:
+
+**observe → preserve evidence → compare → test → expose conflict → conclude only when the evidence supports the conclusion.**
+
 ## 4. Product architecture
 
 The intended separation is:
