@@ -28,9 +28,10 @@ jobs:
           test "$(git rev-parse HEAD)" != "$TARGET_COMMIT"
           mapfile -t changed < <(git diff --name-only "$TARGET_COMMIT" HEAD)
           printf '%s\n' "${changed[@]}"
-          test "${#changed[@]}" -eq 2
+          test "${#changed[@]}" -eq 3
           printf '%s\n' "${changed[@]}" | grep -Fxq "scripts/research/exp21/exp19_tail_temporal_reconciliation.py"
           printf '%s\n' "${changed[@]}" | grep -Fxq ".github/workflows/exp21-exp19-tail-temporal-reconciliation.yml"
+          printf '%s\n' "${changed[@]}" | grep -Fxq ".github/workflows/exp19-performance.yml"
           test "$(git rev-parse "$TARGET_COMMIT:src/jamp/run.py")" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
           test "$(git rev-parse HEAD:src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 
