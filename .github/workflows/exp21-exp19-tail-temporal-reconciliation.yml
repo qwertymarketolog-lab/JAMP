@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - research/exp21-exp19-tail-temporal-reconcile
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
