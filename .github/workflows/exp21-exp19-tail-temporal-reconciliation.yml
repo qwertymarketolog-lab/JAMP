@@ -1,0 +1,72 @@
+name: EXP-21 EXP-19 Exact Tail Temporal Reconciliation
+
+on:
+  push:
+    branches:
+      - research/exp21-exp19-tail-temporal-reconcile
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_COMMIT: 8c6b6a40f019d727a1ef630975a2691a390affd6
+      PYTHONPATH: .:src
+    steps:
+      - name: Checkout exact reconciliation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify boundary source is unchanged from TARGET_COMMIT
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" != "$TARGET_COMMIT"
+          mapfile -t changed < <(git diff --name-only "$TARGET_COMMIT" HEAD)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fxq "scripts/research/exp21/exp19_tail_temporal_reconciliation.py"
+          printf '%s\n' "${changed[@]}" | grep -Fxq ".github/workflows/exp21-exp19-tail-temporal-reconciliation.yml"
+          test "$(git rev-parse "$TARGET_COMMIT:src/jamp/run.py")" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          test "$(git rev-parse HEAD:src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+
+      - name: Run exact-boundary temporal GC probe
+        run: |
+          python scripts/research/exp21/exp19_tail_temporal_reconciliation.py
+
+      - name: Validate artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("artifacts/research/exp21_exp19_tail_temporal_reconciliation.json")
+          d = json.loads(p.read_text())
+          assert d["status"] == "VERIFIED"
+          assert d["target_commit"] == "8c6b6a40f019d727a1ef630975a2691a390affd6"
+          assert d["n"] == 40
+          assert d["validation_errors"] == []
+          assert d["workload_id"] == "EXP-19-CANONICAL-G4-TAIL-TRIGGER-V1"
+          assert d["tail_indices_reference"] == [2, 15, 22, 35]
+          assert d["gc_callbacks_restored"] is True
+          assert d["gc_enabled_after"] is True
+          assert d["gc_thresholds_after"] == [700, 10, 10]
+          PY
+
+      - name: Upload reconciliation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-exp19-tail-temporal-reconciliation
+          path: artifacts/research/exp21_exp19_tail_temporal_reconciliation.json
+          if-no-files-found: error
