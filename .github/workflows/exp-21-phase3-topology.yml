@@ -1,0 +1,61 @@
+name: EXP-21 Phase 3 Topology Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: "Exact commit SHA to execute"
+        required: true
+        type: string
+      pairs:
+        description: "Required paired observations"
+        required: false
+        default: "30"
+        type: string
+  pull_request:
+    paths:
+      - "research/exp21/**"
+      - "tests/research/exp21/**"
+      - "docs/research/EXP-21-PHASE3-CONTRACT.md"
+      - ".github/workflows/exp-21-phase3-topology.yml"
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[dev]"
+      - run: python -m pytest -q tests/research/exp21/test_phase3_contract.py
+
+  execution:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_commit }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e . scipy
+      - name: Verify target commit identity
+        env:
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+        run: test "$TARGET_COMMIT" = "$(git rev-parse HEAD)"
+      - name: Run Phase 3
+        env:
+          PYTHONPATH: .:src
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+        run: |
+          python scripts/research/exp21/phase3_topology.py \
+            --pairs "${{ inputs.pairs }}" \
+            --target-commit "$TARGET_COMMIT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp21-phase3-topology-results
+          path: artifacts/research/exp21_phase3_topology_results.json
+          if-no-files-found: error
