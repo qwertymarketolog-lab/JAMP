@@ -143,3 +143,38 @@ Any future attempt to reconcile the historical ~10–15 ms regime with the tempo
 - No causal claim from absence of a signature.
 - No new GC run under EXP-21.
 - PR #158 remains separate PR-CI evidence; it is not post-merge main evidence.
+
+## PR #164 Lifecycle Reconciliation
+
+
+This section records the read-only reconciliation performed after the PR test-merge object was investigated.
+
+**GitHub evidence (2026-09-23):**
+- PR: #164
+- PR state: `open`
+- `merged`: `false`
+- `merged_at`: `null`
+- Base: `main`
+- Base SHA: `98992070b59450a760da63544164af94a6520914`
+- Head SHA: `42ebdd89b463565a2d99388e8463404687f39532`
+- `merge_commit_sha`: `b1a3fa14439eb4a5e56106ff2c5d467fb9115d7f`
+- `refs/pull/164/head` → `42ebdd89b463565a2d99388e8463404687f39532`
+- `refs/pull/164/merge` → `b1a3fa14439eb4a5e56106ff2c5d467fb9115d7f`
+- `refs/heads/main` → `98992070b59450a760da63544164af94a6520914`
+- PR comments/review timeline exposed by the connector: empty
+
+**Interpretation:**
+
+`b1a3fa14…` is verified as the GitHub PR test/simulated merge commit published at `refs/pull/164/merge`. Its commit message is:
+
+`Merge 42ebdd89b463565a2d99388e8463404687f39532 into 98992070b59450a760da63544164af94a6520914`
+
+The existence of `merge_commit_sha` and `refs/pull/164/merge` is **not** evidence that PR #164 was actually merged. Actual merge remains **NOT OBSERVED / NOT VERIFIED**, because `merged=false`, `merged_at=null`, and `main` did not advance to `b1a3fa14…`.
+
+**CI scope:** successful workflows previously observed for `42ebdd89…` are PR CI. No post-merge main CI is established for `b1a3fa14…`.
+
+**Lifecycle status:** **VERIFIED TEST-MERGE / NOT-MERGED**.
+
+**Event provenance:** the exact server-side event that caused creation/update of `refs/pull/164/merge` remains **UNKNOWN** with the currently exposed GitHub connector event surface. No merge, ref update, rerun, or other GitHub mutation was performed during this reconciliation.
+
+**Frozen Core:** `src/jamp/run.py` was not modified; expected locked blob remains `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
