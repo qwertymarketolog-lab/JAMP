@@ -29,3 +29,14 @@ Current state: see [STATUS.md](STATUS.md).
 - scheme generation
 - substitution convergence beyond current vocabulary
 - P18.4 as closed or partially closed causal claim
+
+
+## License and project rights
+
+JAMP source code is licensed under the **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**. See [LICENSE](LICENSE).
+
+The repository-level IP and licensing policy is documented in [docs/legal/JAMP-IP-LICENSING-POLICY.md](docs/legal/JAMP-IP-LICENSING-POLICY.md), with project copyright recorded in [COPYRIGHT](COPYRIGHT) and attribution/notice information in [NOTICE](NOTICE).
+
+The JAMP name and marks are separate from the software license. Trademark registration is a separate legal process.
+
+The licensing policy does not change the Frozen Core boundary.
