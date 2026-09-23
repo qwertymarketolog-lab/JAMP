@@ -1,0 +1,77 @@
+name: EXP-21 EXP-19 Exact Tail Temporal Reconciliation
+
+on:
+  push:
+    branches:
+      - research/exp21-exp19-exact-boundary-ci
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_COMMIT: 8c6b6a40f019d727a1ef630975a2691a390affd6
+      PYTHONPATH: .:src
+    steps:
+      - name: Checkout workflow revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Materialize probe before target checkout
+        env:
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          git show "$WORKFLOW_SHA:scripts/research/exp21/exp19_exp19_tail_temporal_reconciliation.py" > "$RUNNER_TEMP/reconciliation.py"
+          git show "$WORKFLOW_SHA:scripts/research/exp21/exp19_tail_temporal_reconciliation.py" > "$RUNNER_TEMP/reconciliation.py"
+
+      - name: Checkout exact target commit
+        run: |
+          git checkout --detach "$TARGET_COMMIT"
+          test "$(git rev-parse HEAD)" = "$TARGET_COMMIT"
+
+      - name: Verify Frozen Core
+        run: |
+          test "$(git hash-object src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+
+      - name: Run exact-boundary temporal GC probe
+        run: |
+          python "$RUNNER_TEMP/reconciliation.py"
+
+      - name: Validate terminal artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifacts/research/exp21_exp19_tail_temporal_reconciliation.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          assert data["status"] == "VERIFIED"
+          assert data["target_commit"] == "8c6b6a40f019d727a1ef630975a2691a390affd6"
+          assert data["frozen_core_blob"] == "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          assert data["n"] == 40
+          assert data["validation_errors"] == []
+          assert data["reference_tail_indices"] == [2, 15, 22, 35]
+          assert data["gc_callbacks_restored"] is True
+          assert data["gc_enabled_after"] is True
+          assert data["gc_thresholds_after"] == [700, 10, 10]
+          PY
+
+      - name: Upload reconciliation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-exp19-tail-temporal-reconciliation
+          path: artifacts/research/exp21_exp19_tail_temporal_reconciliation.json
+          if-no-files-found: error
