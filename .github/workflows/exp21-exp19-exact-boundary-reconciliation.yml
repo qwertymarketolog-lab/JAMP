@@ -24,7 +24,6 @@ jobs:
         env:
           WORKFLOW_SHA: ${{ github.sha }}
         run: |
-          git show "$WORKFLOW_SHA:scripts/research/exp21/exp19_exp19_tail_temporal_reconciliation.py" > "$RUNNER_TEMP/reconciliation.py"
           git show "$WORKFLOW_SHA:scripts/research/exp21/exp19_tail_temporal_reconciliation.py" > "$RUNNER_TEMP/reconciliation.py"
 
       - name: Checkout exact target commit
