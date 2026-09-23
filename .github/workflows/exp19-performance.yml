@@ -71,6 +71,11 @@ jobs:
           PYTHONPATH: .:src
         run: |
           pytest -q tests/research/exp19/ci_tail_trigger_probe.py -s 2>&1 | tee exp19-tail-trigger-probe.txt
+      - name: Run EXP-21 exact EXP-19 temporal GC reconciliation
+        env:
+          PYTHONPATH: .:src
+        run: |
+          python scripts/research/exp21/exp19_tail_temporal_reconciliation.py
       - name: Run EXP-19 Vector #3 switchinterval sweep
         env:
           PYTHONPATH: .:src
@@ -81,6 +86,12 @@ jobs:
         with:
           name: exp19-tail-trigger-probe
           path: exp19-tail-trigger-probe.txt
+          if-no-files-found: error
+      - name: Upload EXP-21 exact EXP-19 temporal reconciliation
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-exp19-tail-temporal-reconciliation
+          path: artifacts/research/exp21_exp19_tail_temporal_reconciliation.json
           if-no-files-found: error
       - name: Upload EXP-19 Vector #3 switchinterval evidence
         uses: actions/upload-artifact@v4
