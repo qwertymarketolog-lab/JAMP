@@ -203,3 +203,27 @@ Together with the five previously completed PR workflows, current PR CI is **7/7
 **Non-actions:** no merge, ref update, rerun, or other GitHub mutation was performed as part of this reconciliation.
 
 **Frozen Core:** `src/jamp/run.py` remains at locked blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+
+### Final reconciliation — current PR state
+
+Read-only GitHub reconciliation immediately before this evidence update:
+
+- PR: #164
+- PR state: `open`
+- `merged`: `false`
+- `merged_at`: `null`
+- Base: `main`
+- Base SHA / current `main`: `98992070b59450a760da63544164af94a6520914`
+- Current PR HEAD: `134f20935190b713822d378d7224ebd022e5f972`
+- Current `refs/pull/164/head` → `134f20935190b713822d378d7224ebd022e5f972`
+- Current `refs/pull/164/merge` → `2226adece9ea312cc95e8c96f8da61965ab1c3c5`
+- PR metadata `merge_commit_sha` → `2226adece9ea312cc95e8c96f8da61965ab1c3c5`
+- Current test-merge relationship: `134f2093… + main 98992070… → 2226adece…`
+
+**Verified interpretation:** `2226adece…` is the current GitHub PR test/simulated merge ref for HEAD `134f2093…`. It is not evidence of an actual merge of PR #164 into `main`.
+
+**Reconciliation:**
+
+`HEAD 134f20935190b713822d378d7224ebd022e5f972 → test-merge 2226adece9ea312cc95e8c96f8da61965ab1c3c5 → main 98992070b59450a760da63544164af94a6520914`
+
+**Non-actions:** this update changes only this documentation file. No merge, main ref update, Frozen Core modification, CI rerun, or threshold change is performed by this action.
