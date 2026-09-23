@@ -10,7 +10,7 @@ It is a project policy and provenance record. It is not a substitute for legal a
 
 The current project-level copyright notice is:
 
-**Copyright (C) 2026 Eduard Leonidovich Viskunov.**
+**Copyright (C) 2026 Viskunov Eduard Leonidovich.**
 
 Copyright in an individual contribution remains with its author unless a separate written agreement provides otherwise.
 
