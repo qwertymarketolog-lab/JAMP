@@ -227,3 +227,20 @@ Read-only GitHub reconciliation immediately before this evidence update:
 `HEAD 134f20935190b713822d378d7224ebd022e5f972 → test-merge 2226adece9ea312cc95e8c96f8da61965ab1c3c5 → main 98992070b59450a760da63544164af94a6520914`
 
 **Non-actions:** this update changes only this documentation file. No merge, main ref update, Frozen Core modification, CI rerun, or threshold change is performed by this action.
+
+### Final test-merge state recorded before evidence update
+
+**Observed immediately before this documentation commit (2026-09-23):**
+
+- PR HEAD: `1eaea587241ab969a35e3ee34cfa66e01fa50fc9`
+- `refs/pull/164/head` → `1eaea587241ab969a35e3ee34cfa66e01fa50fc9`
+- `refs/pull/164/merge` → `3f95b5697da41c4de4850455f187a41a51809ae6`
+- PR metadata `merge_commit_sha` → `3f95b5697da41c4de4850455f187a41a51809ae6`
+- `refs/heads/main` → `98992070b59450a760da63544164af94a6520914`
+- PR state: `open`
+- `merged`: `false`
+- `merged_at`: `null`
+
+**Verified interpretation:** `3f95b569…` was the GitHub PR test/simulated merge object for HEAD `1eaea587…` against main `98992070…`. It was not evidence of an actual merge into `main`.
+
+**Important lifecycle note:** this documentation commit itself advances PR HEAD, so GitHub may regenerate `refs/pull/164/merge`. Therefore `3f95b569…` is recorded here as the verified test-merge state observed immediately before this evidence update, not as a claim that it will remain the current merge ref after the update.
