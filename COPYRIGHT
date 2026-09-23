@@ -1,0 +1,27 @@
+# JAMP Copyright
+
+Copyright (C) 2026 Viskunov Eduard Leonidovich.
+
+Unless a file or directory states otherwise, JAMP project code is distributed under the GNU Affero General Public License, version 3 (AGPL-3.0-only), as provided in LICENSE.
+
+## Ownership and provenance
+
+This file records the project-level copyright notice. It does not by itself assign or transfer copyright.
+
+Individual contributors retain copyright in their original contributions unless a separate written agreement states otherwise. Contributions are accepted only under the repository's contribution and licensing terms.
+
+The Git history is part of the project's provenance record, but repository history is not a substitute for a separate copyright assignment or contributor agreement.
+
+## Frozen Core
+
+The JAMP Frozen Core remains protected by the project's engineering invariants. Licensing does not authorize weakening, bypassing, or silently changing the Frozen Core contracts.
+
+## Future commercial licensing
+
+A future commercial or proprietary license for JAMP-owned code may be offered only to the extent that JAMP has sufficient rights to grant it. If the project adopts dual licensing, contributor rights and the required contributor agreement will be documented before that model is used.
+
+## Trademark
+
+JAMP is the project name and is separate from the copyright license. Trademark rights are not granted by AGPL-3.0-only.
+
+Trademark registration and clearance are tracked separately from the software license.

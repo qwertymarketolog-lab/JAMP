@@ -110,3 +110,16 @@ A clean result means the checks passed; it does not mean a research milestone is
 ## 9. Extensions
 
 Third-party engines and plugins belong above the verified core boundary. They may consume stable public contracts but must not mutate causal history, bypass provenance, or import private research implementation details. Start from `templates/jamp-plugin/` and keep extension-specific dependencies outside the core package.
+
+
+## 10. Licensing and contributions
+
+JAMP code is licensed under the GNU Affero General Public License, version 3 (AGPL-3.0-only). See LICENSE.
+
+Project-level IP and licensing policy is maintained in docs/legal/JAMP-IP-LICENSING-POLICY.md.
+
+Contributors retain copyright in their original contributions unless a separate written agreement states otherwise. Opening a pull request does not by itself transfer copyright.
+
+JAMP does not currently rely on a blanket CLA or copyright assignment. If a future dual-licensing or proprietary licensing model requires additional rights, the project will publish the applicable contributor agreement before using that model for contributed code.
+
+Do not submit code copied from third-party sources unless its provenance and license are known and compatible with the intended JAMP distribution.
