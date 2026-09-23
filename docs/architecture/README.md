@@ -20,6 +20,8 @@ The product and technology direction beyond the experimental core is maintained 
 
 The direction positions JAMP as an **evidence-first layer for AI-era research and decision-support systems**, with applications including browser research, software engineering, scientific experimentation, enterprise knowledge and multi-AI systems.
 
+It also defines **JAMP Edge / Physical Systems** as an observational evidence layer for embedded devices, appliances, IoT, vehicles and industrial systems, using device adapters or gateways while keeping safety-critical control outside the JAMP evidence layer.
+
 ## P19 → P20.7 specification
 
 The onboarding-level architecture map, milestone contracts, gate semantics, and extension boundary are maintained in [`p19-p20.7.md`](p19-p20.7.md).
