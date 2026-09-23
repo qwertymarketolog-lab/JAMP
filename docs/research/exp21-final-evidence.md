@@ -146,8 +146,9 @@ Any future attempt to reconcile the historical ~10–15 ms regime with the tempo
 
 ## PR #164 Lifecycle Reconciliation
 
+This section records the read-only reconciliation of PR #164 across two observed GitHub test-merge states.
 
-This section records the read-only reconciliation performed after the PR test-merge object was investigated.
+### Historical test-merge state 1
 
 **GitHub evidence (2026-09-23):**
 - PR: #164
@@ -161,20 +162,44 @@ This section records the read-only reconciliation performed after the PR test-me
 - `refs/pull/164/head` → `42ebdd89b463565a2d99388e8463404687f39532`
 - `refs/pull/164/merge` → `b1a3fa14439eb4a5e56106ff2c5d467fb9115d7f`
 - `refs/heads/main` → `98992070b59450a760da63544164af94a6520914`
-- PR comments/review timeline exposed by the connector: empty
 
-**Interpretation:**
+**Interpretation:** `b1a3fa14…` was the GitHub PR test/simulated merge commit for head `42ebdd89…`. It was not evidence of an actual merge.
 
-`b1a3fa14…` is verified as the GitHub PR test/simulated merge commit published at `refs/pull/164/merge`. Its commit message is:
+### Current test-merge state 2
 
-`Merge 42ebdd89b463565a2d99388e8463404687f39532 into 98992070b59450a760da63544164af94a6520914`
+After the evidence-record commit, PR HEAD advanced to:
 
-The existence of `merge_commit_sha` and `refs/pull/164/merge` is **not** evidence that PR #164 was actually merged. Actual merge remains **NOT OBSERVED / NOT VERIFIED**, because `merged=false`, `merged_at=null`, and `main` did not advance to `b1a3fa14…`.
+- Head SHA: `4dd1e4c9f5bd3a3695ebceb7eceaefae4f467129`
+- PR state: `open`
+- `merged`: `false`
+- `merged_at`: `null`
+- Base SHA: `98992070b59450a760da63544164af94a6520914`
+- Current `merge_commit_sha`: `decd8a8d285815222ed3f33e19f6bf0a7f4e4a5a`
+- `refs/pull/164/head` → `4dd1e4c9f5bd3a3695ebceb7eceaef4f467129`
+- `refs/pull/164/merge` → `decd8a8d285815222ed3f33e19f6bf0a7f4e4a5a`
+- `refs/heads/main` → `98992070b59450a760da63544164af94a6520914`
 
-**CI scope:** successful workflows previously observed for `42ebdd89…` are PR CI. No post-merge main CI is established for `b1a3fa14…`.
+The current test-merge commit message is:
+
+`Merge 4dd1e4c9f5bd3a3695ebceb7eceaef4f467129 into 98992070b59450a760da63544164af94a6520914`
+
+**Interpretation:** `decd8a8d…` is verified as the second GitHub PR test/simulated merge commit, generated for the new HEAD `4dd1e4c9…`. It is not a merge of PR #164 into `main`.
+
+### Terminal PR CI for current HEAD
+
+For HEAD `4dd1e4c9…`, the required PR workflows reached terminal success:
+
+- P23.0-B Cold Replay Diagnostic: run `35830117269`, conclusion `success`
+- Developer Quality: run `35830117237`, conclusion `success`
+
+Together with the five previously completed PR workflows, current PR CI is **7/7 terminal success** for HEAD `4dd1e4c9…`.
+
+**CI scope:** this is PR-level CI. It is not post-merge main CI.
 
 **Lifecycle status:** **VERIFIED TEST-MERGE / NOT-MERGED**.
 
-**Event provenance:** the exact server-side event that caused creation/update of `refs/pull/164/merge` remains **UNKNOWN** with the currently exposed GitHub connector event surface. No merge, ref update, rerun, or other GitHub mutation was performed during this reconciliation.
+**Event provenance:** the exact server-side event that caused creation/update of either test-merge ref remains **UNKNOWN** with the currently exposed GitHub connector event surface.
 
-**Frozen Core:** `src/jamp/run.py` was not modified; expected locked blob remains `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+**Non-actions:** no merge, ref update, rerun, or other GitHub mutation was performed as part of this reconciliation.
+
+**Frozen Core:** `src/jamp/run.py` remains at locked blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
