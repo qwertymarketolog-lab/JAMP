@@ -32,8 +32,7 @@ def scan(text: str) -> list[Token]:
             tokens.append(Token("WS", " "))
         elif i + 1 < len(text) and text[i:i + 2] == slash + slash:
             i += 2
-            while i < len(text) and text[i] not in "\r
-": i += 1
+            while i < len(text) and text[i] not in "\r\n": i += 1
         elif i + 1 < len(text) and text[i:i + 2] == slash + star:
             end = text.find(star + slash, i + 2)
             if end < 0: raise BSLTokenizationError("unterminated block comment")
