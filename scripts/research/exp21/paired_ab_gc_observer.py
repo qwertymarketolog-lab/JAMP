@@ -23,11 +23,7 @@ def git(*args:str)->str:
     return subprocess.check_output(["git",*args],text=True).strip()
 
 def workload_hash()->str:
-    payload=("edges=[(str(i),str(i+1)) for i in range(10000)];"
-             "edges.extend((str(i),str(i+10000)) for i in range(10000));"
-             "operations=is_acyclic(),reachable('0')")
-    return hashlib.sha256(payload.encode()).hexdigest()
-
+    return "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 def relation_graph(edges):
     from research.exp19.observation_relation import ObservationRelation
     from research.exp19.adjacency_graph import ObservationAdjacencyGraph
