@@ -7,11 +7,6 @@ from path_policy import evaluate_path
 from task_loader import TaskContract
 
 
-class Decision(StrEnum):
-    ALLOW = "ALLOW"
-    REJECT = "REJECT"
-    INCONCLUSIVE = "INCONCLUSIVE"
-
 
 def evaluate(
     *,
