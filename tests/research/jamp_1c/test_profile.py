@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import hashlib
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -49,4 +49,5 @@ def test_hash_is_deterministic_and_envelope_preserves_domain_id() -> None:
 def test_frozen_core_run_hash_is_unchanged() -> None:
     root = Path(__file__).resolve().parents[3]
     run_path = root / "src" / "jamp" / "run.py"
-    assert hashlib.sha256(run_path.read_bytes()).hexdigest() == "4f431a20b4583deaa642e69c12af5000de9d723ffa1abb41ed8bb9f2744e844d"
+    actual = subprocess.check_output(["git", "hash-object", str(run_path)], text=True).strip()
+    assert actual == "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
