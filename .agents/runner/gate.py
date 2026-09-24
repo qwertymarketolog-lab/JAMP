@@ -5,6 +5,7 @@ from __future__ import annotations
 from decision import Decision
 from path_policy import evaluate_path
 from task_loader import TaskContract
+
 from provenance import (
     LOCKED_CORE_BLOB,
     ProvenanceEvidence,
