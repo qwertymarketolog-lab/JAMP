@@ -7,10 +7,10 @@ propose an action and cannot mutate state directly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class State(str, Enum):
+class State(StrEnum):
     BOOTSTRAP = "BOOTSTRAP"
     LOAD_TASK = "LOAD_TASK"
     HYPOTHESIS = "HYPOTHESIS"

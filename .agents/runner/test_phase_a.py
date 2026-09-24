@@ -1,4 +1,3 @@
-from .evidence import Evidence
 from .policy import Decision, evaluate
 from .state_machine import RunnerState, State, TransitionError, transition
 from .task_loader import TaskValidationError, load_task, path_allowed

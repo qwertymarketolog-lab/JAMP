@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-import re
 from typing import Any
 
 import yaml
@@ -58,7 +58,7 @@ def path_allowed(task: TaskContract, path: str) -> bool:
         return False
 
     def matches(pattern: str) -> bool:
-        return candidate.match(pattern) or PurePosixPath(pattern.rstrip("/**")).match(str(candidate))
+        return candidate.match(pattern) or candidate.match(pattern.removesuffix("/**"))
 
     if any(matches(pattern) for pattern in task.forbidden_paths):
         return False

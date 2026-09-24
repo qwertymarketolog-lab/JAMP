@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
 
 from .evidence import Evidence, require_evidence
 
 
-def build_resume_payload(*, state: str, evidence: Evidence | None, previous_action: str | None = None) -> dict[str, Any]:
+def build_resume_payload(
+    *,
+    state: str,
+    evidence: Evidence | None,
+    previous_action: str | None = None,
+) -> dict[str, Any]:
     verified = require_evidence(evidence)
     return {
         "state": state,
