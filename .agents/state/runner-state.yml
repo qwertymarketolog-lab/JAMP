@@ -1,0 +1,7 @@
+version: 1
+task_id: TASK-001
+state: BOOTSTRAP
+revision: 0
+terminal_state: null
+last_action_id: null
+evidence_refs: []

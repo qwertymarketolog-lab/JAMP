@@ -1,0 +1,5 @@
+version: 1
+queue:
+  - task_id: TASK-001
+    status: READY
+    contract: .agents/tasks/TASK-001.yml
