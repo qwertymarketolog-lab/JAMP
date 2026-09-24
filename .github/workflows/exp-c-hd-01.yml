@@ -1,0 +1,65 @@
+name: EXP-C-HD-01 C-HD formal reproduction
+
+on:
+  pull_request:
+    paths:
+      - "docs/research/EXP-C-HD-01.md"
+      - ".github/workflows/exp-c-hd-01.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout JAMP exact PR revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Verify JAMP Frozen Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git rev-parse HEAD:src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Install elan
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://elan.lean-lang.org/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Fetch frozen C-HD proof snapshot
+        shell: bash
+        env:
+          CHD_REPO: https://github.com/spicylemonade/c-hd-proof.git
+          CHD_SHA: 98c53accb47a505482a1781597ae14bf67e81cec
+        run: |
+          set -euo pipefail
+          git clone --no-tags "$CHD_REPO" "$RUNNER_TEMP/c-hd-proof"
+          cd "$RUNNER_TEMP/c-hd-proof"
+          git checkout --detach "$CHD_SHA"
+          test "$(git rev-parse HEAD)" = "$CHD_SHA"
+          sha256sum README.md REPRODUCE.md formal/check.sh formal/CheckAxioms.lean formal/Replay.lean > "$GITHUB_WORKSPACE/chd-source-checksums.txt"
+
+      - name: Reproduce C-HD frozen proof
+        shell: bash
+        run: |
+          set -o pipefail
+          cd "$RUNNER_TEMP/c-hd-proof"
+          bash formal/check.sh 2>&1 | tee "$GITHUB_WORKSPACE/chd-reproduction.log"
+
+      - name: Publish evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-c-hd-01-reproduction
+          path: |
+            chd-reproduction.log
+            chd-source-checksums.txt
+          if-no-files-found: error
