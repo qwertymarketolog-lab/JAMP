@@ -1,0 +1,17 @@
+{
+  "contract_version": "CIC-v0",
+  "core_id": "JAMP-FROZEN-CORE",
+  "hash_scheme": "git-blob-sha1",
+  "canonical_files": [
+    {
+      "path": "src/jamp/run.py",
+      "git_blob_sha1": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+    }
+  ],
+  "fail_closed": true,
+  "mutation_policy": "Any canonical hash mismatch is CORE_INTEGRITY_VIOLATION.",
+  "notes": [
+    "The 40-hex canonical value above is a Git blob SHA-1, not a SHA-256 digest.",
+    "CIC v0 records the existing Frozen Core identity exactly; a future dual-hash manifest may add a 64-hex SHA-256 value."
+  ]
+}
