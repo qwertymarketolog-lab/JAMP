@@ -49,9 +49,7 @@ def test_span_and_telemetry_are_not_identity_inputs() -> None:
         "operator_version": "v1",
         "content": {"kind": "bsl_query", "payload": "ВЫБРАТЬ A ИЗ T"},
     }
-    assert compute_preimage(params=base, **kwargs) == compute_preimage(
-        params=other, **kwargs
-    )
+    assert compute_preimage(params=base, **kwargs) == compute_preimage(params=other, **kwargs)
 
 
 def test_unknown_identity_keys_are_ignored() -> None:
@@ -68,18 +66,14 @@ def test_unknown_identity_keys_are_ignored() -> None:
         "operator_version": "v1",
         "content": {"kind": "extension_patch", "payload": "diff"},
     }
-    assert compute_preimage(params=params, **kwargs) == compute_preimage(
-        params=extended, **kwargs
-    )
+    assert compute_preimage(params=params, **kwargs) == compute_preimage(params=extended, **kwargs)
 
 
 def test_malformed_lexical_input_fails_closed() -> None:
     with pytest.raises(BSLTokenizationError):
         canonicalize_bsl_query('ВЫБРАТЬ "unterminated')
     with pytest.raises(BSLTokenizationError):
-        canonicalize_bsl_query(
-            "ВЫБРАТЬ A ИЗ T " + chr(47) + chr(42) + " unterminated"
-        )
+        canonicalize_bsl_query("ВЫБРАТЬ A ИЗ T " + chr(47) + chr(42) + " unterminated")
 
 
 def test_hash_is_deterministic_and_envelope_preserves_domain_id() -> None:
@@ -115,7 +109,5 @@ def test_hash_is_deterministic_and_envelope_preserves_domain_id() -> None:
 def test_frozen_core_run_hash_is_unchanged() -> None:
     root = Path(__file__).resolve().parents[3]
     run_path = root / "src" / "jamp" / "run.py"
-    actual = subprocess.check_output(
-        ["git", "hash-object", str(run_path)], text=True
-    ).strip()
+    actual = subprocess.check_output(["git", "hash-object", str(run_path)], text=True).strip()
     assert actual == "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
