@@ -1,7 +1,7 @@
 from path_policy import evaluate_path
 from policy import Decision, evaluate
 from state_machine import RunnerState, State, TransitionError, transition
-from task_loader import TaskValidationError, load_task, path_allowed
+from task_loader import TaskValidationError, load_task
 
 TASK = """task_id: TASK-001
 version: 1
