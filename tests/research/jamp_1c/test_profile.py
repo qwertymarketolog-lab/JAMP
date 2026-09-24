@@ -10,7 +10,6 @@ from jamp_1c.identity import compute_preimage, create_atom
 from jamp_1c.integration import to_jamp_envelope
 from jamp_1c.tokenizer import BSLTokenizationError, canonicalize_bsl_query
 
-
 SOURCE = "1c://conf-sha256:" + "a" * 64 + "/Catalog.Номенклатура"
 
 
