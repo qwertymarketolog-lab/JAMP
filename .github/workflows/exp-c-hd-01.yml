@@ -16,9 +16,19 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout JAMP exact PR revision
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Reject non-PR execution
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "FAIL-CLOSED: EXP-C-HD-01 requires pull_request.head.sha"
+          exit 1
 
       - name: Verify JAMP Frozen Core
         shell: bash
