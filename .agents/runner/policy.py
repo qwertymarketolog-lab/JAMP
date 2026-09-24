@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-
+from decision import Decision
 from path_policy import evaluate_path
 from task_loader import TaskContract
 
