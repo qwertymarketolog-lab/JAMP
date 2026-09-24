@@ -1,3 +1,4 @@
+from path_policy import evaluate_path
 from policy import Decision, evaluate
 from state_machine import RunnerState, State, TransitionError, transition
 from task_loader import TaskValidationError, load_task, path_allowed
@@ -48,3 +49,52 @@ def test_core_invariant_blob_is_not_written() -> None:
     before = core.read_bytes()
     after = core.read_bytes()
     assert before == after
+
+
+def test_absolute_path_is_rejected() -> None:
+    task = load_task(TASK)
+    assert evaluate_path(task, "/tmp/x.py") is Decision.REJECT
+
+
+def test_parent_traversal_is_rejected() -> None:
+    task = load_task(TASK)
+    assert evaluate_path(task, ".agents/../src/jamp/run.py") is Decision.REJECT
+
+
+def test_forbidden_path_overrides_allowed() -> None:
+    task = load_task(
+        """task_id: TASK-001
+version: 1
+scope:
+  allowed_paths:
+    - ".agents/**"
+  forbidden_paths:
+    - ".agents/runner/test_phase_a.py"
+"""
+    )
+    assert (
+        evaluate_path(task, ".agents/runner/test_phase_a.py")
+        is Decision.REJECT
+    )
+
+
+def test_valid_agents_path_is_allowed() -> None:
+    task = load_task(TASK)
+    assert evaluate_path(task, ".agents/runner/example.py") is Decision.ALLOW
+
+
+def test_outside_allowed_scope_is_rejected() -> None:
+    task = load_task(TASK)
+    assert evaluate_path(task, "README.md") is Decision.REJECT
+
+
+def test_core_path_is_rejected() -> None:
+    task = load_task(TASK)
+    assert evaluate_path(task, "src/jamp/run.py") is Decision.REJECT
+
+
+def test_path_policy_is_deterministic() -> None:
+    task = load_task(TASK)
+    first = evaluate_path(task, ".agents/runner/example.py")
+    second = evaluate_path(task, ".agents/runner/example.py")
+    assert first is second is Decision.ALLOW
