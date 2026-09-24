@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-from policy import Decision
+from decision import Decision
 from task_loader import TaskContract
 
 
