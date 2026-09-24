@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from decision import Decision
 from path_policy import evaluate_path
+from task_loader import TaskContract
 from provenance import (
     LOCKED_CORE_BLOB,
     ProvenanceEvidence,
     validate_provenance,
 )
-from task_loader import TaskContract
 
 REQUIRED_CI_FIELDS = {"workflow", "run_id", "job_id", "status", "conclusion"}
 

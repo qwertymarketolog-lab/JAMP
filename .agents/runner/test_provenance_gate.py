@@ -1,7 +1,7 @@
 from decision import Decision
 from gate import evaluate_gate
-from provenance import LOCKED_CORE_BLOB, CICheck, ProvenanceEvidence
 from task_loader import TaskContract
+from provenance import LOCKED_CORE_BLOB, CICheck, ProvenanceEvidence
 
 BASE = "6b066b282e7727a6bb01de33e64ce39df96f8d8c"
 TARGET = "2c836157267ce08626ff3ebdbde37e22d7d1c3f8"
