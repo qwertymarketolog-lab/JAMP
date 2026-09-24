@@ -26,9 +26,7 @@ def resolve_base_sha(
     ref_resolver: Callable[[str], str | None],
 ) -> BaseResolution:
     if not base_ref.strip():
-        return BaseResolution(
-            Decision.INCONCLUSIVE, base_ref, None, "missing base_ref"
-        )
+        return BaseResolution(Decision.INCONCLUSIVE, base_ref, None, "missing base_ref")
 
     if require_head_match and not expected_base_sha:
         return BaseResolution(
