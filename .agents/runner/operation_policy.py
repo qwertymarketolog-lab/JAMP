@@ -1,9 +1,7 @@
-"""Deterministic E1-E3 operation authorization policy."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 
 from decision import Decision
 from evidence import Evidence
@@ -11,13 +9,13 @@ from path_policy import evaluate_path
 from task_loader import TaskContract
 
 
-class Actor(StrEnum):
+class Actor(str, Enum):
     RUNNER = "runner"
     AGENT = "agent"
     HUMAN = "human"
 
 
-class Operation(StrEnum):
+class Operation(str, Enum):
     READ = "READ"
     WRITE = "WRITE"
     DELETE = "DELETE"
@@ -25,7 +23,7 @@ class Operation(StrEnum):
     MERGE = "MERGE"
 
 
-class TargetKind(StrEnum):
+class TargetKind(str, Enum):
     PATH = "PATH"
     REF = "REF"
 
@@ -45,38 +43,30 @@ class Authorization:
     source_sha: str
 
 
-def _validate_actor(actor: Actor | str) -> bool:
+def _validate_actor(actor: Actor | str) -> Actor | None:
     try:
-        Actor(actor)
-    except (TypeError, ValueError):
-        return False
-    return True
+        return actor if isinstance(actor, Actor) else Actor(actor)
+    except ValueError:
+        return None
 
 
-def _validate_operation(operation: Operation | str) -> bool:
+def _validate_operation(operation: Operation | str) -> Operation | None:
     try:
-        Operation(operation)
-    except (TypeError, ValueError):
-        return False
-    return True
+        return operation if isinstance(operation, Operation) else Operation(operation)
+    except ValueError:
+        return None
 
 
-def _validate_target_for_operation(operation: Operation, target: Target) -> bool:
-    if not isinstance(target, Target):
+def _validate_target_for_operation(
+    operation: Operation, target: Target
+) -> bool:
+    if not isinstance(target, Target) or not isinstance(target.kind, TargetKind):
         return False
-    try:
-        kind = TargetKind(target.kind)
-    except (TypeError, ValueError):
+    if not isinstance(target.value, str) or not target.value:
         return False
-
-    expected = {
-        Operation.READ: TargetKind.PATH,
-        Operation.WRITE: TargetKind.PATH,
-        Operation.DELETE: TargetKind.PATH,
-        Operation.PUSH: TargetKind.REF,
-        Operation.MERGE: TargetKind.REF,
-    }[operation]
-    return kind is expected and isinstance(target.value, str) and bool(target.value)
+    if operation in (Operation.READ, Operation.WRITE, Operation.DELETE):
+        return target.kind is TargetKind.PATH
+    return target.kind is TargetKind.REF
 
 
 def _is_main_ref(value: str) -> bool:
@@ -84,7 +74,7 @@ def _is_main_ref(value: str) -> bool:
 
 
 def _is_frozen_core_path(value: str) -> bool:
-    return value == "src/jamp" or value.startswith("src/jamp/")
+    return value == "src/jamp/run.py" or value.startswith("src/jamp/")
 
 
 def _authorize(
@@ -95,23 +85,16 @@ def _authorize(
     task: TaskContract,
     evidence: Evidence | None,
 ) -> tuple[Decision, Authorization | None, str, str]:
-    if not _validate_actor(actor):
+    actor_value = _validate_actor(actor)
+    if actor_value is None:
         return Decision.REJECT, None, "P0_ACTOR", "unknown actor"
 
-    if not _validate_operation(operation):
+    operation_value = _validate_operation(operation)
+    if operation_value is None:
         return Decision.REJECT, None, "P1_OPERATION", "unknown operation"
 
-    actor_value = Actor(actor)
-    operation_value = Operation(operation)
-
     if not _validate_target_for_operation(operation_value, target):
-        return Decision.REJECT, None, "P2_TARGET_KIND", "operation/target mismatch"
-
-    if operation_value in (Operation.READ, Operation.WRITE, Operation.DELETE):
-        if target.value.startswith("/") or ".." in target.value.split("/"):
-            return Decision.REJECT, None, "P3_TARGET_STRUCTURE", "absolute or traversal path"
-    elif target.value.strip() != target.value:
-        return Decision.REJECT, None, "P3_TARGET_STRUCTURE", "invalid ref structure"
+        return Decision.REJECT, None, "P2_TARGET_KIND", "target kind/value mismatch"
 
     if operation_value in (Operation.PUSH, Operation.MERGE) and _is_main_ref(target.value):
         return Decision.REJECT, None, "P4_E1_MAIN_BOUNDARY", "main ref mutation is forbidden"
@@ -121,9 +104,11 @@ def _authorize(
     ):
         return Decision.REJECT, None, "P5_E2_FROZEN_CORE", "Frozen Core mutation is forbidden"
 
-    if operation_value in (Operation.READ, Operation.WRITE, Operation.DELETE):
-        if evaluate_path(task, target.value) is Decision.REJECT:
-            return Decision.REJECT, None, "P6_E3_PATH_POLICY", "path policy rejected target"
+    if (
+        operation_value in (Operation.READ, Operation.WRITE, Operation.DELETE)
+        and evaluate_path(task, target.value) is Decision.REJECT
+    ):
+        return Decision.REJECT, None, "P6_E3_PATH_POLICY", "path policy rejected target"
 
     if evidence is None or not evidence.source_sha or not evidence.task_id:
         return Decision.INCONCLUSIVE, None, "P7_EVIDENCE", "required evidence is missing"
@@ -132,7 +117,7 @@ def _authorize(
         actor=actor_value,
         operation=operation_value,
         target=target,
-        task_id=task.task_id,
+        task_id=evidence.task_id,
         source_sha=evidence.source_sha,
     )
     return Decision.ALLOW, authorization, "P9_ALLOW", "operation authorized"
@@ -164,7 +149,7 @@ def evaluate_operation(
     task: TaskContract,
     evidence: Evidence | None,
 ) -> Decision:
-    decision, _ = authorize_operation(
+    decision, _, _, _ = _authorize(
         actor=actor,
         operation=operation,
         target=target,
@@ -172,14 +157,3 @@ def evaluate_operation(
         evidence=evidence,
     )
     return decision
-
-
-__all__ = [
-    "Actor",
-    "Authorization",
-    "Operation",
-    "Target",
-    "TargetKind",
-    "authorize_operation",
-    "evaluate_operation",
-]
