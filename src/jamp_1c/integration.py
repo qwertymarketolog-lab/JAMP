@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from jamp.atomic_observation import AtomicObservation, create_atomic_observation
+
 from .identity import JAMP1CAtom
 
 
