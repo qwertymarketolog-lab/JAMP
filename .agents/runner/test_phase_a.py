@@ -72,10 +72,7 @@ scope:
     - ".agents/runner/test_phase_a.py"
 """
     )
-    assert (
-        evaluate_path(task, ".agents/runner/test_phase_a.py")
-        is Decision.REJECT
-    )
+    assert evaluate_path(task, ".agents/runner/test_phase_a.py") is Decision.REJECT
 
 
 def test_valid_agents_path_is_allowed() -> None:
