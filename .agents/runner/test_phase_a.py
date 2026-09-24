@@ -31,7 +31,7 @@ def test_forbidden_path() -> None:
 
 
 def test_missing_evidence() -> None:
-    assert evaluate(path_allowed=True, required_evidence_present=False) is Decision.INCONCLUSIVE
+    task = load_task(TASK)\n    assert evaluate(\n        task=task,\n        candidate_path=".agents/runner/example.py",\n        required_evidence_present=False,\n    ) is Decision.INCONCLUSIVE
 
 
 def test_malformed_task() -> None:
