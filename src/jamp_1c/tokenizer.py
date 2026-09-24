@@ -1,4 +1,5 @@
 """Fail-closed lexical canonicalizer for 1C BSL/query text."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -78,11 +79,7 @@ def scan(text: str) -> list[Token]:
             start = i
             i += 1
             while i < len(text):
-                if (
-                    text[i] == chr(34)
-                    and i + 1 < len(text)
-                    and text[i + 1] == chr(34)
-                ):
+                if text[i] == chr(34) and i + 1 < len(text) and text[i + 1] == chr(34):
                     i += 2
                     continue
                 if text[i] == chr(34):
@@ -99,11 +96,7 @@ def scan(text: str) -> list[Token]:
                 i += 1
             value = text[start:i]
             upper = value.upper()
-            tokens.append(
-                Token("KEYWORD", upper)
-                if upper in KEYWORDS
-                else Token("IDENT", value)
-            )
+            tokens.append(Token("KEYWORD", upper) if upper in KEYWORDS else Token("IDENT", value))
         else:
             tokens.append(Token("PUNCT", ch))
             i += 1
