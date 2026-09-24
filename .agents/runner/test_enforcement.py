@@ -8,7 +8,6 @@ import pytest
 
 from decision import Decision
 from evidence import Evidence
-from mutation_adapter import apply
 from operation_policy import (
     Actor,
     Operation,
@@ -17,6 +16,9 @@ from operation_policy import (
     authorize_operation,
     evaluate_operation,
 )
+from mutation_adapter import apply
+
+#
 from task_loader import TaskContract
 
 
