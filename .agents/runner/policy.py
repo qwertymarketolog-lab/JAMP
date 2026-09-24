@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from path_policy import evaluate_path
 from decision import Decision
+from path_policy import evaluate_path
 from task_loader import TaskContract
-
 
 
 def evaluate(
