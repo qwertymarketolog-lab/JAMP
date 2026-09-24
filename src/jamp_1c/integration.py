@@ -1,4 +1,5 @@
 """Optional transport adapter into the standard JAMP AtomicObservation envelope."""
+
 from __future__ import annotations
 
 from typing import Any
