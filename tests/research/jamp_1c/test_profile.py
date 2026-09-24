@@ -15,7 +15,7 @@ SOURCE = "1c://conf-sha256:" + "a" * 64 + "/Catalog.Номенклатура"
 
 def test_comments_are_removed_but_string_markers_survive() -> None:
     query = 'выбрать // remove\n "x // keep /* keep */" из T /* remove */ где A = 1'
-    assert canonicalize_bsl_query(query) == ('ВЫБРАТЬ "x // keep /* keep */" ИЗ T ГДЕ A = 1')
+    assert canonicalize_bsl_query(query) == 'ВЫБРАТЬ "x // keep /* keep */" ИЗ T ГДЕ A = 1'
 
 
 def test_keyword_normalization_does_not_modify_identifiers_or_strings() -> None:
@@ -64,10 +64,7 @@ def test_unknown_identity_keys_are_ignored() -> None:
         "atom_type": "hypothesis",
         "operator_id": "ai:test",
         "operator_version": "v1",
-        "content": {
-            "kind": "extension_patch",
-            "payload": "diff",
-        },
+        "content": {"kind": "extension_patch", "payload": "diff"},
     }
     assert compute_preimage(params=params, **kwargs) == compute_preimage(params=extended, **kwargs)
 
