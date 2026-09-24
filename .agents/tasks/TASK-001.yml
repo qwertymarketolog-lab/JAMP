@@ -1,0 +1,24 @@
+task_id: TASK-001
+version: 1
+status: READY
+objective: "Self-test the deterministic Phase A runner contract."
+scope:
+  allowed_paths:
+    - ".agents/tasks/**"
+    - ".agents/state/**"
+    - ".agents/runner/**"
+  forbidden_paths:
+    - "src/jamp/**"
+acceptance:
+  required_checks:
+    - valid_transition
+    - invalid_transition
+    - forbidden_path
+    - missing_evidence
+    - malformed_task
+    - core_integrity
+terminal_states:
+  - GREEN
+  - BLOCKED
+  - INCONCLUSIVE
+  - CONTRACT_VIOLATION
