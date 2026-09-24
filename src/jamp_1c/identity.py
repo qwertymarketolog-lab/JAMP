@@ -1,4 +1,5 @@
 """JAMP-1C v0 deterministic atomic identity."""
+
 from __future__ import annotations
 
 import hashlib
@@ -10,9 +11,7 @@ from .tokenizer import canonicalize_bsl_query
 
 SCHEMA_VERSION = "v0"
 CANONICAL_DELIMITER = "||"
-ALLOWED_STRUCTURAL_IDENTITY = frozenset(
-    {"extension_name", "module_type", "method_name"}
-)
+ALLOWED_STRUCTURAL_IDENTITY = frozenset({"extension_name", "module_type", "method_name"})
 ATOM_TYPES = frozenset({"observation", "hypothesis", "evidence"})
 PAYLOAD_KINDS = frozenset({"bsl_query", "extension_patch"})
 
@@ -27,9 +26,7 @@ def _json(value: Any) -> str:
             allow_nan=False,
         )
     except (TypeError, ValueError) as exc:
-        raise ValueError(
-            "value is not canonically JSON-serializable"
-        ) from exc
+        raise ValueError("value is not canonically JSON-serializable") from exc
 
 
 def _source(source_ref: str) -> None:
@@ -37,11 +34,7 @@ def _source(source_ref: str) -> None:
     if not isinstance(source_ref, str) or not source_ref.startswith(prefix):
         raise ValueError("invalid source_ref")
     digest, sep, _ = source_ref[len(prefix) :].partition("/")
-    if (
-        not sep
-        or len(digest) != 64
-        or any(c not in "0123456789abcdef" for c in digest)
-    ):
+    if not sep or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
         raise ValueError("invalid configuration SHA-256")
 
 
