@@ -8,7 +8,6 @@ from typing import Any
 
 from .tokenizer import canonicalize_bsl_query
 
-
 SCHEMA_VERSION = "v0"
 CANONICAL_DELIMITER = "||"
 ALLOWED_STRUCTURAL_IDENTITY = frozenset(
