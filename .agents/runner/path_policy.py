@@ -19,8 +19,10 @@ def evaluate_path(task: TaskContract, candidate_path: str) -> Decision:
         return Decision.REJECT
 
     def matches(pattern: str) -> bool:
-        normalized = pattern.removesuffix("/**")
-        return candidate.match(pattern) or candidate.match(normalized)
+        if pattern.endswith("/**"):
+            base = PurePosixPath(pattern.removesuffix("/**"))
+            return candidate == base or candidate.is_relative_to(base)
+        return candidate.match(pattern)
 
     # Forbidden scope always takes precedence over allowed scope.
     if any(matches(pattern) for pattern in task.forbidden_paths):
