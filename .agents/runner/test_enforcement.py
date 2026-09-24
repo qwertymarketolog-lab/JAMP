@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
-
 from decision import Decision
 from evidence import Evidence
 from mutation_adapter import apply
