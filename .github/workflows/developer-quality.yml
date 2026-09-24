@@ -30,6 +30,10 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -q -m "not exp19_perf"
+      - name: Run Phase A runner self-tests
+        env:
+          PYTHONPATH: .agents/runner
+        run: python -m pytest -q .agents/runner/test_phase_a.py
       - name: Run EXP-18 R1 DAG query target tests
         env:
           PYTHONPATH: src
