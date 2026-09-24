@@ -1,0 +1,27 @@
+task_id: TASK-002
+version: 1
+status: READY
+objective: "Implement deterministic base-ref resolution with fail-closed race protection."
+source:
+  base_ref: "main"
+  expected_base_sha: "6b066b282e7727a6bb01de33e64ce39df96f8d8c"
+  require_head_match: true
+scope:
+  allowed_paths:
+    - ".agents/runner/**"
+    - ".agents/tasks/**"
+  forbidden_paths:
+    - "src/jamp/**"
+acceptance:
+  required_checks:
+    - base_ref_resolves_and_matches
+    - base_ref_mismatch_is_inconclusive
+    - missing_expected_sha_is_inconclusive_when_required
+    - invalid_resolved_sha_is_inconclusive
+    - resolver_exception_fails_closed
+    - task_source_contract
+    - task_rejects_required_head_match_without_expected_sha
+terminal_states:
+  - ALLOW
+  - REJECT
+  - INCONCLUSIVE
