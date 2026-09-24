@@ -27,11 +27,16 @@ def test_invalid_transition() -> None:
 
 def test_forbidden_path() -> None:
     task = load_task(TASK)
-    assert not path_allowed(task, "src/jamp/run.py")
+    assert evaluate_path(task, "src/jamp/run.py") is Decision.REJECT
 
 
 def test_missing_evidence() -> None:
-    task = load_task(TASK)\n    assert evaluate(\n        task=task,\n        candidate_path=".agents/runner/example.py",\n        required_evidence_present=False,\n    ) is Decision.INCONCLUSIVE
+    task = load_task(TASK)
+    assert evaluate(
+        task=task,
+        candidate_path=".agents/runner/example.py",
+        required_evidence_present=False,
+    ) is Decision.INCONCLUSIVE
 
 
 def test_malformed_task() -> None:
