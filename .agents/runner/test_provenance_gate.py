@@ -94,13 +94,16 @@ def test_core_blob_mismatch_is_reject():
     bad = ProvenanceEvidence(
         **{**evidence((ok_check(),)).__dict__, "frozen_core_blob": "wrong"}
     )
-    assert evaluate_gate(
-        task=TASK,
-        evidence=bad,
-        expected_source_sha=BASE,
-        expected_target_sha=TARGET,
-        required_workflows=("quality",),
-    ) is Decision.REJECT
+    assert (
+        evaluate_gate(
+            task=TASK,
+            evidence=bad,
+            expected_source_sha=BASE,
+            expected_target_sha=TARGET,
+            required_workflows=("quality",),
+        )
+        is Decision.REJECT
+    )
 
 
 def test_source_or_target_mismatch_is_inconclusive():
