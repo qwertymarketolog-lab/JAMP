@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import pytest
 from decision import Decision
 from evidence import Evidence
 from mutation_adapter import apply
@@ -17,7 +16,7 @@ from operation_policy import (
     evaluate_operation,
 )
 from task_loader import TaskContract
-
+import pytest
 
 SOURCE_SHA = "TEST-SHA"
 
