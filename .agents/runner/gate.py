@@ -7,8 +7,8 @@ from path_policy import evaluate_path
 from task_loader import TaskContract
 
 from provenance import (
-    IndependenceClass,
     LOCKED_CORE_BLOB,
+    IndependenceClass,
     ProvenanceEvidence,
     derive_independence,
     validate_provenance,
