@@ -47,7 +47,11 @@ def test_finds_first_normal_to_zero_job_failure_boundary():
 
 def test_boundary_direction_is_failure_to_normal():
     parents = {START: ZERO, ZERO: NORMAL}
-    observations = {START: obs(START), ZERO: obs(ZERO), NORMAL: obs(NORMAL, jobs=1, conclusion="success")}
+    observations = {
+        START: obs(START),
+        ZERO: obs(ZERO),
+        NORMAL: obs(NORMAL, jobs=1, conclusion="success"),
+    }
 
     result = investigate_lineage(
         start_sha=START,
