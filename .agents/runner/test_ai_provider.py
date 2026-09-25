@@ -1,7 +1,6 @@
 from dataclasses import replace
 
 import pytest
-
 from ai_provider import (
     PROTOCOL_VERSION,
     AIObservation,
