@@ -61,9 +61,7 @@ def investigate_lineage(
 
     for _ in range(max_hops):
         if current in seen:
-            return Investigation(
-                "INCONCLUSIVE", tuple(observations), None, "parent lineage cycle"
-            )
+            return Investigation("INCONCLUSIVE", tuple(observations), None, "parent lineage cycle")
         seen.add(current)
 
         item = observe(current, workflow)
@@ -95,11 +93,7 @@ def investigate_lineage(
 
         observations.append(item)
 
-        zero_job_failure = (
-            item.status == "completed"
-            and item.conclusion == "failure"
-            and item.jobs_count == 0
-        )
+        zero_job_failure = item.status == "completed" and item.conclusion == "failure" and item.jobs_count == 0
         if not zero_job_failure:
             return Investigation(
                 "VERIFIED" if len(observations) > 1 else "INCONCLUSIVE",
@@ -127,6 +121,4 @@ def investigate_lineage(
             )
         current = parent
 
-    return Investigation(
-        "INCONCLUSIVE", tuple(observations), None, "maximum lineage depth reached"
-    )
+    return Investigation("INCONCLUSIVE", tuple(observations), None, "maximum lineage depth reached")
