@@ -1,46 +1,63 @@
-"""Investigate GitHub Actions zero-job workflow lineage.
+"""Fail-closed detector for GitHub Actions zero-job lineage boundaries.
 
-This module deliberately fails closed when the authoritative workflow lineage
-cannot be established.
+This module is provider-agnostic: GitHub/API adapters supply immutable observations;
+the investigator only classifies and links those observations.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Mapping
 
 
 @dataclass(frozen=True)
 class CIObservation:
-    run_id: int
-    status: str
+    sha: str
+    workflow: str
+    run_id: int | None
+    event: str | None
+    branch: str | None
+    status: str | None
     conclusion: str | None
-    jobs_count: int
-    parent_run_id: int | None
+    jobs_count: int | None
+
+
+@dataclass(frozen=True)
+class Boundary:
+    normal_sha: str
+    failure_sha: str
+    failure_run_id: int
+    workflow: str
 
 
 @dataclass(frozen=True)
 class Investigation:
     state: str
     observations: tuple[CIObservation, ...]
-    root_run_id: int | None
+    boundary: Boundary | None
     reason: str
 
 
-Observer = Callable[[int], CIObservation]
-
-
 def investigate_lineage(
-    run_id: int,
-    observe: Observer,
+    *,
+    start_sha: str,
     workflow: str,
-    max_hops: int = 8,
+    parent_of: Callable[[str], str | None],
+    observe: Callable[[str, str], CIObservation | None],
+    max_hops: int = 100,
 ) -> Investigation:
-    """Trace a zero-job failure through authoritative parent workflow runs."""
-    del workflow
-    current = run_id
-    seen: set[int] = set()
+    """Walk parents until the first normal -> zero-job-failure boundary.
+
+    Missing observations, malformed terminal data, cycles, and exhausted
+    search are INCONCLUSIVE. No state is inferred from absent jobs data.
+    """
+
+    if not start_sha or not workflow or max_hops < 1:
+        return Investigation("INCONCLUSIVE", (), None, "invalid investigation contract")
+
+    seen: set[str] = set()
     observations: list[CIObservation] = []
+    current = start_sha
 
     for _ in range(max_hops):
         if current in seen:
@@ -48,28 +65,60 @@ def investigate_lineage(
         seen.add(current)
 
         item = observe(current, workflow)
-        observations.append(item)
-
-        zero_job_failure = (
-            item.status == "completed"
-            and item.conclusion == "failure"
-            and item.jobs_count == 0
-        )
-        if not zero_job_failure:
+        if item is None:
             return Investigation(
-                "VERIFIED" if len(observations) > 1 else "INCONCLUSIVE",
-                tuple(observations),
-                current,
-                "terminal non-zero-job workflow state",
+                "INCONCLUSIVE", tuple(observations), None, "missing CI observation"
             )
-
-        parent = item.parent_run_id
-        if parent is None:
+        if item.sha != current or item.workflow != workflow:
             return Investigation(
                 "INCONCLUSIVE",
                 tuple(observations),
                 None,
-                "zero-job failure has no authoritative parent",
+                "observation identity mismatch",
+            )
+        if item.run_id is None or item.status is None or item.conclusion is None:
+            return Investigation(
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "incomplete terminal metadata",
+            )
+        if item.jobs_count is None or item.jobs_count < 0:
+            return Investigation(
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "missing or invalid jobs count",
+            )
+
+        observations.append(item)
+
+        zero_job_failure = item.status == "completed" and item.conclusion == "failure"
+        zero_job_failure = zero_job_failure and item.jobs_count == 0
+        if not zero_job_failure:
+            return Investigation(
+                "VERIFIED" if len(observations) > 1 else "INCONCLUSIVE",
+                tuple(observations),
+                None
+                if len(observations) == 1
+                else Boundary(
+                    normal_sha=observations[-1].sha,
+                    failure_sha=observations[-2].sha,
+                    failure_run_id=observations[-2].run_id,  # type: ignore[arg-type]
+                    workflow=workflow,
+                ),
+                "normal predecessor found"
+                if len(observations) > 1
+                else "start SHA is not a zero-job failure",
+            )
+
+        parent = parent_of(current)
+        if not parent:
+            return Investigation(
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "zero-job failure has no parent evidence",
             )
         current = parent
 
