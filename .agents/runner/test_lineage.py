@@ -131,8 +131,15 @@ def test_invalid_input_is_inconclusive() -> None:
     assert result.reason == "invalid_verification_input"
 
 
-def test_local_claim_cannot_escalate_trust() -> None:
-    provider = FakeProvider(RUN.copy(), JOB.copy())
-    result = verify(provider)
-    assert result.verified is True
-    assert result.target_sha == SHA
+def test_malformed_sha_is_inconclusive() -> None:
+    result = verify_lineage(
+        provider=FakeProvider(RUN.copy(), JOB.copy()),
+        repository="qwertymarketolog-lab/JAMP",
+        run_id=36084358380,
+        job_id=107912825302,
+        expected_target_sha="not-a-sha",
+        expected_workflow_id=366569738,
+        expected_workflow_path=".github/workflows/research-loop-v0.yml",
+        expected_job_name="research-loop-gate",
+    )
+    assert not result.verified
