@@ -7,7 +7,6 @@ a decision, a state transition, or merge authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Final
 
 from evidence import Evidence
@@ -145,7 +144,10 @@ def validate_proposal(request: AIRequest, proposal: AIProposal) -> None:
         if not path_allowed(request.task, proposal.target.value):
             raise AIProviderError("target is outside task scope")
     elif operation is Operation.PUSH:
-        if proposal.target.kind is not TargetKind.REF or proposal.target.value in {"main", "refs/heads/main"}:
+        if proposal.target.kind is not TargetKind.REF or proposal.target.value in {
+            "main",
+            "refs/heads/main",
+        }:
             raise AIProviderError("main mutation rejected")
     elif operation is Operation.MERGE:
         raise AIProviderError("AI has no merge authority")
