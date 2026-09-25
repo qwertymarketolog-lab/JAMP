@@ -38,6 +38,23 @@ def test_finds_first_normal_to_zero_job_failure_boundary():
     assert result.boundary.failure_run_id == 123
 
 
+def test_boundary_direction_is_failure_to_normal():
+    parents = {START: ZERO, ZERO: NORMAL}
+    observations = {START: obs(START), ZERO: obs(ZERO), NORMAL: obs(NORMAL, jobs=1, conclusion="success")}
+
+    result = investigate_lineage(
+        start_sha=START,
+        workflow=WORKFLOW,
+        parent_of=lambda sha: parents.get(sha),
+        observe=lambda sha, workflow: observations.get(sha),
+    )
+
+    assert result.boundary == result.boundary
+    assert result.boundary is not None
+    assert result.boundary.failure_sha == START
+    assert result.boundary.normal_sha == ZERO
+
+
 def test_missing_jobs_is_inconclusive_not_pass():
     item = CIObservation(
         sha=START,
