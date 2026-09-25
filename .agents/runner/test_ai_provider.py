@@ -3,11 +3,11 @@ from dataclasses import replace
 import pytest
 
 from ai_provider import (
+    PROTOCOL_VERSION,
     AIObservation,
     AIProposal,
     AIProviderError,
     AIRequest,
-    PROTOCOL_VERSION,
     VerifiedEvidence,
     proposal_evidence,
     validate_proposal,
