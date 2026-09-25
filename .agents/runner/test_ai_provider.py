@@ -182,12 +182,8 @@ def test_17_missing_evidence_is_inconclusive():
 
 
 def test_18_nonterminal_or_jobs_empty_is_not_verified_evidence():
-    nonterminal = VerifiedEvidence(
-        "quality", "9", None, "in_progress", "", None, "PR"
-    )
-    empty_jobs = VerifiedEvidence(
-        "quality", "10", None, "completed", "failure", None, "jobs=[]"
-    )
+    nonterminal = VerifiedEvidence("quality", "9", None, "in_progress", "", None, "PR")
+    empty_jobs = VerifiedEvidence("quality", "10", None, "completed", "failure", None, "jobs=[]")
     # The provider contract records these as observations; neither is promoted
     # to Evidence/Decision by this interface.
     assert nonterminal.status != "completed"
