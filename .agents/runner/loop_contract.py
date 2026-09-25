@@ -19,11 +19,24 @@ class LoopState(StrEnum):
 
 _ALLOWED = {
     LoopState.OPEN: frozenset({LoopState.RUNNING, LoopState.HOLD}),
-    LoopState.RUNNING: frozenset({LoopState.AWAIT_CI, LoopState.FAILED, LoopState.HOLD}),
-    LoopState.AWAIT_CI: frozenset({LoopState.VERIFIED, LoopState.FAILED, LoopState.INCONCLUSIVE, LoopState.HOLD}),
+    LoopState.RUNNING: frozenset(
+        {LoopState.AWAIT_CI, LoopState.FAILED, LoopState.HOLD}
+    ),
+    LoopState.AWAIT_CI: frozenset(
+        {
+            LoopState.VERIFIED,
+            LoopState.FAILED,
+            LoopState.INCONCLUSIVE,
+            LoopState.HOLD,
+        }
+    ),
     LoopState.VERIFIED: frozenset({LoopState.CLOSED, LoopState.HOLD}),
-    LoopState.FAILED: frozenset({LoopState.RUNNING, LoopState.HOLD, LoopState.CLOSED}),
-    LoopState.INCONCLUSIVE: frozenset({LoopState.RUNNING, LoopState.HOLD, LoopState.CLOSED}),
+    LoopState.FAILED: frozenset(
+        {LoopState.RUNNING, LoopState.HOLD, LoopState.CLOSED}
+    ),
+    LoopState.INCONCLUSIVE: frozenset(
+        {LoopState.RUNNING, LoopState.HOLD, LoopState.CLOSED}
+    ),
     LoopState.HOLD: frozenset({LoopState.RUNNING, LoopState.CLOSED}),
     LoopState.CLOSED: frozenset(),
 }
@@ -36,7 +49,12 @@ class LoopTransition:
     evidence: tuple[str, ...]
 
 
-def transition(previous: LoopState, current: LoopState, *, evidence: tuple[str, ...]) -> LoopTransition:
+def transition(
+    previous: LoopState,
+    current: LoopState,
+    *,
+    evidence: tuple[str, ...],
+) -> LoopTransition:
     """Permit only declared transitions with non-empty evidence."""
     if current not in _ALLOWED[previous]:
         raise ValueError(f"invalid transition: {previous} -> {current}")
