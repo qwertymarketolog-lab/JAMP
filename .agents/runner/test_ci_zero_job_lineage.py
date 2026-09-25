@@ -33,8 +33,8 @@ def test_finds_first_normal_to_zero_job_failure_boundary():
 
     assert result.state == "VERIFIED"
     assert result.boundary is not None
-    assert result.boundary.normal_sha == ZERO
-    assert result.boundary.failure_sha == START
+    assert result.boundary.normal_sha == NORMAL
+    assert result.boundary.failure_sha == ZERO
     assert result.boundary.failure_run_id == 123
 
 
@@ -50,8 +50,8 @@ def test_boundary_direction_is_failure_to_normal():
     )
 
     assert result.boundary is not None
-    assert result.boundary.failure_sha == START
-    assert result.boundary.normal_sha == ZERO
+    assert result.boundary.failure_sha == ZERO
+    assert result.boundary.normal_sha == NORMAL
 
 
 def test_missing_jobs_is_inconclusive_not_pass():
