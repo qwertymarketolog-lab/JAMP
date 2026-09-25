@@ -73,15 +73,24 @@ def investigate_lineage(
             )
         if item.sha != current or item.workflow != workflow:
             return Investigation(
-                "INCONCLUSIVE", tuple(observations), None, "observation identity mismatch"
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "observation identity mismatch",
             )
         if item.run_id is None or item.status is None or item.conclusion is None:
             return Investigation(
-                "INCONCLUSIVE", tuple(observations), None, "incomplete terminal metadata"
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "incomplete terminal metadata",
             )
         if item.jobs_count is None or item.jobs_count < 0:
             return Investigation(
-                "INCONCLUSIVE", tuple(observations), None, "missing or invalid jobs count"
+                "INCONCLUSIVE",
+                tuple(observations),
+                None,
+                "missing or invalid jobs count",
             )
 
         observations.append(item)
@@ -95,9 +104,11 @@ def investigate_lineage(
             return Investigation(
                 "VERIFIED" if len(observations) > 1 else "INCONCLUSIVE",
                 tuple(observations),
-                None if len(observations) == 1 else Boundary(
-                    normal_sha=observations[-2].sha,
-                    failure_sha=item.sha,
+                None
+                if len(observations) == 1
+                else Boundary(
+                    normal_sha=observations[-1].sha,
+                    failure_sha=observations[-2].sha,
                     failure_run_id=observations[-2].run_id,  # type: ignore[arg-type]
                     workflow=workflow,
                 ),
