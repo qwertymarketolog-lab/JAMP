@@ -24,7 +24,7 @@ jobs:
           EXPECTED_WORKFLOW_ID: "366569738"
           EXPECTED_WORKFLOW_PATH: ".github/workflows/research-loop-v0.yml"
           EXPECTED_EVENT: "pull_request"
-          EXPECTED_JOB_NAME: "research-loop-gate"
+          EXPECTED_JOB_NAME: "Research Loop v0 Gate /"
         run: |
           set -euo pipefail
 
@@ -57,7 +57,7 @@ jobs:
           jobs = json.loads(sys.argv[2])["jobs"]
           matches = [
               job for job in jobs
-              if job["name"] == "research-loop-gate"
+              if job["name"] == "Research Loop v0 Gate /"
           ]
           assert len(matches) == 1
           job = matches[0]
