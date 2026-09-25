@@ -2,11 +2,11 @@ from dataclasses import replace
 
 import pytest
 from ai_provider import (
+    PROTOCOL_VERSION,
     AIObservation,
     AIProposal,
     AIProviderError,
     AIRequest,
-    PROTOCOL_VERSION,
     VerifiedEvidence,
     proposal_evidence,
     validate_proposal,
@@ -43,7 +43,7 @@ def request():
         iteration=0,
         source_sha=SHA,
         base_sha=BASE,
-        observations=("ci", "terminal", "github"),
+        observations=(AIObservation("ci", "terminal", "github"),),
         verified_evidence=(
             VerifiedEvidence("quality", "1", "2", "completed", "success", None, "PR"),
         ),
