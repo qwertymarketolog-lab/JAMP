@@ -1,8 +1,4 @@
-from ci_zero_job_lineage import (
-    CIObservation,
-    investigate_lineage,
-)
-
+from ci_zero_job_lineage import CIObservation, investigate_lineage
 
 WORKFLOW = ".github/workflows/import-historical.yml"
 START = "a" * 40
