@@ -49,7 +49,6 @@ def test_boundary_direction_is_failure_to_normal():
         observe=lambda sha, workflow: observations.get(sha),
     )
 
-    assert result.boundary == result.boundary
     assert result.boundary is not None
     assert result.boundary.failure_sha == START
     assert result.boundary.normal_sha == ZERO
