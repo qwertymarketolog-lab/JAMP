@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   research-loop-gate:
-    name: Research Loop v0 Gate /
+    name: Research Loop v0 Gate / TAMPERED
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact PR head
