@@ -7,12 +7,14 @@ on:
     paths:
       - ".agents/**"
       - ".github/workflows/research-loop-v0.yml"
+      - ".github/workflows/g1-trusted-lineage.yml"
 
 permissions:
   contents: read
 
 jobs:
   research-loop-gate:
+    name: Research Loop v0 Gate /
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact PR head

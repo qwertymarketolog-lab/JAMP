@@ -1,0 +1,69 @@
+name: G1 Trusted Lineage
+
+on:
+  workflow_run:
+    workflows:
+      - "Research Loop v0 Gate"
+    types:
+      - completed
+
+permissions:
+  actions: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  trusted-lineage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify trusted workflow boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          EXPECTED_WORKFLOW_ID: "366569738"
+          EXPECTED_WORKFLOW_PATH: ".github/workflows/research-loop-v0.yml"
+          EXPECTED_EVENT: "pull_request"
+          EXPECTED_JOB_NAME: "research-loop-gate"
+        run: |
+          set -euo pipefail
+
+          api="https://api.github.com/repos/${REPOSITORY}"
+          run_json="$(curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/actions/runs/${RUN_ID}")"
+
+          python - "${run_json}" <<'PY'
+          import json
+          import sys
+
+          run = json.loads(sys.argv[1])
+          assert run["id"] > 0
+          assert run["repository"]["full_name"] == "qwertymarketolog-lab/JAMP"
+          assert run["workflow_id"] == 366569738
+          assert run["path"] == ".github/workflows/research-loop-v0.yml"
+          assert run["event"] == "pull_request"
+          assert run["status"] == "completed"
+          assert run["conclusion"] == "success"
+          assert len(run["head_sha"]) == 40
+          print(f"verified run {run['id']} head_sha={run['head_sha']}")
+          PY
+
+          jobs_json="$(curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/actions/runs/${RUN_ID}/jobs?per_page=100")"
+
+          python - "${run_json}" "${jobs_json}" <<'PY'
+          import json
+          import sys
+
+          run = json.loads(sys.argv[1])
+          jobs = json.loads(sys.argv[2])["jobs"]
+          matches = [
+              job for job in jobs
+              if job["name"] == "research-loop-gate"
+          ]
+          assert len(matches) == 1
+          job = matches[0]
+          assert job["run_id"] == run["id"]
+          assert job["status"] == "completed"
+          assert job["conclusion"] == "success"
+          assert job["head_sha"] == run["head_sha"]
+          print(f"verified job {job['id']} name={job['name']}")
+          PY
