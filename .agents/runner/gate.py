@@ -7,8 +7,10 @@ from path_policy import evaluate_path
 from task_loader import TaskContract
 
 from provenance import (
+    IndependenceClass,
     LOCKED_CORE_BLOB,
     ProvenanceEvidence,
+    derive_independence,
     validate_provenance,
 )
 
@@ -26,6 +28,8 @@ def evaluate_gate(
     """Allow only on complete, non-contradictory, policy-compliant evidence."""
 
     if not validate_provenance(evidence):
+        return Decision.INCONCLUSIVE
+    if derive_independence(evidence) is not IndependenceClass.VERIFIED_INDEPENDENT_RUNNER:
         return Decision.INCONCLUSIVE
 
     if evidence.source_sha != expected_source_sha:
