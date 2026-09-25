@@ -15,7 +15,6 @@ from ai_provider import (
 from operation_policy import Operation, Target, TargetKind
 from task_loader import TaskContract
 
-
 SHA = "a" * 40
 BASE = "b" * 40
 
