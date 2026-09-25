@@ -1,0 +1,44 @@
+name: EXP-22 Phase 1 Environmental Profiling
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  phase1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run EXP-22 Phase 1
+        env:
+          PYTHONPATH: .:src
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          python scripts/research/exp22/phase1_environmental_profiling.py \
+            --target-commit "${{ github.event.pull_request.head.sha }}" \
+            --iterations 50 \
+            --output-artifact artifacts/research/exp22_phase1_evidence.json
+
+      - name: Upload EXP-22 Phase 1 evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase1-environmental-profiling
+          path: artifacts/research/exp22_phase1_evidence.json
+          if-no-files-found: error
