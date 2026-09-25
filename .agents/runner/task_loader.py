@@ -20,6 +20,9 @@ class TaskContract:
     version: int
     allowed_paths: tuple[str, ...]
     forbidden_paths: tuple[str, ...]
+    base_ref: str | None = None
+    expected_base_sha: str | None = None
+    require_head_match: bool = False
 
 
 def load_task(text: str) -> TaskContract:
@@ -34,6 +37,7 @@ def load_task(text: str) -> TaskContract:
     task_id = data.get("task_id")
     version = data.get("version")
     scope = data.get("scope")
+    source = data.get("source", {})
 
     if not isinstance(task_id, str) or not re.fullmatch(r"TASK-[0-9]{3,}", task_id):
         raise TaskValidationError("invalid task_id")
@@ -41,6 +45,8 @@ def load_task(text: str) -> TaskContract:
         raise TaskValidationError("invalid version")
     if not isinstance(scope, dict):
         raise TaskValidationError("missing scope")
+    if not isinstance(source, dict):
+        raise TaskValidationError("invalid source")
 
     allowed = scope.get("allowed_paths")
     forbidden = scope.get("forbidden_paths")
@@ -49,7 +55,31 @@ def load_task(text: str) -> TaskContract:
     if not isinstance(forbidden, list) or not all(isinstance(x, str) for x in forbidden):
         raise TaskValidationError("invalid forbidden_paths")
 
-    return TaskContract(task_id, version, tuple(allowed), tuple(forbidden))
+    base_ref = source.get("base_ref")
+    expected_base_sha = source.get("expected_base_sha")
+    require_head_match = source.get("require_head_match", False)
+
+    if base_ref is not None and (not isinstance(base_ref, str) or not base_ref.strip()):
+        raise TaskValidationError("invalid base_ref")
+    if expected_base_sha is not None and (
+        not isinstance(expected_base_sha, str)
+        or not re.fullmatch(r"[0-9a-fA-F]{40}", expected_base_sha)
+    ):
+        raise TaskValidationError("invalid expected_base_sha")
+    if not isinstance(require_head_match, bool):
+        raise TaskValidationError("invalid require_head_match")
+    if require_head_match and (base_ref is None or expected_base_sha is None):
+        raise TaskValidationError("head match requires base_ref and expected_base_sha")
+
+    return TaskContract(
+        task_id,
+        version,
+        tuple(allowed),
+        tuple(forbidden),
+        base_ref,
+        expected_base_sha,
+        require_head_match,
+    )
 
 
 def path_allowed(task: TaskContract, path: str) -> bool:

@@ -1,0 +1,74 @@
+name: Research Loop v0 Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".agents/**"
+      - ".github/workflows/research-loop-v0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  research-loop-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runner test dependency
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Verify Frozen Core blob
+        env:
+          EXPECTED_CORE_BLOB: 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a
+        run: |
+          actual="$(git rev-parse HEAD:src/jamp/run.py)"
+          test "$actual" = "$EXPECTED_CORE_BLOB"
+
+      - name: Test state machine
+        env:
+          PYTHONPATH: .agents/runner
+        run: pytest -q .agents/runner/test_loop_contract.py
+
+      - name: Emit terminal evidence
+        env:
+          GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          evidence = {
+              "state": "VERIFIED",
+              "scope": "PR",
+              "workflow": "Research Loop v0 Gate",
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "job_id": os.environ["GITHUB_JOB"],
+              "status": "completed",
+              "conclusion": "success",
+              "target_sha": os.environ["GITHUB_PR_HEAD_SHA"],
+              "base_sha": os.environ["GITHUB_BASE_SHA"],
+              "pr_number": int(os.environ["GITHUB_PR_NUMBER"]),
+              "frozen_core_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+          }
+          Path("research-loop-evidence.json").write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload terminal evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-loop-v0-evidence
+          path: research-loop-evidence.json
+          if-no-files-found: error
