@@ -2,9 +2,7 @@ from loop_contract import LoopState, transition
 
 
 def test_open_to_running_requires_evidence():
-    result = transition(
-        LoopState.OPEN, LoopState.RUNNING, evidence=("task loaded",)
-    )
+    result = transition(LoopState.OPEN, LoopState.RUNNING, evidence=("task loaded",))
     assert result.current is LoopState.RUNNING
 
 
