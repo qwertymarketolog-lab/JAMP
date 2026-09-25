@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install runner test dependency
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest PyYAML
 
       - name: Verify Frozen Core blob
         env:
@@ -40,7 +40,7 @@ jobs:
       - name: Test state machine
         env:
           PYTHONPATH: .agents/runner
-        run: pytest -q .agents/runner/test_loop_contract.py .agents/runner/test_ci_zero_job_lineage.py
+        run: pytest -q .agents/runner/test_loop_contract.py .agents/runner/test_ci_zero_job_lineage.py .agents/runner/test_ai_provider.py
 
       - name: Emit terminal evidence
         env:
