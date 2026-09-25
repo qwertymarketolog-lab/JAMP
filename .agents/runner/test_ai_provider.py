@@ -3,17 +3,16 @@ from dataclasses import replace
 import pytest
 
 from ai_provider import (
-    AIObservation,
-    AIProviderError,
-    AIProposal,
-    AIRequest,
     PROTOCOL_VERSION,
+    AIObservation,
+    AIProposal,
+    AIProviderError,
+    AIRequest,
     VerifiedEvidence,
     proposal_evidence,
     validate_proposal,
     validate_request,
 )
-from evidence import Evidence
 from operation_policy import Operation, Target, TargetKind
 from task_loader import TaskContract
 
