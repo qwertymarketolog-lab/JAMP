@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install runner test dependency
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest PyYAML
 
       - name: Verify Frozen Core blob
         env:
