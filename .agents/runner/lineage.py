@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Protocol
+from collections.abc import Mapping
+from typing import Protocol
 
 _SHA_LENGTH = 40
 
