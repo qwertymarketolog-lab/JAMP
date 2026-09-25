@@ -40,7 +40,7 @@ jobs:
       - name: Test state machine
         env:
           PYTHONPATH: .agents/runner
-        run: pytest -q .agents/runner/test_loop_contract.py
+        run: pytest -q .agents/runner/test_loop_contract.py .agents/runner/test_ci_zero_job_lineage.py
 
       - name: Emit terminal evidence
         env:
