@@ -1,86 +1,85 @@
-# ADR-026 — AX Execution Backend for JAMP
+# ADR-026 — Google AX as an Execution Substrate for JAMP
 
 **Status:** PROPOSED / DESIGN-ONLY  
 **Date:** 2026-09-25  
-**Scope:** architecture only; no runtime implementation
+**Target:** JAMP Multi-AI Federation / Experiment Engine  
+**Trust boundary:** DESIGNED — non-invasive adapter topology
 
-## Context
+## 1. Context
 
-JAMP separates AI observation from evidence verification, provenance, conflict handling, and arbitration. Google AX is an external execution/orchestration system for sandboxed agent workloads, with Task, Workspace, Gateway, Model, lifecycle, Git/MCP/skills, and high-throughput controller infrastructure.
+JAMP separates AI observation from evidence verification, provenance, conflict handling, arbitration, and replay.
 
-JAMP may eventually need a scalable execution substrate for Multi-AI Federation and Experiment Engine workloads. AX is therefore evaluated as an optional execution provider, not as an epistemic authority.
+Google AX is evaluated as an **optional external execution substrate** for high-throughput agent workloads. AX and JAMP solve different problems:
 
-## Decision
+- **AX:** task execution, sandbox/workspace orchestration, lifecycle, networking constraints, and scalable scheduling.
+- **JAMP:** evidence, provenance, verification, conflict preservation, arbitration, and fail-closed epistemic state.
 
-AX MAY be integrated as an **optional external execution backend** behind a JAMP adapter.
+AX MUST therefore remain outside JAMP's epistemic authority boundary.
 
-AX MUST NOT become:
+## 2. Decision
 
-- a source of truth;
-- an authority for JAMP Evidence or Arbitration;
-- a dependency of the Frozen Core;
-- a reason to modify `src/jamp/run.py`.
-
-The integration boundary is:
+AX MAY be integrated through an out-of-core adapter:
 
 ```
 JAMP Research / Experiment layer
-        |
-        v
-    AX Adapter
-        |
-        v
-  AX execution substrate
+              |
+              v
+          AX Adapter
+              |
+              v
+       Google AX substrate
 ```
 
-The adapter converts a JAMP execution contract into an AX Task and converts AX lifecycle/execution observations back into JAMP evidence candidates.
+AX telemetry, status, logs, and agent outputs are **observations**, not truth.
 
-## Frozen Core invariant
+The adapter MUST NOT modify the Frozen Core or grant AX authority over JAMP state, Evidence, Provenance, Conflict, or Arbitration.
 
-The Frozen Core remains locked:
+## 3. Frozen Core invariant
+
+The currently locked invariant is:
 
 - file: `src/jamp/run.py`
 - locked blob: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`
 - required invariant: `Δ(src/jamp/run.py) = 0`
 
-This ADR contains no runtime import, API change, dependency, or workflow modification.
+This ADR introduces no runtime import, dependency, workflow change, or modification to `src/jamp/run.py`.
 
-## Boundary contract
+**Scope note:** other JAMP state-machine files are not declared Frozen Core by this ADR unless separately verified. No claim of `Δ(.agents/runner/state_machine.py)=0` is made here.
+
+## 4. Boundary contract
 
 ### JAMP → AX
 
-The adapter may provide:
+A future adapter MAY provide:
 
-- experiment_id;
-- task_id;
+- experiment/task identity;
 - immutable repository + commit SHA;
-- execution contract digest;
+- execution-contract digest;
 - workspace specification;
 - MCP specification/digest;
 - skills specification/digest;
 - model/provider identity;
-- network policy;
+- declared network policy;
 - resource limits.
 
 ### AX → JAMP
 
-The adapter may return observations containing:
+The adapter MAY return execution observations containing:
 
-- ax_task_id;
-- execution_id;
+- AX task/execution identity;
 - lifecycle/status observations;
 - workspace readiness;
-- gateway/policy identity;
+- declared gateway/policy identity;
 - execution timestamps;
 - environment identity;
 - output/artifact digests;
 - AX event/status evidence.
 
-AX output is **observation**, not verified truth.
+These fields describe execution context. They do not establish correctness of the agent's claims.
 
-## Provenance Contract v0
+## 5. Provenance Contract v0
 
-A minimum execution-evidence envelope is:
+A future execution-evidence envelope SHOULD contain:
 
 ```
 AXExecutionEvidence {
@@ -111,87 +110,199 @@ AXExecutionEvidence {
 }
 ```
 
-Every digest MUST bind the recorded identity to the execution being reported. Mutable branch names MUST NOT substitute for immutable commit identity.
+Immutable commit identity MUST be preferred over mutable branch names.
 
-Execution evidence does not establish the truth of the agent's output.
+**Design requirement:** every digest must bind recorded identity to the execution being reported.
 
-## Threat model
+**Unknown:** whether current AX exposes all required immutable provenance material directly. This requires implementation-time verification against the pinned AX version.
 
-| Threat | Required JAMP treatment |
+## 6. Threat model
+
+| Threat | JAMP boundary treatment |
 |---|---|
-| Agent fabricates a result | Keep as observation until independently verified |
+| Agent fabricates a result | Keep output as observation until independently verified |
 | Mutable Git reference | Require immutable commit SHA |
-| MCP configuration drift | Record configuration digest |
-| Skill drift | Record skills digest |
-| Network-policy drift | Record gateway policy identity/digest |
-| Model substitution | Record model identity/configuration |
-| Task identity confusion | Bind AX task ID to JAMP execution ID |
-| Workspace mutation | Record relevant before/after digests |
+| MCP configuration drift | Record and verify configuration digest |
+| Skill drift | Record and verify skills digest |
+| Network-policy drift | Record declared gateway policy identity/digest |
+| Task identity confusion | Bind AX task identity to JAMP execution identity |
+| Workspace mutation | Require independently verifiable artifact/tree evidence |
 | Missing execution evidence | Fail closed as INCONCLUSIVE |
-| Conflicting lifecycle/output evidence | Preserve CONFLICT; do not synthesize PASS |
-| AX unavailable | Execution becomes INCONCLUSIVE, not PASS |
-| AX protocol change | Pin/record adapter and provider versions |
+| Conflicting lifecycle/output evidence | Preserve CONFLICT; no synthetic PASS |
+| AX unavailable | INCONCLUSIVE |
+| AX protocol/schema change | Strict adapter/schema validation; fail closed |
 
-A declared network allowlist is evidence of the declared policy, not proof that network escape is impossible.
+### Security claims deliberately not assumed
 
-Likewise, an orchestration success status MUST NOT by itself establish command-level success.
+The following are **DESIGN REQUIREMENTS / UNKNOWN**, not verified AX capabilities:
 
-## Failure semantics
+- cryptographically signed AX event streams;
+- cryptographic execution tokens;
+- proof that Gateway enforcement prevents all egress bypass;
+- proof that AX-reported command status equals independently observed process exit status;
+- availability of complete filesystem digests inside AX output;
+- availability of immutable MCP/skills materialization proofs.
 
-The adapter MUST preserve JAMP fail-closed semantics:
+A future adapter MUST establish evidence for these requirements or downgrade the affected observation to INCONCLUSIVE.
+
+## 7. Observation schema
+
+A future adapter MAY use an observation structure equivalent to:
+
+```
+JAMP_AX_Execution_Observation {
+    observation_id
+    timestamp
+    ax_task_id
+    execution_status
+
+    workspace_lineage {
+        git_repository
+        git_commit_sha
+        mcp_manifest_hash
+        skills_bundle_hash
+    }
+
+    gateway_policy {
+        allowlist_hash
+        blocked_attempts_count
+    }
+
+    model_configuration {
+        provider
+        model_name
+        parameters_digest
+    }
+
+    artifacts_digest[]
+}
+```
+
+This is a **design contract**, not a claim that current AX already emits every field.
+
+Validation failure MUST produce INCONCLUSIVE rather than a synthetic successful observation.
+
+## 8. Trust and verification boundary
+
+```
+AX sandbox
+    |
+    v
+AX controller / event stream
+    |
+    v
+JAMP AX Adapter
+    |
+    +--> independent identity/provenance checks
+    |
+    v
+JAMP Evidence / Conflict / Arbitration
+```
+
+A declared AX policy is evidence of the declared policy, not proof that the policy cannot be bypassed.
+
+Likewise:
+
+```
+AX status = COMPLETED
+        !=
+verified experiment result
+```
+
+Independent verification remains a JAMP responsibility.
+
+## 9. Failure semantics
 
 ```
 missing task evidence       -> INCONCLUSIVE
 missing provenance          -> INCONCLUSIVE
-conflicting execution data  -> CONFLICT
+provenance mismatch         -> INCONCLUSIVE
+conflicting execution data -> CONFLICT
 unverified agent output     -> OBSERVATION ONLY
 AX unavailable              -> INCONCLUSIVE
+schema/protocol mismatch    -> INCONCLUSIVE
 ```
 
-No synthetic PASS may be generated from AX status alone.
+No AX status may directly generate a JAMP PASS.
 
-## Non-goals
+## 10. Implementation boundary
+
+Any future implementation MUST remain outside the Frozen Core.
+
+A future adapter is conceptually limited to an out-of-core surface such as:
+
+```
+.agents/adapters/ax_adapter.py
+.agents/adapters/test_ax_adapter.py
+```
+
+Exact paths are **design proposals**, not an already-approved mutation whitelist.
+
+Any future implementation PR MUST separately verify:
+
+1. immutable execution identity;
+2. provenance binding;
+3. evidence ingestion;
+4. independent verification;
+5. replay semantics;
+6. fail-closed behavior;
+7. provider/version pinning;
+8. Frozen Core preservation.
+
+No runtime implementation follows automatically from this ADR.
+
+## 11. Non-goals
 
 This ADR does not:
 
 - add AX as a dependency;
 - add Kubernetes/AX runtime code;
 - modify `src/jamp/run.py`;
-- change experiment contracts;
-- change CI workflows;
+- modify existing experiment contracts;
+- modify CI workflows;
 - define production deployment;
 - grant AX arbitration authority;
 - assert AX production readiness.
 
-## Implementation boundary
+## 12. Consequences
 
-Any future implementation MUST live outside the Frozen Core and MUST first define:
+### Positive
 
-1. immutable execution identity;
-2. provenance binding;
-3. evidence ingestion format;
-4. independent verification;
-5. replay semantics;
-6. failure/INCONCLUSIVE behavior;
-7. provider/version pinning.
+- scalable external execution option for future federation/experiments;
+- clear separation between execution and epistemic verification;
+- no Frozen Core dependency;
+- interchangeable execution-provider model.
 
-Implementation requires a separate decision/PR and does not follow automatically from this ADR.
+### Costs / risks
 
-## Verification requirements for this ADR
+- AX API/protocol evolution requires adapter maintenance;
+- execution evidence requires independent verification;
+- provenance capture may add overhead;
+- AX infrastructure introduces operational dependencies if adopted.
 
-The design-only PR MUST verify:
+## 13. Verification status
 
-```
-Δ(src/jamp/run.py) = 0
-blob(src/jamp/run.py)
-  = 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a
-```
+**OBSERVED / VERIFIED**
 
-CI results MUST be treated separately from this architectural decision. A PR-level GREEN result does not constitute post-merge GREEN evidence.
+- JAMP Frozen Core target remains `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+- This ADR is documentation-only.
+- No runtime implementation is introduced by this PR.
 
-## References
+**DESIGN**
 
-- Google AX repository: https://github.com/google/ax
+- AX is treated as an optional execution backend.
+- AX output is observation input, not epistemic authority.
+- Provenance and verification remain JAMP responsibilities.
+
+**UNKNOWN**
+
+- whether a pinned AX release currently exposes every provenance field required by this contract;
+- whether AX provides cryptographic guarantees for every threat listed above;
+- production suitability/stability of AX for JAMP.
+
+## 14. References
+
+- Google AX: https://github.com/google/ax
 - AX concepts: https://github.com/google/ax/blob/main/docs/concepts.md
 - AX design: https://github.com/google/ax/blob/main/DESIGN.md
 - AX runner: https://github.com/google/ax/blob/main/docs/runner.md
