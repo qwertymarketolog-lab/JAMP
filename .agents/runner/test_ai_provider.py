@@ -134,7 +134,7 @@ def test_09_request_result_binding_is_mandatory():
 
 def test_10_provider_model_identity_is_mandatory():
     with pytest.raises(AIProviderError):
-    validate_proposal(request(), replace(proposal(), provider_id=""))
+        validate_proposal(request(), replace(proposal(), provider_id=""))
 
 
 def test_11_ai_pass_claim_is_not_authority():
