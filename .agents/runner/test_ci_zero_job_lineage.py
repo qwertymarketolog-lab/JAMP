@@ -1,4 +1,7 @@
-from ci_zero_job_lineage import CIObservation, investigate_lineage
+from ci_zero_job_lineage import (
+    CIObservation,
+    investigate_lineage,
+)
 
 
 WORKFLOW = ".github/workflows/import-historical.yml"
@@ -22,7 +25,11 @@ def obs(sha, *, jobs=0, conclusion="failure"):
 
 def test_finds_first_normal_to_zero_job_failure_boundary():
     parents = {START: ZERO, ZERO: NORMAL}
-    observations = {START: obs(START), ZERO: obs(ZERO), NORMAL: obs(NORMAL, jobs=1, conclusion="success")}
+    observations = {
+        START: obs(START),
+        ZERO: obs(ZERO),
+        NORMAL: obs(NORMAL, jobs=1, conclusion="success"),
+    }
 
     result = investigate_lineage(
         start_sha=START,
