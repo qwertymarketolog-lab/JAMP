@@ -131,21 +131,25 @@ def validate_proposal(request: AIRequest, proposal: AIProposal) -> None:
         raise AIProviderError("confidence must be in [0, 1]")
     if proposal.claimed_state is not None and proposal.claimed_state.upper() in FORBIDDEN_CLAIMS:
         raise AIProviderError("AI state claims are not authoritative")
+    try:
+        operation = Operation(proposal.proposed_operation)
+    except (TypeError, ValueError) as exc:
+        raise AIProviderError("unsupported operation") from exc
     if not isinstance(proposal.target, Target):
         raise AIProviderError("invalid target")
-    if proposal.proposed_operation in (Operation.WRITE, Operation.DELETE):
+    if operation in (Operation.WRITE, Operation.DELETE):
         if proposal.target.kind is not TargetKind.PATH:
             raise AIProviderError("path operation requires PATH target")
         if proposal.target.value.startswith("src/jamp/") or proposal.target.value == "src/jamp":
             raise AIProviderError("Frozen Core mutation rejected")
         if not path_allowed(request.task, proposal.target.value):
             raise AIProviderError("target is outside task scope")
-    elif proposal.proposed_operation is Operation.PUSH:
+    elif operation is Operation.PUSH:
         if proposal.target.kind is not TargetKind.REF or proposal.target.value in {"main", "refs/heads/main"}:
             raise AIProviderError("main mutation rejected")
-    elif proposal.proposed_operation is Operation.MERGE:
+    elif operation is Operation.MERGE:
         raise AIProviderError("AI has no merge authority")
-    elif proposal.proposed_operation is not Operation.READ:
+    elif operation is not Operation.READ:
         raise AIProviderError("unsupported operation")
 
 
