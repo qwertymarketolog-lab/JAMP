@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 LOCKED_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+
+class IndependenceClass(StrEnum):
+    UNVERIFIED_LOCAL = "unverified_local"
+    VERIFIED_INDEPENDENT_RUNNER = "verified_independent_runner"
 
 
 @dataclass(frozen=True)
@@ -27,6 +33,12 @@ class ProvenanceEvidence:
     changed_paths: tuple[str, ...]
     ci_checks: tuple[CICheck, ...]
     frozen_core_blob: str
+
+
+def derive_independence(evidence: ProvenanceEvidence) -> IndependenceClass:
+    """Classify evidence conservatively without trusting agent-supplied fields."""
+    del evidence
+    return IndependenceClass.UNVERIFIED_LOCAL
 
 
 def validate_provenance(evidence: ProvenanceEvidence) -> bool:
