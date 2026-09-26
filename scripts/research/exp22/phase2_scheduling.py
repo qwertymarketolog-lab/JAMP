@@ -14,7 +14,7 @@ import os
 import platform
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -31,25 +31,27 @@ ALPHA = 0.01
 N_PAIRS = 30
 ARTIFACT = Path("artifacts/research/exp21_phase2_scheduling.json")
 
-HISTORICAL_CANONICAL_WORKLOAD_CODE = """from research.exp19.adjacency_graph import ObservationAdjacencyGraph
-from research.exp19.observation_relation import ObservationRelation
-
-edges = [(str(i), str(i + 1)) for i in range(10_000)]
-edges.extend((str(i), str(i + 10_000)) for i in range(10_000))
-relations = tuple(
-    ObservationRelation(source, target, "adjacent", {}) for source, target in edges
+HISTORICAL_CANONICAL_WORKLOAD_CODE = (
+    "from research.exp19.adjacency_graph import "
+    "ObservationAdjacencyGraph\n"
+    "from research.exp19.observation_relation import ObservationRelation\n"
+    "\n"
+    "edges = [(str(i), str(i + 1)) for i in range(10_000)]\n"
+    "edges.extend((str(i), str(i + 10_000)) for i in range(10_000))\n"
+    "relations = tuple(\n"
+    '    ObservationRelation(source, target, "adjacent", {}) for source, target in edges\n'
+    ")\n"
+    "g = ObservationAdjacencyGraph(relations)\n"
+    "\n"
+    'gc_gen2_before = gc.get_stats()[2]["collections"]\n'
+    "wall_start = time.perf_counter()\n"
+    "cpu_start = time.process_time()\n"
+    "_ = g.is_acyclic()\n"
+    '_ = g.reachable("0")\n'
+    "cpu_end = time.process_time()\n"
+    "wall_end = time.perf_counter()\n"
+    'gc_gen2_after = gc.get_stats()[2]["collections"]\n'
 )
-g = ObservationAdjacencyGraph(relations)
-
-gc_gen2_before = gc.get_stats()[2]["collections"]
-wall_start = time.perf_counter()
-cpu_start = time.process_time()
-_ = g.is_acyclic()
-_ = g.reachable("0")
-cpu_end = time.process_time()
-wall_end = time.perf_counter()
-gc_gen2_after = gc.get_stats()[2]["collections"]
-"""
 
 
 def _git(*args: str) -> str:
@@ -166,7 +168,7 @@ def _observation(
         "workload_spec_id": WORKLOAD_SPEC_ID,
         "workload_definition_hash": WORKLOAD_DEFINITION_HASH,
         "experiment_seed": seed,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         **env,
         "cpu_affinity_before": affinity_before,
         "cpu_affinity_after": affinity_after,
@@ -326,7 +328,10 @@ def _validate_observation(
         errors.append("experiment_seed_mismatch")
     if observation.get("condition") not in {"CONTROL", "CPU_AFFINITY"}:
         errors.append("unknown_condition")
-    if not isinstance(observation.get("pair_id"), int) or not 1 <= observation["pair_id"] <= N_PAIRS:
+    if (
+        not isinstance(observation.get("pair_id"), int)
+        or not 1 <= observation["pair_id"] <= N_PAIRS
+    ):
         errors.append("invalid_pair_id")
     if observation.get("condition") == "CPU_AFFINITY":
         before = observation.get("cpu_affinity_before")
@@ -340,7 +345,10 @@ def _validate_observation(
     for field in ("runner_name", "runner_os", "runner_arch", "kernel", "python_version"):
         if not isinstance(observation.get(field), str) or not observation[field].strip():
             errors.append(f"{field}_missing")
-    if not isinstance(observation.get("cpu_count_visible"), int) or observation["cpu_count_visible"] < 1:
+    if (
+        not isinstance(observation.get("cpu_count_visible"), int)
+        or observation["cpu_count_visible"] < 1
+    ):
         errors.append("cpu_count_visible_invalid")
     return errors
 
@@ -433,7 +441,11 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
 
     status = "INCONCLUSIVE"
     if not errors:
-        status = "VERIFIED / SUPPORTED" if p_value is not None and p_value < ALPHA else "VERIFIED / NOT_SUPPORTED"
+        status = (
+            "VERIFIED / SUPPORTED"
+            if p_value is not None and p_value < ALPHA
+            else "VERIFIED / NOT_SUPPORTED"
+        )
 
     artifact = {
         "experiment_id": EXPERIMENT_ID,
