@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -135,6 +136,7 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
         urllib.error.HTTPError,
         urllib.error.URLError,
         TimeoutError,
+        http.client.RemoteDisconnected,
         KeyError,
         IndexError,
         json.JSONDecodeError,
