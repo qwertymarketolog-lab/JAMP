@@ -296,7 +296,10 @@ def main() -> int:
         print(f"[{i}/87] {model}", flush=True)
         records.append(run_model(headers, by_id[model], available_artifact))
     payload = {
-        "audit_id": f"anymodel-identity-capability-v3-{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}",
+        "audit_id": (
+            "anymodel-identity-capability-v3-"
+            f"{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}"
+        ),
         "schema_version": "reliability-audit-v0",
         "contract_version": "anymodel-identity-capability-v3",
         "created_at": now(),
