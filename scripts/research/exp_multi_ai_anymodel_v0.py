@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -107,6 +108,7 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
     except (
         urllib.error.HTTPError,
         urllib.error.URLError,
+        http.client.IncompleteRead,
         TimeoutError,
         KeyError,
         IndexError,
