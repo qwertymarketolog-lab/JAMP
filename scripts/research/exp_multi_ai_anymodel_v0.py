@@ -28,7 +28,10 @@ MODELS = [
     "am/llama-3.2-11b-vision-instruct",
     "am/mistral-nemotron",
 ]
-DEFAULT_QUESTION = "Is Pluto a planet? Answer under the International Astronomical Union (IAU) 2006 definition."
+DEFAULT_QUESTION = (
+    "Is Pluto a planet? Answer under the International Astronomical Union (IAU) "
+    "2006 definition."
+)
 SYSTEM_PROMPT = (
     "You are an observation sensor in an evidence-first experiment. "
     "Do not defer to other models. Return ONLY valid JSON with exactly these keys: "
@@ -125,9 +128,12 @@ def build_matrix(observations: list[dict[str, Any]]) -> dict[str, dict[str, str]
     for left in observations:
         matrix[left["model"]] = {}
         for right in observations:
-            if left["status"] != "OBSERVED" or right["status"] != "OBSERVED":
-                relation = "UNKNOWN"
-            elif left.get("normalized_answer") is None or right.get("normalized_answer") is None:
+            if (
+                left["status"] != "OBSERVED"
+                or right["status"] != "OBSERVED"
+                or left.get("normalized_answer") is None
+                or right.get("normalized_answer") is None
+            ):
                 relation = "UNKNOWN"
             elif left["normalized_answer"] == right["normalized_answer"]:
                 relation = "AGREEMENT"
