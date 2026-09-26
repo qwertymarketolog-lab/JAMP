@@ -5,6 +5,7 @@ Read-only comparative audit; no API requests and no runtime/Frozen Core changes.
 Run 1 and Run 2 have different schemas, so their actual structures are
 resolved instead of assuming one common field layout.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -72,15 +73,11 @@ def normalize(document: dict[str, Any]) -> dict[str, list[tuple[Any, ...]]]:
         else document.get("models")
     )
     if not isinstance(rows, list):
-        raise RuntimeError(
-            f"Unknown artifact structure: top-level keys={list(document)}"
-        )
+        raise RuntimeError(f"Unknown artifact structure: top-level keys={list(document)}")
     normalized: dict[str, list[tuple[Any, ...]]] = {}
     for row in rows:
         model_id = get_model_id(row)
-        normalized[model_id] = [
-            status_signature(attempt) for attempt in get_attempts(row)
-        ]
+        normalized[model_id] = [status_signature(attempt) for attempt in get_attempts(row)]
     return normalized
 
 
