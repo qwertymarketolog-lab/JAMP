@@ -38,9 +38,7 @@ from typing import Any
 import requests
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CATALOG_URL = os.environ.get(
-    "ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models"
-)
+CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models")
 CHAT_URL = os.environ.get(
     "ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"
 )
@@ -88,25 +86,22 @@ def catalog(headers: dict[str, str]) -> tuple[list[dict[str, Any]], dict[str, An
             payload = None
 
         rows = payload.get("data", payload) if isinstance(payload, dict) else payload
-        valid_rows = [
-            row for row in rows
-            if isinstance(row, dict) and isinstance(row.get("id"), str)
-        ] if isinstance(rows, list) else []
+        valid_rows = (
+            [row for row in rows if isinstance(row, dict) and isinstance(row.get("id"), str)]
+            if isinstance(rows, list)
+            else []
+        )
 
         observation = {
             "status_code": response.status_code,
             "elapsed_ms": elapsed_ms,
-            "response_headers": {
-                key.lower(): value for key, value in response.headers.items()
-            },
+            "response_headers": {key.lower(): value for key, value in response.headers.items()},
             "raw_response": raw_text,
             "parsed_response": payload,
             "valid_model_count": len(valid_rows),
         }
         if response.status_code != 200:
-            raise RuntimeError(
-                f"catalog HTTP {response.status_code}; model list not trusted"
-            )
+            raise RuntimeError(f"catalog HTTP {response.status_code}; model list not trusted")
         if len(valid_rows) != EXPECTED_MODELS:
             raise RuntimeError(
                 f"expected {EXPECTED_MODELS} catalog models, observed {len(valid_rows)}"
@@ -117,9 +112,7 @@ def catalog(headers: dict[str, str]) -> tuple[list[dict[str, Any]], dict[str, An
         return valid_rows, observation
     except requests.RequestException as exc:
         elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
-        raise RuntimeError(
-            f"catalog request failed: {type(exc).__name__}: {exc}"
-        ) from exc
+        raise RuntimeError(f"catalog request failed: {type(exc).__name__}: {exc}") from exc
 
 
 def probe(
@@ -161,10 +154,7 @@ def probe(
                 "status_code": response.status_code,
                 "elapsed_ms": elapsed_ms,
                 "timed_out": False,
-                "response_headers": {
-                    key.lower(): value
-                    for key, value in response.headers.items()
-                },
+                "response_headers": {key.lower(): value for key, value in response.headers.items()},
             },
             "response": {
                 "json_parse_ok": json_parse_ok,
@@ -216,9 +206,7 @@ def probe(
 
 
 def main() -> int:
-    output = pathlib.Path(
-        os.environ.get("ANYMODEL_N3_OUTPUT", str(DEFAULT_OUTPUT))
-    )
+    output = pathlib.Path(os.environ.get("ANYMODEL_N3_OUTPUT", str(DEFAULT_OUTPUT)))
     api_key = os.environ.get("ANYMODEL_API_KEY")
     if not api_key:
         print("ERROR: ANYMODEL_API_KEY is required", file=sys.stderr)
@@ -268,16 +256,14 @@ def main() -> int:
     for index, row in enumerate(catalog_rows, start=1):
         model_id = row["id"]
         print(
-            f"[{index}/{EXPECTED_MODELS}] {model_id}: "
-            f"attempts 1/{REPETITIONS}",
+            f"[{index}/{EXPECTED_MODELS}] {model_id}: attempts 1/{REPETITIONS}",
             flush=True,
         )
         attempts = []
         for attempt in range(1, REPETITIONS + 1):
             if attempt > 1:
                 print(
-                    f"[{index}/{EXPECTED_MODELS}] {model_id}: "
-                    f"attempt {attempt}/{REPETITIONS}",
+                    f"[{index}/{EXPECTED_MODELS}] {model_id}: attempt {attempt}/{REPETITIONS}",
                     flush=True,
                 )
             attempts.append(probe(headers, model_id, attempt))
@@ -291,9 +277,7 @@ def main() -> int:
             }
         )
 
-    actual_attempts = sum(
-        len(record["attempts"]) for record in manifest["models"]
-    )
+    actual_attempts = sum(len(record["attempts"]) for record in manifest["models"])
     manifest["summary"] = {
         "models_expected": EXPECTED_MODELS,
         "models_observed": len(manifest["models"]),
