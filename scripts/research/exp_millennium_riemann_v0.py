@@ -112,7 +112,17 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
     started = time.monotonic()
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
+            try:
+                body = response.read().decode("utf-8")
+            except http.client.IncompleteRead as exc:
+                elapsed_ms = round((time.monotonic() - started) * 1000, 3)
+                return {
+                    "model": model,
+                    "status": "ERROR",
+                    "elapsed_ms": elapsed_ms,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "partial_response_bytes": len(exc.partial),
+                }
             elapsed_ms = round((time.monotonic() - started) * 1000, 3)
             data = json.loads(body)
             raw = data["choices"][0]["message"]["content"]
