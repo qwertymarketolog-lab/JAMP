@@ -28,7 +28,9 @@ DEFAULT_QUESTION = (
     "Prove or disprove the Riemann Hypothesis: every non-trivial zero of "
     "the Riemann zeta function zeta(s) has real part 1/2."
 )
-SYSTEM_PROMPT = """You are an independent mathematical research sensor in an evidence-first experiment.
+SYSTEM_PROMPT = (
+    """You are an independent mathematical research sensor in an evidence-first """
+    """experiment.
 Do not defer to other models. Do not claim a theorem merely because an argument is plausible.
 Return ONLY valid JSON with exactly these keys:
 status, claim, key_lemmas, critical_steps, unproved_dependencies, evidence, uncertainty.
