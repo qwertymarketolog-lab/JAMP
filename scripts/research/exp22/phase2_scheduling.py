@@ -22,9 +22,7 @@ from typing import Any
 EXPERIMENT_ID = "EXP-21-PHASE2-SCHEDULING-V1"
 PHASE = 2
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 G4_THRESHOLD_MS = 15.0
 ALPHA = 0.01
@@ -88,9 +86,7 @@ def _environment_errors(env: dict[str, Any], pair_id: int) -> list[str]:
 
 
 def _verify_historical_workload_lineage() -> bool:
-    actual = hashlib.sha256(
-        HISTORICAL_CANONICAL_WORKLOAD_CODE.encode("utf-8")
-    ).hexdigest()
+    actual = hashlib.sha256(HISTORICAL_CANONICAL_WORKLOAD_CODE.encode("utf-8")).hexdigest()
     return actual == WORKLOAD_DEFINITION_HASH
 
 
@@ -127,9 +123,7 @@ def _run_boundary(graph) -> tuple[float, float, float, dict[str, Any]]:
     non_cpu_delta_ms = wall_ms - cpu_ms
 
     finite = all(
-        isinstance(value, (int, float))
-        and value == value
-        and abs(value) != float("inf")
+        isinstance(value, (int, float)) and value == value and abs(value) != float("inf")
         for value in (wall_ms, cpu_ms, non_cpu_delta_ms)
     )
     checks = {
@@ -305,13 +299,31 @@ def _validate_observation(
     seed: int,
 ) -> list[str]:
     required = {
-        "experiment_id", "phase", "pair_id", "condition", "target_commit",
-        "workload_spec_id", "workload_definition_hash", "experiment_seed",
-        "timestamp", "runner_name", "runner_os", "runner_arch", "kernel",
-        "python_version", "cpu_count_visible", "cpu_affinity_before",
-        "cpu_affinity_after", "affinity_verified", "affinity_restored",
-        "wall_ms", "cpu_ms", "non_cpu_delta_ms", "gc_enabled",
-        "gc_gen2_collections", "result_valid",
+        "experiment_id",
+        "phase",
+        "pair_id",
+        "condition",
+        "target_commit",
+        "workload_spec_id",
+        "workload_definition_hash",
+        "experiment_seed",
+        "timestamp",
+        "runner_name",
+        "runner_os",
+        "runner_arch",
+        "kernel",
+        "python_version",
+        "cpu_count_visible",
+        "cpu_affinity_before",
+        "cpu_affinity_after",
+        "affinity_verified",
+        "affinity_restored",
+        "wall_ms",
+        "cpu_ms",
+        "non_cpu_delta_ms",
+        "gc_enabled",
+        "gc_gen2_collections",
+        "result_valid",
     }
     errors = [f"missing_field:{field}" for field in sorted(required - observation.keys())]
     if observation.get("experiment_id") != EXPERIMENT_ID:
@@ -368,11 +380,7 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
     observations: list[dict[str, Any]] = []
     if not errors:
         for pair_id in range(1, N_PAIRS + 1):
-            order = (
-                ("CONTROL", "CPU_AFFINITY")
-                if pair_id % 2
-                else ("CPU_AFFINITY", "CONTROL")
-            )
+            order = ("CONTROL", "CPU_AFFINITY") if pair_id % 2 else ("CPU_AFFINITY", "CONTROL")
             initial = _affinity()
             if initial is None or not initial:
                 errors.append(f"pair_{pair_id}_initial_affinity_missing")
