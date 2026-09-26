@@ -68,12 +68,18 @@ CHECKS = [
     ("R30", "P0", "cost_integrity"),
 ]
 
+
+
 def now() -> str:
     return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
+
+
 
 def digest(value: Any) -> str:
     raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
     return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
 
 def classify(ok: bool | None) -> str:
     if ok is True:
@@ -82,11 +88,15 @@ def classify(ok: bool | None) -> str:
         return "CONTRADICTED"
     return "INCONCLUSIVE"
 
+
+
 def load_available(path: pathlib.Path) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("availability artifact is not an object")
     return data
+
+
 
 def model_ids_from_catalog(data: Any) -> list[str]:
     rows = data.get("data", data) if isinstance(data, dict) else data
@@ -98,6 +108,8 @@ def model_ids_from_catalog(data: Any) -> list[str]:
             ids.append(row["id"])
     return sorted(dict.fromkeys(ids))
 
+
+
 def catalog(headers: dict[str, str]) -> list[dict[str, Any]]:
     r = requests.get(CATALOG_URL, headers=headers, timeout=TIMEOUT_S)
     r.raise_for_status()
@@ -107,8 +119,9 @@ def catalog(headers: dict[str, str]) -> list[dict[str, Any]]:
         raise ValueError("unexpected catalog response")
     return [x for x in rows if isinstance(x, dict) and isinstance(x.get("id"), str)]
 
-def chat(headers: dict[str, str], model: str, messages: list[dict[str, str]],
-         **extra: Any) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+def chat(
+    headers: dict[str, str], model: str, messages: list[dict[str, str]], **extra: Any
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     started = time.perf_counter()
     try:
         r = requests.post(
@@ -128,8 +141,11 @@ def chat(headers: dict[str, str], model: str, messages: list[dict[str, str]],
             "headers": {k.lower(): v for k, v in r.headers.items()},
         }
     except requests.RequestException as exc:
-        return None, {"error_type": type(exc).__name__, "error": str(exc),
-                       "elapsed_s": time.perf_counter() - started}
+        return None, {
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "elapsed_s": time.perf_counter() - started,
+        }
 
 def text_from_response(body: dict[str, Any] | None) -> str | None:
     if not body:
@@ -143,22 +159,27 @@ def text_from_response(body: dict[str, Any] | None) -> str | None:
             return choices[0]["text"]
     return None
 
-def result(check_id: str, tier: str, status: str, observed: Any,
-           model: str, probe: str) -> dict[str, Any]:
-    evidence = {"check_id": check_id, "model_id": model, "probe": probe,
-                "observed": observed}
+def result(
+    check_id: str, tier: str, status: str, observed: Any, model: str, probe: str
+) -> dict[str, Any]:
+    evidence = {"check_id": check_id, "model_id": model, "probe": probe, "observed": observed}
     return {
         "check_id": check_id,
         "tier": tier,
         "status": status,
         "observed": observed,
         "evidence_digest": digest(evidence),
-        "metadata": {"probe_id": f"{check_id}-v3", "observed_at": now(),
-                     "source_ref": CHAT_URL, "execution_id": None},
+        "metadata": {
+            "probe_id": f"{check_id}-v3",
+            "observed_at": now(),
+            "source_ref": CHAT_URL,
+            "execution_id": None,
+        },
     }
 
-def run_model(headers: dict[str, str], model_row: dict[str, Any],
-              avail: dict[str, Any]) -> dict[str, Any]:
+def run_model(
+    headers: dict[str, str], model_row: dict[str, Any], avail: dict[str, Any]
+) -> dict[str, Any]:
     model = model_row["id"]
     out: list[dict[str, Any]] = []
 
@@ -167,26 +188,71 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
     transport_ok = meta.get("status_code") == 200 and body is not None
     out.append(result("R01", "P0", classify(transport_ok), meta, model, "availability"))
     elapsed = meta.get("elapsed_s")
-    out.append(result("R02", "P0", classify(
-        None if "error" in meta else isinstance(elapsed, (int, float)) and elapsed <= TIMEOUT_S),
-        {"elapsed_s": elapsed, "timeout_s": TIMEOUT_S}, model, "timeout"))
+    out.append(
+        result(
+            "R02",
+            "P0",
+            classify(
+                None
+                if "error" in meta
+                else isinstance(elapsed, (int, float)) and elapsed <= TIMEOUT_S
+            ),
+            {"elapsed_s": elapsed, "timeout_s": TIMEOUT_S},
+            model,
+            "timeout",
+        )
+    )
     code = meta.get("status_code")
-    out.append(result("R03", "P0", classify(
-        None if code is None else code != 429), {"status_code": code}, model, "rate_limit"))
+    out.append(
+        result(
+            "R03",
+            "P0",
+            classify(None if code is None else code != 429),
+            {"status_code": code},
+            model,
+            "rate_limit",
+        )
+    )
     shape_ok = body is not None and isinstance(body.get("choices"), list)
-    out.append(result("R04", "P0", classify(shape_ok if body is not None else None),
-                      {"status_code": code, "has_choices": shape_ok}, model, "protocol"))
+    out.append(
+        result(
+            "R04",
+            "P0",
+            classify(shape_ok if body is not None else None),
+            {"status_code": code, "has_choices": shape_ok},
+            model,
+            "protocol",
+        )
+    )
     catalog_id = model_row.get("id")
-    out.append(result("R05", "P0", classify(catalog_id == model),
-                      {"catalog_id": catalog_id, "requested_id": model}, model, "identity"))
+    out.append(
+        result(
+            "R05",
+            "P0",
+            classify(catalog_id == model),
+            {"catalog_id": catalog_id, "requested_id": model},
+            model,
+            "identity",
+        )
+    )
 
     text = text_from_response(body)
     exact = text == "OK"
-    out.append(result("R06", "P0", classify(exact), {"text": text, "expected_language": "en"},
-                      model, "language"))
     out.append(
         result(
-            "R07", "P0", classify(False if text == "OK" else None),
+            "R06",
+            "P0",
+            classify(exact),
+            {"text": text, "expected_language": "en"},
+            model,
+            "language",
+        )
+    )
+    out.append(
+        result(
+            "R07",
+            "P0",
+            classify(False if text == "OK" else None),
             {"unexpected_spans": [] if text == "OK" else None},
             model,
             "language_insertion",
@@ -194,29 +260,46 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
     )
     out.append(
         result(
-            "R08", "P1", "INCONCLUSIVE",
+            "R08",
+            "P1",
+            "INCONCLUSIVE",
             {"reason": "context-window capacity requires a separately frozen length contract"},
             model,
             "context_window",
         )
     )
-    out.append(result("R09", "P0", classify(exact), {"text": text, "expected": "OK"},
-                      model, "instruction_fidelity"))
+    out.append(
+        result(
+            "R09",
+            "P0",
+            classify(exact),
+            {"text": text, "expected": "OK"},
+            model,
+            "instruction_fidelity",
+        )
+    )
     out.append(
         result(
             "R10", "P1", "INCONCLUSIVE",
             {
                 "reason": (
-                    "structured-output capability requires a provider-supported "
-                    "schema contract"
+                    "structured-output capability requires a provider-supported schema contract"
                 )
             },
             model,
             "structured_output",
         )
     )
-    out.append(result("R11", "P0", classify(isinstance(body, dict)),
-                      {"json_object": isinstance(body, dict)}, model, "format"))
+    out.append(
+        result(
+            "R11",
+            "P0",
+            classify(isinstance(body, dict)),
+            {"json_object": isinstance(body, dict)},
+            model,
+            "format",
+        )
+    )
     for cid, name in CHECKS[11:17]:
         out.append(
             result(
@@ -239,34 +322,64 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
                 name,
             )
         )
-    out.append(result("R25", "P1", "INCONCLUSIVE",
-                      {"reason": "vision input is absent from the frozen transport probe"},
-                      model, "vision"))
-    out.append(result("R26", "P1", "INCONCLUSIVE",
-                      {"reason": "long-context boundary requires a frozen token-length ladder"},
-                      model, "long_context"))
+    out.append(
+        result(
+            "R25",
+            "P1",
+            "INCONCLUSIVE",
+            {"reason": "vision input is absent from the frozen transport probe"},
+            model,
+            "vision",
+        )
+    )
+    out.append(
+        result(
+            "R26",
+            "P1",
+            "INCONCLUSIVE",
+            {"reason": "long-context boundary requires a frozen token-length ladder"},
+            model,
+            "long_context",
+        )
+    )
     canary = "JAMP-CANARY-7F4A9C2E"
     body2, meta2 = chat(headers, model, [{"role": "user", "content": canary}])
     text2 = text_from_response(body2) or ""
     out.append(
         result(
-            "R27", "P0", classify(canary not in text2),
+            "R27",
+            "P0",
+            classify(canary not in text2),
             {"canary": canary, "detected": canary in text2},
             model,
             "canary",
         )
     )
-    out.append(result("R28", "P2", "INCONCLUSIVE",
-                      {"reason": "private reasoning traces are not a required observable output"},
-                      model, "reasoning_trace_policy"))
-    out.append(result("R29", "P2", "INCONCLUSIVE",
-                      {"reason": "safety boundary requires a frozen policy test suite"},
-                      model, "safety_boundary"))
+    out.append(
+        result(
+            "R28",
+            "P2",
+            "INCONCLUSIVE",
+            {"reason": "private reasoning traces are not a required observable output"},
+            model,
+            "reasoning_trace_policy",
+        )
+    )
+    out.append(
+        result(
+            "R29",
+            "P2",
+            "INCONCLUSIVE",
+            {"reason": "safety boundary requires a frozen policy test suite"},
+            model,
+            "safety_boundary",
+        )
+    )
     usage = body.get("usage") if isinstance(body, dict) else None
-    out.append(result("R30", "P0", classify(usage is not None),
-                      {"usage": usage}, model, "cost_integrity"))
-    return {"model_id": model, "availability_evidence": avail.get(model),
-            "checks": out}
+    out.append(
+        result("R30", "P0", classify(usage is not None), {"usage": usage}, model, "cost_integrity")
+    )
+    return {"model_id": model, "availability_evidence": avail.get(model), "checks": out}
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -284,9 +397,11 @@ def main() -> int:
     if len(models) != 87:
         raise SystemExit(f"expected 87 catalog models, observed {len(models)}")
 
-    availability_models = set(model_ids_from_catalog(
-        available_artifact.get("catalog", available_artifact.get("models", []))
-    ))
+    availability_models = set(
+        model_ids_from_catalog(
+            available_artifact.get("catalog", available_artifact.get("models", []))
+        )
+    )
     if availability_models and set(models) != availability_models:
         raise SystemExit("catalog identity mismatch with saved N=3 artifact")
 
@@ -297,8 +412,7 @@ def main() -> int:
         records.append(run_model(headers, by_id[model], available_artifact))
     payload = {
         "audit_id": (
-            "anymodel-identity-capability-v3-"
-            f"{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}"
+            f"anymodel-identity-capability-v3-{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}"
         ),
         "schema_version": "reliability-audit-v0",
         "contract_version": "anymodel-identity-capability-v3",
@@ -316,6 +430,8 @@ def main() -> int:
     )
     print(f"WROTE {args.output}")
     return 0
+
+
 
 if __name__ == "__main__":
     sys.exit(main())
