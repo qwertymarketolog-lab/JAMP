@@ -13,7 +13,7 @@ import os
 import platform
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -74,7 +74,7 @@ def _validate_workload(graph: ObservationAdjacencyGraph) -> list[str]:
     return errors
 
 
-def run(target_commit: str, seed: int) -> dict[str, Any]:
+def run(target_commit: str, seed: int, artifact_path: Path) -> dict[str, Any]:
     errors: list[str] = []
 
     if not target_commit:
@@ -94,7 +94,7 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
     wall_clock = time.get_clock_info("perf_counter")
     cpu_clock = time.get_clock_info("process_time")
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     runner_name = os.environ.get("RUNNER_NAME", "")
     if not runner_name:
         errors.append("runner_name_missing")
@@ -253,8 +253,8 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
         },
     }
 
-    ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-    ARTIFACT.write_text(
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(
         json.dumps(artifact, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
@@ -265,8 +265,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--target-commit", required=True)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--output-artifact", type=Path, default=ARTIFACT)
     args = parser.parse_args()
-    artifact = run(args.target_commit, args.seed)
+    artifact = run(args.target_commit, args.seed, Path(args.output_artifact))
     print(json.dumps(artifact, indent=2, sort_keys=True))
     return 0 if artifact["status"] == "VERIFIED" else 1
 
