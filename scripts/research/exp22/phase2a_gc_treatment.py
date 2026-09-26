@@ -81,7 +81,7 @@ def summary(values: list[float]) -> dict[str, float]:
 
 
 def paired_sign_permutation_pvalue(
-    diffs: list[float], seed: int, samples: int = 20000
+    diffs: list[float], seed: int, samples: int = 20_000
 ) -> float | None:
     nonzero = [d for d in diffs if d != 0.0]
     if not nonzero:
