@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import gc
-import hashlib
 import json
 import math
 import os
@@ -18,7 +17,7 @@ import platform
 import statistics
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +80,9 @@ def summary(values: list[float]) -> dict[str, float]:
     }
 
 
-def paired_sign_permutation_pvalue(diffs: list[float], seed: int, samples: int = 20000) -> float | None:
+def paired_sign_permutation_pvalue(
+    diffs: list[float], seed: int, samples: int = 20000
+) -> float | None:
     nonzero = [d for d in diffs if d != 0.0]
     if not nonzero:
         return None
@@ -189,7 +190,7 @@ def run(target_commit: str, seed: int, pairs: int, output: Path) -> dict[str, An
         "experiment_seed": seed,
         "pairs_requested": pairs,
         "pairs_completed": len(diffs),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "environment_metadata": {
             "runner_name": os.environ.get("RUNNER_NAME", ""),
             "runner_os": platform.platform(),
@@ -205,7 +206,10 @@ def run(target_commit: str, seed: int, pairs: int, output: Path) -> dict[str, An
             },
         },
         "measurement_boundary": {
-            "timed_region": "control: is_acyclic() -> reachable('0'); treatment: gc.collect() -> is_acyclic() -> reachable('0')",
+            "timed_region": (
+                "control: is_acyclic() -> reachable('0'); "
+                "treatment: gc.collect() -> is_acyclic() -> reachable('0')"
+            ),
             "graph_construction": "outside_timed_region",
             "imports": "outside_timed_region",
             "serialization_logging_validation": "after_timed_region",
@@ -227,7 +231,9 @@ def run(target_commit: str, seed: int, pairs: int, output: Path) -> dict[str, An
             "gen2_collections": sum(o["gc_gen2_collections"] for o in treatment),
         },
         "paired_effect": {
-            "median_wall_delta_ms_treatment_minus_control": statistics.median(diffs) if diffs else None,
+            "median_wall_delta_ms_treatment_minus_control": (
+                statistics.median(diffs) if diffs else None
+            ),
             "p_value": p_value,
             "p_value_method": "deterministic_paired_sign_permutation_20000",
             "distribution_shift": "VERIFIED" if distribution_shift else "NOT_VERIFIED",
