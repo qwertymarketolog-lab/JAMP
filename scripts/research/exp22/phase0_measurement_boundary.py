@@ -13,7 +13,7 @@ import os
 import platform
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -94,7 +94,7 @@ def run(target_commit: str, seed: int, artifact_path: Path) -> dict[str, Any]:
     wall_clock = time.get_clock_info("perf_counter")
     cpu_clock = time.get_clock_info("process_time")
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     runner_name = os.environ.get("RUNNER_NAME", "")
     if not runner_name:
         errors.append("runner_name_missing")
