@@ -273,6 +273,8 @@ def _measure(
                     f"pair_{pair_id}_affinity_restoration_mismatch:"
                     f"expected={initial!r}:actual={restored!r}"
                 )
+            else:
+                affinity_restored = True
 
     observation = _observation(
         pair_id=pair_id,
