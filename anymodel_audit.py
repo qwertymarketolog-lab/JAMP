@@ -288,7 +288,9 @@ def run_model(
             "P1",
             "INCONCLUSIVE",
             {
-                "reason": "structured-output capability requires a provider-supported schema contract"
+                "reason": (
+                    "structured-output capability requires a provider-supported schema contract"
+                )
             },
             model,
             "structured_output",
