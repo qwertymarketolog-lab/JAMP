@@ -81,6 +81,7 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": "curl/8.0.0",
         },
         method="POST",
     )
