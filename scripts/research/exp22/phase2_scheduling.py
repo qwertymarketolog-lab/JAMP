@@ -257,13 +257,18 @@ def _measure(
         if intervention_active:
             try:
                 os.sched_setaffinity(0, set(initial))
-            except (AttributeError, OSError):
+            except (AttributeError, OSError) as exc:
                 affinity_restored = False
-                errors.append(f"pair_{pair_id}_affinity_restoration_failed")
+                errors.append(
+                    f"pair_{pair_id}_affinity_restoration_failed:{type(exc).__name__}:{exc}"
+                )
             restored = _affinity()
             if restored != initial:
                 affinity_restored = False
-                errors.append(f"pair_{pair_id}_affinity_restoration_failed")
+                errors.append(
+                    f"pair_{pair_id}_affinity_restoration_mismatch:"
+                    f"expected={initial!r}:actual={restored!r}"
+                )
 
     observation = _observation(
         pair_id=pair_id,
