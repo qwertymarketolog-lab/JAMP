@@ -31,8 +31,8 @@ import requests
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_AVAILABILITY = ROOT / "artifacts/research/anymodel_availability_n3.json"
 DEFAULT_OUTPUT = ROOT / "artifacts/research/anymodel_identity_capability_audit_v3.json"
-CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://api.anymodel.dev/v1/models")
-CHAT_URL = os.environ.get("ANYMODEL_CHAT_URL", "https://api.anymodel.dev/v1/chat/completions")
+CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models")
+CHAT_URL = os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions")
 TIMEOUT_S = float(os.environ.get("ANYMODEL_TIMEOUT_S", "30"))
 
 CHECKS = [
