@@ -40,53 +40,102 @@ Do not treat model confidence, consensus, or numerical evidence as a proof.
 """
 
 VALID_STATUSES = {"PROOF_CLAIM", "DISPROOF_CLAIM", "UNKNOWN"}
+EXPECTED_KEYS = {
+    "status",
+    "claim",
+    "key_lemmas",
+    "critical_steps",
+    "unproved_dependencies",
+    "evidence",
+    "uncertainty",
+}
 
 
 def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def extract_json(text: str) -> dict[str, Any] | None:
+def normalize_response(text: str) -> str:
+    """Normalize representation only; never repair semantic values or types."""
     if not isinstance(text, str):
-        return None
+        return text
+    return text.replace("\u00a0", " ").strip()
+
+
+def extract_json(text: str) -> tuple[dict[str, Any] | None, str | None]:
+    if not isinstance(text, str):
+        return None, "PARSER_FAILURE: response content is not a string"
+    normalized = normalize_response(text)
     try:
-        obj = json.loads(text)
-        return obj if isinstance(obj, dict) else None
+        obj = json.loads(normalized)
+        return (obj if isinstance(obj, dict) else None), (
+            None if isinstance(obj, dict) else "PARSER_FAILURE: top-level JSON is not an object"
+        )
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        match = re.search(r"\{.*\}", normalized, flags=re.DOTALL)
         if not match:
-            return None
+            return None, "PARSER_FAILURE: no JSON object found"
         try:
             obj = json.loads(match.group(0))
-            return obj if isinstance(obj, dict) else None
-        except json.JSONDecodeError:
-            return None
+            return (obj if isinstance(obj, dict) else None), (
+                None
+                if isinstance(obj, dict)
+                else "PARSER_FAILURE: extracted JSON is not an object"
+            )
+        except json.JSONDecodeError as exc:
+            return None, f"PARSER_FAILURE: {type(exc).__name__}: {exc}"
 
 
-def valid_observation(parsed: dict[str, Any] | None) -> bool:
+def validate_observation(parsed: dict[str, Any] | None) -> dict[str, Any]:
     if parsed is None:
-        return False
-    if set(parsed) != {
-        "status",
-        "claim",
-        "key_lemmas",
-        "critical_steps",
-        "unproved_dependencies",
-        "evidence",
-        "uncertainty",
-    }:
-        return False
+        return {"valid": False, "error_category": "PARSER_FAILURE", "reason": "no parsed object"}
+
+    extra = sorted(set(parsed) - EXPECTED_KEYS)
+    missing = sorted(EXPECTED_KEYS - set(parsed))
+    if extra or missing:
+        return {
+            "valid": False,
+            "error_category": "SCHEMA_VIOLATION",
+            "reason": "key_set_mismatch",
+            "missing_keys": missing,
+            "extra_keys": extra,
+        }
+
     if parsed["status"] not in VALID_STATUSES:
-        return False
+        return {
+            "valid": False,
+            "error_category": "SCHEMA_VIOLATION",
+            "reason": "invalid_enum",
+            "field": "status",
+            "expected": sorted(VALID_STATUSES),
+            "actual": parsed["status"],
+        }
+
     for key in ("claim", "uncertainty"):
         if not isinstance(parsed[key], str):
-            return False
+            return {
+                "valid": False,
+                "error_category": "SCHEMA_VIOLATION",
+                "reason": "invalid_type",
+                "field": key,
+                "expected": "string",
+                "actual": type(parsed[key]).__name__,
+            }
+
     for key in ("key_lemmas", "critical_steps", "unproved_dependencies", "evidence"):
         if not isinstance(parsed[key], list) or not all(
             isinstance(item, str) for item in parsed[key]
         ):
-            return False
-    return True
+            return {
+                "valid": False,
+                "error_category": "SCHEMA_VIOLATION",
+                "reason": "invalid_type",
+                "field": key,
+                "expected": "list[string]",
+                "actual": type(parsed[key]).__name__,
+            }
+
+    return {"valid": True, "error_category": None}
 
 
 def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[str, Any]:
@@ -119,29 +168,63 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
                 return {
                     "model": model,
                     "status": "ERROR",
+                    "error_category": "TRANSPORT_FAILURE",
                     "elapsed_ms": elapsed_ms,
                     "error": f"{type(exc).__name__}: {exc}",
                     "partial_response_bytes": len(exc.partial),
                 }
+
             elapsed_ms = round((time.monotonic() - started) * 1000, 3)
-            data = json.loads(body)
-            raw = data["choices"][0]["message"]["content"]
-            parsed = extract_json(raw)
-            if not valid_observation(parsed):
+            try:
+                data = json.loads(normalize_response(body))
+                raw = data["choices"][0]["message"]["content"]
+            except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
                 return {
                     "model": model,
                     "status": "ERROR",
+                    "error_category": "PARSER_FAILURE",
                     "elapsed_ms": elapsed_ms,
-                    "error": "invalid structured observation",
-                    "raw_response": raw,
-                    "parsed": parsed,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "raw_response": body,
                 }
+
+            parsed, parser_error = extract_json(raw)
+            normalized_response = normalize_response(raw)
+            validation = validate_observation(parsed)
+            if parser_error:
+                return {
+                    "model": model,
+                    "status": "ERROR",
+                    "error_category": "PARSER_FAILURE",
+                    "elapsed_ms": elapsed_ms,
+                    "error": parser_error,
+                    "raw_response": raw,
+                    "normalized_response": normalized_response,
+                    "parsed": parsed,
+                    "strict_schema_validation": validation,
+                }
+
+            if not validation["valid"]:
+                return {
+                    "model": model,
+                    "status": "ERROR",
+                    "error_category": "SCHEMA_VIOLATION",
+                    "elapsed_ms": elapsed_ms,
+                    "error": "strict schema validation failed",
+                    "raw_response": raw,
+                    "normalized_response": normalized_response,
+                    "parsed": parsed,
+                    "strict_schema_validation": validation,
+                }
+
             return {
                 "model": model,
                 "status": "OBSERVED",
                 "elapsed_ms": elapsed_ms,
                 "raw_response": raw,
+                "normalized_response": normalized_response,
                 "parsed": parsed,
+                "strict_schema_validation": validation,
                 "declared_status": parsed["status"],
             }
     except (
@@ -151,13 +234,13 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
         http.client.RemoteDisconnected,
         KeyError,
         IndexError,
-        json.JSONDecodeError,
     ) as exc:
         elapsed_ms = round((time.monotonic() - started) * 1000, 3)
         detail = getattr(exc, "reason", str(exc))
         return {
             "model": model,
             "status": "ERROR",
+            "error_category": "TRANSPORT_FAILURE",
             "elapsed_ms": elapsed_ms,
             "error": f"{type(exc).__name__}: {detail}",
         }
@@ -197,12 +280,16 @@ def main() -> int:
         "experiment_id": "EXP-MILLENNIUM-RIEMANN-V0",
         "experiment_version": "v0",
         "provider": "AnyModel",
-        "endpoint": BASE_URL,
         "models": MODELS,
         "question": args.question,
         "question_hash": sha256_text(args.question),
         "system_prompt_hash": sha256_text(SYSTEM_PROMPT),
         "temperature": 0,
+        "response_contract_version": "v0.1-hardening",
+        "normalization_rule": (
+            "Representation-only normalization: replace U+00A0 with ASCII space "
+            "and trim outer whitespace. No semantic enum repair or type coercion."
+        ),
         "observations": [],
         "arbitration_rule": (
             "AGREEMENT iff both observations are valid and declared_status strings "
@@ -230,6 +317,17 @@ def main() -> int:
             observation["status"] == "ERROR"
             for observation in manifest["observations"]
         ),
+        "error_categories": {
+            category: sum(
+                observation.get("error_category") == category
+                for observation in manifest["observations"]
+            )
+            for category in (
+                "TRANSPORT_FAILURE",
+                "PARSER_FAILURE",
+                "SCHEMA_VIOLATION",
+            )
+        },
         "declared_statuses": sorted(
             {
                 observation["declared_status"]
