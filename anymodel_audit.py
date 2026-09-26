@@ -68,18 +68,12 @@ CHECKS = [
     ("R30", "P0", "cost_integrity"),
 ]
 
-
-
 def now() -> str:
     return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
-
-
 
 def digest(value: Any) -> str:
     raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
     return "sha256:" + hashlib.sha256(raw).hexdigest()
-
-
 
 def classify(ok: bool | None) -> str:
     if ok is True:
@@ -88,15 +82,11 @@ def classify(ok: bool | None) -> str:
         return "CONTRADICTED"
     return "INCONCLUSIVE"
 
-
-
 def load_available(path: pathlib.Path) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("availability artifact is not an object")
     return data
-
-
 
 def model_ids_from_catalog(data: Any) -> list[str]:
     rows = data.get("data", data) if isinstance(data, dict) else data
@@ -108,8 +98,6 @@ def model_ids_from_catalog(data: Any) -> list[str]:
             ids.append(row["id"])
     return sorted(dict.fromkeys(ids))
 
-
-
 def catalog(headers: dict[str, str]) -> list[dict[str, Any]]:
     r = requests.get(CATALOG_URL, headers=headers, timeout=TIMEOUT_S)
     r.raise_for_status()
@@ -118,7 +106,6 @@ def catalog(headers: dict[str, str]) -> list[dict[str, Any]]:
     if not isinstance(rows, list):
         raise ValueError("unexpected catalog response")
     return [x for x in rows if isinstance(x, dict) and isinstance(x.get("id"), str)]
-
 
 def chat(
     headers: dict[str, str], model: str, messages: list[dict[str, str]], **extra: Any
@@ -148,7 +135,6 @@ def chat(
             "elapsed_s": time.perf_counter() - started,
         }
 
-
 def text_from_response(body: dict[str, Any] | None) -> str | None:
     if not body:
         return None
@@ -160,7 +146,6 @@ def text_from_response(body: dict[str, Any] | None) -> str | None:
         if isinstance(choices[0].get("text"), str):
             return choices[0]["text"]
     return None
-
 
 def result(
     check_id: str, tier: str, status: str, observed: Any, model: str, probe: str
@@ -179,7 +164,6 @@ def result(
             "execution_id": None,
         },
     }
-
 
 def run_model(
     headers: dict[str, str], model_row: dict[str, Any], avail: dict[str, Any]
@@ -387,7 +371,6 @@ def run_model(
     )
     return {"model_id": model, "availability_evidence": avail.get(model), "checks": out}
 
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--availability", type=pathlib.Path, default=DEFAULT_AVAILABILITY)
@@ -437,6 +420,7 @@ def main() -> int:
     )
     print(f"WROTE {args.output}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
