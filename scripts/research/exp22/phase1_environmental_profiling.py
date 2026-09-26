@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import gc
-import hashlib
 import json
 import math
 import os
@@ -16,7 +15,7 @@ import platform
 import statistics
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +99,7 @@ def _spearman(x: list[float], y: list[float]) -> float | None:
     ry = _rank(y)
     mean_x = statistics.mean(rx)
     mean_y = statistics.mean(ry)
-    numerator = sum((a - mean_x) * (b - mean_y) for a, b in zip(rx, ry))
+    numerator = sum((a - mean_x) * (b - mean_y) for a, b in zip(rx, ry, strict=True))
     denom_x = math.sqrt(sum((a - mean_x) ** 2 for a in rx))
     denom_y = math.sqrt(sum((b - mean_y) ** 2 for b in ry))
     if denom_x == 0.0 or denom_y == 0.0:
@@ -145,7 +144,7 @@ def run(target_commit: str, seed: int, iterations: int, artifact_path: Path) -> 
     if not runner_name:
         errors.append("runner_name_missing")
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     graph = _canonical_workload()
     errors.extend(_validate_workload(graph))
 
