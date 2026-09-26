@@ -69,7 +69,7 @@ CHECKS = [
 ]
 
 def now() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 def digest(value: Any) -> str:
     raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
@@ -184,26 +184,56 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
     exact = text == "OK"
     out.append(result("R06", "P0", classify(exact), {"text": text, "expected_language": "en"},
                       model, "language"))
-    out.append(result("R07", "P0", classify(False if text == "OK" else None),
-                      {"unexpected_spans": [] if text == "OK" else None}, model, "language_insertion"))
-    out.append(result("R08", "P1", "INCONCLUSIVE",
-                      {"reason": "context-window capacity requires a separately frozen length contract"},
-                      model, "context_window"))
+    out.append(
+        result(
+            "R07", "P0", classify(False if text == "OK" else None),
+            {"unexpected_spans": [] if text == "OK" else None},
+            model,
+            "language_insertion",
+        )
+    )
+    out.append(
+        result(
+            "R08", "P1", "INCONCLUSIVE",
+            {"reason": "context-window capacity requires a separately frozen length contract"},
+            model,
+            "context_window",
+        )
+    )
     out.append(result("R09", "P0", classify(exact), {"text": text, "expected": "OK"},
                       model, "instruction_fidelity"))
-    out.append(result("R10", "P1", "INCONCLUSIVE",
-                      {"reason": "structured-output capability requires a provider-supported schema contract"},
-                      model, "structured_output"))
+    out.append(
+        result(
+            "R10", "P1", "INCONCLUSIVE",
+            {"reason": "structured-output capability requires a provider-supported schema contract"},
+            model,
+            "structured_output",
+        )
+    )
     out.append(result("R11", "P0", classify(isinstance(body, dict)),
                       {"json_object": isinstance(body, dict)}, model, "format"))
     for cid, name in CHECKS[11:17]:
-        out.append(result(cid, "P1", "INCONCLUSIVE",
-                          {"reason": f"{name} requires an explicit v3 provider capability contract"},
-                          model, name))
+        out.append(
+            result(
+                cid,
+                "P1",
+                "INCONCLUSIVE",
+                {"reason": f"{name} requires an explicit v3 provider capability contract"},
+                model,
+                name,
+            )
+        )
     for cid, name in CHECKS[17:24]:
-        out.append(result(cid, "P0", "INCONCLUSIVE",
-                          {"reason": f"{name} requires independently frozen evidence/checker inputs"},
-                          model, name))
+        out.append(
+            result(
+                cid,
+                "P0",
+                "INCONCLUSIVE",
+                {"reason": f"{name} requires independently frozen evidence/checker inputs"},
+                model,
+                name,
+            )
+        )
     out.append(result("R25", "P1", "INCONCLUSIVE",
                       {"reason": "vision input is absent from the frozen transport probe"},
                       model, "vision"))
@@ -213,8 +243,14 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
     canary = "JAMP-CANARY-7F4A9C2E"
     body2, meta2 = chat(headers, model, [{"role": "user", "content": canary}])
     text2 = text_from_response(body2) or ""
-    out.append(result("R27", "P0", classify(False if canary not in text2 else True),
-                      {"canary": canary, "detected": canary in text2}, model, "canary"))
+    out.append(
+        result(
+            "R27", "P0", classify(canary not in text2),
+            {"canary": canary, "detected": canary in text2},
+            model,
+            "canary",
+        )
+    )
     out.append(result("R28", "P2", "INCONCLUSIVE",
                       {"reason": "private reasoning traces are not a required observable output"},
                       model, "reasoning_trace_policy"))
@@ -266,7 +302,10 @@ def main() -> int:
         "models": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"WROTE {args.output}")
     return 0
 
