@@ -40,6 +40,7 @@ Distinguish established results from your own proposed argument.
 List every critical step and every unproved dependency explicitly.
 Do not treat model confidence, consensus, or numerical evidence as a proof.
 """
+)
 
 VALID_STATUSES = {"PROOF_CLAIM", "DISPROOF_CLAIM", "UNKNOWN"}
 EXPECTED_KEYS = {
