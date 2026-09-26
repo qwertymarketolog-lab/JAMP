@@ -147,7 +147,8 @@ def text_from_response(body: dict[str, Any] | None) -> str | None:
     if not body:
         return None
     choices = body.get("choices")
-    if isinstance(choices, list) and choices and isinstance(choices[0], dict):        msg = choices[0].get("message")
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+        msg = choices[0].get("message")
         if isinstance(msg, dict) and isinstance(msg.get("content"), str):
             return msg["content"]
         if isinstance(choices[0].get("text"), str):
@@ -290,7 +291,8 @@ def run_model(
         )
     )
     out.append(
-        result(            "R11",
+        result(
+            "R11",
             "P0",
             classify(isinstance(body, dict)),
             {"json_object": isinstance(body, dict)},
