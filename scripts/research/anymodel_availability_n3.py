@@ -39,9 +39,7 @@ import requests
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models")
-CHAT_URL = os.environ.get(
-    "ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"
-)
+CHAT_URL = os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions")
 TIMEOUT_S = float(os.environ.get("ANYMODEL_TIMEOUT_S", "30"))
 AUTH_HEADER = os.environ.get("ANYMODEL_AUTH_HEADER", "Authorization")
 AUTH_SCHEME = os.environ.get("ANYMODEL_AUTH_SCHEME", "Bearer")
@@ -58,9 +56,9 @@ def now() -> str:
 
 
 def sha256_json(value: Any) -> str:
-    raw = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
