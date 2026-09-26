@@ -102,7 +102,7 @@ def call_model(api_key: str, model: str, question: str, timeout: int) -> dict[st
                 "parsed": parsed,
                 "normalized_answer": answer,
             }
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, KeyError, IndexError, json.JSONDecodeError) as exc:
+    except (\n        urllib.error.HTTPError,\n        urllib.error.URLError,\n        TimeoutError,\n        KeyError,\n        IndexError,\n        json.JSONDecodeError,\n    ) as exc:
         elapsed_ms = round((time.monotonic() - started) * 1000, 3)
         detail = getattr(exc, "reason", str(exc))
         return {
@@ -153,7 +153,7 @@ def main() -> int:
         "system_prompt_hash": sha256_text(SYSTEM_PROMPT),
         "temperature": 0,
         "observations": [],
-        "matrix_rule": "AGREEMENT iff normalized_answer strings are equal; CONFLICT iff both observed and non-equal; otherwise UNKNOWN.",
+        "matrix_rule": (\n            "AGREEMENT iff normalized_answer strings are equal; "\n            "CONFLICT iff both observed and non-equal; otherwise UNKNOWN."\n        ),
     }
     for model in MODELS:
         manifest["observations"].append(call_model(api_key, model, args.question, args.timeout))
@@ -161,7 +161,7 @@ def main() -> int:
     manifest["summary"] = {
         "observed": sum(o["status"] == "OBSERVED" for o in manifest["observations"]),
         "errors": sum(o["status"] == "ERROR" for o in manifest["observations"]),
-        "answers": sorted({o["normalized_answer"] for o in manifest["observations"] if o.get("normalized_answer")}),
+        "answers": sorted(\n            {\n                o["normalized_answer"]\n                for o in manifest["observations"]\n                if o.get("normalized_answer")\n            }\n        ),
     }
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
