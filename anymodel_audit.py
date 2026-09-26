@@ -119,6 +119,7 @@ def catalog(headers: dict[str, str]) -> list[dict[str, Any]]:
         raise ValueError("unexpected catalog response")
     return [x for x in rows if isinstance(x, dict) and isinstance(x.get("id"), str)]
 
+
 def chat(
     headers: dict[str, str], model: str, messages: list[dict[str, str]], **extra: Any
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -147,6 +148,7 @@ def chat(
             "elapsed_s": time.perf_counter() - started,
         }
 
+
 def text_from_response(body: dict[str, Any] | None) -> str | None:
     if not body:
         return None
@@ -158,6 +160,7 @@ def text_from_response(body: dict[str, Any] | None) -> str | None:
         if isinstance(choices[0].get("text"), str):
             return choices[0]["text"]
     return None
+
 
 def result(
     check_id: str, tier: str, status: str, observed: Any, model: str, probe: str
@@ -176,6 +179,7 @@ def result(
             "execution_id": None,
         },
     }
+
 
 def run_model(
     headers: dict[str, str], model_row: dict[str, Any], avail: dict[str, Any]
@@ -280,11 +284,11 @@ def run_model(
     )
     out.append(
         result(
-            "R10", "P1", "INCONCLUSIVE",
+            "R10",
+            "P1",
+            "INCONCLUSIVE",
             {
-                "reason": (
-                    "structured-output capability requires a provider-supported schema contract"
-                )
+                "reason": "structured-output capability requires a provider-supported schema contract"
             },
             model,
             "structured_output",
@@ -381,6 +385,7 @@ def run_model(
     )
     return {"model_id": model, "availability_evidence": avail.get(model), "checks": out}
 
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--availability", type=pathlib.Path, default=DEFAULT_AVAILABILITY)
@@ -430,8 +435,6 @@ def main() -> int:
     )
     print(f"WROTE {args.output}")
     return 0
-
-
 
 if __name__ == "__main__":
     sys.exit(main())
