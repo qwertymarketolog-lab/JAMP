@@ -263,6 +263,10 @@ def _measure(
                     f"pair_{pair_id}_affinity_restoration_failed:{type(exc).__name__}:{exc}"
                 )
             restored = _affinity()
+            print(
+                f"AFFINITY_RESTORE pair={pair_id} expected={initial!r} "
+                f"actual={restored!r} restored={restored == initial}"
+            )
             if restored != initial:
                 affinity_restored = False
                 errors.append(
