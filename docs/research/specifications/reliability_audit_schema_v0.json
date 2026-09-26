@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jamp.dev/schema/reliability_audit_schema_v0.json",
+  "title": "JAMP AI Consumer Reliability Audit v0",
+  "description": "Strict evidence record for the 30-check AI Consumer Reliability Matrix v0. Design-only schema; it defines storage shape, not empirical truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audit_id",
+    "schema_version",
+    "created_at",
+    "metadata",
+    "checks"
+  ],
+  "properties": {
+    "audit_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "const": "reliability-audit-v0"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/check"
+      },
+      "allOf": [
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R01"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R02"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R03"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R04"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R05"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R06"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R07"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R08"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R09"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R10"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R11"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R12"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R13"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R14"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R15"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R16"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R17"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R18"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R19"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R20"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R21"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R22"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R23"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R24"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R25"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R26"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R27"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R28"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R29"}}, "required": ["check_id"]}},
+        {"contains": {"type": "object", "properties": {"check_id": {"const": "R30"}}, "required": ["check_id"]}}
+      ]
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "provider",
+        "probe_contract_version",
+        "source_ref"
+      ],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "provider": {"type": "string", "minLength": 1},
+        "probe_contract_version": {"const": "p0-probe-v0"},
+        "source_ref": {"type": "string", "minLength": 1},
+        "model_version": {"type": ["string", "null"]},
+        "request_id": {"type": ["string", "null"]},
+        "experiment_seed": {"type": ["integer", "null"]},
+        "environment_ref": {"type": ["string", "null"]}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_id",
+        "tier",
+        "status",
+        "observed",
+        "evidence_digest",
+        "metadata"
+      ],
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "enum": [
+            "R01","R02","R03","R04","R05","R06","R07","R08","R09","R10",
+            "R11","R12","R13","R14","R15","R16","R17","R18","R19","R20",
+            "R21","R22","R23","R24","R25","R26","R27","R28","R29","R30"
+          ]
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["VERIFIED", "CONTRADICTED", "INCONCLUSIVE"]
+        },
+        "observed": {},
+        "evidence_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["probe_id", "observed_at"],
+          "properties": {
+            "probe_id": {"type": "string", "minLength": 1},
+            "observed_at": {"type": "string", "format": "date-time"},
+            "source_ref": {"type": ["string", "null"]},
+            "execution_id": {"type": ["string", "null"]}
+          }
+        }
+      }
+    }
+  }
+}
