@@ -29,8 +29,7 @@ MODELS = [
     "am/mistral-nemotron",
 ]
 DEFAULT_QUESTION = (
-    "Is Pluto a planet? Answer under the International Astronomical Union (IAU) "
-    "2006 definition."
+    "Is Pluto a planet? Answer under the International Astronomical Union (IAU) 2006 definition."
 )
 SYSTEM_PROMPT = (
     "You are an observation sensor in an evidence-first experiment. "
@@ -178,11 +177,7 @@ def main() -> int:
         "observed": sum(o["status"] == "OBSERVED" for o in manifest["observations"]),
         "errors": sum(o["status"] == "ERROR" for o in manifest["observations"]),
         "answers": sorted(
-            {
-                o["normalized_answer"]
-                for o in manifest["observations"]
-                if o.get("normalized_answer")
-            }
+            {o["normalized_answer"] for o in manifest["observations"] if o.get("normalized_answer")}
         ),
     }
     output = Path(args.output)
