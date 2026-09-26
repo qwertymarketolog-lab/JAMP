@@ -308,7 +308,9 @@ def main() -> int:
 
     manifest["status_matrix"] = build_status_matrix(manifest["observations"])
     manifest["summary"] = {
-        "observed": sum(observation["status"] == "OBSERVED" for observation in manifest["observations"]),
+        "observed": sum(
+            observation["status"] == "OBSERVED" for observation in manifest["observations"]
+        ),
         "errors": sum(observation["status"] == "ERROR" for observation in manifest["observations"]),
         "error_categories": {
             category: sum(
