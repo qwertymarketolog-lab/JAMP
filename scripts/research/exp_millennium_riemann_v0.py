@@ -47,6 +47,8 @@ def sha256_text(value: str) -> str:
 
 
 def extract_json(text: str) -> dict[str, Any] | None:
+    if not isinstance(text, str):
+        return None
     try:
         obj = json.loads(text)
         return obj if isinstance(obj, dict) else None
