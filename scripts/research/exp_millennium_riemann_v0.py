@@ -81,9 +81,7 @@ def extract_json(text: str) -> tuple[dict[str, Any] | None, str | None]:
         try:
             obj = json.loads(match.group(0))
             return (obj if isinstance(obj, dict) else None), (
-                None
-                if isinstance(obj, dict)
-                else "PARSER_FAILURE: extracted JSON is not an object"
+                None if isinstance(obj, dict) else "PARSER_FAILURE: extracted JSON is not an object"
             )
         except json.JSONDecodeError as exc:
             return None, f"PARSER_FAILURE: {type(exc).__name__}: {exc}"
@@ -306,20 +304,12 @@ def main() -> int:
     }
 
     for model in MODELS:
-        manifest["observations"].append(
-            call_model(api_key, model, args.question, args.timeout)
-        )
+        manifest["observations"].append(call_model(api_key, model, args.question, args.timeout))
 
     manifest["status_matrix"] = build_status_matrix(manifest["observations"])
     manifest["summary"] = {
-        "observed": sum(
-            observation["status"] == "OBSERVED"
-            for observation in manifest["observations"]
-        ),
-        "errors": sum(
-            observation["status"] == "ERROR"
-            for observation in manifest["observations"]
-        ),
+        "observed": sum(observation["status"] == "OBSERVED" for observation in manifest["observations"]),
+        "errors": sum(observation["status"] == "ERROR" for observation in manifest["observations"]),
         "error_categories": {
             category: sum(
                 observation.get("error_category") == category
