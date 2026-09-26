@@ -205,7 +205,12 @@ def run_model(headers: dict[str, str], model_row: dict[str, Any],
     out.append(
         result(
             "R10", "P1", "INCONCLUSIVE",
-            {"reason": "structured-output capability requires a provider-supported schema contract"},
+            {
+                "reason": (
+                    "structured-output capability requires a provider-supported "
+                    "schema contract"
+                )
+            },
             model,
             "structured_output",
         )
@@ -291,7 +296,7 @@ def main() -> int:
         print(f"[{i}/87] {model}", flush=True)
         records.append(run_model(headers, by_id[model], available_artifact))
     payload = {
-        "audit_id": f"anymodel-identity-capability-v3-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+        "audit_id": f"anymodel-identity-capability-v3-{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}",
         "schema_version": "reliability-audit-v0",
         "contract_version": "anymodel-identity-capability-v3",
         "created_at": now(),
