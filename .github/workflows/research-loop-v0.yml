@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - ".agents/**"
-      - ".github/workflows/research-loop-v0.yml"
-      - ".github/workflows/g1-trusted-lineage.yml"
 
 permissions:
   contents: read
