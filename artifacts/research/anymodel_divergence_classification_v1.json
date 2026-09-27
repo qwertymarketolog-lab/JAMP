@@ -1,7 +1,7 @@
 {
-  "artifact_version": "anymodel-divergence-classification-v1",
+  "artifact_version": "anymodel-divergence-classification-v2",
   "status": "VERIFIED",
-  "purpose": "Evidence-first classification of all Run1→Run2 divergences; no new AnyModel API requests.",
+  "purpose": "Evidence-first classification of all 37 Run1→Run2 divergences using primary classification plus secondary observed evidence; no new AnyModel API requests.",
   "population_n": 87,
   "divergences_n": 37,
   "source": {
@@ -9,7 +9,7 @@
     "run2_blob_sha": "ca231bdadcdafa302dcda131d19244f30bdf3066"
   },
   "classification_rule": {
-    "precedence": [
+    "primary_precedence": [
       "rate-limit",
       "timeout",
       "identity",
@@ -17,16 +17,18 @@
       "transport",
       "UNKNOWN"
     ],
+    "primary": "exactly one class selected by precedence from evidenced conditions",
+    "secondary_evidence": "all independently evidenced categories present in stored differing attempts; descriptive, non-causal",
     "rate_limit": "HTTP 429 or explicit rate-limit evidence",
-    "timeout": "stored timeout flag/error",
+    "timeout": "stored timeout flag OR stored timeout-indicating error signature",
     "identity": "successful response model id differs from requested/catalog id after exact-or-provider-local-name normalization",
-    "protocol": "HTTP 4xx (excluding 429) / request-contract rejection",
+    "protocol": "HTTP 4xx excluding 429 / request-contract rejection",
     "transport": "HTTP 5xx or stored TLS/SSL/EOF/connection/network transport error",
     "unknown": "none of the above is evidenced"
   },
   "counts": {
-    "transport": 16,
-    "timeout": 9,
+    "transport": 15,
+    "timeout": 10,
     "protocol": 2,
     "rate-limit": 10
   },
@@ -41,7 +43,6 @@
     {
       "model": "ag/gemini-3.6-flash-high",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -78,12 +79,15 @@
           "error": null,
           "response_model": "ag/gemini-3.6-flash-high"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "ag/gemini-3.6-flash-medium",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -120,12 +124,15 @@
           "error": null,
           "response_model": "ag/gemini-3.6-flash-medium"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "ag/gemini-3.6-flash-low",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -162,12 +169,15 @@
           "error": null,
           "response_model": "ag/gemini-3.6-flash-low"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "ag/gpt-oss-120b-medium",
       "provider": "ag",
-      "classification": "timeout",
       "run1": [
         {
           "status": 503,
@@ -204,12 +214,16 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
       ]
     },
     {
       "model": "ag/gemini-2.5-flash-lite",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -246,12 +260,15 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "ag/gemini-3.1-flash-lite-preview",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -288,12 +305,15 @@
           "error": null,
           "response_model": "ag/gemini-3.1-flash-lite-preview"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "ag/gemini-3.1-flash-image",
       "provider": "ag",
-      "classification": "transport",
       "run1": [
         {
           "status": 503,
@@ -330,12 +350,15 @@
           "error": null,
           "response_model": "gemini-3.1-flash-image"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "am/gpt-oss-20b",
       "provider": "am",
-      "classification": "timeout",
       "run1": [
         {
           "status": null,
@@ -372,12 +395,15 @@
           "error": null,
           "response_model": "am/gpt-oss-20b"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     },
     {
       "model": "am/nemotron-3.5-lightning-30b-a3b",
       "provider": "am",
-      "classification": "timeout",
       "run1": [
         {
           "status": null,
@@ -414,12 +440,15 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     },
     {
       "model": "am/mistral-nemotron",
       "provider": "am",
-      "classification": "timeout",
       "run1": [
         {
           "status": null,
@@ -456,12 +485,15 @@
           "error": null,
           "response_model": "am/mistral-nemotron"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     },
     {
       "model": "am/laguna-xs-2.1",
       "provider": "am",
-      "classification": "timeout",
       "run1": [
         {
           "status": 200,
@@ -498,12 +530,15 @@
           "error": null,
           "response_model": "am/laguna-xs-2.1"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     },
     {
       "model": "am/diffusiongemma-26b-a4b-it",
       "provider": "am",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -540,12 +575,16 @@
           "error": null,
           "response_model": "am/diffusiongemma-26b-a4b-it"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
       ]
     },
     {
       "model": "am/nemotron-3.5-content-safety",
       "provider": "am",
-      "classification": "timeout",
       "run1": [
         {
           "status": 200,
@@ -582,12 +621,15 @@
           "error": null,
           "response_model": "am/nemotron-3.5-content-safety"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     },
     {
       "model": "am/flux.1-dev",
       "provider": "am",
-      "classification": "protocol",
       "run1": [
         {
           "status": null,
@@ -624,12 +666,16 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "protocol",
+      "secondary_evidence": [
+        "protocol",
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-6-astra",
       "provider": "cx",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -666,12 +712,15 @@
           "error": null,
           "response_model": "gpt-6-astra"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.6-sol",
       "provider": "cx",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -708,12 +757,15 @@
           "error": null,
           "response_model": "cx/gpt-5.6-sol"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.6-sol-review",
       "provider": "cx",
-      "classification": "timeout",
       "run1": [
         {
           "status": 503,
@@ -750,12 +802,16 @@
           "error": null,
           "response_model": "cx/gpt-5.6-sol-review"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.6-luna",
       "provider": "cx",
-      "classification": "transport",
       "run1": [
         {
           "status": 503,
@@ -792,12 +848,15 @@
           "error": null,
           "response_model": "cx/gpt-5.6-luna"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.6-luna-review",
       "provider": "cx",
-      "classification": "transport",
       "run1": [
         {
           "status": 503,
@@ -834,12 +893,15 @@
           "error": null,
           "response_model": "cx/gpt-5.6-luna-review"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.5",
       "provider": "cx",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -876,12 +938,15 @@
           "error": null,
           "response_model": "cx/gpt-5.5"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cx/gpt-5.5-review",
       "provider": "cx",
-      "classification": "timeout",
       "run1": [
         {
           "status": 503,
@@ -918,12 +983,16 @@
           "error": null,
           "response_model": "cx/gpt-5.5-review"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
       ]
     },
     {
       "model": "kmc/kimi-for-coding",
       "provider": "kmc",
-      "classification": "transport",
       "run1": [
         {
           "status": 502,
@@ -960,12 +1029,15 @@
           "error": null,
           "response_model": "kimi-for-coding"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "kmc/k3",
       "provider": "kmc",
-      "classification": "transport",
       "run1": [
         {
           "status": 502,
@@ -1002,12 +1074,15 @@
           "error": null,
           "response_model": "kmc/k3"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.7",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1044,12 +1119,16 @@
           "error": null,
           "response_model": "grok-4.7"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.6",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1086,12 +1165,16 @@
           "error": null,
           "response_model": "grok-4.6"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.5",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1128,12 +1211,16 @@
           "error": null,
           "response_model": "grok-4.5"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.3",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1170,12 +1257,16 @@
           "error": null,
           "response_model": "grok-4.3"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-build-0.1",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1212,12 +1303,16 @@
           "error": null,
           "response_model": "grok-build-0.1"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.20-0309-reasoning",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1254,12 +1349,16 @@
           "error": null,
           "response_model": "grok-4.20-0309-reasoning"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.20-0309-non-reasoning",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1296,12 +1395,16 @@
           "error": null,
           "response_model": "grok-4.20-0309-non-reasoning"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-4.20-multi-agent-0309",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1338,12 +1441,16 @@
           "error": null,
           "response_model": "grok-4.20-multi-agent-0309"
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-imagine-image",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1380,12 +1487,17 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "xai/grok-imagine-image-quality",
       "provider": "xai",
-      "classification": "rate-limit",
       "run1": [
         {
           "status": 503,
@@ -1422,12 +1534,17 @@
           "error": null,
           "response_model": null
         }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
+        "rate-limit",
+        "transport"
       ]
     },
     {
       "model": "glm/glm-4.6v",
       "provider": "glm",
-      "classification": "protocol",
       "run1": [
         {
           "status": 200,
@@ -1449,27 +1566,30 @@
         {
           "status": 400,
           "timed_out": false,
-          "error": null,
+          "error": "context_length_exceeded",
           "response_model": null
         },
         {
           "status": 400,
           "timed_out": false,
-          "error": null,
+          "error": "context_length_exceeded",
           "response_model": null
         },
         {
           "status": 400,
           "timed_out": false,
-          "error": null,
+          "error": "context_length_exceeded",
           "response_model": null
         }
+      ],
+      "primary_classification": "protocol",
+      "secondary_evidence": [
+        "protocol"
       ]
     },
     {
       "model": "gcli/grok-4.7",
       "provider": "gcli",
-      "classification": "transport",
       "run1": [
         {
           "status": 200,
@@ -1506,12 +1626,15 @@
           "error": null,
           "response_model": "gcli/grok-4.7"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "cc/claude-opus-5-5",
       "provider": "cc",
-      "classification": "transport",
       "run1": [
         {
           "status": 503,
@@ -1548,12 +1671,15 @@
           "error": null,
           "response_model": "claude-opus-5-5"
         }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
       ]
     },
     {
       "model": "qwen/qwen3.8-max",
       "provider": "qwen",
-      "classification": "timeout",
       "run1": [
         {
           "status": 200,
@@ -1590,6 +1716,10 @@
           "error": null,
           "response_model": "qwen/qwen3.8-max"
         }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ]
     }
   ]
