@@ -1,7 +1,7 @@
 {
-  "artifact_version": "anymodel-run1-run2-divergence-classification-v1",
+  "artifact_version": "anymodel-run1-run2-divergence-classification-v2",
   "status": "VERIFIED",
-  "purpose": "Evidence-first classification of all Run1→Run2 availability divergences; no new AnyModel API requests.",
+  "purpose": "Forensic evidence matrix for all 37 Run1→Run2 divergences; primary classification is separated from secondary observed evidence; no new AnyModel API requests.",
   "population": {
     "models": 87,
     "divergences": 37,
@@ -14,28 +14,46 @@
     "run2_blob_sha": "ca231bdadcdafa302dcda131d19244f30bdf3066"
   },
   "contract": "divergence iff per-attempt signature list (HTTP status, timeout flag) differs between Run1 and Run2.",
-  "classification_rule": "Labels are evidence overlays, not forced mutually-exclusive causes. transport = observed status/signature change; timeout = explicit timeout evidence; rate-limit = HTTP 429/Too Many Requests; protocol = stored SSL/protocol evidence; identity = demonstrated response-model mismatch attributable to identity rather than catalog-ID normalization; UNKNOWN when evidence cannot support a category.",
+  "classification_rule": {
+    "primary_precedence": [
+      "rate-limit",
+      "timeout",
+      "identity",
+      "protocol",
+      "transport",
+      "UNKNOWN"
+    ],
+    "primary": "exactly one class selected by precedence from evidenced conditions",
+    "secondary_evidence": "all independently evidenced categories present in stored differing attempts; descriptive, non-causal",
+    "rate_limit": "HTTP 429 or explicit rate-limit evidence",
+    "timeout": "stored timeout flag OR stored timeout-indicating error signature",
+    "identity": "successful response model id differs from requested/catalog id after exact-or-provider-local-name normalization",
+    "protocol": "HTTP 4xx excluding 429 / request-contract rejection",
+    "transport": "HTTP 5xx or stored TLS/SSL/EOF/connection/network transport error",
+    "unknown": "none of the above is evidenced"
+  },
   "counts": {
-    "transport": 37,
+    "transport": 15,
     "timeout": 10,
-    "rate-limit": 10,
     "protocol": 2,
-    "identity": 0,
-    "UNKNOWN": 0
+    "rate-limit": 10
   },
   "combination_counts": {
-    "transport": 16,
-    "timeout+transport": 9,
-    "protocol+timeout+transport": 1,
+    "protocol+rate-limit+transport": 2,
     "protocol+transport": 1,
-    "rate-limit+transport": 10
+    "protocol": 1,
+    "rate-limit+transport": 8,
+    "timeout+transport": 4,
+    "timeout": 6,
+    "transport": 15
   },
   "identity_note": "Identity cause not established: 0/37. Response model fields that differ from provider-prefixed catalog IDs only by prefix were not treated as identity failures.",
   "unknown_note": "0/37 UNKNOWN at requested evidence level.",
   "rows": [
     {
       "model_id": "ag/gemini-3.6-flash-high",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -56,7 +74,8 @@
     },
     {
       "model_id": "ag/gemini-3.6-flash-medium",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -77,7 +96,8 @@
     },
     {
       "model_id": "ag/gemini-3.6-flash-low",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -124,7 +144,8 @@
     },
     {
       "model_id": "ag/gpt-oss-120b-medium",
-      "classification": [
+      "primary_classification": "timeout",
+      "secondary_evidence": [
         "timeout",
         "transport"
       ],
@@ -146,7 +167,8 @@
     },
     {
       "model_id": "ag/gemini-2.5-flash-lite",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -167,7 +189,8 @@
     },
     {
       "model_id": "ag/gemini-3.1-flash-lite-preview",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -188,7 +211,8 @@
     },
     {
       "model_id": "ag/gemini-3.1-flash-image",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -235,9 +259,9 @@
     },
     {
       "model_id": "am/gpt-oss-20b",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
@@ -283,9 +307,9 @@
     },
     {
       "model_id": "am/nemotron-3.5-lightning-30b-a3b",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
@@ -305,9 +329,9 @@
     },
     {
       "model_id": "am/mistral-nemotron",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
@@ -327,9 +351,9 @@
     },
     {
       "model_id": "am/laguna-xs-2.1",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
@@ -349,8 +373,8 @@
     },
     {
       "model_id": "am/diffusiongemma-26b-a4b-it",
-      "classification": [
-        "protocol",
+      "primary_classification": "timeout",
+      "secondary_evidence": [
         "timeout",
         "transport"
       ],
@@ -385,9 +409,9 @@
     },
     {
       "model_id": "am/nemotron-3.5-content-safety",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
@@ -407,7 +431,8 @@
     },
     {
       "model_id": "am/flux.1-dev",
-      "classification": [
+      "primary_classification": "protocol",
+      "secondary_evidence": [
         "protocol",
         "transport"
       ],
@@ -429,7 +454,8 @@
     },
     {
       "model_id": "cx/gpt-6-astra",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -463,7 +489,8 @@
     },
     {
       "model_id": "cx/gpt-5.6-sol",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -484,7 +511,8 @@
     },
     {
       "model_id": "cx/gpt-5.6-sol-review",
-      "classification": [
+      "primary_classification": "timeout",
+      "secondary_evidence": [
         "timeout",
         "transport"
       ],
@@ -519,7 +547,8 @@
     },
     {
       "model_id": "cx/gpt-5.6-luna",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -553,7 +582,8 @@
     },
     {
       "model_id": "cx/gpt-5.6-luna-review",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -574,7 +604,8 @@
     },
     {
       "model_id": "cx/gpt-5.5",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -595,7 +626,8 @@
     },
     {
       "model_id": "cx/gpt-5.5-review",
-      "classification": [
+      "primary_classification": "timeout",
+      "secondary_evidence": [
         "timeout",
         "transport"
       ],
@@ -643,7 +675,8 @@
     },
     {
       "model_id": "kmc/kimi-for-coding",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -690,7 +723,8 @@
     },
     {
       "model_id": "kmc/k3",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -737,7 +771,8 @@
     },
     {
       "model_id": "xai/grok-4.7",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -785,7 +820,8 @@
     },
     {
       "model_id": "xai/grok-4.6",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -833,7 +869,8 @@
     },
     {
       "model_id": "xai/grok-4.5",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -881,7 +918,8 @@
     },
     {
       "model_id": "xai/grok-4.3",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -929,7 +967,8 @@
     },
     {
       "model_id": "xai/grok-build-0.1",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -977,7 +1016,8 @@
     },
     {
       "model_id": "xai/grok-4.20-0309-reasoning",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -1025,7 +1065,8 @@
     },
     {
       "model_id": "xai/grok-4.20-0309-non-reasoning",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -1073,7 +1114,8 @@
     },
     {
       "model_id": "xai/grok-4.20-multi-agent-0309",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
         "rate-limit",
         "transport"
       ],
@@ -1121,7 +1163,9 @@
     },
     {
       "model_id": "xai/grok-imagine-image",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
         "rate-limit",
         "transport"
       ],
@@ -1169,7 +1213,9 @@
     },
     {
       "model_id": "xai/grok-imagine-image-quality",
-      "classification": [
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
         "rate-limit",
         "transport"
       ],
@@ -1217,8 +1263,9 @@
     },
     {
       "model_id": "glm/glm-4.6v",
-      "classification": [
-        "transport"
+      "primary_classification": "protocol",
+      "secondary_evidence": [
+        "protocol"
       ],
       "differing_attempts": [
         {
@@ -1264,7 +1311,8 @@
     },
     {
       "model_id": "gcli/grok-4.7",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -1285,7 +1333,8 @@
     },
     {
       "model_id": "cc/claude-opus-5-5",
-      "classification": [
+      "primary_classification": "transport",
+      "secondary_evidence": [
         "transport"
       ],
       "differing_attempts": [
@@ -1332,9 +1381,9 @@
     },
     {
       "model_id": "qwen/qwen3.8-max",
-      "classification": [
-        "timeout",
-        "transport"
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
       ],
       "differing_attempts": [
         {
