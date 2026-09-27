@@ -46,24 +46,22 @@ def get_attempts(row: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def status_signature(attempt: dict[str, Any]) -> tuple[Any, ...]:
-    transport = attempt.get("transport", {})
-    response = attempt.get("response", {})
-    if not isinstance(transport, dict):
-        transport = {}
-    if not isinstance(response, dict):
-        response = {}
-    parsed = response.get("parsed_body")
-    error_code = None
-    if isinstance(parsed, dict):
-        error = parsed.get("error")
-        if isinstance(error, dict):
-            error_code = error.get("code")
-    return (
-        transport.get("status_code"),
-        transport.get("timed_out"),
-        response.get("json_parse_ok"),
-        error_code,
-    )
+    """Normalize transport fields shared by both artifact schemas.
+
+    Run 1 stores http_status/error; Run 2 stores transport status_code/timed_out.
+    Parse state and provider error codes are not comparable, so they are excluded.
+    """
+    transport = attempt.get("transport")
+    if isinstance(transport, dict):
+        status_code = transport.get("status_code")
+        timed_out = transport.get("timed_out")
+    else:
+        status_code = attempt.get("http_status")
+        error = attempt.get("error")
+        error_text = str(error).lower() if error is not None else ""
+        timed_out = "timeout" in error_text or "timed out" in error_text
+
+    return (status_code, timed_out)
 
 
 def normalize(document: dict[str, Any]) -> dict[str, list[tuple[Any, ...]]]:
