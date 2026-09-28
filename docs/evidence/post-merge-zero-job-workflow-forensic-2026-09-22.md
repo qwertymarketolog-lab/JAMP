@@ -130,3 +130,41 @@ For all six listed zero-job runs, the exact workflow-jobs endpoint returned `tot
 **Post-merge main: INCONCLUSIVE / HOLD**
 
 No workflow, test, threshold, provenance identity, or Frozen Core change is authorized by this forensic record.
+
+
+## Historical revision-boundary qualification — 2026-09-08
+
+A separate historical sequence isolates a deterministic `test.yml` job-materialization boundary. This evidence qualifies the historical zero-job pattern; it does **not** by itself resolve the later post-merge `main` anomaly documented above.
+
+| Run | Run ID | Event | Head SHA | Workflow blob | Job-level `if:` | Jobs |
+|---|---:|---|---|---|---|---:|
+| #53 | `34275319555` | push | `61bf75e3…` | `4ea1ef03…` | PRESENT | 0 |
+| #54 | `34275476428` | push | `ee44d03e…` | `b6e78354…` | ABSENT | 1 |
+| #55 | `34275496802` | pull_request | `ee44d03e…` | `b6e78354…` | ABSENT | 1 |
+| #56 | `34275733930` | push | `11456299…` | `b6e78354…` | ABSENT | 1 |
+| #57 | `34275739843` | pull_request | `11456299…` | `b6e78354…` | ABSENT | 1 |
+| #58 | `34279927291` | push | `20f390d1…` | `4ea1ef03…` | PRESENT | 0 |
+
+The workflow blob `4ea1ef03…` contains a job-level `if:` condition requiring a pull-request event or the historical-import commit-message prefix. The `b6e78354…` revision removes that condition and retains `runs-on: ubuntu-latest`, producing one materialized `test` job for both push and pull-request events in #54–#57.
+
+### Check Suite evidence qualification
+
+The workflow-run metadata directly identifies Check Suite IDs:
+
+- #53 → `92852116876`
+- #54 → `92852557011`
+- #58 → `92864964863`
+- #55–#57 → corresponding run Check Suite IDs in their run metadata.
+
+The available GitHub connector exposed the run metadata and job endpoints, but did not expose the Check Suite resource itself for direct retrieval. Therefore **Check Suite status is UNKNOWN / not independently VERIFIED here**. The run-level `conclusion` must not be substituted for direct Check Suite status.
+
+### Evidence classification
+
+- **OBSERVED:** #53 and #58 have zero materialized jobs; #54–#57 have one materialized `test` job.
+- **VERIFIED:** the workflow-file revisions and job materialization differ exactly at the #53→#54 and #57→#58 transitions.
+- **INFERRED:** the job-level condition explains the zero-job behavior for historical non-PR push cases where the condition evaluates false.
+- **UNKNOWN:** direct Check Suite status for #53–#58; this record does not infer it from run conclusion.
+
+**Historical revision-boundary finding: VERIFIED.**
+
+**Current post-merge main root cause: remains UNRESOLVED.**
