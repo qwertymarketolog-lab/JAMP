@@ -25,9 +25,7 @@ from research.exp19.observation_relation import ObservationRelation
 EXPERIMENT_ID = "EXP-22-PHASE1-ENVIRONMENTAL-PROFILING"
 PHASE = 1
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 G4_THRESHOLD_MS = 15.0
 DEFAULT_SEED = 2201
@@ -57,13 +55,9 @@ def _affinity() -> list[int] | None:
 
 
 def _canonical_workload() -> ObservationAdjacencyGraph:
-    edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(10_000)
-    ]
+    edges = [ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(10_000)]
     edges.extend(
-        ObservationRelation(str(i), str(i + 10_000), "adjacent", {})
-        for i in range(10_000)
+        ObservationRelation(str(i), str(i + 10_000), "adjacent", {}) for i in range(10_000)
     )
     return ObservationAdjacencyGraph(tuple(edges))
 
@@ -180,8 +174,7 @@ def run(target_commit: str, seed: int, iterations: int, artifact_path: Path) -> 
         if gc_after != initial_gc_enabled:
             errors.append(f"iteration_{iteration}_gc_state_changed")
         if any(
-            not isinstance(value, (int, float))
-            or not math.isfinite(value)
+            not isinstance(value, (int, float)) or not math.isfinite(value)
             for value in (wall_ms, cpu_ms, non_cpu_delta_ms)
         ):
             errors.append(f"iteration_{iteration}_non_finite_timing")
