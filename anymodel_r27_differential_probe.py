@@ -137,9 +137,8 @@ def main() -> int:
     source = json.loads(INPUT.read_text(encoding="utf-8"))
     source_models = {
         row["model_id"]
-        for row in source["results"]
-        if row.get("status") == "CONTRADICTED"
-        and row.get("http", {}).get("status_code") == 200
+        for row in source["records"]
+        if row.get("http", {}).get("status_code") == 200
         and row.get("detected") is True
     }
     models = sorted(source_models & TARGETS)
