@@ -13,7 +13,7 @@ jobs:
       - name: Checkout target HEAD
         uses: actions/checkout@v4
         with:
-          ref: e35042115942153fbc33abdaf7553d86cc78961f
+          ref: ${{ github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
