@@ -250,7 +250,7 @@ def run_model(
         result(
             "R07",
             "P0",
-            classify(False if text == "OK" else None),
+            classify(True if text == "OK" else None),
             {"unexpected_spans": [] if text == "OK" else None},
             model,
             "language_insertion",
