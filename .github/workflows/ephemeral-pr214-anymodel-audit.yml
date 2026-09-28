@@ -22,6 +22,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install audit dependency
+        run: python -m pip install requests
+
       - name: Run AnyModel 30-check audit
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
