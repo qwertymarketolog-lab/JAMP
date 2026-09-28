@@ -399,7 +399,7 @@ def main() -> int:
     if not key:
         raise SystemExit("ANYMODEL_API_KEY is required")
     available_artifact = load_available(args.availability)
-    headers = {"Authorization": f"Bearer {key}"}
+    headers = {"Authorization": f"Bearer {key}", "x-api-key": key}
     rows = catalog(headers)
     models = sorted(row["id"] for row in rows if row["id"] != "am/kimi-k3")
     if len(models) != 86:
