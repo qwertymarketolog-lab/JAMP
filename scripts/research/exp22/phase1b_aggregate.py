@@ -24,6 +24,7 @@ def _summary(values: list[float]) -> dict[str, float]:
         return values[index]
 
     import statistics
+
     return {
         "min": values[0],
         "median": statistics.median(values),
