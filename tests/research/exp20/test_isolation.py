@@ -37,9 +37,11 @@ def test_frozen_core_run_py_blob_is_unchanged():
 def test_exp20_contains_only_research_harness_files():
     allowed = {
         "__init__.py",
+        "conftest.py",
         "fixtures_text.py",
         "text_adapter.py",
         "test_isolation.py",
+        "test_anti_intervention.py",
         "test_text_adapter.py",
         "fixtures_transcript.py",
         "transcript_adapter.py",
