@@ -25,7 +25,7 @@ jobs:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
         run: |
           python - <<'PY'
-          import hashlib, json, os, subprocess, sys, urllib.request
+          import hashlib, json, os, subprocess, sys, urllib.error, urllib.request
           from datetime import datetime, timezone
 
           url = "https://anymodel.org/v1/models"
@@ -36,12 +36,49 @@ jobs:
                   "Authorization": f"Bearer {key}",
                   "x-api-key": key,
                   "Accept": "application/json",
+                  "User-Agent": "JAMP-N4-Live-Catalog-Snapshot/1.0",
               },
           )
-          with urllib.request.urlopen(req, timeout=60) as r:
-              status = r.status
-              content_type = r.headers.get("content-type", "")
-              body = r.read()
+          try:
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  status = r.status
+                  content_type = r.headers.get("content-type", "")
+                  body = r.read()
+          except urllib.error.HTTPError as e:
+              body = e.read()
+              print(f"HTTP_ERROR_STATUS={e.code}")
+              print(f"HTTP_ERROR_CONTENT_TYPE={e.headers.get('content-type', '')}")
+              safe_headers = {
+                  k.lower(): v
+                  for k, v in e.headers.items()
+                  if k.lower() not in {
+                      "set-cookie",
+                      "authorization",
+                      "proxy-authorization",
+                  }
+              }
+              print(f"HTTP_ERROR_HEADERS={json.dumps(safe_headers, ensure_ascii=False, sort_keys=True)}")
+              print(f"HTTP_ERROR_BODY_BYTES={len(body)}")
+              try:
+                  err = json.loads(body)
+                  if isinstance(err, dict):
+                      print(f"HTTP_ERROR_JSON_KEYS={sorted(err.keys())}")
+                      for field in ("code", "type"):
+                          if field in err:
+                              print(f"HTTP_ERROR_{field.upper()}={err[field]!r}")
+                      if "error" in err and isinstance(err["error"], dict):
+                          nested = err["error"]
+                          print(f"HTTP_ERROR_NESTED_KEYS={sorted(nested.keys())}")
+                          for field in ("code", "type"):
+                              if field in nested:
+                                  print(f"HTTP_ERROR_NESTED_{field.upper()}={nested[field]!r}")
+              except Exception:
+                  print("HTTP_ERROR_BODY_CLASS=non_json")
+              raise
+          except Exception as e:
+              print(f"REQUEST_ERROR_TYPE={type(e).__name__}")
+              print(f"REQUEST_ERROR_MESSAGE={str(e)[:300]!r}")
+              raise
 
           if status != 200:
               raise SystemExit(f"HTTP {status}")
