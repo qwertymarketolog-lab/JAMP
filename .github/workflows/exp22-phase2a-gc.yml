@@ -1,0 +1,42 @@
+name: EXP-22 Phase 2A (GC Treatment)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/research/exp22/phase2a_gc_treatment.py'
+      - '.github/workflows/exp22-phase2a-gc.yml'
+
+jobs:
+  treatment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Phase 2A
+        env:
+          PYTHONPATH: .:src
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          python scripts/research/exp22/phase2a_gc_treatment.py             --target-commit "${{ github.event.pull_request.head.sha }}"             --pairs 50             --output-artifact artifacts/research/exp22_phase2a_gc_treatment.json
+
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase2a-gc-treatment
+          path: artifacts/research/exp22_phase2a_gc_treatment.json
+          if-no-files-found: error

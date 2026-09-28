@@ -1,0 +1,215 @@
+{
+  "schema_version": "jamp.ai_worker.qualification_result.v1",
+  "contract": "docs/research/AI_WORKER_QUALIFICATION_CONTRACT_V1.md",
+  "source_commit": "b55c528006d1639b0fb4c5cd72b17d071852d1c6",
+  "candidate_matrix": "artifacts/research/anymodel_ai_worker_candidate_matrix_v1.json",
+  "r27_crosswalk": "artifacts/research/r27_derived_crosswalk_v1.json",
+  "candidate_count": 25,
+  "qualified_count": 0,
+  "not_qualified_count": 25,
+  "inconclusive_count": 0,
+  "rule_applied": "Every applicable P0 must be VERIFIED; any P0 CONTRADICTED blocks QUALIFIED.",
+  "results": [
+    {
+      "model": "ag/gemini-2.5-flash",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "ag/gemini-3-flash",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "ag/gemini-3.1-pro-low",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "ag/gemini-3.7-flash-high",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "ag/gemini-3.7-flash-low",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-medium",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "ag/gemini-pro-agent",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "am/kimi-k3",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "am/nemotron-3-super-120b-a12b",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "am/nemotron-3-ultra-550b-a55b",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-haiku-4-5-20251001",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-opus-4-6",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-opus-4-7",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-opus-4-8",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-opus-5",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cc/claude-sonnet-4-6",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cx/gpt-5.6-terra",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cx/gpt-5.6-terra-review",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "cx/gpt-6-luna",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "cx/gpt-6-luna-review",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "glm/glm-4.7",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "glm/glm-5.1",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "glm/glm-5.3",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    },
+    {
+      "model": "qwen/qwen3.7-plus",
+      "qualification": "NOT_QUALIFIED",
+      "mandatory_p0_blockers": [
+        "R07=CONTRADICTED"
+      ],
+      "additional_blocker": null
+    }
+  ],
+  "frozen_core_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+}

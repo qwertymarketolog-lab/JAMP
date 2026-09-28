@@ -1,0 +1,2626 @@
+{
+  "experiment": "AnyModel availability audit",
+  "version": "N3-V1",
+  "started_at": "2026-09-26T14:30:37.620534+00:00",
+  "finished_at": "2026-09-26T14:51:49.582015+00:00",
+  "base_url": "https://anymodel.org/v1",
+  "catalog_models": 87,
+  "tested_models": 87,
+  "n_per_model": 3,
+  "total_probes": 261,
+  "available": 42,
+  "intermittent": 17,
+  "unavailable": 28,
+  "results": [
+    {
+      "model": "ag/claude-sonnet-4-6",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2699.566,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3063.85,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6852.354,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-2.5-flash",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1689.889,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2724.252,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1857.139,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-2.5-flash-lite",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4962.18,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3082.041,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2068.535,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3-flash",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8440.086,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8398.461,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1680.712,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.1-flash-image",
+      "n": 3,
+      "successes": 1,
+      "failures": 2,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 6443.566,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6638.987,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 11611.927,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.1-flash-lite-preview",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6093.585,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 8530.273,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1907.769,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.1-pro-low",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 16546.429,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3042.779,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 7602.848,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.6-flash-high",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8318.481,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 8641.806,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5059.261,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.6-flash-low",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1774.026,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6811.406,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 5280.838,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.6-flash-medium",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2862.993,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 3313.483,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 9146.323,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.7-flash-high",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8203.08,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3872.096,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 7360.653,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.7-flash-low",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 13668.266,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1962.636,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2844.985,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-3.7-flash-medium",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4714.487,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1976.675,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5936.437,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gemini-pro-agent",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2315.942,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8129.545,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4790.192,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ag/gpt-oss-120b-medium",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 6879.994,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 9445.139,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 24820.316,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "model": "am/diffusiongemma-26b-a4b-it",
+      "n": 3,
+      "successes": 1,
+      "failures": 2,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5035.581,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20029.334,
+          "error": "URLError: <urlopen error _ssl.c:1064: The handshake operation timed out>"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 6887.988,
+          "error": "URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)>"
+        }
+      ]
+    },
+    {
+      "model": "am/flux.1-dev",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 17848.4,
+          "error": "URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)>"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 1159.666,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 1051.624,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "am/flux.2-klein-4b",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 1238.425,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 784.775,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 1309.223,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "am/free",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1239.404,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1892.712,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3749.46,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/gpt-oss-20b",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20343.864,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20360.813,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20363.352,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "model": "am/kimi-k3",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2165.433,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3409.463,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3985.226,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/laguna-xs-2.1",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1962.574,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20496.176,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1438.984,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/llama-3.2-11b-vision-instruct",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1500.078,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1320.69,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3722.404,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/mistral-nemotron",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20441.054,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1830.621,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1326.32,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1800.914,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3039.537,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1589.142,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/nemotron-3-super-120b-a12b",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2117.347,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1562.209,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1587.991,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/nemotron-3-ultra-550b-a55b",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3099.94,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3724.183,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2103.245,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/nemotron-3.5-content-safety",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1036.861,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20332.161,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2173.958,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "am/nemotron-3.5-lightning-30b-a3b",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20343.388,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20358.295,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20415.135,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "model": "am/riva-translate-4b-instruct-v2",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10374.589,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10888.1,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10653.059,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-fable-5",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 913.096,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 760.346,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 742.336,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-haiku-4-5-20251001",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3210.527,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6833.879,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5510.643,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-4-5-20251101",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 601.953,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 670.441,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 728.605,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-4-6",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3844.477,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3064.047,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8850.866,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-4-7",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3238.698,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2922.903,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8648.346,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-4-8",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5318.962,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1910.68,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5348.325,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-5",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2239.942,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 7033.232,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1965.702,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-opus-5-5",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 592.81,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 610.988,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 717.231,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-sonnet-4-5-20250929",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 677.618,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 535.543,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 779.271,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-sonnet-4-6",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3750.279,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2206.764,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3466.815,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cc/claude-sonnet-5",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2381.698,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2869.063,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5831.729,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.5",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 13089.19,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1912.237,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 9877.182,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.5-review",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1677.695,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1639.447,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20301.965,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-luna",
+      "n": 3,
+      "successes": 1,
+      "failures": 2,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 2173.562,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 2039.258,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 9903.691,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-luna-review",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 2487.533,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 9605.428,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6865.201,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-sol",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3046.199,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2647.788,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1698.034,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-sol-review",
+      "n": 3,
+      "successes": 1,
+      "failures": 2,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 2848.408,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5967.225,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20492.604,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-terra",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 13278.663,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3569.283,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10913.143,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-terra-review",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4753.057,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6357.25,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5766.734,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-6-astra",
+      "n": 3,
+      "successes": 1,
+      "failures": 2,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10830.034,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1928.255,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1674.571,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-6-luna",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4636.421,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 1801.48,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 11046.743,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-6-luna-review",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2191.535,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8166.514,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2359.056,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-6-sol",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4039.006,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6596.156,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2561.314,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-6-sol-review",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3044.586,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2671.55,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5918.811,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-image-1.5",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5181.242,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5858.732,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6160.598,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "cx/gpt-image-2",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5673.452,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5120.752,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2239.692,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ds/deepseek-v4-flash",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2961.734,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3388.527,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 11656.678,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "ds/deepseek-v4-pro",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3900.798,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4492.6,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4041.798,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "flow/nano-banana",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 538.916,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 605.859,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 643.275,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "flow/nano-banana-lite",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 575.411,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 674.929,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 790.118,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "flow/nano-banana-pro",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 483.628,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 600.599,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 578.59,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "gcli/grok-4.7",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3029.078,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6105.697,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 1444.51,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-4.6v",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2836.192,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2240.135,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2508.548,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-4.7",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2503.065,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 4745.046,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2798.011,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-5",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3170.282,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2556.463,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2726.798,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-5.1",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3504.779,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2888.954,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3375.81,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-5.2",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3769.2,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3000.789,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2697.543,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-5.3",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 7367.221,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 12825.08,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 3448.051,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "glm/glm-5.3-flash",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2336.256,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2926.498,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 2669.518,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "kmc/k3",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 7140.197,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 10022.626,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 5118.59,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        }
+      ]
+    },
+    {
+      "model": "kmc/kimi-for-coding",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 6553.25,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 4480.63,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 502,
+          "elapsed_ms": 3873.924,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        }
+      ]
+    },
+    {
+      "model": "nano-banana",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 562.524,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 519.178,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 524.467,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "nano-banana-lite",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 532.054,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 714.011,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 519.675,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "nano-banana-pro",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 597.002,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 509.014,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 404,
+          "elapsed_ms": 582.263,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "model": "qwen/qwen3.7-max",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6623.635,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 8412.88,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 10441.437,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "qwen/qwen3.7-plus",
+      "n": 3,
+      "successes": 3,
+      "failures": 0,
+      "availability": "AVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 6357.5,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5430.265,
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 11666.859,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "qwen/qwen3.8-max",
+      "n": 3,
+      "successes": 2,
+      "failures": 1,
+      "availability": "INTERMITTENT",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 7530.373,
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": null,
+          "elapsed_ms": 20363.581,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "attempt": 3,
+          "success": true,
+          "http_status": 200,
+          "elapsed_ms": 5083.243,
+          "error": null
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-0309-non-reasoning",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 609.205,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1816.681,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1593.79,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-0309-reasoning",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 845.369,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1512.045,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1495.351,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-multi-agent-0309",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 734.059,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1510.286,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1748.949,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.3",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 542.907,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1652.305,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1542.324,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.5",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 997.151,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1564.776,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1711.758,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.6",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 596.904,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1617.136,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1693.274,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-4.7",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 775.516,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1623.689,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1519.556,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-build-0.1",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 608.598,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1503.481,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1608.634,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-imagine-image",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 745.289,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1566.882,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1634.278,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    },
+    {
+      "model": "xai/grok-imagine-image-quality",
+      "n": 3,
+      "successes": 0,
+      "failures": 3,
+      "availability": "UNAVAILABLE",
+      "observations": [
+        {
+          "attempt": 1,
+          "success": false,
+          "http_status": 503,
+          "elapsed_ms": 610.347,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "attempt": 2,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1565.766,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "attempt": 3,
+          "success": false,
+          "http_status": 429,
+          "elapsed_ms": 1655.891,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+name: AnyModel R27 Provenance Probe
+
+on:
+  pull_request:
+    paths:
+      - "anymodel_r27_provenance_probe.py"
+      - ".github/workflows/anymodel-r27-provenance.yml"
+      - "artifacts/research/anymodel_identity_capability_v3_analysis.json"
+      - "artifacts/research/anymodel_availability_n3.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r27-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Run read-only R27 provenance probe
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python anymodel_r27_provenance_probe.py
+
+      - name: Upload R27 provenance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-r27-provenance-v1
+          path: artifacts/research/r27_provenance_probe.json
+          if-no-files-found: error
+          retention-days: 30

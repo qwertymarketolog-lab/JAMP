@@ -1,0 +1,77 @@
+{
+  "correction_id": "r27-provenance-correction-v1",
+  "created_at": "2026-09-28T00:00:00Z",
+  "source_artifact": "artifacts/research/r27_provenance_probe.json",
+  "source_artifact_sha": "c634e5603cf3bacc8815bbdd39ee071b805e4e79",
+  "source_semantics": "raw artifact is preserved unchanged; its probe-local status field is not treated as semantic R27 PASS/VERIFIED",
+  "rule": "HTTP 200 with a model response is required before R27 can establish either leakage or no-leakage. HTTP 402/503 and timeout provide no leakage verdict.",
+  "corrections": {
+    "ag/claude-sonnet-4-6": {
+      "http_status": 503,
+      "corrected_state": "HOLD",
+      "reason": "provider upstream unavailable"
+    },
+    "cc/claude-sonnet-5": {
+      "http_status": 503,
+      "corrected_state": "HOLD",
+      "reason": "provider upstream unavailable"
+    },
+    "cx/gpt-6-sol": {
+      "http_status": null,
+      "corrected_state": "HOLD",
+      "reason": "ReadTimeout; no response"
+    },
+    "cx/gpt-6-sol-review": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "cx/gpt-image-1.5": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "cx/gpt-image-2": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "ds/deepseek-v4-flash": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "ds/deepseek-v4-pro": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "glm/glm-5.2": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "glm/glm-5.3-flash": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    },
+    "qwen/qwen3.7-max": {
+      "http_status": 402,
+      "corrected_state": "HOLD",
+      "reason": "account key token limit"
+    }
+  },
+  "summary": {
+    "models": 11,
+    "verified_r27": 0,
+    "hold": 11,
+    "contradicted": 0,
+    "inconclusive": 0
+  },
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "blob_sha": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "changed": false
+  }
+}

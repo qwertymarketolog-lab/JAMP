@@ -1,0 +1,1184 @@
+{
+  "probe_id": "anymodel-r27-provenance-v1",
+  "contract": "anymodel-identity-capability-v3",
+  "created_at": "2026-09-28T00:42:09.880959Z",
+  "chat_url": "https://anymodel.org/v1/chat/completions",
+  "canary": "JAMP-CANARY-7F4A9C2E",
+  "timeout_s": 30.0,
+  "selection": {
+    "candidate_gate": [
+      "N3 AVAILABLE",
+      "R01 VERIFIED",
+      "R05 VERIFIED",
+      "R06 VERIFIED",
+      "R09 VERIFIED",
+      "R11 VERIFIED"
+    ],
+    "candidate_count": 36,
+    "r27_hold_count": 17,
+    "source_analysis": "/storage/emulated/0/Download/JAMP/artifacts/research/anymodel_identity_capability_v3_analysis.json",
+    "source_availability": "/storage/emulated/0/Download/JAMP/artifacts/research/anymodel_availability_n3.json"
+  },
+  "records": [
+    {
+      "check_id": "R27",
+      "model_id": "ag/claude-sonnet-4-6",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:40:43.714371Z",
+      "request": {
+        "model": "ag/claude-sonnet-4-6",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 503,
+        "elapsed_s": 0.8060594230046263,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:40:44 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_fd267382-aa30-4791-ad6b-100ad39bea51",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Bzi6s2NWL9FZZHXcQoL40npRNjpRLJr9gEqcCuVWZNEIFmKg79%2BoAZJgdsFald9fpPinrkrDSq38XK4Jmc%2B8MGMBLsR%2FSAwgzzGxaTzF7EqXgKVJjrnb5tSNVEO7BQ%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb2cae934b466-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "The upstream provider is temporarily unavailable. Try again shortly.",
+            "type": "server_error",
+            "code": "service_unavailable",
+            "status": 503,
+            "request_id": "err_fd267382-aa30-4791-ad6b-100ad39bea51"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:f3f4e28ab49733291dc279a0f4805f442c81720ec113095d4231be45386d0477"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:beee15fd65f4d13ff33656c9e287d7d9438b1bff0333cc2ebd3d7958fce0f215",
+      "evidence_digest": "sha256:fa3a803fa32cb8651c35c4c40852eafa76bfde22951e0e8ee8037e3649046abb"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "ag/gemini-3-flash",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:40:44.528536Z",
+      "request": {
+        "model": "ag/gemini-3-flash",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 12.366245915007312,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:40:56 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=1%2Bgek%2FSWT2fnZq8kYb2mFHQP0kG%2Borb181Q0fOdoWGO%2BEnCcRZO0aPv7LBjmJ%2BM3mdCVntDo2uDd0oNt2fXtE4ucHk11hhay6dT6XNq%2F4moZNW7ipPCWnEERmoxfEg%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb2cf2b7ee900-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "chatcmpl-202609280040541706891278268d9d6y8DpLbmn",
+          "object": "chat.completion",
+          "created": 1790556056,
+          "model": "ag/gemini-3-flash",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Received: `JAMP-CANARY-7F4A9C2E`\n\nHow can I assist you today?"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 120,
+            "completion_tokens": 350,
+            "total_tokens": 470,
+            "billing_usage": {
+              "source": "gemini_chat",
+              "semantic": "gemini",
+              "gemini_usage_metadata": {
+                "promptTokenCount": 120,
+                "toolUsePromptTokenCount": 0,
+                "candidatesTokenCount": 26,
+                "totalTokenCount": 470,
+                "thoughtsTokenCount": 324,
+                "cachedContentTokenCount": 0,
+                "promptTokensDetails": [],
+                "toolUsePromptTokensDetails": [],
+                "candidatesTokensDetails": []
+              }
+            },
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "text_tokens": 120,
+              "audio_tokens": 0,
+              "image_tokens": 0
+            },
+            "completion_tokens_details": {
+              "text_tokens": 0,
+              "audio_tokens": 0,
+              "image_tokens": 0,
+              "reasoning_tokens": 324
+            },
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "input_tokens_details": null,
+            "claude_cache_creation_5_m_tokens": 0,
+            "claude_cache_creation_1_h_tokens": 0
+          }
+        },
+        "text": "Received: `JAMP-CANARY-7F4A9C2E`\n\nHow can I assist you today?",
+        "raw_sha256": "sha256:d1098165cfbf97bc1baa02a4eb898aa8417e0ccfc1c4bfbd1bb78f65a84a4ea6"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:11d9ff3c8f583d4f7e6f04bde40b0a69a16d50e7528d38db0bf0ceb5f3003a43",
+      "evidence_digest": "sha256:bc13082f0ec886cd9903048df60583e588ec178272fbd08d310aca5dc595b48b"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "ag/gemini-3.7-flash-low",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:40:56.902952Z",
+      "request": {
+        "model": "ag/gemini-3.7-flash-low",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 14.972274451007252,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:11 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Gvexa%2BMV9HLPI29aliYIetvvqOSSjLFmgNHV5ChLp8mxtASWh6Gjioj6QHacM0BRXWUwkPUW9RqoXWk%2BJG4DaxCXjOQK7t3aq3aVG3SHQelhPg5dIXzCdEeqMftqpw%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb31c9a2c98f3-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "msg_01MCTMLXQER3ZYNmpamCDCPd",
+          "object": "chat.completion",
+          "created": 1790556068,
+          "model": "ag/gemini-3.7-flash-low",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "I received the canary string: `JAMP-CANARY-7F4A9C2E`. \n\nHow can I assist you with this today?"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 132,
+            "completion_tokens": 177,
+            "total_tokens": 309
+          }
+        },
+        "text": "I received the canary string: `JAMP-CANARY-7F4A9C2E`. \n\nHow can I assist you with this today?",
+        "raw_sha256": "sha256:a1dcbcb5f9560b328822d85b2cd95ea8b14183229f4b27617164fea57551de54"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:ed8d84813584270aee233026087a9b643cb7c9630461141e9d3f416a1aa99b28",
+      "evidence_digest": "sha256:761d7205bc58b8d92df0c9cfafeac27845ff067e3d885082c320ec4667c02e42"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "ag/gemini-3.7-flash-medium",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:11.884039Z",
+      "request": {
+        "model": "ag/gemini-3.7-flash-medium",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 3.422605689993361,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:14 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=vDEn4UxyHL1c%2BqryBXwu3RP99wUM0TOXp8SiqYHym%2F3af3YONnYYtjb6xWSryeTfj2BVij%2F1lvUXb7PfFz7UoIweOEcIZK%2FHmqqkLEX72NXlTiWMGD%2Bm3fE8ZJvIPA%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb37a49d4951b-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "chatcmpl-qbe5aoz9D4qAz7IP14XEoQU",
+          "object": "chat.completion",
+          "created": 1790556074,
+          "model": "ag/gemini-3.7-flash-medium",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "It looks like you've shared a canary token or identifier (`JAMP-CANARY-7F4A9C2E`). \n\nHow can I assist you with this today?"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 15,
+            "completion_tokens": 119,
+            "total_tokens": 134,
+            "completion_tokens_details": {
+              "reasoning_tokens": 80
+            }
+          }
+        },
+        "text": "It looks like you've shared a canary token or identifier (`JAMP-CANARY-7F4A9C2E`). \n\nHow can I assist you with this today?",
+        "raw_sha256": "sha256:8a5c67dc225cc15ca3136f5965f36ba606e51182ecfe27f07ce8ea3e745222ec"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:636927a24e26d0fba910cd94b856f86c5ed5666089a00c1b9ae218bcbe633cd6",
+      "evidence_digest": "sha256:4ba9ccad60b70ed62fc5f24c225f391bd7aba9231e57e4a37bcecb027d071ac3"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "am/nemotron-3-super-120b-a12b",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:15.314774Z",
+      "request": {
+        "model": "am/nemotron-3-super-120b-a12b",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 9.42516357099521,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:24 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=wb5xyzDz1l3%2BCT4WzwR6CgFXxUFUZrh%2BK6Hbm2Yw2KqzkVVGI6znNdtxWmA0vnjW7t7LTlw4aKpV1Ir5I4xN%2F32xQSiHnVsTzuJQiESe2Dq6G%2BrtgLZzlZDvvEqvhg%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb38f7fa73c70-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "chatcmpl-5ab2aa76-3bfc-40f2-8aaf-6a4f65eebce8",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "content": "I acknowledge receipt of the string \"JAMP-CANARY-7F4A9C2E\". As per my instructions, I am `nemotron-3-super-120b-a12b`. No language model can verify its own weights through introspection, and this conversation was routed to the specified model. I await your next question or instruction.",
+                "role": "assistant"
+              },
+              "finish_reason": "stop",
+              "logprobs": null
+            }
+          ],
+          "created": 1790556076,
+          "model": "am/nemotron-3-super-120b-a12b",
+          "service_tier": null,
+          "system_fingerprint": null,
+          "object": "chat.completion",
+          "usage": {
+            "prompt_tokens": 2143,
+            "completion_tokens": 417,
+            "total_tokens": 2560
+          }
+        },
+        "text": "I acknowledge receipt of the string \"JAMP-CANARY-7F4A9C2E\". As per my instructions, I am `nemotron-3-super-120b-a12b`. No language model can verify its own weights through introspection, and this conversation was routed to the specified model. I await your next question or instruction.",
+        "raw_sha256": "sha256:a3bb00041f9a213493d5a49c9fdbd4ea3f28441dcdabb1f42b769cd46af78649"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:0adb972662e605dcd56ff61bbfd9fc9ff6554aaf99cc863e678f5c1cea6e61c6",
+      "evidence_digest": "sha256:9b0f6825d6a7737e329eed5489504c6f9d1de068ac17356118a36176a209c56e"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cc/claude-sonnet-5",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:24.748292Z",
+      "request": {
+        "model": "cc/claude-sonnet-5",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 503,
+        "elapsed_s": 1.0463586910045706,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:25 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_17b7e883-2e2b-4f3f-9d40-8fce3294385d",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=kFUfxiv0jiu9t1fuX1cDtcac4sWqU67JlcpEKzVCRi5rbLTiq1i2GoDyKlK9bcKQgdGWgLEC0rKyYg0mWCZM3Y0Xy%2FnDZ%2BIaAtK5Pew%2BSnRlT%2BmlfFOZNppgUHprsQ%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb3ca8f3b89bb-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "The upstream provider is temporarily unavailable. Try again shortly.",
+            "type": "server_error",
+            "code": "service_unavailable",
+            "status": 503,
+            "request_id": "err_17b7e883-2e2b-4f3f-9d40-8fce3294385d"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:6ca29ff77880630032dca54b0a4c88be03555f2bd71f2c1713ac9497c27ce869"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:d50e38fd3a2271ccd2442614293df1d4eafca07bf81fa2a04c990b655807e5cc",
+      "evidence_digest": "sha256:3152c40f0755d6b498a23da4220c9127d080b17a272c4f67537396bf1f1b3c49"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-6-luna",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:25.802890Z",
+      "request": {
+        "model": "cx/gpt-6-luna",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 4.473337804010953,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:29 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=rSo3EYjGzedkeg%2FKMC8itI%2B%2BkvobyoPIUY3vJh4rwTTPI3YnIb9zxOMK4RnQ3bYEXhIzWLyqbm67CttYBgLHdSIzYWEAVnnVfOdIDBlpfI%2BB7rr7j1imy5d3D%2B9biA%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb3d10e9286d0-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "resp_0206cf8fedd3398e016ab9b7b697b087d2a1cf51193e0e6645",
+          "object": "chat.completion",
+          "created": 1790556086,
+          "model": "gpt-6-luna",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "JAMP-CANARY-7F4A9C2E"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2592,
+            "completion_tokens": 18,
+            "total_tokens": 2610,
+            "prompt_tokens_details": {
+              "cached_tokens": 1792
+            }
+          }
+        },
+        "text": "JAMP-CANARY-7F4A9C2E",
+        "raw_sha256": "sha256:9fd7722693484e03fc1afb016f2aa651881a62c4e8467860ecc5e383facd345e"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:0a4be378de82182e0c5f2ac0ef1066502aef76f2eee49568b91cc965979c3f8b",
+      "evidence_digest": "sha256:30125ff5e4548321027ac86157f45e7a3f64d26602a64b358bf80b3ebeefc609"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-6-luna-review",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:30.284246Z",
+      "request": {
+        "model": "cx/gpt-6-luna-review",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 200,
+        "elapsed_s": 4.873612918992876,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:41:34 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=NFol29eTnbZpeqNBvSiII3vbOfRO927M9on1VHFKGXJDGGWKj9h7Z7ycEAohqCSXJ3sCfPZUwaYGp7PWD6R%2BHn016HP8HUChly8uVoGLOhmk%2BPbjotPi6JubmUGSSw%3D%3D\"}]}",
+          "content-encoding": "gzip",
+          "server": "cloudflare",
+          "cf-ray": "a41eb3ee2f9efc4d-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "id": "resp_028bbd7e40468710016ab9b7bc04a087d2aa4721b83663ed0e",
+          "object": "chat.completion",
+          "created": 1790556092,
+          "model": "gpt-6-luna-review",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "JAMP-CANARY-7F4A9C2E"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 2596,
+            "completion_tokens": 18,
+            "total_tokens": 2614
+          }
+        },
+        "text": "JAMP-CANARY-7F4A9C2E",
+        "raw_sha256": "sha256:3fd6b408387eacbecdda00867c680eb1d8235fcea53539e7a71e4cfcc18de549"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": true,
+      "status": "CONTRADICTED",
+      "response_sha256": "sha256:48daac7626d71a22aada402e351c6f40c47d5e2c2d2ebfafa5dad23a1e3209e1",
+      "evidence_digest": "sha256:8dda1b0e6adb0e8586f819d1df7025c31ee7520b531090d6f4aaf3c976828e11"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-6-sol",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:41:35.165973Z",
+      "request": {
+        "model": "cx/gpt-6-sol",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": null,
+        "elapsed_s": 30.386169671008247,
+        "headers": {},
+        "error_type": "ReadTimeout",
+        "error": "HTTPSConnectionPool(host='anymodel.org', port=443): Read timed out. (read timeout=30.0)"
+      },
+      "response": null,
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": null,
+      "status": "INCONCLUSIVE",
+      "response_sha256": null,
+      "evidence_digest": "sha256:a5328f73f51b08e46f7b3481b05d3e455b5ef5396fd3b1799a35b4f252a612c3"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-6-sol-review",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:05.552566Z",
+      "request": {
+        "model": "cx/gpt-6-sol-review",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.5797104609955568,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:05 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_c0dae88d-8a6e-4030-b938-6a38b0e467e4",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=x4ym%2F3WSFj95%2BU1UGJDkyNhvs3I6MIdb%2BocjrkpkHVPLfAME3F090lEjr3scdmaXyrH9Xh2F4iMd0ynoFhpvVDTmqfhqO93AW6PwDd0XrS%2Bt4gvqs5c9vTHiSH5jSQ%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4c9bc8ddd7d-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_c0dae88d-8a6e-4030-b938-6a38b0e467e4"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:ccb967853fbea76cf5a536ca7ce1c7368e77389b995af558c109b4e377239b25"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:8ad1a7ac44e91be75f207c28da7bd557b865057626015b6c448ab0c4bc13172a",
+      "evidence_digest": "sha256:1fc9b534fd83b9f475ed1160f4a3a867ca56a4ff168d0810e6db0d41ed30dd77"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-image-1.5",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:06.141770Z",
+      "request": {
+        "model": "cx/gpt-image-1.5",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.6234664609946776,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:06 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_a386cb50-4120-4e43-b505-15d5bd70250d",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=X13z4DjELCBjiOU%2FIJuBHrkZhEo6EOtCQ%2BvDn7vJ2q0CHj0WlXxITftxwA2uiabs0fO7OBI4Rs%2Bqrl%2B62gtT%2BRVVL7HViK%2FpOqNTDhltG0a7llagTUciU7XYHNv3qg%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4ce2cb26b4e-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_a386cb50-4120-4e43-b505-15d5bd70250d"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:9188aaa9dfba722908da47b423d9ed4e78c7c064fa41c222e4b46760469a7607"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:c35fa743ce1e1a68d3b01435ca952ca5e9ab9b3740791a93cf96cec6ddae3991",
+      "evidence_digest": "sha256:6ea842c48cfb95464cef916bd585db76b92ac3044340540bf7adb8962eb3a751"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "cx/gpt-image-2",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:06.775036Z",
+      "request": {
+        "model": "cx/gpt-image-2",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.4688429609959712,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:06 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_9598cd06-9add-43a3-ba09-bbc4405a7c32",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=TUGoonYttiZw7Jg0Wvw1m2vec8vVYXQaWIjAc4OU4hmqr3MUtwD%2FszWeLuFu04orzqzxQYnIbMgLB3uA4FW0POD1WSKr%2BG5DZaC5vywL1Qleo9%2F7qCIUiJI4c0nh9Q%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4d12ca56542-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_9598cd06-9add-43a3-ba09-bbc4405a7c32"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:1cf833b6ee79d85c7f0221130271abfaa0d065eb00c9c4358121f189195b3ea2"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:cc9aa6174c21889f6b22b16899eda604f95d11e16369488318df63ec830b5d59",
+      "evidence_digest": "sha256:87b09dc9468e31e2090d93a05dfc5578e169d51c536d3edadc594d6f29e43bc1"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "ds/deepseek-v4-flash",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:07.253768Z",
+      "request": {
+        "model": "ds/deepseek-v4-flash",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.4894987309962744,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:07 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_1c1e0202-224d-4db5-ac31-c0c38df2c598",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=XAiVI0MyRZFiMYCArinCHsng1HqAeFukhODy2GnNtjXOq3NK13DOwK5RYAehyYmDOcwSYAvZKb81tYtLxIGMlMxVTkxvcO3LVquO1zWN%2BU35VjPb9WwI%2Fzz8SMqnAQ%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4d43a7f8b70-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_1c1e0202-224d-4db5-ac31-c0c38df2c598"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:52cff0e38819fee4b8236f29d9cbfdefdcae1469956f9834411285d14eae0944"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:a2ac58165c064b559655f5b3038dd727b60018ae90bc445c7c64bc4c7273be44",
+      "evidence_digest": "sha256:854883e0a5911687ad0fc8d8d9a0d6e6fcd65bba7a5e830d6839e3b0775b0f23"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "ds/deepseek-v4-pro",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:07.751629Z",
+      "request": {
+        "model": "ds/deepseek-v4-pro",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.48319822999474127,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:07 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_632d1f52-9ebc-4884-b59d-f6505087e1fa",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=s2f4qWrZUX3l4e7McVwU3lP1Dle0HA06CiV%2BcN%2FFvVALpu9tiOCXi6DfPpO0jjculBusAMoqqXRJ7fJPM%2FBfg8L8QG3VmqoBXDB2HMY8qlZFYzbBRwa%2FM66cYN%2BcHQ%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4d75ada60dc-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_632d1f52-9ebc-4884-b59d-f6505087e1fa"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:72844166aa25096567f6cfe48c2d091e3df47f2e0af889be7ae92c8850cf6026"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:4eccd5885e15828c76caa53497da68d29d9de2460f01509bd2a6e09b110911b8",
+      "evidence_digest": "sha256:9ceae15fda01c44ac61430fed4c9a7055ff4f5524dcbb5a1b950cb075d2d7c91"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "glm/glm-5.2",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:08.243369Z",
+      "request": {
+        "model": "glm/glm-5.2",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.5116821529954905,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:08 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_b17e0bc1-b292-42e0-b7a8-2c03809a3834",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=CTZgJdqDBM438K1bVX7VHhWwqq0SPKiv7pgelWp1tJvaUxIE8naHzNE3IjGfCWsoDiGKodCI4VUN8cqH5%2B%2Bo%2B0bCMKbHZnP5wyU1ZlVUiIIktbGcpOdoIKDvGdu2Pw%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4da7c76cce2-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_b17e0bc1-b292-42e0-b7a8-2c03809a3834"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:38a35f97aea051cbf52e8f16a9ef0b3a48f02cf622798465295f19fb2c78f9ad"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:34413bcd96b331fd83def3cea592cc4893aefa32c2db69cea58b1f969c35ec9a",
+      "evidence_digest": "sha256:3beb63486181e519f0021e6ec442ab335e844ce756aaad603511e50b96aa0919"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "glm/glm-5.3-flash",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:08.762286Z",
+      "request": {
+        "model": "glm/glm-5.3-flash",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.47151138399203774,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:08 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_491ac5a9-81b7-416c-b666-4ac0149d0480",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=VyVYQw2mnaol6UUaOcrN2cxKAh2CghJHKTjjugLUKudho70ffOUvqsViPgwLHnP9OI3kE0S1kC3wdh3CU7NLgF1bs7O%2BzaSM8al%2FUKhT6UARva358qaOKMNbDrSfpg%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4dd9cf594e5-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_491ac5a9-81b7-416c-b666-4ac0149d0480"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:192351a7315827eefb87eb6ac06a435b39ae4004a42f6849df5385e0be1bd6ed"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:3aa3b3df9b2eca8c0d97b3ce92fafd448b14a24c3d351e88697b66a936286ad4",
+      "evidence_digest": "sha256:ba5823190fbeaf38536837a71985e0616276d319ea5ab71eb0f2abd586fc291c"
+    },
+    {
+      "check_id": "R27",
+      "model_id": "qwen/qwen3.7-max",
+      "probe": "canary-provenance-v1",
+      "observed_at": "2026-09-28T00:42:09.244157Z",
+      "request": {
+        "model": "qwen/qwen3.7-max",
+        "messages": [
+          {
+            "role": "user",
+            "content": "JAMP-CANARY-7F4A9C2E"
+          }
+        ],
+        "temperature": 0
+      },
+      "http": {
+        "status_code": 402,
+        "elapsed_s": 0.6289731150027364,
+        "headers": {
+          "date": "Mon, 28 Sep 2026 00:42:09 GMT",
+          "content-type": "application/json",
+          "transfer-encoding": "chunked",
+          "connection": "keep-alive",
+          "access-control-allow-origin": "*",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://scripts.clarity.ms https://mc.yandex.ru https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: http: wss: ws:; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://smartcaptcha.cloud.yandex.ru https://mc.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'",
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "geolocation=(), microphone=(self), camera=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "err_a69e9a12-07af-47dc-abd5-ccec0bde2a34",
+          "x-robots-tag": "noindex, nofollow, noarchive",
+          "cf-cache-status": "DYNAMIC",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=SFF4L3QVHCHwgU4tPHsdi%2FLSrJZhWAkKUAClKIIl6icPMih%2B8SEvcusqdzBQ60CXw3Sv9%2FhSK8Uo4I4bEBbSCflMpaJf1nk8sYi6q3tjdxPKVGQFE%2FG0VO6jFppMoA%3D%3D\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a41eb4e18bf5bd7c-LHR"
+        }
+      },
+      "response": {
+        "body_kind": "json",
+        "body": {
+          "error": {
+            "message": "Key limit reached: 1000000/1000000 tokens for this month. Resets on 1 October 2026. Account balance is untouched. / Лимит ключа исчерпан: 1000000 из 1000000 токенов за месяц. Сбросится 1 октября 2026 г.. Баланс аккаунта не тронут.",
+            "type": "billing_error",
+            "code": "payment_required",
+            "status": 402,
+            "request_id": "err_a69e9a12-07af-47dc-abd5-ccec0bde2a34"
+          }
+        },
+        "text": null,
+        "raw_sha256": "sha256:a34effde3c1f657223566ce2dedea6de81b784cc6accea5857903611a39c62a9"
+      },
+      "canary": "JAMP-CANARY-7F4A9C2E",
+      "detected": false,
+      "status": "VERIFIED",
+      "response_sha256": "sha256:3c6cd3b5478a33708a623e8e7eceb96e2bef0de2c33af9077ed22b1b3aa83655",
+      "evidence_digest": "sha256:68a60802b706b2aeb27c1bbd02eda64b02be391e21475bc1e436a1b3c8b6255b"
+    }
+  ]
+}

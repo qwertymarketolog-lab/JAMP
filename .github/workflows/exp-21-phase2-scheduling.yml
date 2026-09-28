@@ -1,0 +1,142 @@
+name: EXP-21 Phase 2 Scheduling
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  exp-21-phase2-scheduling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify target and Frozen Core
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git hash-object src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          git diff --exit-code -- src/jamp/run.py
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install statistical dependency
+        run: python -m pip install --disable-pip-version-check scipy
+
+      - name: Run EXP-21 Phase 2
+        id: experiment
+        continue-on-error: true
+        env:
+          PYTHONPATH: .:src
+        run: |
+          python scripts/research/exp22/phase2_scheduling.py \
+            --target-commit "${{ github.event.pull_request.head.sha }}" \
+            --seed 2201
+
+      - name: Validate artifact
+        id: validate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("artifacts/research/exp21_phase2_scheduling.json")
+          assert p.is_file(), "artifact_missing"
+          d = json.loads(p.read_text(encoding="utf-8"))
+
+          assert d["experiment_id"] == "EXP-21-PHASE2-SCHEDULING-V1"
+          assert d["phase"] == 2
+          assert d["target_commit"] == "${{ github.event.pull_request.head.sha }}"
+          assert d["workload_spec_id"] == "EXP-21-PHASE0-G4-CANONICAL-V1"
+          assert d["workload_definition_hash"] == "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
+          assert d["experiment_seed"] == 2201
+          assert d["n_pairs"] <= 30
+          assert d["alpha"] == 0.01
+          assert d["status"] in {
+              "VERIFIED / SUPPORTED",
+              "VERIFIED / NOT_SUPPORTED",
+              "INCONCLUSIVE",
+          }
+
+          observations = d["observations"]
+          assert len(observations) <= 60
+          keys = [(o["pair_id"], o["condition"]) for o in observations]
+          assert len(keys) == len(set(keys))
+          assert {o["condition"] for o in observations} <= {"CONTROL", "CPU_AFFINITY"}
+          assert {o["pair_id"] for o in observations} <= set(range(1, 31))
+
+          required = {
+              "experiment_id", "phase", "pair_id", "condition", "target_commit",
+              "workload_spec_id", "workload_definition_hash", "experiment_seed",
+              "timestamp", "runner_name", "runner_os", "runner_arch", "kernel",
+              "python_version", "cpu_count_visible", "cpu_affinity_before",
+              "cpu_affinity_after", "affinity_verified", "affinity_restored",
+              "wall_ms", "cpu_ms", "non_cpu_delta_ms", "gc_enabled",
+              "gc_gen2_collections", "result_valid",
+          }
+
+          for o in observations:
+              assert required <= o.keys()
+              assert o["target_commit"] == d["target_commit"]
+              assert o["workload_spec_id"] == d["workload_spec_id"]
+              assert o["workload_definition_hash"] == d["workload_definition_hash"]
+              assert o["experiment_seed"] == d["experiment_seed"]
+              assert o["runner_name"]
+              assert o["runner_os"]
+              assert o["runner_arch"]
+              assert o["kernel"]
+              assert o["python_version"]
+              assert isinstance(o["cpu_count_visible"], int) and o["cpu_count_visible"] > 0
+              assert o["affinity_restored"] is True
+              if o["condition"] == "CPU_AFFINITY":
+                  assert o["affinity_verified"] is True
+                  assert o["cpu_affinity_before"]
+                  assert o["cpu_affinity_after"] == [min(o["cpu_affinity_before"])]
+
+          if d["status"] != "INCONCLUSIVE":
+              assert len(observations) == 60
+              for pair_id in range(1, 31):
+                  pair = [o for o in observations if o["pair_id"] == pair_id]
+                  assert {o["condition"] for o in pair} == {"CONTROL", "CPU_AFFINITY"}
+
+              assert not d["validation_errors"]
+              assert d["n_pairs"] == 30
+              assert d["wilcoxon_p"] is not None
+
+          print("ARTIFACT_CONTRACT=VERIFIED")
+          print("STATUS=", d["status"])
+          print("N_PAIRS=", d["n_pairs"])
+          print("OBSERVATIONS=", len(observations))
+          print("WILCOXON_P=", d["wilcoxon_p"])
+          print("VALIDATION_ERRORS=", d["validation_errors"])
+          PY
+
+      - name: Upload Phase 2 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-21-phase2-scheduling
+          path: artifacts/research/exp21_phase2_scheduling.json
+          if-no-files-found: error
+
+      - name: Enforce terminal execution result
+        if: always()
+        run: |
+          if [ "${{ steps.experiment.outcome }}" != "success" ]; then
+            echo "EXP-21 Phase 2 did not reach a verified terminal statistical state."
+            exit 1
+          fi
+          if [ "${{ steps.validate.outcome }}" != "success" ]; then
+            echo "EXP-21 Phase 2 artifact contract validation failed."
+            exit 1
+          fi

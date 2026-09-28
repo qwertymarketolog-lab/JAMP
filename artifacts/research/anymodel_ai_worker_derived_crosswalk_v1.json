@@ -1,0 +1,363 @@
+{
+  "schema_version": "jamp.ai_worker.derived_crosswalk.v1",
+  "source_commit": "b55c528006d1639b0fb4c5cd72b17d071852d1c6",
+  "source_artifact": "artifacts/research/anymodel_identity_capability_audit_v3_analysis.json",
+  "generated_from_committed_evidence_only": true,
+  "raw_artifacts_unchanged": true,
+  "model_count": 87,
+  "status_counts": {
+    "CANDIDATE": 25,
+    "INCONCLUSIVE": 11,
+    "NOT_QUALIFIED": 51
+  },
+  "models": [
+    {
+      "model": "ag/claude-sonnet-4-6",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "ag/gemini-2.5-flash",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-2.5-flash-lite",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3-flash",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-3.1-flash-image",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3.1-flash-lite-preview",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3.1-pro-low",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-3.6-flash-high",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3.6-flash-low",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3.6-flash-medium",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-high",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-low",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-medium",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gemini-pro-agent",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "ag/gpt-oss-120b-medium",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/diffusiongemma-26b-a4b-it",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/flux.1-dev",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/flux.2-klein-4b",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/free",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/gpt-oss-20b",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/kimi-k3",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "am/laguna-xs-2.1",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/llama-3.2-11b-vision-instruct",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/mistral-nemotron",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "am/nemotron-3-super-120b-a12b",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "am/nemotron-3-ultra-550b-a55b",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "am/nemotron-3.5-content-safety",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/nemotron-3.5-lightning-30b-a3b",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "am/riva-translate-4b-instruct-v2",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cc/claude-fable-5",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cc/claude-haiku-4-5-20251001",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-opus-4-5-20251101",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cc/claude-opus-4-6",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-opus-4-7",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-opus-4-8",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-opus-5",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-opus-5-5",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cc/claude-sonnet-4-5-20250929",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cc/claude-sonnet-4-6",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cc/claude-sonnet-5",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "cx/gpt-5.5",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.5-review",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.6-luna",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.6-luna-review",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.6-sol",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.6-sol-review",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-5.6-terra",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cx/gpt-5.6-terra-review",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cx/gpt-6-astra",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "cx/gpt-6-luna",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cx/gpt-6-luna-review",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "cx/gpt-6-sol",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "cx/gpt-6-sol-review",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "cx/gpt-image-1.5",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "cx/gpt-image-2",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "ds/deepseek-v4-flash",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "ds/deepseek-v4-pro",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "flow/nano-banana",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "flow/nano-banana-lite",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "flow/nano-banana-pro",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "gcli/grok-4.7",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "glm/glm-4.6v",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "glm/glm-4.7",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "glm/glm-5",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "glm/glm-5.1",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "glm/glm-5.2",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "glm/glm-5.3",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "glm/glm-5.3-flash",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "kmc/k3",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "kmc/kimi-for-coding",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "nano-banana",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "nano-banana-lite",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "nano-banana-pro",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "qwen/qwen3.7-max",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model": "qwen/qwen3.7-plus",
+      "derived_status": "CANDIDATE"
+    },
+    {
+      "model": "qwen/qwen3.8-max",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.20-0309-non-reasoning",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.20-0309-reasoning",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.20-multi-agent-0309",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.3",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.5",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.6",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-4.7",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-build-0.1",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-imagine-image",
+      "derived_status": "NOT_QUALIFIED"
+    },
+    {
+      "model": "xai/grok-imagine-image-quality",
+      "derived_status": "NOT_QUALIFIED"
+    }
+  ]
+}
