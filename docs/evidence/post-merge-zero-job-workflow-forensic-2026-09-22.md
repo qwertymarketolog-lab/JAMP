@@ -168,3 +168,34 @@ The available GitHub connector exposed the run metadata and job endpoints, but d
 **Historical revision-boundary finding: VERIFIED.**
 
 **Current post-merge main root cause: remains UNRESOLVED.**
+
+## Current test.yml forensic conclusion — 2026-09-28
+
+Current post-merge evidence for test.yml is:
+
+- Run 36437163186
+- head SHA 263ea55dd4e1256b62f69a291e310e5311582e78
+- event push
+- branch main
+- status completed
+- conclusion failure
+- jobs []
+- Check Suite 98660556466
+- Check Suite latest_check_runs_count = 0
+
+The current workflow definition explicitly permits push to main, and its job-level condition includes github.ref == refs/heads/main. Therefore the current zero-job result is not explained by the configured trigger or by the visible job.if evaluating false.
+
+A historical control establishes a separate, previously valid zero-job mechanism: #53 (34275319555) and #58 (34279927291) used workflow blob 4ea1ef03… with a restrictive job-level condition and materialized zero jobs, while #54–#57 used b6e78354… without that condition and materialized one test job. That historical boundary must not be substituted as the cause of the current main anomaly.
+
+### Current evidence classification
+
+- OBSERVED: current test.yml run fails with zero jobs and its Check Suite has zero Check Runs.
+- VERIFIED: current trigger includes main; current job.if explicitly permits refs/heads/main.
+- INFERRED: the current failure occurs upstream of ordinary job execution/materialization.
+- UNKNOWN: the GitHub Actions internal mechanism/configuration responsible for producing failure with zero jobs.
+
+ROOT CAUSE = UNRESOLVED
+
+STATE: INCONCLUSIVE / HOLD
+
+No workflow definition was changed. No test, threshold, provenance identity, or Frozen Core was changed.
