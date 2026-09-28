@@ -231,7 +231,7 @@ def main() -> int:
                 "R09 VERIFIED",
                 "R11 VERIFIED",
             ],
-            "candidate_count": len(models) + 19,
+            "candidate_count": EXPECTED_CANDIDATES,
             "r27_hold_count": len(models),
             "source_analysis": str(ANALYSIS),
             "source_availability": str(AVAILABILITY),
