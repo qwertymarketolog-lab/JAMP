@@ -246,12 +246,19 @@ def run_model(
             "language",
         )
     )
+    unexpected_spans = [] if text == "OK" else None
+    if unexpected_spans is None:
+        r07_status = "INCONCLUSIVE"
+    elif len(unexpected_spans) > 0:
+        r07_status = "CONTRADICTED"
+    else:
+        r07_status = "VERIFIED"
     out.append(
         result(
             "R07",
             "P0",
-            classify(False if text == "OK" else None),
-            {"unexpected_spans": [] if text == "OK" else None},
+            r07_status,
+            {"unexpected_spans": unexpected_spans},
             model,
             "language_insertion",
         )
