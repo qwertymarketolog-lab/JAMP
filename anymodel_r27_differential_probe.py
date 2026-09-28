@@ -43,9 +43,9 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def canonical_digest(value: Any) -> str:
-    raw = json.dumps(
-        value, sort_keys=True, ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return sha256_bytes(raw)
 
 
@@ -68,16 +68,10 @@ def response_text(body: Any) -> str | None:
 
 def safe_headers(headers: Any) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        str(k).lower(): str(v)
-        for k, v in headers.items()
-        if str(k).lower() not in excluded
-    }
+    return {str(k).lower(): str(v) for k, v in headers.items() if str(k).lower() not in excluded}
 
 
-def request(
-    model: str, messages: list[dict[str, str]], api_key: str
-) -> dict[str, Any]:
+def request(model: str, messages: list[dict[str, str]], api_key: str) -> dict[str, Any]:
     payload = {"model": model, "messages": messages, "temperature": 0}
     started = time.perf_counter()
     observed_at = now()
@@ -138,14 +132,11 @@ def main() -> int:
     source_models = {
         row["model_id"]
         for row in source["records"]
-        if row.get("http", {}).get("status_code") == 200
-        and row.get("detected") is True
+        if row.get("http", {}).get("status_code") == 200 and row.get("detected") is True
     }
     models = sorted(source_models & TARGETS)
     if models != sorted(TARGETS):
-        raise SystemExit(
-            f"expected six R27-confirmed targets, observed {models}"
-        )
+        raise SystemExit(f"expected six R27-confirmed targets, observed {models}")
 
     records = []
     for i, model in enumerate(models, 1):
