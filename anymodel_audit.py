@@ -402,8 +402,8 @@ def main() -> int:
     headers = {"Authorization": f"Bearer {key}"}
     rows = catalog(headers)
     models = sorted(row["id"] for row in rows if row["id"] != "am/kimi-k3")
-    if len(models) != 87:
-        raise SystemExit(f"expected 87 catalog models, observed {len(models)}")
+    if len(models) != 86:
+        raise SystemExit(f"expected 86 audited models, observed {len(models)}")
 
     availability_models = set(
         model_ids_from_catalog(
@@ -417,7 +417,7 @@ def main() -> int:
     by_id = {row["id"]: row for row in rows}
     records = []
     for i, model in enumerate(models, 1):
-        print(f"[{i}/87] {model}", flush=True)
+        print(f"[{i}/86] {model}", flush=True)
         records.append(run_model(headers, by_id[model], available_artifact))
     payload = {
         "audit_id": (
