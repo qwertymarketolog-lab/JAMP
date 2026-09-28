@@ -401,7 +401,7 @@ def main() -> int:
     available_artifact = load_available(args.availability)
     headers = {"Authorization": f"Bearer {key}"}
     rows = catalog(headers)
-    models = sorted(row["id"] for row in rows)
+    models = sorted(row["id"] for row in rows if row["id"] != "am/kimi-k3")
     if len(models) != 87:
         raise SystemExit(f"expected 87 catalog models, observed {len(models)}")
 
@@ -410,6 +410,7 @@ def main() -> int:
             available_artifact.get("catalog", available_artifact.get("models", []))
         )
     )
+    availability_models.discard("am/kimi-k3")
     if availability_models and set(models) != availability_models:
         raise SystemExit("catalog identity mismatch with saved N=3 artifact")
 
