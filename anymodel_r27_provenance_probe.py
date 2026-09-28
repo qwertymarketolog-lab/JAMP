@@ -52,7 +52,10 @@ def target_models() -> list[str]:
     availability = load_json(AVAILABILITY)
 
     required = ["R01", "R05", "R06", "R09", "R11"]
-    verified = [{x["model_id"] for x in analysis["checks"][check]["VERIFIED"]} for check in required]
+    verified = [
+        {x["model_id"] for x in analysis["checks"][check]["VERIFIED"]}
+        for check in required
+    ]
     available = {
         row["model"] for row in availability["results"] if row.get("availability") == "AVAILABLE"
     }
