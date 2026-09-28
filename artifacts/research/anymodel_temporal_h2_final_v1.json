@@ -1,0 +1,33 @@
+{
+  "artifact_version": "anymodel-temporal-h2-v1",
+  "status": "INCONCLUSIVE",
+  "hypothesis": "H2",
+  "contract": {
+    "population_n": 87,
+    "divergences_n": 37,
+    "anchor": "2026-09-26T22:05:23.975343+00:00",
+    "anchor_rule": "first_exact",
+    "conditioning": "provider-preserving permutation",
+    "provider_source": "catalog_entry.owned_by",
+    "permutations": 100000,
+    "data_mutation": false
+  },
+  "evidence": {
+    "run1": "artifacts/research/anymodel_availability_n3.json",
+    "run2": "anymodel_run2_github.json",
+    "analysis": "artifacts/research/anymodel_identity_capability_audit_v3_analysis.json",
+    "analysis_branch_head": "63b9edb671e1fabfb537c858b5ba20a3e129b0fe"
+  },
+  "windows": [
+    {"minutes": 3, "n": 19, "observed_divergences": 12, "null_expected": 11.181818, "mc_mean": 11.18278, "p_value": 0.18278},
+    {"minutes": 5, "n": 29, "observed_divergences": 19, "null_expected": 17.448485, "mc_mean": 17.44667, "p_value": 0.15433},
+    {"minutes": 10, "n": 47, "observed_divergences": 20, "null_expected": 19.733333, "mc_mean": 19.7292, "p_value": 0.57972}
+  ],
+  "conclusion": "The observed temporal concentration is not statistically unusual under the provider-preserving conditional permutation null across the tested 3, 5, and 10 minute windows. H2 remains INCONCLUSIVE; this analysis does not establish temporal causality or prove absence of a temporal effect.",
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "expected_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8",
+    "changed": false
+  },
+  "generated": "2026-09-27"
+}

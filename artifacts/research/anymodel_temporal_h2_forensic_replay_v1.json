@@ -1,0 +1,60 @@
+{
+  "artifact_version": "anymodel-temporal-h2-forensic-replay-v1",
+  "status": "VERIFIED",
+  "hypothesis": "H2",
+  "purpose": "Independent exact replay of the historical 5-minute Window 2 contract and provider-preserving permutation.",
+  "data_integrity": {
+    "run1_blob_sha": "13bcc9407e7a77d09ea0f2f631d903ba8dcfaae2",
+    "run2_blob_sha": "ca231bdadcdafa302dcda131d19244f30bdf3066",
+    "run2_bytes": 1443424,
+    "population_n": 87,
+    "divergences_n": 37
+  },
+  "window": {
+    "name": "Window 2",
+    "anchor_rule": "first_exact",
+    "anchor": "2026-09-26T22:05:23.975343Z",
+    "start": "2026-09-26T22:15:23.975343Z",
+    "end": "2026-09-26T22:20:23.975343Z",
+    "interval_semantics": "[start, end)",
+    "positions_1_based": "41-69",
+    "n": 29,
+    "observed_divergences": 19,
+    "note": "The historical 5-minute value is Window 2 (+10 to +15 minutes from first_exact), not the first 5 minutes after the anchor."
+  },
+  "provider_composition_window": {
+    "cx": {"window_n": 7, "global_n": 15, "global_divergences": 7},
+    "kmc": {"window_n": 2, "global_n": 2, "global_divergences": 2},
+    "xai": {"window_n": 10, "global_n": 10, "global_divergences": 10},
+    "glm": {"window_n": 7, "global_n": 7, "global_divergences": 1},
+    "gcli": {"window_n": 1, "global_n": 1, "global_divergences": 1},
+    "cc": {"window_n": 2, "global_n": 11, "global_divergences": 1}
+  },
+  "null": {
+    "conditioning": "provider-preserving permutation",
+    "provider_source": "catalog_entry.owned_by",
+    "permutations_historical": 100000,
+    "expected_divergences": 17.44848484848485,
+    "exact_variance": 1.1443158861340679,
+    "exact_tail_p_ge_observed": 0.15561206470297378,
+    "historical_mc_mean": 17.44552,
+    "historical_mc_p_ge_observed": 0.15475,
+    "historical_mc_sd": 1.071696
+  },
+  "replay_assessment": {
+    "expected_value_exact_reproduced": true,
+    "historical_mc_p_consistent_with_exact_null": true,
+    "historical_mc_bit_for_bit_replay": "UNKNOWN",
+    "mc_seed": "UNKNOWN",
+    "rng_state": "UNKNOWN",
+    "reason": "The original RNG seed/state was not recorded; therefore the historical 0.154750 realization cannot be reproduced bit-for-bit. It is consistent with the exact same contract and null."
+  },
+  "conclusion": "The historical expected value 17.448485 is exactly reproduced. The deterministic exact conditional tail probability is 0.1556120647; the historical 100000-draw Monte-Carlo value 0.154750 is a compatible realization of the same null, but its RNG identity is unknown. No temporal causality is established by this replay.",
+  "data_mutation": false,
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "expected_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "changed": false
+  },
+  "generated": "2026-09-27"
+}

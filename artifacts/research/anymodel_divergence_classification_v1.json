@@ -1,0 +1,1726 @@
+{
+  "artifact_version": "anymodel-divergence-classification-v2",
+  "status": "VERIFIED",
+  "purpose": "Evidence-first classification of all 37 Run1→Run2 divergences using primary classification plus secondary observed evidence; no new AnyModel API requests.",
+  "population_n": 87,
+  "divergences_n": 37,
+  "source": {
+    "run1_blob_sha": "13bcc9407e7a77d09ea0f2f631d903ba8dcfaae2",
+    "run2_blob_sha": "ca231bdadcdafa302dcda131d19244f30bdf3066"
+  },
+  "classification_rule": {
+    "primary_precedence": [
+      "rate-limit",
+      "timeout",
+      "identity",
+      "protocol",
+      "transport",
+      "UNKNOWN"
+    ],
+    "primary": "exactly one class selected by precedence from evidenced conditions",
+    "secondary_evidence": "all independently evidenced categories present in stored differing attempts; descriptive, non-causal",
+    "rate_limit": "HTTP 429 or explicit rate-limit evidence",
+    "timeout": "stored timeout flag OR stored timeout-indicating error signature",
+    "identity": "successful response model id differs from requested/catalog id after exact-or-provider-local-name normalization",
+    "protocol": "HTTP 4xx excluding 429 / request-contract rejection",
+    "transport": "HTTP 5xx or stored TLS/SSL/EOF/connection/network transport error",
+    "unknown": "none of the above is evidenced"
+  },
+  "counts": {
+    "transport": 15,
+    "timeout": 10,
+    "protocol": 2,
+    "rate-limit": 10
+  },
+  "identity_n": 0,
+  "unknown_n": 0,
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "expected_blob_sha": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "changed": false
+  },
+  "rows": [
+    {
+      "model": "ag/gemini-3.6-flash-high",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-high"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-high"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-high"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gemini-3.6-flash-medium",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-medium"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-medium"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-medium"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gemini-3.6-flash-low",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.6-flash-low"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gpt-oss-120b-medium",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ],
+      "run2": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gemini-2.5-flash-lite",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gemini-2.5-flash-lite"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gemini-2.5-flash-lite"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gemini-3.1-flash-lite-preview",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.1-flash-lite-preview"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.1-flash-lite-preview"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "ag/gemini-3.1-flash-lite-preview"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "ag/gemini-3.1-flash-image",
+      "provider": "ag",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gemini-3.1-flash-image"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gemini-3.1-flash-image"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "am/gpt-oss-20b",
+      "provider": "am",
+      "run1": [
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/gpt-oss-20b"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/gpt-oss-20b"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/gpt-oss-20b"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    },
+    {
+      "model": "am/nemotron-3.5-lightning-30b-a3b",
+      "provider": "am",
+      "run1": [
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ],
+      "run2": [
+        {
+          "status": null,
+          "timed_out": true,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/nemotron-3.5-lightning-30b-a3b"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    },
+    {
+      "model": "am/mistral-nemotron",
+      "provider": "am",
+      "run1": [
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/mistral-nemotron"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/mistral-nemotron"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/mistral-nemotron"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    },
+    {
+      "model": "am/laguna-xs-2.1",
+      "provider": "am",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/laguna-xs-2.1"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/laguna-xs-2.1"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/laguna-xs-2.1"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    },
+    {
+      "model": "am/diffusiongemma-26b-a4b-it",
+      "provider": "am",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": null,
+          "timed_out": false,
+          "error": "URLError: <urlopen error _ssl.c:1064: The handshake operation timed out>"
+        },
+        {
+          "status": null,
+          "timed_out": false,
+          "error": "URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)>"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/diffusiongemma-26b-a4b-it"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/diffusiongemma-26b-a4b-it"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/diffusiongemma-26b-a4b-it"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
+      ]
+    },
+    {
+      "model": "am/nemotron-3.5-content-safety",
+      "provider": "am",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/nemotron-3.5-content-safety"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/nemotron-3.5-content-safety"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "am/nemotron-3.5-content-safety"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    },
+    {
+      "model": "am/flux.1-dev",
+      "provider": "am",
+      "run1": [
+        {
+          "status": null,
+          "timed_out": false,
+          "error": "URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1082)>"
+        },
+        {
+          "status": 404,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        },
+        {
+          "status": 404,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 404: Not Found"
+        }
+      ],
+      "run2": [
+        {
+          "status": 404,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 404,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 404,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "protocol",
+      "secondary_evidence": [
+        "protocol",
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-6-astra",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gpt-6-astra"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gpt-6-astra"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gpt-6-astra"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-sol",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-sol-review",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-sol-review"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-luna",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.6-luna-review",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.6-luna-review"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.5",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cx/gpt-5.5-review",
+      "provider": "cx",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5-review"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "cx/gpt-5.5-review"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout",
+        "transport"
+      ]
+    },
+    {
+      "model": "kmc/kimi-for-coding",
+      "provider": "kmc",
+      "run1": [
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kimi-for-coding"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kimi-for-coding"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kimi-for-coding"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "kmc/k3",
+      "provider": "kmc",
+      "run1": [
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        },
+        {
+          "status": 502,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 502: Bad Gateway"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kmc/k3"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kmc/k3"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "kmc/k3"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.7",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.7"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.7"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.7"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.6",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.6"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.6"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.6"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.5",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.5"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.3",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.3"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.3"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.3"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-build-0.1",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-build-0.1"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-build-0.1"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-build-0.1"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-0309-reasoning",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-reasoning"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-reasoning"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-reasoning"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-0309-non-reasoning",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-non-reasoning"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-non-reasoning"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-0309-non-reasoning"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-4.20-multi-agent-0309",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-multi-agent-0309"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-multi-agent-0309"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "grok-4.20-multi-agent-0309"
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-imagine-image",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "xai/grok-imagine-image-quality",
+      "provider": "xai",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        },
+        {
+          "status": 429,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 429: Too Many Requests"
+        }
+      ],
+      "run2": [
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": null,
+          "response_model": null
+        }
+      ],
+      "primary_classification": "rate-limit",
+      "secondary_evidence": [
+        "protocol",
+        "rate-limit",
+        "transport"
+      ]
+    },
+    {
+      "model": "glm/glm-4.6v",
+      "provider": "glm",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": "context_length_exceeded",
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": "context_length_exceeded",
+          "response_model": null
+        },
+        {
+          "status": 400,
+          "timed_out": false,
+          "error": "context_length_exceeded",
+          "response_model": null
+        }
+      ],
+      "primary_classification": "protocol",
+      "secondary_evidence": [
+        "protocol"
+      ]
+    },
+    {
+      "model": "gcli/grok-4.7",
+      "provider": "gcli",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gcli/grok-4.7"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gcli/grok-4.7"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "gcli/grok-4.7"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "cc/claude-opus-5-5",
+      "provider": "cc",
+      "run1": [
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        },
+        {
+          "status": 503,
+          "timed_out": false,
+          "error": "HTTPError: HTTP Error 503: Service Unavailable"
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "claude-opus-5-5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "claude-opus-5-5"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "claude-opus-5-5"
+        }
+      ],
+      "primary_classification": "transport",
+      "secondary_evidence": [
+        "transport"
+      ]
+    },
+    {
+      "model": "qwen/qwen3.8-max",
+      "provider": "qwen",
+      "run1": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        },
+        {
+          "status": null,
+          "timed_out": true,
+          "error": "TimeoutError: The read operation timed out"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null
+        }
+      ],
+      "run2": [
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "qwen/qwen3.8-max"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "qwen/qwen3.8-max"
+        },
+        {
+          "status": 200,
+          "timed_out": false,
+          "error": null,
+          "response_model": "qwen/qwen3.8-max"
+        }
+      ],
+      "primary_classification": "timeout",
+      "secondary_evidence": [
+        "timeout"
+      ]
+    }
+  ]
+}
