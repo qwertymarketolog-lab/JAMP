@@ -1,0 +1,122 @@
+name: AnyModel N4 Live-Catalog Snapshot v1
+
+on:
+  push:
+    branches:
+      - research/anymodel-n4-live-catalog-v1
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: e35042115942153fbc33abdaf7553d86cc78961f
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Capture live catalog
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, subprocess, sys, urllib.request
+          from datetime import datetime, timezone
+
+          url = "https://anymodel.org/v1/models"
+          key = os.environ["ANYMODEL_API_KEY"]
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "Authorization": f"Bearer {key}",
+                  "x-api-key": key,
+                  "Accept": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=60) as r:
+              status = r.status
+              content_type = r.headers.get("content-type", "")
+              body = r.read()
+
+          if status != 200:
+              raise SystemExit(f"HTTP {status}")
+
+          payload = json.loads(body)
+          data = payload.get("data")
+          if not isinstance(data, list):
+              raise SystemExit("invalid catalog payload: data is not a list")
+
+          ids = sorted(
+              x["id"] for x in data
+              if isinstance(x, dict) and isinstance(x.get("id"), str)
+          )
+          if len(ids) != len(set(ids)):
+              raise SystemExit("duplicate model IDs")
+
+          kimi_id = "am/kimi-k3"
+          non_kimi = [x for x in ids if x != kimi_id]
+
+          digest = hashlib.sha256(
+              json.dumps(ids, ensure_ascii=False, separators=(",", ":")).encode()
+          ).hexdigest()
+
+          sha = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip()
+
+          artifact = {
+              "schema": "anymodel-n4-live-catalog-v1",
+              "status": "OBSERVED",
+              "source": {
+                  "endpoint": url,
+                  "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                  "http_status": status,
+                  "content_type": content_type,
+              },
+              "snapshot": {
+                  "model_count": len(ids),
+                  "model_ids": ids,
+                  "digest_sha256": digest,
+              },
+              "derived_live_available_set": {
+                  "excluded_ids": [kimi_id] if kimi_id in ids else [],
+                  "model_count": len(non_kimi),
+                  "model_ids": non_kimi,
+                  "digest_sha256": hashlib.sha256(
+                      json.dumps(non_kimi, ensure_ascii=False, separators=(",", ":")).encode()
+                  ).hexdigest(),
+              },
+              "provenance": {
+                  "checkout_commit": sha,
+                  "n3_artifact_unchanged": True,
+                  "audit_contract_executed": False,
+              },
+          }
+
+          os.makedirs("artifacts/research", exist_ok=True)
+          with open(
+              "artifacts/research/anymodel_n4_live_catalog_v1.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(artifact, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+
+          print(f"HTTP_STATUS={status}")
+          print(f"CATALOG_COUNT={len(ids)}")
+          print(f"LIVE_AVAILABLE_COUNT={len(non_kimi)}")
+          print(f"CATALOG_DIGEST_SHA256={digest}")
+          print(f"CHECKOUT_SHA={sha}")
+          PY
+
+      - name: Upload N4 snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-n4-live-catalog-v1
+          path: artifacts/research/anymodel_n4_live_catalog_v1.json
+          if-no-files-found: error
