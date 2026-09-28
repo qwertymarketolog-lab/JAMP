@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qwertymarketolog-lab/JAMP/blob/main/schemas/research/anymodel_live_available_77x30_v0.schema.json",
+  "title": "AnyModel LIVE_AVAILABLE 77x30 contract v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "contract_version",
+    "contract_set_sha256",
+    "n4_snapshot_sha256",
+    "n4_artifact_id",
+    "models",
+    "checks_per_model",
+    "total_checks",
+    "frozen_core_blob"
+  ],
+  "properties": {
+    "contract_id": {
+      "const": "ANYMODEL-LIVE-AVAILABLE-77X30-V0"
+    },
+    "contract_version": {
+      "const": "v0"
+    },
+    "contract_set_sha256": {
+      "const": "439283f87427380a35e210d41f8045e0c240307138dc787442858663f100f6ef"
+    },
+    "n4_snapshot_sha256": {
+      "const": "331c26f5aa531db028063dd3fa267acca98d3e81a0140529eecaad6714218039"
+    },
+    "n4_artifact_id": {
+      "const": 10962081420
+    },
+    "models": {
+      "type": "array",
+      "const": [
+        "ag/claude-sonnet-4-6",
+        "ag/gemini-2.5-flash",
+        "ag/gemini-2.5-flash-lite",
+        "ag/gemini-3-flash",
+        "ag/gemini-3.1-flash-image",
+        "ag/gemini-3.1-flash-lite-preview",
+        "ag/gemini-3.1-pro-low",
+        "ag/gemini-3.6-flash-high",
+        "ag/gemini-3.6-flash-low",
+        "ag/gemini-3.6-flash-medium",
+        "ag/gemini-3.7-flash-high",
+        "ag/gemini-3.7-flash-low",
+        "ag/gemini-3.7-flash-medium",
+        "ag/gemini-pro-agent",
+        "ag/gpt-oss-120b-medium",
+        "am/diffusiongemma-26b-a4b-it",
+        "am/flux.1-dev",
+        "am/flux.2-klein-4b",
+        "am/free",
+        "am/gpt-oss-20b",
+        "am/laguna-xs-2.1",
+        "am/llama-3.2-11b-vision-instruct",
+        "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "am/nemotron-3-super-120b-a12b",
+        "am/nemotron-3-ultra-550b-a55b",
+        "am/nemotron-3.5-content-safety",
+        "am/nemotron-3.5-lightning-30b-a3b",
+        "am/riva-translate-4b-instruct-v2",
+        "cc/claude-haiku-4-5-20251001",
+        "cc/claude-opus-4-6",
+        "cc/claude-opus-4-7",
+        "cc/claude-opus-4-8",
+        "cc/claude-opus-5",
+        "cc/claude-sonnet-4-6",
+        "cc/claude-sonnet-5",
+        "cx/gpt-5.5",
+        "cx/gpt-5.5-review",
+        "cx/gpt-5.6-luna",
+        "cx/gpt-5.6-luna-review",
+        "cx/gpt-5.6-sol",
+        "cx/gpt-5.6-sol-review",
+        "cx/gpt-5.6-terra",
+        "cx/gpt-5.6-terra-review",
+        "cx/gpt-6-astra",
+        "cx/gpt-6-luna",
+        "cx/gpt-6-luna-review",
+        "cx/gpt-6-sol",
+        "cx/gpt-6-sol-review",
+        "cx/gpt-image-1.5",
+        "cx/gpt-image-2",
+        "ds/deepseek-v4-flash",
+        "ds/deepseek-v4-pro",
+        "flow/nano-banana",
+        "flow/nano-banana-lite",
+        "flow/nano-banana-pro",
+        "gcli/grok-4.5",
+        "gcli/grok-4.6",
+        "gcli/grok-4.7",
+        "gcli/grok-4.7-build-fast",
+        "glm/glm-4.6v",
+        "glm/glm-4.7",
+        "glm/glm-5",
+        "glm/glm-5.1",
+        "glm/glm-5.2",
+        "glm/glm-5.3",
+        "glm/glm-5.3-flash",
+        "kmc/k3",
+        "kmc/kimi-for-coding",
+        "nano-banana",
+        "nano-banana-lite",
+        "nano-banana-pro",
+        "qwen/qwen3.7-max",
+        "qwen/qwen3.7-plus",
+        "qwen/qwen3.8-max",
+        "xai/grok-imagine-image",
+        "xai/grok-imagine-image-2.0",
+        "xai/grok-imagine-image-quality"
+      ]
+    },
+    "checks_per_model": {
+      "const": 30
+    },
+    "total_checks": {
+      "const": 2310
+    },
+    "frozen_core_blob": {
+      "const": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+    }
+  }
+}
