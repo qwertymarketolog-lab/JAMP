@@ -23,9 +23,7 @@ from research.exp19.observation_relation import ObservationRelation
 EXPERIMENT_ID = "EXP-22-PHASE0-MEASUREMENT-BOUNDARY-V1"
 PHASE = 0
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 G4_THRESHOLD_MS = 15.0
 DEFAULT_SEED = 2201
@@ -54,13 +52,9 @@ def _affinity() -> list[int] | None:
 
 
 def _canonical_workload() -> ObservationAdjacencyGraph:
-    edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(10_000)
-    ]
+    edges = [ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(10_000)]
     edges.extend(
-        ObservationRelation(str(i), str(i + 10_000), "adjacent", {})
-        for i in range(10_000)
+        ObservationRelation(str(i), str(i + 10_000), "adjacent", {}) for i in range(10_000)
     )
     return ObservationAdjacencyGraph(tuple(edges))
 
