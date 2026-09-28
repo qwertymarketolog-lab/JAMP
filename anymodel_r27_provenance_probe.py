@@ -124,7 +124,10 @@ def probe(model: str, api_key: str) -> dict[str, Any]:
 
         text = response_text(body)
         detected = CANARY in (text or "")
-        status = "CONTRADICTED" if detected else "VERIFIED"
+        if not 200 <= response.status_code < 300:
+            status = "INCONCLUSIVE"
+        else:
+            status = "CONTRADICTED" if detected else "VERIFIED"
 
         evidence = {
             "check_id": "R27",
