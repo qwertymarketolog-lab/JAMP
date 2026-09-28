@@ -53,13 +53,9 @@ def affinity() -> list[int] | None:
 
 
 def workload() -> ObservationAdjacencyGraph:
-    edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(10_000)
-    ]
+    edges = [ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(10_000)]
     edges.extend(
-        ObservationRelation(str(i), str(i + 10_000), "adjacent", {})
-        for i in range(10_000)
+        ObservationRelation(str(i), str(i + 10_000), "adjacent", {}) for i in range(10_000)
     )
     return ObservationAdjacencyGraph(tuple(edges))
 
@@ -149,17 +145,19 @@ def run(target_commit: str, seed: int, pairs: int, output: Path) -> dict[str, An
             if gc.isenabled() != gc_initial:
                 errors.append(f"pair_{pair}_{condition}:gc_state_changed")
 
-            observations.append({
-                "pair": pair,
-                "condition": condition,
-                "wall_ms": wall_ms,
-                "cpu_ms": cpu_ms,
-                "non_cpu_delta_ms": delta_ms,
-                "gc_gen2_collections": gen2_after - gen2_before,
-                "gc_collect_returned": collected,
-                "acyclic": acyclic,
-                "reachable_from_0_count": len(reachable),
-            })
+            observations.append(
+                {
+                    "pair": pair,
+                    "condition": condition,
+                    "wall_ms": wall_ms,
+                    "cpu_ms": cpu_ms,
+                    "non_cpu_delta_ms": delta_ms,
+                    "gc_gen2_collections": gen2_after - gen2_before,
+                    "gc_collect_returned": collected,
+                    "acyclic": acyclic,
+                    "reachable_from_0_count": len(reachable),
+                }
+            )
 
     control = [o for o in observations if o["condition"] == "control"]
     treatment = [o for o in observations if o["condition"] == "treatment"]
