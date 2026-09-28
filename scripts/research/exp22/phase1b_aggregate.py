@@ -18,9 +18,11 @@ def _summary(values: list[float]) -> dict[str, float]:
     values = sorted(values)
     if not values:
         raise ValueError("empty_values")
+
     def percentile(p: float) -> float:
         index = max(0, min(len(values) - 1, int((p * len(values) + 0.999999999) - 1)))
         return values[index]
+
     import statistics
     return {
         "min": values[0],
@@ -69,26 +71,26 @@ def main() -> int:
         delta = [float(o["non_cpu_delta_ms"]) for o in observations]
         failures = sum(v > G4_THRESHOLD_MS for v in wall)
 
-        runs.append({
-            "run_index": index,
-            "environment_fingerprint": {
-                "runner_name": environment.get("runner_name"),
-                "runner_os": environment.get("runner_os"),
-                "runner_arch": environment.get("runner_arch"),
-                "cpu_model": environment.get("cpu_model"),
-                "kernel": environment.get("kernel"),
-                "cpu_affinity": environment.get("cpu_affinity"),
-            },
-            "stats": {
-                "wall_ms": _summary(wall),
-                "non_cpu_delta_ms": _summary(delta),
-                "fail_count_gt_15ms": failures,
-            },
-            "raw_observations": observations,
-        })
-        all_observations.extend(
-            {**o, "run_index": index} for o in observations
+        runs.append(
+            {
+                "run_index": index,
+                "environment_fingerprint": {
+                    "runner_name": environment.get("runner_name"),
+                    "runner_os": environment.get("runner_os"),
+                    "runner_arch": environment.get("runner_arch"),
+                    "cpu_model": environment.get("cpu_model"),
+                    "kernel": environment.get("kernel"),
+                    "cpu_affinity": environment.get("cpu_affinity"),
+                },
+                "stats": {
+                    "wall_ms": _summary(wall),
+                    "non_cpu_delta_ms": _summary(delta),
+                    "fail_count_gt_15ms": failures,
+                },
+                "raw_observations": observations,
+            }
         )
+        all_observations.extend({**o, "run_index": index} for o in observations)
 
     if len(runs) != 15:
         errors.append("run_count_not_15")
@@ -108,9 +110,7 @@ def main() -> int:
         "inter_run_summary": {
             "global_wall_ms": _summary(wall) if wall else {},
             "total_g4_failures": sum(v > G4_THRESHOLD_MS for v in wall),
-            "failure_rate": (
-                sum(v > G4_THRESHOLD_MS for v in wall) / len(wall) if wall else 0.0
-            ),
+            "failure_rate": (sum(v > G4_THRESHOLD_MS for v in wall) / len(wall) if wall else 0.0),
         },
         "epistemic_classification": {
             "measurement_boundary": "VERIFIED" if not errors else "INCONCLUSIVE",
