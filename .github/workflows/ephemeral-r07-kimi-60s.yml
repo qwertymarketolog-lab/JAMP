@@ -12,7 +12,7 @@ permissions:
 jobs:
   r07-kimi-60s:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Checkout exact original R07 target SHA
         uses: actions/checkout@v4
