@@ -37,9 +37,9 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def canonical_digest(value: Any) -> str:
-    raw = json.dumps(
-        value, sort_keys=True, ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return sha256_bytes(raw)
 
 
@@ -52,22 +52,12 @@ def target_models() -> list[str]:
     availability = load_json(AVAILABILITY)
 
     required = ["R01", "R05", "R06", "R09", "R11"]
-    verified = [
-        {
-            x["model_id"]
-            for x in analysis["checks"][check]["VERIFIED"]
-        }
-        for check in required
-    ]
+    verified = [{x["model_id"] for x in analysis["checks"][check]["VERIFIED"]} for check in required]
     available = {
-        row["model"]
-        for row in availability["results"]
-        if row.get("availability") == "AVAILABLE"
+        row["model"] for row in availability["results"] if row.get("availability") == "AVAILABLE"
     }
     candidates = sorted(available.intersection(*verified))
-    contradicted = {
-        x["model_id"] for x in analysis["checks"]["R27"]["CONTRADICTED"]
-    }
+    contradicted = {x["model_id"] for x in analysis["checks"]["R27"]["CONTRADICTED"]}
     hold = sorted(set(candidates).intersection(contradicted))
 
     if len(candidates) != EXPECTED_CANDIDATES:
@@ -75,9 +65,7 @@ def target_models() -> list[str]:
             f"candidate gate drift: expected {EXPECTED_CANDIDATES}, observed {len(candidates)}"
         )
     if len(hold) != EXPECTED_HOLD:
-        raise RuntimeError(
-            f"R27 HOLD count drift: expected {EXPECTED_HOLD}, observed {len(hold)}"
-        )
+        raise RuntimeError(f"R27 HOLD count drift: expected {EXPECTED_HOLD}, observed {len(hold)}")
     return hold
 
 
@@ -100,11 +88,7 @@ def response_text(body: Any) -> str | None:
 
 def safe_headers(headers: requests.structures.CaseInsensitiveDict[str]) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        str(k).lower(): str(v)
-        for k, v in headers.items()
-        if str(k).lower() not in excluded
-    }
+    return {str(k).lower(): str(v) for k, v in headers.items() if str(k).lower() not in excluded}
 
 
 def probe(model: str, api_key: str) -> dict[str, Any]:
@@ -138,11 +122,7 @@ def probe(model: str, api_key: str) -> dict[str, Any]:
 
         text = response_text(body)
         detected = CANARY in (text or "")
-        status = (
-            "CONTRADICTED"
-            if detected
-            else "VERIFIED"
-        )
+        status = "CONTRADICTED" if detected else "VERIFIED"
 
         evidence = {
             "check_id": "R27",
