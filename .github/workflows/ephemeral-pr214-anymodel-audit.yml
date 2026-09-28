@@ -1,9 +1,8 @@
 name: Ephemeral PR214 AnyModel 30-check Audit v1
 
 on:
-  push:
-    branches:
-      - ephemeral/pr214-anymodel-audit-v1
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
