@@ -25,6 +25,33 @@ jobs:
       - name: Install audit dependency
         run: python -m pip install requests
 
+      - name: Diagnose live catalog against frozen N3 evidence
+        env:
+          ANYMODEL_API_KEY: \${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import requests
+          saved = json.loads(Path("artifacts/research/anymodel_availability_n3.json").read_text())
+          saved_ids = {x["model"] for x in saved["results"]}
+          headers = {"Authorization": f"Bearer {os.environ['ANYMODEL_API_KEY']}"}
+          r = requests.get("https://anymodel.org/v1/models", headers=headers, timeout=30)
+          r.raise_for_status()
+          data = r.json()
+          rows = data.get("data", data)
+          live_ids = {x["id"] for x in rows if isinstance(x, dict) and isinstance(x.get("id"), str)}
+          missing = sorted(saved_ids - live_ids)
+          added = sorted(live_ids - saved_ids)
+          print(f"FROZEN_N3_IDS={len(saved_ids)}")
+          print(f"LIVE_CATALOG_IDS={len(live_ids)}")
+          print(f"MISSING_FROM_LIVE={len(missing)}")
+          print("\\n".join(missing) if missing else "(none)")
+          print(f"ADDED_TO_LIVE={len(added)}")
+          print("\\n".join(added) if added else "(none)")
+          PY
+
       - name: Run AnyModel 30-check audit
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
