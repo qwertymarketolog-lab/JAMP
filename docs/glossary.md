@@ -1,3 +1,9 @@
+# JAMP Glossary
+
+This glossary defines the working terminology used in JAMP research, engineering, CI, evidence, and experiment governance.
+
+## Core model
+
 State
   definition: Рассматривай State как текущее множество объектов, истории и служебных признаков, доступных механизму JAMP.
   not:        не означает математическое состояние задачи вне заданной реализации.
@@ -42,6 +48,8 @@ structural negative
   definition: Называй structural negative результат, показывающий невозможность сформулировать или выполнить требуемую конструкцию в заданной системе ограничений.
   not:        не считай его failure алгоритма или неудачным экспериментом.
 
+## Evidence and provenance
+
 evidence level
   definition: Указывай evidence level как уровень проверяемости утверждения по доступному источнику доказательств.
   not:        не приравнивай его к степени истинности самой гипотезы.
@@ -50,34 +58,446 @@ repository-artifact / issue-comment / session-only
   definition: Помечай repository-artifact для результата в репозитории, issue-comment для результата только в комментарии Issue, а session-only для результата, существующего только в рабочей сессии.
   not:        не считай эти уровни взаимозаменяемыми.
 
-VERIFIED-SUCCESS / VERIFIED-PARTIAL
-  definition: Используй VERIFIED-SUCCESS для успешно завершённого проверочного execution и VERIFIED-PARTIAL для execution с неполным или ограниченным подтверждением.
-  not:        не трактуй ни один статус как автоматическое подтверждение научной гипотезы.
-
-MIXED
-  definition: Используй MIXED, когда результаты отдельных контролируемых проверок поддерживают разные стороны исследовательской гипотезы.
-  not:        не означает ни полного подтверждения, ни полного опровержения.
+direct evidence
+  definition: Называй direct evidence свидетельством, непосредственно фиксирующим конкретный проверяемый результат.
+  not:        не заменяй его PASS-by-reconciliation.
 
 PASS-by-reconciliation
   definition: Используй PASS-by-reconciliation только для результата, восстановленного из согласования доступного summary с другими свидетельствами.
   not:        не называй его direct evidence отдельного теста.
 
-branching candidates
-  definition: Различай branching candidates как множество допустимых кандидатов, доступных для выбора на ветвлении.
-  not:        не считай его множеством реально полученных исходов.
+provenance
+  definition: Называй provenance информацией о происхождении объекта, наблюдения или результата: источнике, времени, способе получения и связанных предшествующих объектах.
+  not:        не подменяй provenance интерпретацией результата.
 
-branching outcomes
-  definition: Называй branching outcomes фактически полученные результаты после выбора и выполнения ветвления.
-  not:        не приравнивай их к полному множеству candidates.
+provenance DAG
+  definition: Используй provenance DAG как ориентированный ациклический граф происхождения, позволяющий реконструировать связи между объектами и их предшественниками.
+  not:        не считай DAG доказательством семантического понимания объекта.
+
+evidence
+  definition: Называй evidence фактическим артефактом, подтверждающим конкретное утверждение: например commit, blob, PR, CI run, job, log, test result или artifact.
+  not:        не считай предположение evidence только потому, что оно правдоподобно.
+
+evidence-first
+  definition: Следуй evidence-first: сначала зафиксируй наблюдение и доступное доказательство, затем формулируй вывод.
+  not:        не подгоняй evidence под заранее выбранный вывод.
+
+## Provenance Contract and derivability
+
+specification
+  definition: Specification — frozen description of the research question, hypothesis, prediction, applicable criteria and protocol for an execution.
+  not:        не изменяй frozen specification задним числом для объяснения уже полученного результата.
+
+criterion
+  definition: Criterion — детерминированное правило, связывающее наблюдение с допустимым результатом проверки.
+  not:        не заменяй criterion ручной post-hoc интерпретацией.
+
+criterion set
+  definition: Criterion Set — immutable набор критериев и aggregation rule, используемый конкретным execution.
+  not:        не считай изменение одного criterion совместимым с прежним criterion_set_hash.
+
+raw evidence
+  definition: Raw Evidence — неклассифицированные наблюдения, непосредственно произведённые execution.
+  not:        не включай в Raw Evidence verdict-bearing classification как источник истины.
+
+classification
+  definition: Classification — детерминированное применение frozen criteria к Raw Evidence.
+  not:        не считай записанную classification достоверной без возможности её recomputation.
+
+verdict
+  definition: Verdict — детерминированная агрегация Classification по frozen aggregation rule.
+  not:        не считай записанный verdict authoritative без проверки его воспроизводимости.
+
+hash / reference chain
+  definition: Hash/reference chain — цепочка хешей и ссылок, связывающая frozen artifacts, execution, evidence, classification и verdict.
+  not:        не считай hash сам по себе доказательством логической корректности.
+
+deterministic derivability
+  definition: Deterministic derivability — возможность независимо получить тот же classification и verdict из тех же frozen rules и recorded evidence.
+  not:        не означает эмпирическую истинность результата.
+
+fail-closed
+  definition: Fail-closed — правило, при котором отсутствие, неоднозначность или нарушение обязательного evidence/provenance условия приводит к invalid/blocked результату вместо молчаливого принятия.
+  not:        не подменяй fail-closed восстановлением недостающих данных по предположению.
+
+execution identity
+  definition: Execution identity — идентификатор конкретного execution в пределах определённого протокола и его identity rules.
+  not:        не считай execution identity автоматически lineage-bound, если соответствующая связь не определена формально и не проверена.
+
+content identity
+  definition: Content identity — идентичность execution по его содержательному payload согласно явно заданной hash/identity function.
+  not:        не добавляй lineage в content identity без отдельного определения контракта.
+
+lineage identity
+  definition: Lineage identity — идентичность execution с учётом явно определённого контекста происхождения или parent references.
+  not:        не утверждай, что текущая реализация поддерживает lineage identity, пока это не подтверждено implementation evidence.
+
+context grafting
+  definition: Context grafting — перенос или связывание содержательно идентичного объекта с иным lineage/context таким образом, что provenance meaning может измениться при сохранении content identity.
+  not:        не называй это фактической атакой без наблюдаемого exploit evidence.
+
+UNKNOWN
+  definition: UNKNOWN — состояние, для которого frozen contract не позволяет детерминированно установить допустимую классификацию.
+  not:        не превращай UNKNOWN автоматически в PASS, FAIL или INCONCLUSIVE.
+
+## Experiments and scope
+
+EXP / experiment
+  definition: EXP — отдельный исследовательский эксперимент JAMP с определённой гипотезой, scope, тестами и критериями результата.
+  not:        не означает произвольную серию изменений.
+
+research-only
+  definition: Называй research-only изменение ограниченным исследовательским контуром без изменения production/runtime поведения.
+  not:        не означает отсутствие CI или других проверок.
+
+experimental scope
+  definition: Experimental scope — граница файлов, поведения и вопросов, которые разрешено затрагивать конкретному EXP.
+  not:        не расширяй scope только потому, что рядом обнаружилась другая проблема.
+
+atomicity
+  definition: Называй эксперимент атомарным, если он проверяет изолированную исследовательскую идею и не смешивает с ней исправление посторонних проблем.
+  not:        не превращай один EXP в контейнер для несвязанных исправлений.
+
+scope violation
+  definition: Scope violation — изменение или вывод, вышедшие за установленные границы конкретного эксперимента.
+  not:        не считай обнаружение чужой проблемы разрешением автоматически её исправить.
+
+hypothesis
+  definition: Hypothesis — проверяемое предположение, для которого заранее или явно определены наблюдаемые критерии проверки.
+  not:        не считай гипотезу фактом до проверки.
+
+falsifiability
+  definition: Falsifiability — возможность построить наблюдение или эксперимент, способный показать несостоятельность гипотезы в заданном протоколе.
+  not:        не означает, что гипотеза уже опровергнута.
+
+## Repository and change control
+
+Frozen Core
+  definition: Frozen Core — защищённая часть JAMP, прежде всего src/jamp, изменение которой требует отдельной доказательной необходимости.
+  not:        не меняй Frozen Core ради удобства отдельного research-теста.
+
+mutation
+  definition: Mutation — любое сознательное изменение состояния объекта, файла, теста, данных или другого элемента проекта.
+  not:        не называй mutation автоматически ошибкой; важны её scope и основание.
+
+core mutation
+  definition: Core mutation — изменение Frozen Core.
+  not:        не считай его допустимым только потому, что изменение маленькое.
+
+minimal mutation
+  definition: Minimal mutation — минимально достаточное изменение для проверки гипотезы или устранения конкретной подтверждённой проблемы.
+  not:        не добавляй рефакторинг, оптимизацию или несвязанные изменения без отдельного основания.
+
+add / добавить
+  definition: Add означает создать новый файл, тест, запись, экспериментальный объект или другой артефакт без изменения существующего поведения, если это возможно в рамках задачи.
+  not:        не используй add как эвфемизм для изменения существующей семантики.
+
+modify / изменить
+  definition: Modify означает изменить уже существующий объект, файл, тест или поведение.
+  not:        не смешивай modify с созданием независимого нового артефакта.
+
+delete / удалить
+  definition: Delete означает удалить существующий объект или файл из текущего состояния репозитория.
+  not:        не считай удаление эквивалентным архивированию или сохранению истории.
+
+Δ / delta
+  definition: Δ обозначает изменение относительно явно выбранного базового состояния. Для Frozen Core ключевой инвариант: Δ(src/jamp) = 0.
+  not:        не вычисляй delta без указания baseline.
+
+baseline
+  definition: Baseline — зафиксированное базовое состояние, относительно которого оцениваются изменения или результаты эксперимента.
+  not:        не подменяй baseline случайным предыдущим запуском.
+
+snapshot
+  definition: Snapshot — зафиксированный снимок состояния проекта или объекта в определённый момент.
+  not:        не считай snapshot автоматически доказательством причины изменения.
+
+branch
+  definition: Branch — отдельная линия разработки Git, на которой можно изолированно проводить изменения.
+  not:        не считай branch доказательством качества содержащегося в ней кода.
+
+HEAD
+  definition: HEAD — текущий последний commit рассматриваемой ветки или PR.
+  not:        не считай старый commit актуальным после появления нового HEAD.
+
+commit
+  definition: Commit — зафиксированное Git изменение с уникальным SHA и родительским состоянием.
+  not:        не считай commit сам по себе доказательством прохождения CI.
+
+blob SHA
+  definition: Blob SHA — идентификатор конкретного содержимого Git-объекта; используется для проверки точной версии файла.
+  not:        не смешивай blob SHA с commit SHA.
+
+SHA
+  definition: SHA — криптографический идентификатор Git-объекта, используемый для точной адресации состояния или содержимого.
+  not:        не считай сокращённую запись SHA достаточной, если требуется однозначная идентификация.
+
+main
+  definition: main — основная интеграционная ветка репозитория.
+  not:        не считай наличие commit в main доказательством того, что все исследовательские гипотезы подтверждены.
+
+## Pull Requests and CI
+
+PR / Pull Request
+  definition: PR — предложение перенести изменения из одной ветки в другую с возможностью review и автоматической проверки.
+  not:        не означает, что изменения уже попали в main.
+
+PR HEAD
+  definition: PR HEAD — commit, на котором в данный момент находится head-ветка PR.
+  not:        не используй результаты CI старого HEAD как доказательство для нового HEAD без проверки соответствия SHA.
+
+draft PR
+  definition: Draft PR — PR, явно помеченный как находящийся в стадии подготовки.
+  not:        не трактуй draft как технический failure.
+
+merge
+  definition: Merge — интеграция изменений PR в целевую ветку с появлением соответствующего merge commit или fast-forward результата.
+  not:        не считай открытый PR merged.
+
+post-merge
+  definition: Post-merge — проверки и evidence, полученные уже после интеграции изменений в целевую ветку.
+  not:        не подменяй post-merge evidence результатами PR до merge.
+
+CI
+  definition: CI — автоматизированный набор проверок, запускаемый системой непрерывной интеграции.
+  not:        не своди CI только к одному тесту.
+
+gate
+  definition: Gate — обязательная проверка, результат которой учитывается в критериях продвижения эксперимента или PR.
+  not:        не заменяй gate субъективной оценкой.
+
+Developer Quality (DQ)
+  definition: DQ — обязательный quality-gate проекта, включающий предусмотренные проверки качества разработческого состояния.
+  not:        не интерпретируй отдельный DQ failure как автоматически доказанную причину проблемы без лога.
+
+SBOM
+  definition: SBOM — Software Bill of Materials, проверка состава программных компонентов согласно установленному проектом workflow.
+  not:        не считай SBOM проверкой научной гипотезы.
+
+SUCCESS
+  definition: SUCCESS — CI job или workflow завершился успешно.
+  not:        не означает автоматически подтверждение исследовательской гипотезы.
+
+FAILURE
+  definition: FAILURE — CI job или workflow завершился с ошибкой.
+  not:        не означает автоматически ошибку Frozen Core или последнего изменённого EXP.
+
+QUEUED
+  definition: QUEUED — CI запуск поставлен в очередь и ещё не завершил выполнение.
+  not:        не трактуй QUEUED как PASS или FAILURE.
+
+RUNNING / IN_PROGRESS
+  definition: RUNNING или IN_PROGRESS — CI выполнение находится в процессе.
+  not:        не делай финальный вывод до завершения, если протокол требует завершённого результата.
+
+CI evidence
+  definition: CI evidence — конкретные run ID, job ID, commit SHA, conclusion и, при необходимости, логи, подтверждающие результат CI.
+  not:        не называй устное описание результата CI evidence.
+
+re-run / реран
+  definition: Re-run — повторный запуск существующей CI-проверки без изменения проверяемого кода, используемый для диагностики воспроизводимости результата.
+  not:        не является исправлением кода и не создаёт новую гипотезу сам по себе.
+
+flaky test
+  definition: Flaky test — тест, который при сопоставимом коде и условиях иногда проходит, а иногда падает.
+  not:        не объявляй тест flaky после одного неудачного и одного успешного запуска без достаточного evidence.
+
+timing noise
+  definition: Timing noise — колебание измеряемого времени выполнения из-за среды, нагрузки runner и других внешних факторов.
+  not:        не считай timing noise доказанной причиной failure без соответствующего evidence.
+
+timing threshold
+  definition: Timing threshold — установленный предел времени, превышение которого приводит к предусмотренному тестом результату.
+  not:        не меняй threshold только ради получения PASS без отдельного обоснования.
+
+performance test
+  definition: Performance test — тест, измеряющий скорость или ресурсные характеристики выполнения.
+  not:        не считай один performance measurement универсальной характеристикой системы.
+
+## Test and result semantics
+
+test
+  definition: Test — автоматическая или процедурная проверка конкретного свойства, условия или инварианта.
+  not:        не считай любой execution доказательством гипотезы.
+
+target test
+  definition: Target test — тест, непосредственно проверяющий утверждение текущего EXP.
+  not:        не приписывай текущему EXP все failures полного test suite.
+
+full test suite
+  definition: Full test suite — полный набор тестов, запускаемый предусмотренным workflow.
+  not:        не означает, что каждый failure относится к текущему EXP.
+
+isolation test
+  definition: Isolation test — проверка того, что эксперимент не изменяет запрещённые области или поведение.
+  not:        не ограничивай isolation только отсутствием изменений в одном файле.
+
+performance regression
+  definition: Performance regression — подтверждённое ухудшение производительности относительно установленного baseline.
+  not:        не называй единичный timing failure регрессией без сравнения и evidence.
+
+regression
+  definition: Regression — подтверждённая потеря ранее работавшего поведения после конкретного изменения.
+  not:        не связывай failure с последним commit только по времени появления.
+
+diagnostic
+  definition: Diagnostic — проверка, предназначенная для выяснения причины наблюдаемого результата.
+  not:        не считай diagnostic автоматически исправлением.
+
+control
+  definition: Control — контрольная проверка, позволяющая отделить эффект исследуемого изменения от других факторов.
+  not:        не заменяй control целевым тестом.
+
+## Runtime and architecture
+
+production code
+  definition: Production code — код, являющийся частью рабочего поведения JAMP.
+  not:        не называй research-only тест production code.
+
+runtime
+  definition: Runtime — код и процессы, обеспечивающие выполнение основной системы.
+  not:        не смешивай runtime с исследовательской документацией.
+
+production/runtime = 0
+  definition: Обозначает отсутствие изменений рабочего production/runtime контура в рамках эксперимента.
+  not:        не означает отсутствие файлов, commits или CI.
+
+architecture
+  definition: Architecture — установленная структура компонентов, границ и взаимодействий JAMP.
+  not:        не считай экспериментальный тест автоматически архитектурным изменением.
+
+## Replay, integrity, lineage
+
+replay
+  definition: Replay — повторное выполнение ранее зафиксированного сценария или процесса для проверки воспроизводимости.
+  not:        не смешивай replay с re-run CI: replay повторяет исследуемый execution, re-run повторяет CI job/workflow.
+
+cold replay
+  definition: Cold replay — replay в условиях, исключающих использование скрытого состояния предыдущего выполнения согласно протоколу.
+  not:        не означает просто второй запуск процесса.
+
+tamper
+  definition: Tamper — изменение ранее зафиксированных данных, записи или структуры после её фиксации.
+  not:        не называй любое штатное обновление tamper.
+
+tamper detection
+  definition: Tamper detection — обнаружение факта или признаков неразрешённого изменения.
+  not:        не означает автоматическое восстановление исходного состояния.
+
+integrity
+  definition: Integrity — свойство целостности объекта, записи или цепочки происхождения.
+  not:        не означает истинность содержимого.
+
+lineage
+  definition: Lineage — связь объекта с его родителями и предшествующими состояниями.
+  not:        не является синонимом semantic understanding.
+
+DAG
+  definition: DAG — Directed Acyclic Graph, ориентированный ациклический граф без циклов; в JAMP может использоваться для lineage и provenance.
+  not:        не означает автоматически корректность всех данных внутри графа.
+
+## Observation and inference
+
+observation
+  definition: Observation — зафиксированный результат наблюдения в заданном протоколе.
+  not:        не смешивай observation с объяснением его причины.
+
+atomic observation
+  definition: Atomic Observation — минимальная неделимая в рамках протокола единица наблюдения, которую можно независимо идентифицировать, проверить и связать с provenance.
+  not:        не считай её автоматически элементарной в философском или физическом смысле.
+
+atomic observation decomposition
+  definition: Atomic Observation Decomposition — разложение сложного наблюдения на независимые атомарные компоненты.
+  not:        не означает, что каждый компонент сам по себе является полноценной гипотезой.
+
+identity
+  definition: Identity — набор значимых признаков, определяющих идентичность объекта или наблюдения в заданном протоколе.
+  not:        не считай изменение любого технического поля автоматически новой семантической сущностью.
+
+conflict
+  definition: Conflict — несовместимость результатов или свидетельств, которые относятся к одному проверяемому вопросу.
+  not:        не превращай conflict автоматически в SUPPORTED или FALSIFIED.
+
+INCONCLUSIVE
+  definition: INCONCLUSIVE — имеющихся evidence недостаточно для положительного или отрицательного вывода в рамках заданного протокола.
+  not:        не означает «эксперимент бесполезен».
+
+SUPPORTED
+  definition: SUPPORTED — гипотеза получила достаточную поддержку по заранее или явно установленным критериям данного протокола.
+  not:        не означает универсальную научную истину.
+
+FALSIFIED
+  definition: FALSIFIED — конкретное утверждение не выдержало заданной проверки и было опровергнуто в пределах её условий.
+  not:        не означает, что весь проект или более широкая идея неверны.
+
+MIXED
+  definition: MIXED — контролируемые результаты поддерживают разные стороны исследовательского вопроса.
+  not:        не означает ни полного подтверждения, ни полного опровержения.
 
 execution success
-  definition: Называй execution success успешным техническим выполнением предусмотренной процедуры и получением её наблюдаемого результата.
+  definition: Execution success — успешное техническое выполнение предусмотренной процедуры с получением наблюдаемого результата.
   not:        не считай его подтверждением исследовательской гипотезы.
 
 hypothesis confirmation
-  definition: Называй hypothesis confirmation выводом о гипотезе только после проверки предусмотренных ею критериев.
+  definition: Hypothesis confirmation — вывод о гипотезе после проверки предусмотренных критериев и evidence.
   not:        не выводи его из одного execution success.
 
-direct evidence
-  definition: Называй direct evidence свидетельством, непосредственно фиксирующим конкретный проверяемый результат.
-  not:        не заменяй его PASS-by-reconciliation.
+## Status and protocol
+
+fixpoint
+  definition: Fixpoint — состояние, в котором дальнейшее применение рассматриваемого слоя преобразований не создаёт нового результата.
+  not:        не означает глобальное решение исходной задачи.
+
+FIXPOINT_REACHED
+  definition: Машинный статус, означающий достижение предусмотренной точкой фиксации.
+  not:        не означает автоматическое доказательство гипотезы.
+
+RUNNING
+  definition: Машинный статус выполняющегося процесса.
+  not:        не является финальным результатом.
+
+FAILED
+  definition: Машинный статус завершения с ошибкой.
+  not:        не указывает сам по себе на причину ошибки.
+
+SOLVED
+  definition: Машинный статус получения предусмотренного системой решения.
+  not:        не следует трактовать как универсальное научное доказательство.
+
+MAX_ITERATIONS
+  definition: Машинный статус достижения установленного предела итераций.
+  not:        не означает автоматически ни успех, ни failure гипотезы.
+
+PASS
+  definition: PASS означает, что конкретный проверочный gate или test выполнил свои условия.
+  not:        не распространяй PASS одного теста на весь эксперимент.
+
+BLOCKED
+  definition: BLOCKED означает наличие незакрытого обязательного условия, препятствующего предусмотренному продвижению.
+  not:        не означает, что гипотеза опровергнута.
+
+VERIFIED
+  definition: VERIFIED — все предусмотренные для данного статуса обязательные проверки получили требуемый результат, подтверждённый evidence.
+  not:        не означает универсальную истинность научного утверждения.
+
+CLOSED
+  definition: CLOSED — эксперимент завершён в соответствии с установленным протоколом и его критериями закрытия.
+  not:        не означает, что дальнейшее исследование темы невозможно.
+
+VERIFIED-SUCCESS / VERIFIED-PARTIAL
+  definition: Используй VERIFIED-SUCCESS для успешно завершённого проверочного execution и VERIFIED-PARTIAL для execution с неполным или ограниченным подтверждением.
+  not:        не трактуй ни один статус как автоматическое подтверждение научной гипотезы.
+
+protocol state
+  definition: Protocol State — текущее подтверждённое состояние проекта или эксперимента: commit, PR, gates, failures, invariants и разрешённые следующие действия.
+  not:        не восстанавливай protocol state по памяти без проверки репозитория и CI.
+
+state sync
+  definition: State Sync — восстановление фактического состояния через актуальные данные репозитория, PR и CI перед продолжением работы.
+  not:        не является пересказом истории проекта.
+
+## Working rule
+
+JAMP principle
+  definition: Сначала наблюдение и evidence; затем интерпретация и решение. Изменения должны быть минимальными, scope — явным, Frozen Core — защищённым.
+  not:        не подменяй evidence предположением, а CI status — человеческим впечатлением.
