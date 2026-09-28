@@ -7,7 +7,7 @@
     "candidate_count": 25,
     "source_raw_v3_artifact_sha": "0b23e605efbe9fb3bc92e767a1de1a196096f3b6",
     "source_analysis_sha": "51c3644c19f55857f3f13fd638382c548c134f60",
-    "source_runner_sha": "21c1793927727e8cf8c154b4bce2983b20d9074a4a",
+    "source_runner_sha": "21c1793927727e8cf8c154b4bce2983b20d9074a",
     "frozen_core_blob_sha": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
   },
   "rule": {
