@@ -36,7 +36,8 @@ jobs:
           import requests
           saved = json.loads(Path("artifacts/research/anymodel_availability_n3.json").read_text())
           saved_ids = {x["model"] for x in saved["results"]}
-          headers = {"Authorization": f"Bearer {os.environ['ANYMODEL_API_KEY']}"}
+          key = os.environ["ANYMODEL_API_KEY"]
+          headers = {"Authorization": f"Bearer {key}", "x-api-key": key}
           r = requests.get("https://anymodel.org/v1/models", headers=headers, timeout=30)
           r.raise_for_status()
           data = r.json()
