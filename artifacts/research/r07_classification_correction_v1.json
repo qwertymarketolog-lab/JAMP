@@ -1,0 +1,164 @@
+{
+  "correction_id": "r07-classification-correction-v1",
+  "correction_type": "derived",
+  "created_at": "2026-09-28T00:00:00Z",
+  "scope": {
+    "check_id": "R07",
+    "candidate_count": 25,
+    "source_raw_v3_artifact_sha": "0b23e605efbe9fb3bc92e767a1de1a196096f3b6",
+    "source_analysis_sha": "51c3644c19f55857f3f13fd638382c548c134f60",
+    "source_runner_sha": "21c1793927727e8cf8c154b4bce2983b20d9074a",
+    "frozen_core_blob_sha": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+  },
+  "rule": {
+    "observed_raw_state": "R07 CONTRADICTED for all 25 candidates",
+    "runner_logic": "classify(False if text == \"OK\" else None)",
+    "conflicting_evidence": "The same exact text == \"OK\" condition is VERIFIED by R06 and R09, while R07 records unexpected_spans=[] when text == \"OK\".",
+    "correction": "R07 CONTRADICTED is not evidence of unexpected-language insertion; reclassify all 25 derived states as INCONCLUSIVE.",
+    "api_requests": "none"
+  },
+  "models": [
+    {
+      "model_id": "ag/gemini-2.5-flash",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-3-flash",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-3.1-pro-low",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-3.7-flash-high",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-3.7-flash-low",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-3.7-flash-medium",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "ag/gemini-pro-agent",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "am/kimi-k3",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "am/nemotron-3-super-120b-a12b",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "am/nemotron-3-ultra-550b-a55b",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-haiku-4-5-20251001",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-opus-4-6",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-opus-4-7",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-opus-4-8",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-opus-5",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cc/claude-sonnet-4-6",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cx/gpt-5.6-terra",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cx/gpt-5.6-terra-review",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cx/gpt-6-luna",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "cx/gpt-6-luna-review",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "glm/glm-4.7",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "glm/glm-5.1",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "glm/glm-5.3",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    },
+    {
+      "model_id": "qwen/qwen3.7-plus",
+      "raw_status": "CONTRADICTED",
+      "derived_status": "INCONCLUSIVE"
+    }
+  ],
+  "summary": {
+    "raw": {
+      "VERIFIED": 0,
+      "CONTRADICTED": 25,
+      "INCONCLUSIVE": 0
+    },
+    "derived": {
+      "VERIFIED": 0,
+      "CONTRADICTED": 0,
+      "INCONCLUSIVE": 25
+    }
+  },
+  "invariants": {
+    "raw_v3_artifact_unchanged": true,
+    "frozen_core_unchanged": true,
+    "new_api_requests": false
+  }
+}

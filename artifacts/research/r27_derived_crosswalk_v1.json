@@ -1,0 +1,182 @@
+{
+  "artifact_id": "r27-derived-crosswalk-v1",
+  "artifact_type": "derived_evidence",
+  "created_at": "2026-09-28",
+  "purpose": "Derived semantic crosswalk of all 17 R27 provenance records; raw R27 evidence and Frozen Core remain unchanged.",
+  "source_scope": {
+    "raw_r27_probe_artifact": {
+      "workflow_run_id": 36364043817,
+      "artifact_id": 10947137478,
+      "artifact_name": "anymodel-r27-provenance-v1",
+      "artifact_digest": "sha256:c2e8fec23bc26ff2278399389a9bfe85c6a29451d98ac79382a5e63129cf7878"
+    },
+    "r27_correction_artifact_sha256": "35e5bd491e2cc9fd8c3e7de5a327ed09e7d4a39e",
+    "r27_differential_probe_artifact_sha256": "7c051afbe6e9918d6815540a66d21f5d6dafb19e",
+    "frozen_core_blob_sha256": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+  },
+  "method": {
+    "new_api_requests": false,
+    "code_changes": false,
+    "raw_r27_modified": false,
+    "frozen_core_modified": false,
+    "rule": "HTTP 200 is required before R27 can establish leakage or no-leakage. User-canary echo alone does not establish system-only disclosure. Existing system-only differential evidence can clear the tested provenance boundary.",
+    "status_vocabulary": [
+      "DIFFERENTIALLY_CLEARED",
+      "HOLD_USER_ECHO_MECHANISM_UNKNOWN",
+      "INCONCLUSIVE_NO_ECHO_MECHANISM_UNKNOWN",
+      "HOLD_NO_HTTP_200"
+    ]
+  },
+  "records": [
+    {
+      "model": "ag/gemini-3-flash",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-low",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "ag/gemini-3.7-flash-medium",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "am/nemotron-3-super-120b-a12b",
+      "raw_r27": "VERIFIED",
+      "http_status": 200,
+      "canary_detected": false,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "cx/gpt-6-luna",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "cx/gpt-6-luna-review",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_DISCLOSURE",
+      "derived_status": "DIFFERENTIALLY_CLEARED"
+    },
+    {
+      "model": "cx/gpt-6-sol",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "cx/gpt-6-sol-review",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "cx/gpt-image-1.5",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "cx/gpt-image-2",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "ds/deepseek-v4-flash",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "ds/deepseek-v4-pro",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "glm/glm-5.2",
+      "raw_r27": "CONTRADICTED",
+      "http_status": 200,
+      "canary_detected": true,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "HOLD_USER_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "glm/glm-5.3-flash",
+      "raw_r27": "VERIFIED",
+      "http_status": 200,
+      "canary_detected": false,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "INCONCLUSIVE_NO_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "qwen/qwen3.7-max",
+      "raw_r27": "VERIFIED",
+      "http_status": 200,
+      "canary_detected": false,
+      "differential": "NO_SYSTEM_ONLY_DIFFERENTIAL",
+      "derived_status": "INCONCLUSIVE_NO_ECHO_MECHANISM_UNKNOWN"
+    },
+    {
+      "model": "ag/claude-sonnet-4-6",
+      "raw_r27": "VERIFIED",
+      "http_status": 503,
+      "canary_detected": false,
+      "differential": "NOT_ESTABLISHED",
+      "derived_status": "HOLD_NO_HTTP_200"
+    },
+    {
+      "model": "cc/claude-sonnet-5",
+      "raw_r27": "VERIFIED",
+      "http_status": 503,
+      "canary_detected": false,
+      "differential": "NOT_ESTABLISHED",
+      "derived_status": "HOLD_NO_HTTP_200"
+    }
+  ],
+  "summary": {
+    "total": 17,
+    "differentially_cleared": 6,
+    "hold_user_echo_mechanism_unknown": 7,
+    "inconclusive_no_echo_mechanism_unknown": 2,
+    "hold_no_http_200": 2,
+    "proven_system_only_disclosure": 0
+  },
+  "invariants": {
+    "raw_r27_artifact_unchanged": true,
+    "frozen_core_unchanged": true,
+    "new_api_requests": false,
+    "derived_only": true
+  }
+}
