@@ -1,0 +1,76 @@
+name: EXP-OSINT-V1 86 AI Identity Discovery
+on:
+  push:
+    branches: ["research/exp-osint-v1-86-ai"]
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "Parallel shards"
+        required: false
+        default: "12"
+permissions:
+  contents: read
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+      SHARD: ${{ matrix.shard }}
+      SHARDS: ${{ inputs.shards || '12' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install requests
+      - run: python scripts/research/exp_osint_v1_runner.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp-osint-v1-shard-${{ matrix.shard }}
+          path: artifacts/research/exp_osint_v1_raw_shard_*.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate:
+    if: ${{ always() }}
+    needs: probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: exp-osint-v1-shard-*
+          path: shards
+          merge-multiple: true
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Aggregate raw evidence
+        run: |
+          python - <<'PY'
+          import glob,json,os,re,hashlib
+          files=sorted(glob.glob("shards/exp_osint_v1_raw_shard_*.json"))
+          results=[]
+          for f in files: results += json.load(open(f,encoding="utf-8"))["results"]
+          results.sort(key=lambda x:x["model"])
+          matrix=[]
+          for r in results:
+            txt=(r.get("answer") or "").lower()
+            matrix.append({"model":r["model"],"execution_id":r["execution_id"],"sources":r.get("sources",[]),
+              "mentions_jamp":"jamp" in txt,"mentions_repo":"qwertymarketolog-lab/jamp" in txt,
+              "mentions_account":"qwertymarketolog-lab" in txt,"mentions_elvis":"elvis" in txt,
+              "mentions_legal_name":"viskunov eduard leonidovich" in txt or "вискунов эдуард леонидович" in txt})
+          os.makedirs("artifacts/research",exist_ok=True)
+          json.dump({"experiment":"EXP-OSINT-V1","cohort":"EXP-OSINT-V1-86","result_count":len(results),
+            "raw_results":results,"cross_model_matrix":matrix,
+            "matrix_sha256":hashlib.sha256(json.dumps(matrix,sort_keys=True,ensure_ascii=False).encode()).hexdigest()},open("artifacts/research/exp_osint_v1_evidence.json","w",encoding="utf-8"),ensure_ascii=False,indent=2)
+          print("results",len(results))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp-osint-v1-evidence
+          path: artifacts/research/exp_osint_v1_evidence.json
+          if-no-files-found: error
+          retention-days: 30
