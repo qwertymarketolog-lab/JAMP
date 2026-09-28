@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qwertymarketolog-lab/JAMP/blob/main/schemas/research/exp_wm_sampling_drift_v0.schema.json",
+  "title": "EXP-WM-SAMPLING-DRIFT-V0 raw artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "model",
+    "configuration",
+    "watermark",
+    "pairs",
+    "summary",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "EXP-WM-SAMPLING-DRIFT-V0"
+    },
+    "experiment_id": {
+      "const": "EXP-WM-SAMPLING-DRIFT-V0"
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model_id",
+        "version"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "temperature",
+        "seed",
+        "system_prompt_sha256",
+        "tool_schema_sha256"
+      ],
+      "properties": {
+        "temperature": {
+          "type": "number"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "system_prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "tool_schema_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "watermark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "off",
+        "on",
+        "key_id"
+      ],
+      "properties": {
+        "off": {
+          "const": true
+        },
+        "on": {
+          "const": true
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "minItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/pair"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid_pairs",
+        "paired_disagreement_count",
+        "paired_disagreement_rate",
+        "refusal_churn",
+        "injection_churn",
+        "tool_call_churn",
+        "tool_argument_churn"
+      ],
+      "properties": {
+        "valid_pairs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "paired_disagreement_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "paired_disagreement_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "refusal_churn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "injection_churn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tool_call_churn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tool_argument_churn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experiment_commit",
+        "runtime",
+        "endpoint",
+        "timestamp_utc"
+      ],
+      "properties": {
+        "experiment_commit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endpoint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "tool_call": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "response": {
+      "type": "object"
+    },
+    "side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "raw_response",
+        "response_sha256",
+        "verdict",
+        "tool_call"
+      ],
+      "properties": {
+        "status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "raw_response": {
+          "type": "object"
+        },
+        "response_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "verdict": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/tool_call"
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "refusal_changed",
+        "injection_verdict_changed",
+        "tool_changed",
+        "arguments_changed",
+        "semantic_changed",
+        "paired_disagreement"
+      ],
+      "properties": {
+        "refusal_changed": {
+          "type": "boolean"
+        },
+        "injection_verdict_changed": {
+          "type": "boolean"
+        },
+        "tool_changed": {
+          "type": "boolean"
+        },
+        "arguments_changed": {
+          "type": "boolean"
+        },
+        "semantic_changed": {
+          "type": "boolean"
+        },
+        "paired_disagreement": {
+          "type": "boolean"
+        }
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair_id",
+        "prompt_id",
+        "prompt_sha256",
+        "off",
+        "on",
+        "diff"
+      ],
+      "properties": {
+        "pair_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "off": {
+          "$ref": "#/$defs/side"
+        },
+        "on": {
+          "$ref": "#/$defs/side"
+        },
+        "diff": {
+          "$ref": "#/$defs/diff"
+        }
+      }
+    }
+  }
+}
