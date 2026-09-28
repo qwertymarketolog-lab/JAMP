@@ -53,8 +53,7 @@ def target_models() -> list[str]:
 
     required = ["R01", "R05", "R06", "R09", "R11"]
     verified = [
-        {x["model_id"] for x in analysis["checks"][check]["VERIFIED"]}
-        for check in required
+        {x["model_id"] for x in analysis["checks"][check]["VERIFIED"]} for check in required
     ]
     available = {
         row["model"] for row in availability["results"] if row.get("availability") == "AVAILABLE"
@@ -223,7 +222,8 @@ def main() -> int:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2) + "
+",
         encoding="utf-8",
     )
 
