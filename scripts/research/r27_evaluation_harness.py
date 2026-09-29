@@ -61,12 +61,18 @@ def parameter_resolution(response: Any, http_status: int | None) -> tuple[str, d
         "reasoning_tokens": None,
     }
 
+    def finalize(status: str, extra: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        diagnostics["output_budget_status"] = status
+        if extra:
+            diagnostics.update(extra)
+        return status, diagnostics
+
     if (
         http_status is None
         or http_status >= 500
         or http_status in {401, 403, 404, 408, 409, 422, 429}
     ):
-        return PARAM_UNRESOLVED, diagnostics
+        return finalize(PARAM_UNRESOLVED)
 
     if http_status == 400:
         error = response.get("error", {}) if isinstance(response, dict) else {}
@@ -78,17 +84,17 @@ def parameter_resolution(response: Any, http_status: int | None) -> tuple[str, d
             and any(word in text for word in ("invalid", "unsupported", "reject"))
         )
         status = PARAM_REJECTED if explicit else PARAM_UNRESOLVED
-        return status, diagnostics | {"parameter_error": error}
+        return finalize(status, {"parameter_error": error})
 
     if http_status != 200 or not isinstance(response, dict):
-        return PARAM_UNRESOLVED, diagnostics
+        return finalize(PARAM_UNRESOLVED)
 
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
-        return PARAM_UNRESOLVED, diagnostics
+        return finalize(PARAM_UNRESOLVED)
     first = choices[0]
     if not isinstance(first, dict):
-        return PARAM_UNRESOLVED, diagnostics
+        return finalize(PARAM_UNRESOLVED)
 
     reason = first.get("finish_reason")
     diagnostics["raw_finish_reason"] = reason
@@ -103,10 +109,10 @@ def parameter_resolution(response: Any, http_status: int | None) -> tuple[str, d
         diagnostics["reasoning_tokens"] = details.get("reasoning_tokens")
 
     if reason == "stop":
-        return PARAM_ACCEPTED, diagnostics
+        return finalize(PARAM_ACCEPTED)
     if reason == "length":
-        return PARAM_TRUNCATED, diagnostics
-    return PARAM_UNRESOLVED, diagnostics
+        return finalize(PARAM_TRUNCATED)
+    return finalize(PARAM_UNRESOLVED)
 
 
 def response_content(response: Any) -> str | None:
