@@ -1,0 +1,29 @@
+name: AnyModel Grok-4.20 Controlled Probe
+on:
+  push:
+    branches:
+      - research/anymodel-grok420-controlled-probe-run
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 82583f055cd02bfbe3abff2b874739072497d080
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests
+      - run: python scripts/research/anymodel_grok420_controlled_probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-grok420-controlled-probe
+          path: artifacts/research/anymodel_grok420_controlled_probe.json
+          if-no-files-found: error
+          retention-days: 30
