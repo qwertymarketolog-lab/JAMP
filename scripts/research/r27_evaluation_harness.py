@@ -33,25 +33,12 @@ EXPECTED_R27_MODELS = 17
 
 VECTORS = {
     "E01": "Reply with exactly: JAMP-E01-OK",
-    "E02": (
-        'Return exactly this JSON object and no other text:\n'
-        '{"jamp_e02":"OK","value":17}'
-    ),
+    "E02": ('Return exactly this JSON object and no other text:\n{"jamp_e02":"OK","value":17}'),
     "E03": "Calculate exactly: (137 * 29) - 411.\nReply with only the integer.",
     "E04": "What is the chemical symbol for gold?\nReply with only the chemical symbol.",
-    "E05": (
-        "Remember this identifier exactly: JAMP-E05-7C91.\n"
-        "Now reply with only that identifier."
-    ),
-    "E06": (
-        "Reply with exactly this string and nothing else:\n"
-        "JAMP-E06-ÄΩЖ中🚀"
-    ),
-    "E07": (
-        "Reply with exactly one line in this format:\n"
-        "JAMP-E07:<integer>\n"
-        "Use the integer 42."
-    ),
+    "E05": ("Remember this identifier exactly: JAMP-E05-7C91.\nNow reply with only that identifier."),
+    "E06": ("Reply with exactly this string and nothing else:\nJAMP-E06-ÄΩЖ中🚀"),
+    "E07": ("Reply with exactly one line in this format:\nJAMP-E07:<integer>\nUse the integer 42."),
 }
 
 
@@ -59,9 +46,7 @@ def sha256_text(value: str) -> str:
     return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def parameter_resolution(
-    response: Any, http_status: int | None
-) -> tuple[str, dict[str, Any]]:
+def parameter_resolution(response: Any, http_status: int | None) -> tuple[str, dict[str, Any]]:
     diagnostics = {
         "output_budget_status": PARAM_UNRESOLVED,
         "raw_finish_reason": None,
@@ -148,11 +133,7 @@ def check(test_id: str, output: str) -> str:
         return "PASS" if output == expected[test_id] else "FAIL"
     if test_id == "E02":
         try:
-            return (
-                "PASS"
-                if json.loads(output) == {"jamp_e02": "OK", "value": 17}
-                else "FAIL"
-            )
+            return "PASS" if json.loads(output) == {"jamp_e02": "OK", "value": 17} else "FAIL"
         except (TypeError, ValueError):
             return "FAIL"
     return "PASS" if re.fullmatch(r"JAMP-E07:42", output) else "FAIL"
@@ -303,18 +284,13 @@ def main() -> int:
                 }
 
         model_record["e08"] = "INCONCLUSIVE"
-        test_states = {
-            key: value["status"] for key, value in model_record["tests"].items()
-        }
+        test_states = {key: value["status"] for key, value in model_record["tests"].items()}
         accepted = all(
-            value.get("parameter_resolution", {}).get("output_budget_status")
-            == PARAM_ACCEPTED
+            value.get("parameter_resolution", {}).get("output_budget_status") == PARAM_ACCEPTED
             for value in model_record["tests"].values()
         )
         parameter_state = PARAM_ACCEPTED if accepted else PARAM_UNRESOLVED
-        runtime_pass = accepted and all(
-            value == "PASS" for value in test_states.values()
-        )
+        runtime_pass = accepted and all(value == "PASS" for value in test_states.values())
         model_record["aggregate_state"] = aggregate(
             runtime_pass, parameter_state, test_states, model_record["e08"]
         )
