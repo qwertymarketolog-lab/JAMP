@@ -57,7 +57,6 @@ def test_e08_inconclusive_blocks_qualification() -> None:
 
 
 def test_r27_source_has_frozen_cardinality() -> None:
-    source = json.loads(
-        open("artifacts/research/r27_provenance_probe.json", encoding="utf-8").read()
-    )
+    with open("artifacts/research/r27_provenance_probe.json", encoding="utf-8") as handle:
+        source = json.load(handle)
     assert len(source["records"]) == 17
