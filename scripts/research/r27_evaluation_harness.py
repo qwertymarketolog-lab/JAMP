@@ -36,7 +36,10 @@ VECTORS = {
     "E02": ('Return exactly this JSON object and no other text:\n{"jamp_e02":"OK","value":17}'),
     "E03": "Calculate exactly: (137 * 29) - 411.\nReply with only the integer.",
     "E04": "What is the chemical symbol for gold?\nReply with only the chemical symbol.",
-    "E05": ("Remember this identifier exactly: JAMP-E05-7C91.\nNow reply with only that identifier."),
+    "E05": (
+        "Remember this identifier exactly: JAMP-E05-7C91.\n"
+        "Now reply with only that identifier."
+    ),
     "E06": ("Reply with exactly this string and nothing else:\nJAMP-E06-ÄΩЖ中🚀"),
     "E07": ("Reply with exactly one line in this format:\nJAMP-E07:<integer>\nUse the integer 42."),
 }
