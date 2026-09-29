@@ -31,49 +31,46 @@ The guiding loop is:
 
 JAMP is intended to preserve the evidence chain through this loop.
 
-## Development levels
+## Architecture stack
 
-The following are development levels, not eight separate JAMP versions.
+The current research architecture is organized as a progression from protected foundations to execution and replay infrastructure:
 
-### 1. Evidence
+**Frozen Core → Evidence → Provenance → Conflict → Atomic Observation → Multi-AI Federation → Evidence Acquisition → Deterministic Qualification → Immutable Evidence Bundle → Offline Replay → Experiment Engine → Adaptive Research Loop → Research OS / Domain Products**
 
-Establish observations, evidence records, provenance, deterministic artifacts, and explicit epistemic status.
+These are architectural levels, not separate JAMP versions. A level may remain in progress or HOLD while later contracts are being designed.
 
-### 2. Conflict
+### Foundation
 
-Handle contradictory evidence without silently resolving the contradiction. Preserve provenance and represent uncertainty explicitly.
+1. **Evidence** — observations, evidence records, deterministic artifacts, and explicit epistemic status.
+2. **Provenance** — execution identity, source lineage, temporal consistency, and explicit binding to frozen specifications and criteria.
+3. **Conflict** — contradictory evidence is preserved rather than silently resolved.
+4. **Atomic Observation** — observations are decomposed into deterministic, traceable atomic records with preserved source provenance.
 
-### 3. Atomic
+### Multi-AI Federation
 
-Decompose observations and incoming artifacts into traceable atomic observations while preserving source provenance and coverage information.
+Different AI models are treated as interchangeable research instruments rather than privileged sources of truth.
 
-This level begins with **EXP-18 Atomic Observation Decomposition**.
+The current AnyModel v3 audit contains **87 models × 30 checks = 2,610 checks**. Capability qualification remains separate from provenance authentication.
 
-### 4. MultiAI
+### Evidence Acquisition & Replay
 
-Treat different AI models as interchangeable research instruments. Compare their observations and outputs without making any model a privileged source of truth.
+The current implementation direction is:
 
-### 5. Experiment
+**Multi-AI audit → Execution Evidence Acquisition → Deterministic Checker & Qualification → Immutable Evidence Bundle → Offline Replay**
+
+PR #225 defined the R18–R24 frozen-input contract. PR #226 added the Evidence Acquisition Contract v0 to main. The contract is design-only/pre-freeze; implementation must establish its own contract tests and terminal CI evidence before claiming conformance.
+
+### Experiment Engine
 
 Use JAMP to coordinate controlled experiments across models, data, transformations, parameters, and environments.
 
-### 6. Adaptive
+### Adaptive Research Loop
 
-Allow subsequent research actions to depend on verified observations and experimental results while preserving the evidence chain and preventing unsupported state changes.
+Allow subsequent research actions to depend only on verified observations and experimental results while preserving the evidence chain and preventing unsupported state changes.
 
-### 7. Hardware
+### Research OS / Domain Products
 
-Treat compute hardware, memory, quantization, and execution environments as experimental factors rather than architectural dependencies.
-
-JAMP should remain able to audit results across different hardware and model configurations.
-
-### 8. Research Loop
-
-Bring the levels together into a controlled research loop:
-
-**observation → decomposition → hypothesis → experiment → multi-model evidence → conflict analysis → verification → new observation**
-
-At this level JAMP is not merely processing information. It is a mechanism for maintaining a reproducible, auditable research process.
+The long-term target combines the verified evidence infrastructure into reproducible research workflows and domain-specific products without coupling those products to the Frozen Core.
 
 ## AI and hardware are tools
 
@@ -97,24 +94,42 @@ New capabilities should first enter through isolated research artifacts and test
 
 Only evidence demonstrating that an architectural change is necessary and justified can support a subsequent core change.
 
-## EXP-18 entry point
+## Current Experimental & Architecture State
 
-The next research step is Atomic Observation Decomposition.
+### Verified foundations
 
-Initial target:
+- **Frozen Core invariant:** src/jamp/run.py remains at blob 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a; Δ = 0.
+- **Evidence:** canonical evidence commitments and deterministic artifacts are established.
+- **Provenance:** historical AnyModel v3 evidence is temporally consistent, while execution binding remains **HOLD / unresolved**.
+- **Atomic Observation:** deterministic observation identity is established without changing the Frozen Core.
+- **Multi-AI audit:** AnyModel v3 contains 87 models × 30 checks = 2,610 observations/checks.
 
-- deterministic atom identity
-- source reference
-- decomposition operator identity and version
-- parameters
-- parent/root linkage
-- explicit atom type
-- provenance
-- isolation from production/runtime code
+### Current focus: Evidence Acquisition & Deterministic Qualification
 
-A decomposition must not claim to be lossless merely because atoms were produced.
+- The former “next step: Atomic Observation Decomposition” marker is obsolete; Atomic Observation is now an established foundation layer.
+- **R18–R24 Frozen-Input Contract:** defined in PR #225.
+- **Evidence Acquisition Contract v0:** merged in PR #226; design-only/pre-freeze.
+- **AnyModel qualification:** **INCONCLUSIVE / HOLD**; 25 candidates remain blocked by mandatory P0 evidence.
+- **Next tactical target:** implement the deterministic checker runtime, immutable evidence bundle generation, and offline replay without modifying the Frozen Core.
 
-Lossless reconstruction must be demonstrated against the source object, or the research artifact must provide an explicit coverage mapping describing what source material is represented.
+### Current State Matrix
+
+| Component | Status | Evidence boundary |
+|---|---|---|
+| Frozen Core | VERIFIED / FROZEN | src/jamp/run.py blob 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a; Δ = 0 |
+| Evidence System | VERIFIED | Canonical records and content commitments |
+| Provenance Tracking | VERIFIED / HOLD | Temporal consistency verified; execution binding unresolved |
+| Conflict Handling | VERIFIED | Contradictions remain explicit |
+| Atomic Observation | VERIFIED | Deterministic observation identity |
+| Multi-AI Federation / AnyModel v3 | VERIFIED / ONGOING | 87 × 30 = 2,610 checks |
+| AnyModel Qualification | INCONCLUSIVE / HOLD | 25 candidates blocked on mandatory P0 evidence |
+| R18–R24 Frozen-Input Contract | DEFINED | PR #225 |
+| Evidence Acquisition Contract v0 | MERGED | PR #226; design-only/pre-freeze |
+| Execution Implementation | NOT YET IMPLEMENTED | Next working stage |
+| Replay Engine | NOT YET IMPLEMENTED | Depends on executable evidence bundle/checker |
+| Adaptive Research Loop | ACTIVE DEVELOPMENT | Infrastructure/control layer |
+| Research OS / Domain Products | ROADMAP | Future target |
+
 
 ## Research discipline
 
