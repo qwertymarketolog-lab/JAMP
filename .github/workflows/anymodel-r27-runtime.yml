@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install runtime dependency
+        run: python -m pip install requests
+
       - name: Execute R27 runtime evaluation
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
