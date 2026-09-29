@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from scripts.research.r27_evaluation_harness import *
+from scripts.research.r27_evaluation_harness import (\n    CONTRACT_VIOLATION, INCONCLUSIVE, PARAM_ACCEPTED, PARAM_REJECTED, PARAM_TRUNCATED,\n    PARAM_UNRESOLVED, QUALIFIED, R28_CANDIDATE, aggregate, parameter_resolution, r28_filter,\n)
 def response(reason="stop"): return {"choices":[{"finish_reason":reason,"message":{"content":"ok"}}]}
 def test_parameter_state_machine():
     assert parameter_resolution(response("stop"),200)[0]==PARAM_ACCEPTED
