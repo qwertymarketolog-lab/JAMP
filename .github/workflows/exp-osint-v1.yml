@@ -1,0 +1,26 @@
+name: EXP-OSINT-V1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  osint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run EXP-OSINT-V1
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python3 scripts/research/exp_osint_v1.py
+      - name: Upload terminal artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-osint-v1-${{ github.run_id }}
+          path: artifacts/research/exp_osint_v1_${{ github.run_id }}.json
+          if-no-files-found: warn
