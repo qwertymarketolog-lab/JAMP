@@ -32,11 +32,20 @@ jobs:
         PYTHONPATH: src
       run: |
         pytest -q tests/test_architectural_boundaries.py
-    - name: Run full test suite
+    - name: A/B control — pytest executable
+      continue-on-error: true
       env:
         PYTHONPATH: src
       run: |
+        pytest --version
         pytest -q -m 'not exp19_perf'
+
+    - name: A/B control — python -m pytest
+      env:
+        PYTHONPATH: src
+      run: |
+        python -m pytest --version
+        python -m pytest -q -m 'not exp19_perf'
     - name: Generate empirical P17.6 report
       env:
         PYTHONPATH: src
