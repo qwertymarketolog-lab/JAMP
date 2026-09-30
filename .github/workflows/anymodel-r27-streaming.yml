@@ -1,0 +1,43 @@
+name: AnyModel R27 Streaming Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      repeats:
+        description: "Identical streaming replays"
+        required: false
+        default: "3"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  r27-streaming:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Run controlled streaming probe
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python anymodel_r27_streaming_probe.py --repeats "${{ inputs.repeats }}"
+
+      - name: Upload raw streaming evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-r27-streaming-v1
+          path: artifacts/research/r27_streaming_probe.json
+          if-no-files-found: error
+          retention-days: 30
