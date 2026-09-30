@@ -2,6 +2,9 @@ name: R30 Replay Variance Execution
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - research/r30-replay-variance
 
 permissions:
   contents: read
