@@ -207,6 +207,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--models", nargs="*", default=[])
+    parser.add_argument("--tests", nargs="*", default=list(VECTORS))
+    parser.add_argument(
+        "--raw-trace-output",
+        type=Path,
+        default=Path("artifacts/research/r27_raw_http_trace.json"),
+    )
     parser.add_argument(
         "--source",
         type=Path,
@@ -240,11 +246,16 @@ def main() -> int:
 
     targets = args.models or models
     records = []
+    raw_trace = []
+    selected_tests = [test_id for test_id in args.tests if test_id in VECTORS]
+    if not selected_tests:
+        raise SystemExit("at least one valid test ID is required")
 
     for model in targets:
         model_record = {"model_id": model, "tests": {}}
 
-        for test_id, prompt in VECTORS.items():
+        for test_id in selected_tests:
+            prompt = VECTORS[test_id]
             request = build_request(model, prompt)
             started = time.perf_counter()
             try:
@@ -256,6 +267,29 @@ def main() -> int:
                     },
                     json=request,
                     timeout=TIMEOUT_S,
+                )
+                request_body = response.request.body
+                if isinstance(request_body, bytes):
+                    request_body = request_body.decode("utf-8", errors="replace")
+                request_headers = dict(response.request.headers)
+                if "Authorization" in request_headers:
+                    request_headers["Authorization"] = "<REDACTED>"
+                raw_trace.append(
+                    {
+                        "model": model,
+                        "test_id": test_id,
+                        "request": {
+                            "method": response.request.method,
+                            "url": response.request.url,
+                            "headers": request_headers,
+                            "body": request_body,
+                        },
+                        "response": {
+                            "status_code": response.status_code,
+                            "headers": dict(response.headers),
+                            "body": response.content.decode("utf-8", errors="replace"),
+                        },
+                    }
                 )
                 elapsed = time.perf_counter() - started
                 try:
@@ -288,6 +322,26 @@ def main() -> int:
 
                 model_record["tests"][test_id] = result
             except requests.RequestException as exc:
+                raw_trace.append(
+                    {
+                        "model": model,
+                        "test_id": test_id,
+                        "request": {
+                            "method": "POST",
+                            "url": "https://anymodel.org/v1/chat/completions",
+                            "headers": {
+                                "Content-Type": "application/json",
+                                "Authorization": "<REDACTED>",
+                            },
+                            "body": json.dumps(request, ensure_ascii=False, separators=(",", ":")),
+                        },
+                        "response": None,
+                        "error": {
+                            "type": type(exc).__name__,
+                            "message": str(exc),
+                        },
+                    }
+                )
                 model_record["tests"][test_id] = {
                     "status": INCONCLUSIVE,
                     "error_type": type(exc).__name__,
@@ -323,6 +377,22 @@ def main() -> int:
     }
     args.output.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    args.raw_trace_output.parent.mkdir(parents=True, exist_ok=True)
+    args.raw_trace_output.write_text(
+        json.dumps(
+            {
+                "trace_contract": "R27-RAW-HTTP-TRACE-v1",
+                "authorization": "redacted",
+                "models": targets,
+                "tests": selected_tests,
+                "records": raw_trace,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     return 0
