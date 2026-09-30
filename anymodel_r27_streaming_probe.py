@@ -173,7 +173,8 @@ def main() -> int:
         "records": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    args.output.write_text(output_text, encoding="utf-8")
     print(f"WROTE {args.output}; repeats={len(records)}", flush=True)
     return 0
 
