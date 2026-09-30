@@ -1,0 +1,36 @@
+name: AnyModel R28 Multi-AI Raw Task
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r28-multi-ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Run fixed multi-AI task
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: python anymodel_r28_multi_ai_raw.py
+
+      - name: Upload raw R28 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-r28-multi-ai-raw-v1
+          path: artifacts/research/r28_multi_ai_raw.json
+          if-no-files-found: error
+          retention-days: 30
