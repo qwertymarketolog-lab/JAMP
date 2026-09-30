@@ -32,21 +32,14 @@ def validate_record(record, schema):
         record["metrics"]["t_overhead_sec"],
     )
     if record["classification"] != expected:
-        raise ValueError(
-            f'{record["trace_id"]}: '
-            f'{record["classification"]} != {expected}'
-        )
+        raise ValueError(f"{record['trace_id']}: {record['classification']} != {expected}")
     if record["root_cause"] not in ALLOWED_ROOT_CAUSES:
-        raise ValueError(
-            f'{record["trace_id"]}: root_cause must remain unresolved'
-        )
+        raise ValueError(f"{record['trace_id']}: root_cause must remain unresolved")
 
 
 def main():
     if len(sys.argv) != 2:
-        raise SystemExit(
-            "usage: validate_jamp_taxonomy.py <normalized-traces.json>"
-        )
+        raise SystemExit("usage: validate_jamp_taxonomy.py <normalized-traces.json>")
 
     data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))

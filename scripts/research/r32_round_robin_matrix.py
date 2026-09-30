@@ -64,11 +64,7 @@ def request_hash(payload: dict[str, Any]) -> str:
 
 def safe_headers(headers: httpx.Headers) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        str(k).lower(): str(v)
-        for k, v in headers.items()
-        if str(k).lower() not in excluded
-    }
+    return {str(k).lower(): str(v) for k, v in headers.items() if str(k).lower() not in excluded}
 
 
 def nested_number(obj: Any, names: tuple[str, ...]) -> float | None:
@@ -123,11 +119,7 @@ def normalize_nvext(nvext: Any) -> dict[str, Any]:
             nvext,
             ("draft_tokens_per_second", "draft_tps"),
         ),
-        "scheduler": (
-            nvext.get("scheduler")
-            if isinstance(nvext, dict)
-            else None
-        ),
+        "scheduler": (nvext.get("scheduler") if isinstance(nvext, dict) else None),
     }
 
 

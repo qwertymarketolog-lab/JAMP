@@ -51,17 +51,11 @@ def sha256(data: bytes) -> str:
 
 def safe_headers(headers: requests.structures.CaseInsensitiveDict[str]) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        str(k).lower(): str(v)
-        for k, v in headers.items()
-        if str(k).lower() not in excluded
-    }
+    return {str(k).lower(): str(v) for k, v in headers.items() if str(k).lower() not in excluded}
 
 
 def run_once(api_key: str, index: int) -> dict[str, Any]:
-    request_bytes = json.dumps(
-        PAYLOAD, ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    request_bytes = json.dumps(PAYLOAD, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     request_hash = sha256(request_bytes)
     started_at = now()
     started = time.perf_counter()
@@ -142,9 +136,7 @@ def main() -> int:
     if not api_key:
         raise SystemExit("ANYMODEL_API_KEY is required")
 
-    request_bytes = json.dumps(
-        PAYLOAD, ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    request_bytes = json.dumps(PAYLOAD, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     request_hash = sha256(request_bytes)
     records = [run_once(api_key, i) for i in range(1, REPEATS + 1)]
 
