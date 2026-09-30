@@ -12,6 +12,10 @@ on:
         description: "Space-separated R27 model IDs to execute"
         required: true
         default: "cx/gpt-6-sol cx/gpt-6-sol-review cx/gpt-image-1.5 cx/gpt-image-2 ds/deepseek-v4-flash ds/deepseek-v4-pro glm/glm-5.2"
+      tests:
+        description: "Space-separated R27 test IDs to execute"
+        required: true
+        default: "E01 E02 E03 E04 E05 E06 E07"
 
 permissions:
   contents: read
@@ -38,9 +42,10 @@ jobs:
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           R27_MODELS: ${{ inputs.models }}
+          R27_TESTS: ${{ inputs.tests }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python scripts/research/r27_evaluation_harness.py --execute --models $R27_MODELS
+            python scripts/research/r27_evaluation_harness.py --execute --models $R27_MODELS --tests $R27_TESTS
           else
             python scripts/research/r27_evaluation_harness.py --execute
           fi
@@ -50,5 +55,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: r27-evaluation-v1
-          path: artifacts/research/r27_evaluation_v1.json
+          path: |
+            artifacts/research/r27_evaluation_v1.json
+            artifacts/research/r27_raw_http_trace.json
           if-no-files-found: warn
