@@ -79,7 +79,9 @@ def run_once(api_key: str, index: int) -> dict[str, Any]:
         first_chunk_offset = None
         first_data_offset = None
 
-        for chunk_index, chunk in enumerate(response.iter_content(chunk_size=None, decode_unicode=False)):
+        for chunk_index, chunk in enumerate(
+            response.iter_content(chunk_size=None, decode_unicode=False)
+        ):
             if not chunk:
                 continue
             offset = time.perf_counter() - started_mono
@@ -175,7 +177,9 @@ def main() -> int:
         "records": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"WROTE {args.output}; repeats={len(records)}", flush=True)
     return 0
 
