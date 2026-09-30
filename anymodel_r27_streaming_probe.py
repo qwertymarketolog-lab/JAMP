@@ -64,7 +64,7 @@ def run_once(api_key: str, index: int) -> dict[str, Any]:
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
             },
-            json=PAYLOAD,
+            data=request_bytes,
             stream=True,
             timeout=TIMEOUT_S,
         )
@@ -101,7 +101,7 @@ def run_once(api_key: str, index: int) -> dict[str, Any]:
             "replay": index,
             "observed_at": started_wall,
             "request": PAYLOAD,
-            "request_json_sha256": request_sha,
+            "request_body_sha256": request_sha,
             "http": {
                 "status_code": response.status_code,
                 "headers": headers,
@@ -164,7 +164,7 @@ def main() -> int:
         "timeout_s": TIMEOUT_S,
         "repeats": args.repeats,
         "payload": PAYLOAD,
-        "request_json_sha256": sha256(
+        "request_body_sha256": sha256(
             json.dumps(PAYLOAD, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         ),
         "records": records,
