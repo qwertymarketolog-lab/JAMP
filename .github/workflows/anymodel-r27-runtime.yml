@@ -47,7 +47,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python scripts/research/r27_evaluation_harness.py --execute --models $R27_MODELS --tests $R27_TESTS
           else
-            python scripts/research/r27_evaluation_harness.py --execute
+            python scripts/research/r27_evaluation_harness.py --execute --models cx/gpt-6-sol --tests E01
           fi
 
       - name: Upload R27 evaluation artifact
