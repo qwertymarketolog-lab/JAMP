@@ -2,6 +2,9 @@ name: AnyModel R28 Multi-AI Raw Task
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - research/r28-multi-ai-raw-task
 
 permissions:
   contents: read
