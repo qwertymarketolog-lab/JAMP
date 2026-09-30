@@ -46,12 +46,17 @@ def sha256(data: bytes) -> str:
 
 def safe_headers(headers: requests.structures.CaseInsensitiveDict[str]) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {str(k).lower(): str(v) for k, v in headers.items()
-            if str(k).lower() not in excluded}
+    return {
+        str(k).lower(): str(v)
+        for k, v in headers.items()
+        if str(k).lower() not in excluded
+    }
 
 
 def run_once(api_key: str, index: int) -> dict[str, Any]:
-    request_bytes = json.dumps(PAYLOAD, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    request_bytes = json.dumps(
+        PAYLOAD, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
     request_sha = sha256(request_bytes)
     started_wall = now()
     started_mono = time.perf_counter()
