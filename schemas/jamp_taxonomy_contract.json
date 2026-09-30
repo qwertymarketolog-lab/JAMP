@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JAMP_2D_Latency_Taxonomy_Contract",
+  "description": "Evidence taxonomy for Laguna latency decomposition. Classification is observational; root cause remains unresolved unless separately proven.",
+  "type": "object",
+  "additionalProperties": false,
+  "x-jamp-classification-rules": {
+    "NOMINAL_BASELINE": "t_gen_sec <= 5.0 AND t_overhead_sec <= 3.0",
+    "GENERATION_THROTTLED": "t_gen_sec > 5.0 AND t_overhead_sec <= 3.0",
+    "TRANSPORT_STALL_WITH_BACKEND": "t_gen_sec <= 6.0 AND t_overhead_sec > 100.0",
+    "TRANSPORT_STALL_NO_BACKEND": "t_gen_sec == null AND t_overhead_sec > 100.0",
+    "DUAL_AXIS_DEGRADED": "all other combinations",
+    "root_cause": "UNKNOWN or UNPROVEN; classification does not assert physical GPU/network causality"
+  },
+  "properties": {
+    "trace_id": {"type": "string", "minLength": 1},
+    "request_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "t_wall_sec": {"type": "number", "minimum": 0},
+        "t_gen_sec": {"type": ["number", "null"], "minimum": 0},
+        "t_overhead_sec": {"type": "number", "minimum": 0},
+        "generation_tps": {"type": ["number", "null"], "minimum": 0}
+      },
+      "required": ["t_wall_sec", "t_overhead_sec", "t_gen_sec", "generation_tps"]
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["NOMINAL_BASELINE", "GENERATION_THROTTLED", "TRANSPORT_STALL", "DUAL_AXIS_DEGRADED"]
+    },
+    "root_cause": {
+      "type": "string",
+      "enum": ["UNKNOWN", "UNPROVEN"]
+    }
+  },
+  "required": ["trace_id", "request_hash", "metrics", "classification", "root_cause"]
+}

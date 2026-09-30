@@ -1,0 +1,39 @@
+name: R31 Laguna SJC Edge Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/r31-sjc-edge-audit
+
+permissions:
+  contents: read
+
+jobs:
+  r31-edge-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Run R31 controlled replay series
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: python scripts/research/r31_sjc_edge_audit.py
+
+      - name: Upload raw R31 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: r31-sjc-edge-audit-v1
+          path: artifacts/research/r31_sjc_edge_audit.json
+          if-no-files-found: error
+          retention-days: 30
