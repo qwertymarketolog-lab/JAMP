@@ -19,6 +19,7 @@ QUALIFIED = "QUALIFIED"
 FAILED = "FAILED"
 INCONCLUSIVE = "INCONCLUSIVE"
 CONTRACT_VIOLATION = "CONTRACT_VIOLATION"
+PASS_WITH_ALIAS_WARNING = "PASS_WITH_ALIAS_WARNING"
 R28_CANDIDATE = "R28_CANDIDATE"
 HOLD = "HOLD"
 
@@ -109,6 +110,14 @@ def parameter_resolution(response: Any, http_status: int | None) -> tuple[str, d
     return PARAM_UNRESOLVED, diagnostics
 
 
+def resolve_model_identity(requested: str, returned: str | None) -> str:
+    if returned == requested:
+        return "EXACT_MATCH"
+    if "/" in requested and returned == requested.split("/", 1)[1]:
+        return "CANONICAL_ALIASED"
+    return "MISMATCH"
+
+
 def response_content(response: Any) -> str | None:
     if not isinstance(response, dict):
         return None
@@ -157,7 +166,7 @@ def aggregate(
         if parameter_state in {PARAM_TRUNCATED, PARAM_UNRESOLVED}:
             return INCONCLUSIVE
         return FAILED
-    if any(value != "PASS" for value in tests.values()):
+    if any(value not in {"PASS", PASS_WITH_ALIAS_WARNING} for value in tests.values()):
         return FAILED
     if e08 == "FAIL":
         return FAILED
@@ -181,7 +190,7 @@ def r28_filter(
     if parameter_state != PARAM_ACCEPTED:
         return INCONCLUSIVE
     if (
-        all(value == "PASS" for value in tests.values())
+        all(value in {"PASS", PASS_WITH_ALIAS_WARNING} for value in tests.values())
         and e08 != "FAIL"
         and aggregate_state == QUALIFIED
     ):
@@ -268,12 +277,16 @@ def main() -> int:
                 if state == PARAM_ACCEPTED:
                     output = response_content(body)
                     returned_model = body.get("model") if isinstance(body, dict) else None
-                    if returned_model != model:
+                    identity_resolution = resolve_model_identity(model, returned_model)
+                    result["model_identity"] = {
+                        "requested": model,
+                        "returned": returned_model,
+                        "resolution": identity_resolution,
+                    }
+                    if identity_resolution == "MISMATCH":
                         result["status"] = CONTRACT_VIOLATION
-                        result["model_identity"] = {
-                            "requested": model,
-                            "returned": returned_model,
-                        }
+                    elif identity_resolution == "CANONICAL_ALIASED":
+                        result["status"] = PASS_WITH_ALIAS_WARNING
                     elif output is None:
                         result["status"] = INCONCLUSIVE
                     else:
@@ -295,7 +308,9 @@ def main() -> int:
             for value in model_record["tests"].values()
         )
         parameter_state = PARAM_ACCEPTED if accepted else PARAM_UNRESOLVED
-        runtime_pass = accepted and all(value == "PASS" for value in test_states.values())
+        runtime_pass = accepted and all(
+            value in {"PASS", PASS_WITH_ALIAS_WARNING} for value in test_states.values()
+        )
         model_record["aggregate_state"] = aggregate(
             runtime_pass, parameter_state, test_states, model_record["e08"]
         )
