@@ -46,17 +46,11 @@ def sha256(data: bytes) -> str:
 
 def safe_headers(headers: requests.structures.CaseInsensitiveDict[str]) -> dict[str, str]:
     excluded = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
-    return {
-        str(k).lower(): str(v)
-        for k, v in headers.items()
-        if str(k).lower() not in excluded
-    }
+    return {str(k).lower(): str(v) for k, v in headers.items() if str(k).lower() not in excluded}
 
 
 def run_once(api_key: str, index: int) -> dict[str, Any]:
-    request_bytes = json.dumps(
-        PAYLOAD, ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    request_bytes = json.dumps(PAYLOAD, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     request_sha = sha256(request_bytes)
     started_wall = now()
     started_mono = time.perf_counter()
@@ -91,15 +85,17 @@ def run_once(api_key: str, index: int) -> dict[str, Any]:
             text = chunk.decode("utf-8", errors="replace")
             if first_data_offset is None and ("data:" in text or text.strip()):
                 first_data_offset = offset
-            events.append({
-                "chunk_index": chunk_index,
-                "offset_s": offset,
-                "received_at": now(),
-                "length_bytes": len(chunk),
-                "sha256": sha256(chunk),
-                "base64": base64.b64encode(chunk).decode("ascii"),
-                "text": text,
-            })
+            events.append(
+                {
+                    "chunk_index": chunk_index,
+                    "offset_s": offset,
+                    "received_at": now(),
+                    "length_bytes": len(chunk),
+                    "sha256": sha256(chunk),
+                    "base64": base64.b64encode(chunk).decode("ascii"),
+                    "text": text,
+                }
+            )
 
         elapsed_s = time.perf_counter() - started_mono
         raw = b"".join(chunks)
@@ -177,9 +173,7 @@ def main() -> int:
         "records": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"WROTE {args.output}; repeats={len(records)}", flush=True)
     return 0
 
