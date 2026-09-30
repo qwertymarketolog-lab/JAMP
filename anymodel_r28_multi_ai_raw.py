@@ -136,3 +136,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+# R28 trigger marker: execution-only commit; experiment contract unchanged.
