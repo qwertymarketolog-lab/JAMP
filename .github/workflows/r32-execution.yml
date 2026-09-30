@@ -1,0 +1,36 @@
+name: R32 Round-Robin Matrix Execution
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-r32-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependency
+        run: python -m pip install httpx
+
+      - name: Execute R32 balanced round-robin matrix
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: python scripts/research/r32_round_robin_matrix.py
+
+      - name: Upload raw R32 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: r32-round-robin-matrix-artifact
+          path: artifacts/research/r32_round_robin_matrix.json
+          if-no-files-found: error
+          retention-days: 30
