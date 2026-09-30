@@ -2,6 +2,9 @@ name: R31 Laguna SJC Edge Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - research/r31-sjc-edge-audit
 
 permissions:
   contents: read
