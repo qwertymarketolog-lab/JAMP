@@ -1,11 +1,12 @@
 """Fail-closed deterministic Conflict Record primitives for JAMP-AI-HARDWARE-v0.1.4."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
 import math
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 PREFIX = "sha256:"
 CONTRACT_VERSION = "JAMP-AI-HARDWARE-v0.1.4"
@@ -28,7 +29,7 @@ def canonical_timestamp(value: str) -> str:
     parsed = datetime.fromisoformat(raw)
     if parsed.tzinfo is None:
         raise ValueError("timestamp must include timezone")
-    parsed = parsed.astimezone(timezone.utc)
+    parsed = parsed.astimezone(UTC)
     return parsed.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 def canonical_json(value: Any) -> bytes:
@@ -86,8 +87,6 @@ def build_conflict_record(
     observed_b: Any,
 ) -> dict[str, Any]:
     if is_duplicate_evidence(evidence_a, evidence_b):
-        raise ValueError("duplicate evidence cannot form a conflict")
-    if evidence_a.get("artifact_sha256") == evidence_b.get("artifact_sha256"):
         raise ValueError("duplicate evidence cannot form a conflict")
     if observed_a == observed_b:
         raise ValueError("equal observations cannot form a conflict")
