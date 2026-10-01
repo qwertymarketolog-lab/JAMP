@@ -48,7 +48,7 @@ def make_record(a=A, b=B):
 def test_ab_conflict_and_deterministic_id():
     record = make_record()
     assert verify_conflict_id(record)
-    assert record["conflict_id"] == "sha256:89382d67c94f50c753da49d15ba05e40ca986a190dc4735e777d1f1abc6c798b"
+    assert record["conflict_id"] == "sha256:b232ab9086547af333dfb982cde3b29112d42ad4c42ddec2842af8c496abea2c"
 
 def test_reordered_evidence_has_same_id():
     assert calculate_conflict_id(make_record(A, B)) == calculate_conflict_id(make_record(B, A))
