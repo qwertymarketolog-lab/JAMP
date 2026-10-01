@@ -1,0 +1,55 @@
+name: One-off historical runtime import probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        required: true
+        type: string
+
+jobs:
+  runtime-import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+      - name: Runtime import closure
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          modules = [
+              "jamp.p17.closed_loop",
+              "jamp.p17.dynamic_policy",
+              "jamp.p17.evaluator",
+              "jamp.p17.experiment_report",
+              "jamp.p17.pattern_index",
+              "jamp.p17.policy_event",
+              "jamp.p17.policy_guided_search",
+              "jamp.p17.policy_replay",
+              "jamp.p17",
+              "jamp.domain.replay",
+              "jamp.domain.consistency",
+              "jamp.domain.causal",
+              "jamp.domain.event",
+              "jamp.domain.exceptions",
+              "jamp.events.dag",
+              "jamp.registry",
+              "jamp.registry.candidates",
+              "jamp.registry.registry",
+              "jamp.p18.experiment_registry",
+          ]
+          for m in modules:
+              __import__(m)
+              print("IMPORT_OK", m)
+          print("RUNTIME_IMPORT_CLOSURE_OK", len(modules))
+          PY
