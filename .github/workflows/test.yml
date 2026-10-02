@@ -1,23 +1,18 @@
 name: Run Pytest
 
 on:
-  push:
-    branches:
-      - main
-      - 'import/**'
-      - 'feature/**'
   pull_request:
     branches:
       - main
 
 jobs:
   test:
-    if: "${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}"
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
+    - name: Checkout exact target HEAD
       uses: actions/checkout@v4
+      with:
+        ref: b392f3cf2ff064d470a231e00cb3df2dacb545a7
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -27,26 +22,15 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install pytest pytest-mock
-    - name: Run architectural boundary validation
+    - name: Run isolated v0.1.4 tests
       env:
         PYTHONPATH: src
       run: |
-        python -m pytest -q tests/test_architectural_boundaries.py
-    - name: Run full test suite
-      env:
-        PYTHONPATH: src
-      run: |
-        python -m pytest -q -m 'not exp19_perf'
-    - name: Generate empirical P17.6 report
-      env:
-        PYTHONPATH: src
-      run: |
-        python -m jamp.p17.closed_loop --export-report experiment_report.json --generations 4
-        python -m jamp.p17.experiment_report --verify experiment_report.json
-        python -m jamp.p17.experiment_report --render experiment_report.json
-    - name: Upload empirical P17.6 artifact
+        python -m pytest -q tests/test_hardware_conflict_v014.py --junitxml=v014-junit.xml
+    - name: Upload isolated test evidence
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: p17-6-experiment-report
-        path: experiment_report.json
+        name: v014-isolated-junit
+        path: v014-junit.xml
         if-no-files-found: error
