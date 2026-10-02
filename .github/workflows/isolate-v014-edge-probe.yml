@@ -1,6 +1,9 @@
 name: Isolated v0.1.4 Edge Probe T07-T10
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
   push:
     branches:
       - research/v014-t07-t10-probe-20261002
