@@ -52,6 +52,26 @@ class Requirement:
 
 
 @dataclass(frozen=True)
+class RequirementEvaluation:
+    requirement_id: str
+    required: bool
+    operator: str
+    expected_value: Any
+    actual_value: Any
+    evaluation_status: str
+    evidence_ids: tuple[str, ...]
+    evaluation_digest: str
+
+@dataclass(frozen=True)
+class DecisionAuditRecord:
+    decision: "QualificationDecision"
+    requirement_evaluations: tuple[RequirementEvaluation, ...]
+    observation_ids: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    evidence_digests: tuple[str, ...]
+    decision_digest: str
+
+@dataclass(frozen=True)
 class QualificationDecision:
     decision_id: str
     decision_contract_version: str
@@ -119,6 +139,7 @@ class MarketplaceQualificationRuntime:
     def __init__(self, policy: PolicyEvaluator) -> None:
         self._policy = policy
         self.ledger = EvidenceLedger()
+        self.audit_records: list[DecisionAuditRecord] = []
 
     def run(
         self,
@@ -168,7 +189,7 @@ class MarketplaceQualificationRuntime:
         for record in evaluated:
             self.ledger.append(record)
 
-        verdict, reason = self._qualify(evaluated, requirements)
+        verdict, reason, evaluations = self._qualify(evaluated, requirements)
         snapshot = self.ledger.snapshot()
         return self._decision(
             verdict,
@@ -205,29 +226,40 @@ class MarketplaceQualificationRuntime:
     @staticmethod
     def _qualify(
         records: Sequence[EvidenceRecord], requirements: Sequence[Requirement]
-    ) -> tuple[QualificationVerdict, str]:
+    ) -> tuple[QualificationVerdict, str, tuple[RequirementEvaluation, ...]]:
         verified = [record for record in records if record.status is EvidenceStatus.VERIFIED]
+        evaluations: list[RequirementEvaluation] = []
         for requirement in requirements:
             matches = [record for record in verified if record.scope == requirement.attribute_name]
-            if not matches:
-                if requirement.required:
-                    return QualificationVerdict.INCONCLUSIVE, "required_evidence_missing"
-                continue
-
-            values = {record.metadata.get("normalized_value") for record in matches}
-            if len(values) != 1:
-                return QualificationVerdict.INCONCLUSIVE, "verified_conflict"
-
-            if (
-                not MarketplaceQualificationRuntime._matches(
-                    next(iter(values)), requirement.operator, requirement.expected_value
-                )
-                and requirement.required
-            ):
-                return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch"
-
-        return QualificationVerdict.QUALIFIED, "all_required_requirements_satisfied"
-
+            evidence_ids = tuple(sorted(record.evidence_id for record in matches))
+            actual_value = None
+            status = "INCONCLUSIVE"
+            if matches:
+                values = {record.metadata.get("normalized_value") for record in matches}
+                if len(values) == 1:
+                    actual_value = next(iter(values))
+                    status = "SATISFIED" if MarketplaceQualificationRuntime._matches(actual_value, requirement.operator, requirement.expected_value) else "FAILED"
+                else:
+                    status = "INCONCLUSIVE"
+            evaluation = RequirementEvaluation(
+                requirement.requirement_id, requirement.required, requirement.operator,
+                requirement.expected_value, actual_value, status, evidence_ids,
+                MarketplaceQualificationRuntime._hash_json({
+                    "requirement_id": requirement.requirement_id,
+                    "required": requirement.required,
+                    "operator": requirement.operator,
+                    "expected_value": requirement.expected_value,
+                    "actual_value": actual_value,
+                    "evaluation_status": status,
+                    "evidence_ids": evidence_ids,
+                }),
+            )
+            evaluations.append(evaluation)
+            if status == "INCONCLUSIVE" and requirement.required:
+                return QualificationVerdict.INCONCLUSIVE, "required_evidence_missing", tuple(evaluations)
+            if status == "FAILED" and requirement.required:
+                return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch", tuple(evaluations)
+        return QualificationVerdict.QUALIFIED, "all_required_requirements_satisfied", tuple(evaluations)
     @staticmethod
     def _matches(value: Any, operator: str, expected: Any) -> bool:
         try:
@@ -274,7 +306,6 @@ class MarketplaceQualificationRuntime:
         )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    @staticmethod
     def _decision(
         verdict: QualificationVerdict,
         reason: str,
@@ -284,6 +315,7 @@ class MarketplaceQualificationRuntime:
         task_id: str,
         subject_id: str,
         requirements: Sequence[Requirement],
+        evaluations: Sequence[RequirementEvaluation],
     ) -> QualificationDecision:
         evidence_digests = tuple(MarketplaceQualificationRuntime._record_digest(r) for r in records)
         observation_ids = tuple(sorted(o.observation_id for o in observations))
@@ -324,7 +356,7 @@ class MarketplaceQualificationRuntime:
             "created_at": created_at,
         }
         decision_digest = MarketplaceQualificationRuntime._hash_json(preimage)
-        return QualificationDecision(
+        decision = QualificationDecision(
             decision_id,
             "0.1",
             task_id,
@@ -345,3 +377,7 @@ class MarketplaceQualificationRuntime:
             created_at,
             decision_digest,
         )
+        self.audit_records.append(DecisionAuditRecord(
+            decision, tuple(evaluations), observation_ids, evidence_ids, evidence_digests, decision_digest
+        ))
+        return decision
