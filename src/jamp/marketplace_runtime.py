@@ -135,7 +135,7 @@ class MarketplaceQualificationRuntime:
         evaluated = tuple(self._policy(records))
         if len(evaluated) != len(records):
             return self._decision(
-                QualificationVerdict.INCONCLUSIVE, "policy_output_mismatch", observations, records, task_id=task_id, subject_id=subject_id
+                QualificationVerdict.INCONCLUSIVE, "policy_output_mismatch", observations, records, task_id=task_id, subject_id=subject_id, requirements=requirements
             )
 
         by_id = {record.evidence_id: record for record in evaluated}
@@ -149,7 +149,7 @@ class MarketplaceQualificationRuntime:
 
         verdict, reason = self._qualify(evaluated, requirements)
         snapshot = self.ledger.snapshot()
-        return self._decision(verdict, reason, observations, snapshot, task_id=task_id, subject_id=subject_id)
+        return self._decision(verdict, reason, observations, snapshot, task_id=task_id, subject_id=subject_id, requirements=requirements)
 
     @staticmethod
     def _to_evidence(observation: RawObservation, task_id: str) -> EvidenceRecord:
@@ -162,7 +162,7 @@ class MarketplaceQualificationRuntime:
             raw_hash=observation.raw_hash,
             observed_at=observation.observed_at,
             scope=observation.canonical_attribute,
-            status=observation.status,
+            status=EvidenceStatus(observation.status.value),
             metadata={
                 "marketplace": observation.marketplace,
                 "source_locator": observation.source_locator,
@@ -233,7 +233,7 @@ class MarketplaceQualificationRuntime:
         return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _decision(verdict: QualificationVerdict, reason: str, observations: Sequence[RawObservation], records: Sequence[EvidenceRecord], *, task_id: str, subject_id: str) -> QualificationDecision:
+    def _decision(verdict: QualificationVerdict, reason: str, observations: Sequence[RawObservation], records: Sequence[EvidenceRecord], *, task_id: str, subject_id: str, requirements: Sequence[Requirement]) -> QualificationDecision:
         evidence_digests = tuple(MarketplaceQualificationRuntime._record_digest(r) for r in records)
         observation_ids = tuple(sorted(o.observation_id for o in observations))
         evidence_ids = tuple(sorted(r.evidence_id for r in records))
