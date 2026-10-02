@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
 from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
