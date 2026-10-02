@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jamp://schemas/aew-v0.1/evidence-record.schema.json",
+  "title": "JAMP AEW EvidenceRecord v0.1",
+  "type": "object",
+  "required": ["evidence_id", "task_id", "claim_id", "source_type", "source_id", "status"],
+  "properties": {
+    "evidence_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "claim_id": {"type": "string", "minLength": 1},
+    "source_type": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "commit_sha": {"type": ["string", "null"]},
+    "workflow": {"type": ["string", "null"]},
+    "run_id": {"type": ["integer", "null"], "minimum": 1},
+    "job_id": {"type": ["integer", "null"], "minimum": 1},
+    "artifact_id": {"type": ["integer", "null"], "minimum": 1},
+    "raw_hash": {"type": ["string", "null"]},
+    "observed_at": {"type": ["string", "null"]},
+    "scope": {"type": ["string", "null"]},
+    "status": {"enum": ["OBSERVED", "VERIFIED", "INCONCLUSIVE", "CONTRADICTED"]},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": false
+}
