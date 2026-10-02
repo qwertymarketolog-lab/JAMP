@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qwertymarketolog-lab/JAMP/schemas/aew-v0.1/provider_adapter.schema.json",
+  "title": "AEW v0.1 Provider Adapter Design",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provider", "adapter_id", "model", "transport", "real_calls_enabled", "budget_policy"],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": ["gemini", "claude", "gpt"]
+    },
+    "adapter_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transport": {
+      "type": "string",
+      "enum": ["provider_api"]
+    },
+    "real_calls_enabled": {
+      "const": false
+    },
+    "budget_policy": {
+      "type": "string",
+      "const": "ModelBudgetPolicy"
+    },
+    "returns": {
+      "type": "string",
+      "enum": ["WorkerObservation"]
+    },
+    "ledger_write": {
+      "type": "string",
+      "const": "forbidden"
+    }
+  }
+}
