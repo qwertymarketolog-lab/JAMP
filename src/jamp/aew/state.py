@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from jamp.aew.contract import ResearchState
 
+from jamp.aew.contract import ResearchState
 
 _ALLOWED: dict[ResearchState, frozenset[ResearchState]] = {
     ResearchState.OPEN: frozenset({ResearchState.INVESTIGATING}),
