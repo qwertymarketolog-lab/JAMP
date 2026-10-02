@@ -282,6 +282,7 @@ class MarketplaceQualificationRuntime:
             "all_required_requirements_satisfied",
             tuple(evaluations),
         )
+
     @staticmethod
     def _matches(value: Any, operator: str, expected: Any) -> bool:
         try:
