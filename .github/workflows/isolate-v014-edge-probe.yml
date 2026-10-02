@@ -1,0 +1,187 @@
+name: Isolated v0.1.4 Edge Probe T07-T10
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  push:
+    branches:
+      - research/v014-t07-t10-probe-20261002
+
+permissions:
+  contents: read
+
+jobs:
+  edge-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact target
+        uses: actions/checkout@v4
+        with:
+          ref: b392f3cf2ff064d470a231e00cb3df2dacb545a7
+          fetch-depth: 1
+
+      - name: Verify exact target
+        run: |
+          test "$(git rev-parse HEAD)" = "b392f3cf2ff064d470a231e00cb3df2dacb545a7"
+          git rev-parse HEAD
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install isolated developer environment
+        run: python -m pip install ".[dev]"
+
+      - name: Materialize evidence-only probe
+        run: |
+          mkdir -p artifacts
+          cat > /tmp/test_hardware_conflict_v014_edge_probe.py <<'PY'
+import math
+from copy import deepcopy
+
+import pytest
+
+from jamp.hardware_conflict import (
+    build_conflict_record,
+    calculate_conflict_id,
+    canonical_json,
+    canonical_timestamp,
+    conflict_material,
+    verify_conflict_id,
+)
+
+SUBJECT = {
+    "run_id": "RUN-001",
+    "hardware_id": "HW-1",
+    "firmware_version": "FW-1",
+    "driver_commit": "sha256:" + "1" * 64,
+    "model_weights_sha256": "sha256:" + "2" * 64,
+    "quantization_spec": "FP16",
+    "runtime_env": "Bare-Metal",
+    "workload_identity_digest": "sha256:" + "3" * 64,
+}
+A = {
+    "artifact_sha256": "sha256:" + "a" * 64,
+    "evidence_type": "AUTHORITATIVE",
+    "source": "thermal.sensor",
+    "timestamp": "2026-10-01T19:00:00Z",
+}
+B = {
+    "artifact_sha256": "sha256:" + "b" * 64,
+    "evidence_type": "AUTHORITATIVE",
+    "source": "thermal.guard",
+    "timestamp": "2026-10-01T19:01:00Z",
+}
+
+
+def make_record(a=A, b=B, **overrides):
+    return build_conflict_record(
+        predicate_id="P4",
+        conflict_type="THERMAL_CONTRADICTION",
+        subject_identity=SUBJECT,
+        evidence_a=a,
+        evidence_b=b,
+        observed_a=False,
+        observed_b=True,
+        **overrides,
+    )
+
+
+def test_T07_schema_invalid_required_field_is_rejected():
+    bad = dict(A)
+    del bad["timestamp"]
+    with pytest.raises((KeyError, TypeError, ValueError)) as exc:
+        make_record(bad, B)
+    print(f"T07 rejected missing evidence.timestamp with {type(exc.value).__name__}: {exc.value}")
+
+
+def test_T07_schema_invalid_subject_identity_is_rejected():
+    with pytest.raises((TypeError, ValueError)) as exc:
+        build_conflict_record(
+            predicate_id="P4",
+            conflict_type="THERMAL_CONTRADICTION",
+            subject_identity=None,
+            evidence_a=A,
+            evidence_b=B,
+            observed_a=False,
+            observed_b=True,
+        )
+    print(f"T07 rejected subject_identity=None with {type(exc.value).__name__}: {exc.value}")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-10-01T19:00:00",
+        "2026-13-01T19:00:00Z",
+        "not-a-timestamp",
+    ],
+)
+def test_T08_strict_timestamp_cases_are_rejected(value):
+    with pytest.raises((ValueError, TypeError)) as exc:
+        canonical_timestamp(value)
+    print(f"T08 rejected {value!r} with {type(exc.value).__name__}: {exc.value}")
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_T09_non_finite_numbers_are_rejected(value):
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        canonical_json({"observed": value})
+    print(f"T09 rejected {value!r} as non-finite JSON")
+
+
+def test_T09_non_finite_nested_record_value_is_rejected():
+    record = make_record()
+    record["observed_values"]["b"] = math.inf
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        calculate_conflict_id(record)
+    print("T09 rejected nested Inf in conflict material")
+
+
+def test_T10_tampered_contract_version_is_rejected():
+    record = make_record()
+    record["contract_version"] = "JAMP-AI-HARDWARE-v0.1.3"
+    with pytest.raises(ValueError, match="unsupported contract version"):
+        conflict_material(record)
+    with pytest.raises(ValueError, match="unsupported contract version"):
+        calculate_conflict_id(record)
+    print("T10 rejected tampered contract_version")
+
+
+def test_T10_tampered_contract_version_is_not_silently_verified():
+    record = make_record()
+    record["contract_version"] = "tampered"
+    with pytest.raises(ValueError, match="unsupported contract version"):
+        verify_conflict_id(record)
+    print("T10 verify_conflict_id fails closed on tampered contract_version")
+
+PY
+
+      - name: Run T07-T10 pytest probe
+        env:
+          PYTHONPATH: src
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -vv /tmp/test_hardware_conflict_v014_edge_probe.py 2>&1 | tee artifacts/t07-t10-pytest.txt
+
+      - name: Record provenance
+        if: always()
+        run: |
+          {
+            echo "target_sha=$(git rev-parse HEAD)"
+            echo "expected_sha=b392f3cf2ff064d470a231e00cb3df2dacb545a7"
+            echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
+            echo "run_id=${GITHUB_RUN_ID}"
+          } | tee artifacts/provenance.txt
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v014-t07-t10-edge-probe-evidence
+          path: artifacts/
+          if-no-files-found: error
