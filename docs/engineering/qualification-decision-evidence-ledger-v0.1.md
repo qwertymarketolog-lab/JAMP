@@ -7,7 +7,7 @@ Status: DESIGN-ONLY / PRE-IMPLEMENTATION
 Define the deterministic audit boundary between requirement evaluation and the
 Evidence Ledger.
 
-The contract records **why a qualification decision was produced**, which
+The contract records why a qualification decision was produced, which
 requirements were evaluated, which evidence records were used, and which
 deterministic checker/contract versions governed the evaluation.
 
@@ -38,13 +38,18 @@ Decision Audit Record
 A Qualification Decision is a deterministic interpretation of a frozen
 requirement set over a declared evidence scope.
 
-Allowed terminal decision statuses:
+The qualification result boundary is inherited exactly from PR #264/#265:
 
-- `QUALIFIED` — every required requirement evaluated successfully.
-- `NOT_QUALIFIED` — at least one required requirement evaluated as failed.
-- `INCONCLUSIVE` — a required input/evidence item is missing, malformed,
-  contradictory, or otherwise unresolved.
-- `FAILED` — the deterministic qualification procedure itself failed.
+- `QUALIFIED` — every required requirement is satisfied by matching VERIFIED evidence.
+- `INCONCLUSIVE` — required evidence/input is missing, malformed, unresolved,
+  contradictory, or otherwise prevents deterministic qualification.
+
+No additional qualification result status is introduced by this contract.
+
+A requirement value mismatch is `INCONCLUSIVE`, consistent with PR #264/#265.
+The audit record may retain a deterministic per-requirement evaluation outcome
+such as `FAILED`, but that internal outcome MUST NOT become a third
+qualification result status.
 
 `INCONCLUSIVE` MUST NOT be converted to `QUALIFIED` by absence of errors,
 AI opinion, catalog metadata, or current/live replacement evidence.
@@ -64,14 +69,14 @@ Every decision MUST declare:
 | subject_id | product/entity being qualified |
 | requirement_set_hash | exact frozen requirement set |
 | evidence_scope_hash | deterministic identity of selected evidence |
+| ledger_snapshot_id | immutable logical ledger snapshot identity |
+| ledger_snapshot_digest | digest of the selected ledger snapshot |
 | checker_id | deterministic qualification checker |
 | checker_version | exact checker version |
 | checker_digest | checker source/content digest |
-| decision_status | terminal status |
+| decision_status | exactly QUALIFIED or INCONCLUSIVE |
 | created_at | UTC creation timestamp |
-| decision_digest | digest of canonical decision record |
-
-The decision identity MUST be reproducible from a canonical preimage.
+| decision_digest | digest of canonical decision preimage |
 
 ## 4. Requirement evaluation record
 
@@ -89,11 +94,14 @@ Each requirement evaluation MUST contain:
 - expected predicate/constraint identity;
 - evaluation record digest.
 
-Allowed evaluation statuses:
+Allowed internal evaluation statuses are:
 
 - `SATISFIED`
 - `FAILED`
 - `INCONCLUSIVE`
+
+`FAILED` is an internal audit outcome only. It MUST NOT be emitted as a
+Qualification Decision status.
 
 A requirement MUST NOT be marked `SATISFIED` when a required evidence input
 is absent or unresolved.
@@ -118,7 +126,7 @@ evidence_digests[]
 Every referenced evidence record MUST resolve to the exact record used by the
 evaluation.
 
-The evaluator MUST reject:
+The evaluator MUST reject or return `INCONCLUSIVE` for:
 
 - unknown evidence IDs;
 - digest mismatch;
@@ -178,7 +186,47 @@ The evaluator MUST be side-effect free with respect to qualification state.
 
 No network/API/provider call is permitted during deterministic evaluation.
 
-## 8. Fail-closed rules
+## 8. Canonical decision-digest preimage
+
+The `decision_digest` MUST be computed from a canonical UTF-8 JSON object
+containing exactly these fields:
+
+```
+{
+  "decision_contract_version": "...",
+  "task_id": "...",
+  "subject_id": "...",
+  "requirement_set_hash": "...",
+  "evidence_scope_hash": "...",
+  "ledger_snapshot_id": "...",
+  "ledger_snapshot_digest": "...",
+  "checker_id": "...",
+  "checker_version": "...",
+  "checker_digest": "...",
+  "decision_status": "...",
+  "created_at": "..."
+}
+```
+
+Canonicalization rules:
+
+1. UTF-8 encoding.
+2. JSON object keys sorted lexicographically.
+3. No insignificant whitespace.
+4. JSON strings use standard JSON encoding without application-level semantic normalization.
+5. Arrays, where introduced by a future contract version, preserve declared
+   order; v0.1 decision identity contains no arrays.
+6. Numeric values are forbidden in the v0.1 decision identity object.
+7. `decision_id` and `decision_digest` are excluded from the preimage to
+   prevent circularity.
+8. SHA-256 is computed over the canonical UTF-8 JSON bytes.
+9. Any change to fields or canonicalization rules requires a new contract
+   version.
+
+`created_at` participates in decision identity; reproducing the same semantic
+decision at another timestamp creates a distinct decision record.
+
+## 9. Fail-closed rules
 
 The evaluator MUST return `INCONCLUSIVE` when:
 
@@ -189,15 +237,15 @@ The evaluator MUST return `INCONCLUSIVE` when:
 5. requirement input is malformed;
 6. checker input is incomplete;
 7. checker version/digest is unresolved;
-8. contradictory evidence prevents deterministic evaluation.
+8. contradictory evidence prevents deterministic evaluation;
+9. canonical decision-digest inputs are incomplete or invalid.
 
-The evaluator MUST return `FAILED` only for an actual deterministic procedure
-failure, not merely for missing evidence.
+The evaluator MUST NOT introduce a separate `FAILED` qualification status.
 
 No AI-generated confidence, ranking, heuristic, or narrative may override a
 fail-closed result.
 
-## 9. Audit record
+## 10. Audit record
 
 Each completed evaluation MUST produce an append-only Decision Audit Record
 containing:
@@ -208,7 +256,7 @@ containing:
 - ledger snapshot identity;
 - all requirement evaluation records;
 - checker identity;
-- terminal decision status;
+- terminal qualification result;
 - decision digest;
 - creation timestamp.
 
@@ -218,7 +266,7 @@ contacting an external provider.
 An audit record is evidence of the evaluation process and provenance chain; it
 is not by itself proof that the underlying real-world claim is true.
 
-## 10. Relationship to existing contracts
+## 11. Relationship to existing contracts
 
 This contract is additive and consumes existing semantics from:
 
@@ -239,7 +287,7 @@ It does not redefine:
 
 The contract provides the missing audit-trail binding between those layers.
 
-## 11. Non-goals
+## 12. Non-goals
 
 This contract does not implement:
 
@@ -253,7 +301,7 @@ This contract does not implement:
 - threshold changes;
 - `src/jamp/run.py` changes.
 
-## 12. Frozen Core
+## 13. Frozen Core
 
 `src/jamp/run.py` MUST remain unchanged.
 
@@ -265,7 +313,7 @@ Required:
 
 `Δ(src/jamp/run.py) = 0`
 
-## 13. Freeze rule
+## 14. Freeze rule
 
 This document is DESIGN-ONLY / PRE-IMPLEMENTATION.
 
