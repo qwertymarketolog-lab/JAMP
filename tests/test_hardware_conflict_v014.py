@@ -56,8 +56,8 @@ def test_ab_conflict_and_deterministic_id():
 
 
 def test_reordered_evidence_has_same_id():
-    assert calculate_conflict_id(make_record(A, B)) == calculate_conflict_id(
-        make_record(B, A)
+    assert calculate_conflict_id(make_record(A, B)) == (
+        calculate_conflict_id(make_record(B, A))
     )
 
 

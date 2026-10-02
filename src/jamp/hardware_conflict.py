@@ -57,7 +57,9 @@ def conflict_material(record: Mapping[str, Any]) -> dict[str, Any]:
     if record.get("contract_version") != CONTRACT_VERSION:
         raise ValueError("unsupported contract version")
     if "conflict_id" in record:
-        record = {key: value for key, value in record.items() if key != "conflict_id"}
+        record = {
+            key: value for key, value in record.items() if key != "conflict_id"
+        }
     a = _canonical_evidence(record["evidence_a"])
     b = _canonical_evidence(record["evidence_b"])
     a, b = sorted((a, b), key=lambda item: item["artifact_sha256"])
