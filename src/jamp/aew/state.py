@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .contract import ResearchState
+from jamp.aew.contract import ResearchState
 
 
 _ALLOWED: dict[ResearchState, frozenset[ResearchState]] = {
