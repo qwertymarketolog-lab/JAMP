@@ -252,19 +252,25 @@ class MarketplaceQualificationRuntime:
                 else:
                     status = "INCONCLUSIVE"
             evaluation = RequirementEvaluation(
-                requirement.requirement_id, requirement.required, requirement.operator,
-                requirement.expected_value, actual_value, status, evidence_ids,
-                MarketplaceQualificationRuntime._hash_json({
-                    "requirement_id": requirement.requirement_id,
-                    "required": requirement.required,
-                    "operator": requirement.operator,
-                    "expected_value": requirement.expected_value,
-                    "actual_value": actual_value,
-                    "evaluation_status": status,
-                    "evidence_ids": evidence_ids,
-                }),
-            )
-            evaluations.append(evaluation)
+                requirement.requirement_id,
+                requirement.required,
+                requirement.operator,
+                requirement.expected_value,
+                actual_value,
+                status,
+                evidence_ids,
+                MarketplaceQualificationRuntime._hash_json(
+                    {
+                        "requirement_id": requirement.requirement_id,
+                        "required": requirement.required,
+                        "operator": requirement.operator,
+                        "expected_value": requirement.expected_value,
+                        "actual_value": actual_value,
+                        "evaluation_status": status,
+                        "evidence_ids": evidence_ids,
+                    }
+                ),
+            )            evaluations.append(evaluation)
             if status == "INCONCLUSIVE" and requirement.required:
                 reason = "required_evidence_missing" if not matches else "verified_conflict"
                 return QualificationVerdict.INCONCLUSIVE, reason, tuple(evaluations)
