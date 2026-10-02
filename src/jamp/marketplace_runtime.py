@@ -137,6 +137,7 @@ class MarketplaceQualificationRuntime:
                 task_id=task_id,
                 subject_id=subject_id,
                 requirements=requirements,
+            evaluations=(),
             )
 
         records = tuple(self._to_evidence(o, task_id) for o in observations)
@@ -150,6 +151,7 @@ class MarketplaceQualificationRuntime:
                 task_id=task_id,
                 subject_id=subject_id,
                 requirements=requirements,
+            evaluations=(),
             )
 
         by_id = {record.evidence_id: record for record in evaluated}
@@ -176,6 +178,7 @@ class MarketplaceQualificationRuntime:
             task_id=task_id,
             subject_id=subject_id,
             requirements=requirements,
+        evaluations=(),
         )
 
     @staticmethod

@@ -85,3 +85,20 @@ def test_retrieved_at_is_preserved_in_aew_metadata():
     )
     record = runtime.ledger.get("ev:fixture-001:width_mm")
     assert record.metadata["retrieved_at"] == "2026-10-02T16:00:01Z"
+
+def test_requirement_evaluation_and_decision_audit_record_are_explicit():
+    observations = OfflineMarketplaceParser().parse(fixture())
+    runtime = MarketplaceQualificationRuntime(policy)
+    decision = runtime.run(
+        observations,
+        (Requirement("r1", "width_mm", "GREATER_OR_EQUAL", 800),),
+        task_id="task-audit",
+        subject_id="product-1",
+    )
+    assert len(runtime.audit_records) == 1
+    audit = runtime.audit_records[0]
+    assert audit.decision is decision
+    assert audit.requirement_evaluations[0].requirement_id == "r1"
+    assert audit.requirement_evaluations[0].evaluation_status == "SATISFIED"
+    assert audit.requirement_evaluations[0].evidence_ids == ("ev:fixture-001:width_mm",)
+    assert audit.decision_digest == decision.decision_digest
