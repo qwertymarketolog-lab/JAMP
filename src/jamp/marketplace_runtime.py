@@ -10,7 +10,12 @@ from jamp.aew.contract import EvidenceRecord, EvidenceStatus
 from jamp.aew.ledger import EvidenceLedger
 
 
-class ParserStatus(StrEnum):\n    OBSERVED = "OBSERVED"\n    UNKNOWN = "UNKNOWN"\n\n\nclass QualificationVerdict(StrEnum):
+class ParserStatus(StrEnum):
+    OBSERVED = "OBSERVED"
+    UNKNOWN = "UNKNOWN"
+
+
+class QualificationVerdict(StrEnum):
     QUALIFIED = "QUALIFIED"
     INCONCLUSIVE = "INCONCLUSIVE"
 
