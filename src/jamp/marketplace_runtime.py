@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from jamp.aew.contract import EvidenceRecord, EvidenceStatus
