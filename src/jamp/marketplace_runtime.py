@@ -318,6 +318,7 @@ class MarketplaceQualificationRuntime:
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def _decision(
+        self,
         verdict: QualificationVerdict,
         reason: str,
         observations: Sequence[RawObservation],
