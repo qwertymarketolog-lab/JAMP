@@ -32,7 +32,7 @@ class RawObservation:
     raw_value: Mapping[str, Any]
     canonical_attribute: str
     normalized_value: Any
-    status: EvidenceStatus
+    status: ParserStatus
 
     @property
     def raw_hash(self) -> str:
@@ -129,7 +129,7 @@ class MarketplaceQualificationRuntime:
         subject_id: str = "marketplace-subject",
     ) -> QualificationDecision:
         if not observations or not requirements:
-            return self._decision(QualificationVerdict.INCONCLUSIVE, "missing_input", (), (), task_id=task_id, subject_id=subject_id)
+            return self._decision(QualificationVerdict.INCONCLUSIVE, "missing_input", (), (), task_id=task_id, subject_id=subject_id, requirements=requirements)
 
         records = tuple(self._to_evidence(o, task_id) for o in observations)
         evaluated = tuple(self._policy(records))
@@ -238,7 +238,7 @@ class MarketplaceQualificationRuntime:
         observation_ids = tuple(sorted(o.observation_id for o in observations))
         evidence_ids = tuple(sorted(r.evidence_id for r in records))
         evaluation_digests = tuple(MarketplaceQualificationRuntime._hash_json({"evidence_id": r.evidence_id, "scope": r.scope, "status": r.status.value}) for r in records)
-        requirement_set_hash = MarketplaceQualificationRuntime._hash_json([])
+        requirement_set_hash = MarketplaceQualificationRuntime._hash_json([r.__dict__ for r in requirements])
         evidence_scope_hash = MarketplaceQualificationRuntime._hash_json(list(zip(evidence_ids, evidence_digests, strict=True)))
         ledger_snapshot_digest = MarketplaceQualificationRuntime._hash_json(list(zip(evidence_ids, evidence_digests, strict=True)))
         ledger_snapshot_id = f"snapshot:{ledger_snapshot_digest}"
