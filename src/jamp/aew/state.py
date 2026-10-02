@@ -19,9 +19,7 @@ _ALLOWED: dict[ResearchState, frozenset[ResearchState]] = {
     ResearchState.EXPERIMENT_DEFINED: frozenset(
         {ResearchState.RUNNING, ResearchState.INCONCLUSIVE}
     ),
-    ResearchState.RUNNING: frozenset(
-        {ResearchState.EVIDENCE_COLLECTED, ResearchState.FAILED}
-    ),
+    ResearchState.RUNNING: frozenset({ResearchState.EVIDENCE_COLLECTED, ResearchState.FAILED}),
     ResearchState.EVIDENCE_COLLECTED: frozenset(
         {
             ResearchState.VERIFIED,
@@ -30,12 +28,8 @@ _ALLOWED: dict[ResearchState, frozenset[ResearchState]] = {
         }
     ),
     ResearchState.VERIFIED: frozenset({ResearchState.CLOSED}),
-    ResearchState.INCONCLUSIVE: frozenset(
-        {ResearchState.INVESTIGATING, ResearchState.CLOSED}
-    ),
-    ResearchState.FAILED: frozenset(
-        {ResearchState.INVESTIGATING, ResearchState.CLOSED}
-    ),
+    ResearchState.INCONCLUSIVE: frozenset({ResearchState.INVESTIGATING, ResearchState.CLOSED}),
+    ResearchState.FAILED: frozenset({ResearchState.INVESTIGATING, ResearchState.CLOSED}),
     ResearchState.CLOSED: frozenset(),
 }
 
