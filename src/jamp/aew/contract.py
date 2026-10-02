@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Mapping, Protocol, Sequence
+from enum import StrEnum
+from typing import Any, Protocol
 
 
-class EvidenceStatus(str, Enum):
+class EvidenceStatus(StrEnum):
     OBSERVED = "OBSERVED"
     VERIFIED = "VERIFIED"
     INCONCLUSIVE = "INCONCLUSIVE"
     CONTRADICTED = "CONTRADICTED"
 
 
-class ResearchState(str, Enum):
+class ResearchState(StrEnum):
     OPEN = "OPEN"
     INVESTIGATING = "INVESTIGATING"
     HYPOTHESIS_FORMED = "HYPOTHESIS_FORMED"
