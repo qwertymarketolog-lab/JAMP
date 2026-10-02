@@ -258,7 +258,7 @@ class MarketplaceQualificationRuntime:
 
     @staticmethod
     def _hash_json(payload: Any) -> str:
-        return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        canonical = json.dumps(\n            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")\n        )\n        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _decision(
