@@ -4,7 +4,16 @@
   "title": "AEW v0.1 Provider Adapter Design",
   "type": "object",
   "additionalProperties": false,
-  "required": ["provider", "adapter_id", "model", "transport", "real_calls_enabled", "budget_policy"],
+  "required": [
+    "provider",
+    "adapter_id",
+    "model",
+    "transport",
+    "real_calls_enabled",
+    "budget_policy",
+    "returns",
+    "ledger_write"
+  ],
   "properties": {
     "provider": {
       "type": "string",
