@@ -40,9 +40,7 @@ class StateMachine:
 
     def transition(self, target: ResearchState) -> ResearchState:
         if target not in _ALLOWED[self.state]:
-            raise ValueError(
-                f"invalid AEW transition: {self.state.value} -> {target.value}"
-            )
+            raise ValueError(f"invalid AEW transition: {self.state.value} -> {target.value}")
         self.state = target
         return self.state
 
