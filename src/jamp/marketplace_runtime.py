@@ -253,7 +253,12 @@ class MarketplaceQualificationRuntime:
             "status": record.status.value,
             "metadata": record.metadata,
         }
-        canonical = json.dumps(\n            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")\n        )
+        canonical = json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @staticmethod
