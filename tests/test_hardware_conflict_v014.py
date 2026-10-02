@@ -45,6 +45,8 @@ def make_record(a=A, b=B):
         observed_b=True,
     )
 
+
+
 def test_ab_conflict_and_deterministic_id():
     record = make_record()
     assert verify_conflict_id(record)
@@ -53,22 +55,34 @@ def test_ab_conflict_and_deterministic_id():
     )
 
 def test_reordered_evidence_has_same_id():
-    assert calculate_conflict_id(make_record(A, B)) == calculate_conflict_id(make_record(B, A))
+    assert calculate_conflict_id(make_record(A, B)) == calculate_conflict_id(
+        make_record(B, A)
+    )
+
+
 
 def test_duplicate_evidence_is_not_a_conflict():
     assert is_duplicate_evidence(A, A)
     with pytest.raises(ValueError, match="duplicate evidence"):
         make_record(A, A)
 
+
+
 def test_scope_mismatch_is_not_conflict():
     other = deepcopy(make_record())
     other["subject_identity"]["run_id"] = "RUN-002"
     assert classify_scope(make_record(), other) == "DIFFERENT_SCOPE"
+
+
 
 def test_tamper_changes_identity():
     record = make_record()
     record["observed_values"]["b"] = False
     assert not verify_conflict_id(record)
 
+
+
 def test_timestamp_normalization_is_deterministic():
-    assert canonical_timestamp("2026-10-01T21:00:00+02:00") == "2026-10-01T19:00:00.000000Z"
+    assert canonical_timestamp("2026-10-01T21:00:00+02:00") == (
+        "2026-10-01T19:00:00.000000Z"
+    )
