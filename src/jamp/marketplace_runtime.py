@@ -242,7 +242,7 @@ class MarketplaceQualificationRuntime:
                 values = {record.metadata.get("normalized_value") for record in matches}
                 if len(values) == 1:
                     actual_value = next(iter(values))
-                    status = "SATISFIED" if MarketplaceQualificationRuntime._matches(actual_value, requirement.operator, requirement.expected_value) else "FAILED"
+                    status = (\n                        "SATISFIED"\n                        if MarketplaceQualificationRuntime._matches(\n                            actual_value, requirement.operator, requirement.expected_value\n                        )\n                        else "FAILED"\n                    )
                 else:
                     status = "INCONCLUSIVE"
             evaluation = RequirementEvaluation(
@@ -260,7 +260,7 @@ class MarketplaceQualificationRuntime:
             )
             evaluations.append(evaluation)
             if status == "INCONCLUSIVE" and requirement.required:
-                return QualificationVerdict.INCONCLUSIVE, "required_evidence_missing", tuple(evaluations)
+                reason = "required_evidence_missing" if not matches else "verified_conflict"\n                return QualificationVerdict.INCONCLUSIVE, reason, tuple(evaluations)
             if status == "FAILED" and requirement.required:
                 return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch", tuple(evaluations)
         return QualificationVerdict.QUALIFIED, "all_required_requirements_satisfied", tuple(evaluations)
