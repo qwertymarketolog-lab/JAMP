@@ -126,7 +126,7 @@ class MarketplaceQualificationRuntime:
         requirements: Sequence[Requirement],
         *,
         task_id: str,
-        subject_id: str = "marketplace-subject",
+        subject_id: str,
     ) -> QualificationDecision:
         if not observations or not requirements:
             return self._decision(QualificationVerdict.INCONCLUSIVE, "missing_input", (), (), task_id=task_id, subject_id=subject_id, requirements=requirements)
@@ -233,7 +233,7 @@ class MarketplaceQualificationRuntime:
         return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _decision(verdict: QualificationVerdict, reason: str, observations: Sequence[RawObservation], records: Sequence[EvidenceRecord], *, task_id: str, subject_id: str, requirements: Sequence[Requirement]) -> QualificationDecision:
+    def _decision(\n        verdict: QualificationVerdict,\n        reason: str,\n        observations: Sequence[RawObservation],\n        records: Sequence[EvidenceRecord],\n        *,\n        task_id: str,\n        subject_id: str,\n        requirements: Sequence[Requirement],\n    ) -> QualificationDecision:
         evidence_digests = tuple(MarketplaceQualificationRuntime._record_digest(r) for r in records)
         observation_ids = tuple(sorted(o.observation_id for o in observations))
         evidence_ids = tuple(sorted(r.evidence_id for r in records))
