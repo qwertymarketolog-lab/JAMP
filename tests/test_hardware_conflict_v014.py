@@ -67,19 +67,16 @@ def test_duplicate_evidence_is_not_a_conflict():
         make_record(A, A)
 
 
-
 def test_scope_mismatch_is_not_conflict():
     other = deepcopy(make_record())
     other["subject_identity"]["run_id"] = "RUN-002"
     assert classify_scope(make_record(), other) == "DIFFERENT_SCOPE"
 
 
-
 def test_tamper_changes_identity():
     record = make_record()
     record["observed_values"]["b"] = False
     assert not verify_conflict_id(record)
-
 
 
 def test_timestamp_normalization_is_deterministic():
