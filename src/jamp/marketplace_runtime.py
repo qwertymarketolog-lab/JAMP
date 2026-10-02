@@ -10,7 +10,7 @@ from jamp.aew.contract import EvidenceRecord, EvidenceStatus
 from jamp.aew.ledger import EvidenceLedger
 
 
-class QualificationVerdict(StrEnum):
+class ParserStatus(StrEnum):\n    OBSERVED = "OBSERVED"\n    UNKNOWN = "UNKNOWN"\n\n\nclass QualificationVerdict(StrEnum):
     QUALIFIED = "QUALIFIED"
     INCONCLUSIVE = "INCONCLUSIVE"
 
@@ -68,7 +68,7 @@ class OfflineMarketplaceParser:
             return ()
 
         for attribute_name, value in attributes.items():
-            status = EvidenceStatus.OBSERVED if value is not None else EvidenceStatus.INCONCLUSIVE
+            status = ParserStatus.OBSERVED if value is not None else ParserStatus.UNKNOWN
             observations.append(
                 RawObservation(
                     observation_id=f"{fixture['observation_id']}:{attribute_name}",
