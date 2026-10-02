@@ -1,0 +1,36 @@
+name: Isolated v0.1.4 Conflict Tests
+
+on:
+  push:
+    branches:
+      - 'ci/isolated-v014-20261002'
+
+jobs:
+  isolated-v014:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact target HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: b392f3cf2ff064d470a231e00cb3df2dacb545a7
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest pytest-mock
+      - name: Run isolated v0.1.4 tests
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_hardware_conflict_v014.py --junitxml=v014-junit.xml
+      - name: Upload isolated test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v014-isolated-junit
+          path: v014-junit.xml
+          if-no-files-found: error
