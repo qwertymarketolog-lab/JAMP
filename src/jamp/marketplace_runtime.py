@@ -62,6 +62,7 @@ class RequirementEvaluation:
     evidence_ids: tuple[str, ...]
     evaluation_digest: str
 
+
 @dataclass(frozen=True)
 class DecisionAuditRecord:
     decision: "QualificationDecision"
@@ -70,6 +71,7 @@ class DecisionAuditRecord:
     evidence_ids: tuple[str, ...]
     evidence_digests: tuple[str, ...]
     decision_digest: str
+
 
 @dataclass(frozen=True)
 class QualificationDecision:
@@ -184,6 +186,8 @@ class MarketplaceQualificationRuntime:
                 records,
                 task_id=task_id,
                 subject_id=subject_id,
+                requirements=requirements,
+                evaluations=(),
             )
 
         for record in evaluated:
@@ -199,7 +203,7 @@ class MarketplaceQualificationRuntime:
             task_id=task_id,
             subject_id=subject_id,
             requirements=requirements,
-        evaluations=(),
+            evaluations=evaluations,
         )
 
     @staticmethod
@@ -377,7 +381,14 @@ class MarketplaceQualificationRuntime:
             created_at,
             decision_digest,
         )
-        self.audit_records.append(DecisionAuditRecord(
-            decision, tuple(evaluations), observation_ids, evidence_ids, evidence_digests, decision_digest
-        ))
+        self.audit_records.append(
+            DecisionAuditRecord(
+                decision,
+                tuple(evaluations),
+                observation_ids,
+                evidence_ids,
+                evidence_digests,
+                decision_digest,
+            )
+        )
         return decision
