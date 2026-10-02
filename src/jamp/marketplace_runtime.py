@@ -322,9 +322,23 @@ class MarketplaceQualificationRuntime:
         }
         decision_digest = MarketplaceQualificationRuntime._hash_json(preimage)
         return QualificationDecision(
-            decision_id, "0.1", task_id, subject_id, requirement_set_hash,
-            evidence_scope_hash, ledger_snapshot_id, ledger_snapshot_digest,
-            checker_id, checker_version, checker_digest, verdict, reason,
-            observation_ids, evidence_ids, evidence_digests, evaluation_digests,
-            created_at, decision_digest,
+            decision_id,
+            "0.1",
+            task_id,
+            subject_id,
+            requirement_set_hash,
+            evidence_scope_hash,
+            ledger_snapshot_id,
+            ledger_snapshot_digest,
+            checker_id,
+            checker_version,
+            checker_digest,
+            verdict,
+            reason,
+            observation_ids,
+            evidence_ids,
+            evidence_digests,
+            evaluation_digests,
+            created_at,
+            decision_digest,
         )
