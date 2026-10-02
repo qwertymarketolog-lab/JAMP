@@ -58,11 +58,12 @@ deterministic reference to the source observation:
 - `evidence_id`;
 - `claim_id`;
 - `source_type` = marketplace observation;
-- `source_id` = `observation_id`;
+- `source_id` = `observation_id` — this is the explicit AEW binding of `observation_id`;
 - `raw_hash` over the preserved raw observation representation;
 - `scope`;
 - `status`;
-- existing AEW provenance fields.
+- existing AEW provenance fields;
+- `metadata.retrieved_at` = the source observation `retrieved_at` value, when present. This is the explicit AEW mapping for retrieval time; it MUST NOT be silently dropped or reinterpreted.
 
 The EvidenceRecord MUST NOT rewrite the source observation into a new
 untraceable value.
