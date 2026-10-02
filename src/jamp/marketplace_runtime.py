@@ -270,7 +270,8 @@ class MarketplaceQualificationRuntime:
                         "evidence_ids": evidence_ids,
                     }
                 ),
-            )            evaluations.append(evaluation)
+            )
+            evaluations.append(evaluation)
             if status == "INCONCLUSIVE" and requirement.required:
                 reason = "required_evidence_missing" if not matches else "verified_conflict"
                 return QualificationVerdict.INCONCLUSIVE, reason, tuple(evaluations)
