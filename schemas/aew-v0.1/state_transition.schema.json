@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jamp://schemas/aew-v0.1/state-transition.schema.json",
+  "title": "JAMP AEW StateTransition v0.1",
+  "type": "object",
+  "required": ["from", "to", "evidence_ids"],
+  "properties": {
+    "from": {"enum": ["OPEN", "INVESTIGATING", "HYPOTHESIS_FORMED", "EXPERIMENT_DEFINED", "RUNNING", "EVIDENCE_COLLECTED", "VERIFIED", "INCONCLUSIVE", "FAILED", "CLOSED"]},
+    "to": {"enum": ["OPEN", "INVESTIGATING", "HYPOTHESIS_FORMED", "EXPERIMENT_DEFINED", "RUNNING", "EVIDENCE_COLLECTED", "VERIFIED", "INCONCLUSIVE", "FAILED", "CLOSED"]},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "reason": {"type": "string"}
+  },
+  "additionalProperties": false
+}
