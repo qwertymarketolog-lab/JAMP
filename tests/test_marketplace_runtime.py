@@ -86,6 +86,7 @@ def test_retrieved_at_is_preserved_in_aew_metadata():
     record = runtime.ledger.get("ev:fixture-001:width_mm")
     assert record.metadata["retrieved_at"] == "2026-10-02T16:00:01Z"
 
+
 def test_requirement_evaluation_and_decision_audit_record_are_explicit():
     observations = OfflineMarketplaceParser().parse(fixture())
     runtime = MarketplaceQualificationRuntime(policy)
