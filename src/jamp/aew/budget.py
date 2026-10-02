@@ -3,6 +3,7 @@
 This module is policy-only: it does not call providers or infer pricing.
 Unknown token/cost estimates fail closed, and escalation is never implicit.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
