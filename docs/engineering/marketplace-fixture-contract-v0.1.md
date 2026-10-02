@@ -33,7 +33,23 @@ At least one representative deterministic fixture is defined for:
 - Wildberries
 - Yandex Market
 
-Fixture payloads MAY be simplified mock payloads, but their field shapes MUST be explicit and stable.
+Fixture payload shapes MUST match the concrete adapter extraction contracts.
+
+## Adapter-compatible payload shapes
+
+- Ozon: `payload.attributes[]` with `name` and `values[]`.
+- Wildberries: `payload.options[]` with `name` and `value`.
+- Yandex Market: `payload.parameterValues[]` with `name` and `value`.
+
+These shapes are test fixtures only and do not assert live API response schemas.
+
+## Ozon unit semantics
+
+The Ozon positive fixture uses unitless millimetre strings (`"850"`, `"2000"`) because the current deterministic normalization contract accepts integer millimetre values or digit-only decimal strings and does not perform unit conversion.
+
+An explicit unit-bearing Ozon value such as `"850 мм"` MUST produce `UNKNOWN` at the current normalization boundary.
+
+No implicit unit stripping or conversion is permitted. Any future acceptance of unit-bearing values requires a separate normalization-contract change.
 
 ## Provenance rules
 
