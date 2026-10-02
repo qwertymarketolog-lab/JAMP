@@ -34,3 +34,4 @@ jobs:
           name: v014-isolated-junit
           path: v014-junit.xml
           if-no-files-found: error
+          retention-days: 7
