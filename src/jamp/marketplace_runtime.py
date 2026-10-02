@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Mapping, Sequence
-from datetime import UTC, datetime
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -258,7 +258,7 @@ class MarketplaceQualificationRuntime:
 
     @staticmethod
     def _hash_json(payload: Any) -> str:
-        canonical = json.dumps(\n            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")\n        )\n        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        canonical = json.dumps(\n            payload,\n            ensure_ascii=False,\n            sort_keys=True,\n            separators=(",", ":"),\n        )\n        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _decision(
