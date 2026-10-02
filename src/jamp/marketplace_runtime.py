@@ -129,11 +129,7 @@ class MarketplaceQualificationRuntime:
             )
 
         for record in evaluated:
-            if record.status is EvidenceStatus.VERIFIED or record.status not in (
-                EvidenceStatus.OBSERVED,
-                EvidenceStatus.INCONCLUSIVE,
-            ):
-                self.ledger.append(record)
+            self.ledger.append(record)
 
         verdict, reason = self._qualify(evaluated, requirements)
         snapshot = self.ledger.snapshot()
