@@ -1,4 +1,5 @@
 """Fail-closed deterministic Conflict Record primitives for JAMP-AI-HARDWARE-v0.1.4."""
+
 from __future__ import annotations
 
 import hashlib
@@ -57,9 +58,7 @@ def conflict_material(record: Mapping[str, Any]) -> dict[str, Any]:
     if record.get("contract_version") != CONTRACT_VERSION:
         raise ValueError("unsupported contract version")
     if "conflict_id" in record:
-        record = {
-            key: value for key, value in record.items() if key != "conflict_id"
-        }
+        record = {key: value for key, value in record.items() if key != "conflict_id"}
     a = _canonical_evidence(record["evidence_a"])
     b = _canonical_evidence(record["evidence_b"])
     a, b = sorted((a, b), key=lambda item: item["artifact_sha256"])
@@ -85,9 +84,7 @@ def classify_scope(record_a: Mapping[str, Any], record_b: Mapping[str, Any]) -> 
     return "SAME_SCOPE" if same_scope(record_a, record_b) else "DIFFERENT_SCOPE"
 
 
-def is_duplicate_evidence(
-    evidence_a: Mapping[str, Any], evidence_b: Mapping[str, Any]
-) -> bool:
+def is_duplicate_evidence(evidence_a: Mapping[str, Any], evidence_b: Mapping[str, Any]) -> bool:
     return evidence_a.get("artifact_sha256") == evidence_b.get("artifact_sha256")
 
 

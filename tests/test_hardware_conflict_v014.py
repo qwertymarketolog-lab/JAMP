@@ -56,9 +56,7 @@ def test_ab_conflict_and_deterministic_id():
 
 
 def test_reordered_evidence_has_same_id():
-    assert calculate_conflict_id(make_record(A, B)) == (
-        calculate_conflict_id(make_record(B, A))
-    )
+    assert calculate_conflict_id(make_record(A, B)) == (calculate_conflict_id(make_record(B, A)))
 
 
 def test_duplicate_evidence_is_not_a_conflict():
@@ -80,6 +78,4 @@ def test_tamper_changes_identity():
 
 
 def test_timestamp_normalization_is_deterministic():
-    assert canonical_timestamp("2026-10-01T21:00:00+02:00") == (
-        "2026-10-01T19:00:00.000000Z"
-    )
+    assert canonical_timestamp("2026-10-01T21:00:00+02:00") == ("2026-10-01T19:00:00.000000Z")
