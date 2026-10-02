@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jamp://schemas/aew-v0.1/worker-observation.schema.json",
+  "title": "JAMP AEW WorkerObservation v0.1",
+  "type": "object",
+  "required": ["worker_id", "provider", "model", "task_id", "input_hash", "observations", "hypotheses", "proposed_experiments", "uncertainties", "output_hash", "timestamp"],
+  "properties": {
+    "worker_id": {"type": "string", "minLength": 1},
+    "provider": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "input_hash": {"type": "string", "minLength": 1},
+    "observations": {"type": "array", "items": {"type": "string"}},
+    "hypotheses": {"type": "array", "items": {"type": "string"}},
+    "proposed_experiments": {"type": "array", "items": {"type": "string"}},
+    "uncertainties": {"type": "array", "items": {"type": "string"}},
+    "output_hash": {"type": "string"},
+    "timestamp": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}
