@@ -65,7 +65,7 @@ class RequirementEvaluation:
 
 @dataclass(frozen=True)
 class DecisionAuditRecord:
-    decision: "QualificationDecision"
+    decision: QualificationDecision
     requirement_evaluations: tuple[RequirementEvaluation, ...]
     observation_ids: tuple[str, ...]
     evidence_ids: tuple[str, ...]
@@ -270,7 +270,11 @@ class MarketplaceQualificationRuntime:
                 return QualificationVerdict.INCONCLUSIVE, reason, tuple(evaluations)
             if status == "FAILED" and requirement.required:
                 return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch", tuple(evaluations)
-        return QualificationVerdict.QUALIFIED, "all_required_requirements_satisfied", tuple(evaluations)
+        return (
+            QualificationVerdict.QUALIFIED,
+            "all_required_requirements_satisfied",
+            tuple(evaluations),
+        )
     @staticmethod
     def _matches(value: Any, operator: str, expected: Any) -> bool:
         try:
