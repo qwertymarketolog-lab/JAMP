@@ -11,6 +11,7 @@ from typing import Any
 PREFIX = "sha256:"
 CONTRACT_VERSION = "JAMP-AI-HARDWARE-v0.1.4"
 
+
 def _finite(value: Any) -> None:
     if isinstance(value, float) and not math.isfinite(value):
         raise ValueError("non-finite JSON number")
@@ -20,6 +21,7 @@ def _finite(value: Any) -> None:
     elif isinstance(value, (list, tuple)):
         for item in value:
             _finite(item)
+
 
 def canonical_timestamp(value: str) -> str:
     """Normalize RFC3339 input to UTC with exactly six fractional digits."""
@@ -32,6 +34,7 @@ def canonical_timestamp(value: str) -> str:
     parsed = parsed.astimezone(UTC)
     return parsed.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
+
 def canonical_json(value: Any) -> bytes:
     """JAMP C14N-v0.1.4: UTF-8, sorted object keys, preserved arrays, no NaN."""
     _finite(value)
@@ -43,10 +46,12 @@ def canonical_json(value: Any) -> bytes:
         allow_nan=False,
     ).encode("utf-8")
 
+
 def _canonical_evidence(evidence: Mapping[str, Any]) -> dict[str, Any]:
     result = dict(evidence)
     result["timestamp"] = canonical_timestamp(str(result["timestamp"]))
     return result
+
 
 def conflict_material(record: Mapping[str, Any]) -> dict[str, Any]:
     if record.get("contract_version") != CONTRACT_VERSION:
@@ -61,20 +66,28 @@ def conflict_material(record: Mapping[str, Any]) -> dict[str, Any]:
     material["evidence_b"] = b
     return material
 
+
 def calculate_conflict_id(record: Mapping[str, Any]) -> str:
     return PREFIX + hashlib.sha256(canonical_json(conflict_material(record))).hexdigest()
+
 
 def verify_conflict_id(record: Mapping[str, Any]) -> bool:
     return record.get("conflict_id") == calculate_conflict_id(record)
 
+
 def same_scope(record_a: Mapping[str, Any], record_b: Mapping[str, Any]) -> bool:
     return record_a.get("subject_identity") == record_b.get("subject_identity")
+
 
 def classify_scope(record_a: Mapping[str, Any], record_b: Mapping[str, Any]) -> str:
     return "SAME_SCOPE" if same_scope(record_a, record_b) else "DIFFERENT_SCOPE"
 
-def is_duplicate_evidence(evidence_a: Mapping[str, Any], evidence_b: Mapping[str, Any]) -> bool:
+
+def is_duplicate_evidence(
+    evidence_a: Mapping[str, Any], evidence_b: Mapping[str, Any]
+) -> bool:
     return evidence_a.get("artifact_sha256") == evidence_b.get("artifact_sha256")
+
 
 def build_conflict_record(
     *,
