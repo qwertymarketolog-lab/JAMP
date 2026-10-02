@@ -74,6 +74,10 @@ def test_missing_required_attribute_fails_closed():
 def test_retrieved_at_is_preserved_in_aew_metadata():
     observation = OfflineMarketplaceParser().parse(fixture())[0]
     runtime = MarketplaceQualificationRuntime(lambda records: tuple(records))
-    runtime.run(observation and (observation,), (Requirement("r1", "width_mm", "EQUALS", 850),), task_id="task-4")
-    record = runtime.ledger.get("ev:fixture-001:width_mm") if runtime.ledger.snapshot() else None
-    assert record is None or record.metadata["retrieved_at"] == "2026-10-02T16:00:01Z"
+    runtime.run(
+        (observation,),
+        (Requirement("r1", "width_mm", "EQUALS", 850),),
+        task_id="task-4",
+    )
+    record = runtime.ledger.get("ev:fixture-001:width_mm")
+    assert record.metadata["retrieved_at"] == "2026-10-02T16:00:01Z"
