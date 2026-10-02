@@ -160,15 +160,9 @@ class MarketplaceQualificationRuntime:
     def _qualify(
         records: Sequence[EvidenceRecord], requirements: Sequence[Requirement]
     ) -> tuple[QualificationVerdict, str]:
-        verified = [
-            record for record in records if record.status is EvidenceStatus.VERIFIED
-        ]
+        verified = [record for record in records if record.status is EvidenceStatus.VERIFIED]
         for requirement in requirements:
-            matches = [
-                record
-                for record in verified
-                if record.scope == requirement.attribute_name
-            ]
+            matches = [record for record in verified if record.scope == requirement.attribute_name]
             if not matches:
                 if requirement.required:
                     return QualificationVerdict.INCONCLUSIVE, "required_evidence_missing"
