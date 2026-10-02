@@ -344,12 +344,7 @@ class MarketplaceQualificationRuntime:
         evidence_digests = tuple(MarketplaceQualificationRuntime._record_digest(r) for r in records)
         observation_ids = tuple(sorted(o.observation_id for o in observations))
         evidence_ids = tuple(sorted(r.evidence_id for r in records))
-        evaluation_digests = tuple(
-            MarketplaceQualificationRuntime._hash_json(
-                {"evidence_id": r.evidence_id, "scope": r.scope, "status": r.status.value}
-            )
-            for r in records
-        )
+        evaluation_digests = tuple(e.evaluation_digest for e in evaluations)
         requirement_set_hash = MarketplaceQualificationRuntime._hash_json(
             [r.__dict__ for r in requirements]
         )
