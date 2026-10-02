@@ -4,7 +4,8 @@ import hashlib
 import json
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 from jamp.aew.contract import EvidenceRecord, EvidenceStatus
 from jamp.aew.ledger import EvidenceLedger
@@ -128,9 +129,10 @@ class MarketplaceQualificationRuntime:
             )
 
         for record in evaluated:
-            if record.status is EvidenceStatus.VERIFIED:
-                self.ledger.append(record)
-            elif record.status not in (EvidenceStatus.OBSERVED, EvidenceStatus.INCONCLUSIVE):
+            if record.status is EvidenceStatus.VERIFIED or record.status not in (
+                EvidenceStatus.OBSERVED,
+                EvidenceStatus.INCONCLUSIVE,
+            ):
                 self.ledger.append(record)
 
         verdict, reason = self._qualify(evaluated, requirements)
@@ -180,11 +182,13 @@ class MarketplaceQualificationRuntime:
             if len(values) != 1:
                 return QualificationVerdict.INCONCLUSIVE, "verified_conflict"
 
-            if not MarketplaceQualificationRuntime._matches(
-                next(iter(values)), requirement.operator, requirement.expected_value
+            if (
+                not MarketplaceQualificationRuntime._matches(
+                    next(iter(values)), requirement.operator, requirement.expected_value
+                )
+                and requirement.required
             ):
-                if requirement.required:
-                    return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch"
+                return QualificationVerdict.INCONCLUSIVE, "requirement_mismatch"
 
         return QualificationVerdict.QUALIFIED, "all_required_requirements_satisfied"
 
