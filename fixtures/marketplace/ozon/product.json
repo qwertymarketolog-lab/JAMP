@@ -6,9 +6,11 @@
   "retrieved_at": "2026-01-01T00:00:00Z",
   "payload": {
     "name": "Example cabinet",
-    "material": "steel",
-    "width": "850 мм",
-    "height": "2000 мм",
-    "doors": "2"
+    "attributes": [
+      {"name": "Материал", "values": ["steel"]},
+      {"name": "Ширина", "values": ["850"]},
+      {"name": "Высота", "values": ["2000"]},
+      {"name": "Количество дверей", "values": ["2"]}
+    ]
   }
 }
