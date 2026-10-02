@@ -1,0 +1,20 @@
+{
+  "fixture_id": "yandex-market-product-v0.1",
+  "marketplace": "yandex_market",
+  "format": "json",
+  "source_locator": "fixture://yandex-market/product/001",
+  "retrieved_at": "2026-01-01T00:00:00Z",
+  "payload": {
+    "name": "Example cabinet",
+    "offers": [
+      {
+        "properties": {
+          "material": "steel",
+          "width_mm": 850,
+          "height_mm": 2000,
+          "doors_count": 2
+        }
+      }
+    ]
+  }
+}
