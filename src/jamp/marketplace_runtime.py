@@ -129,19 +129,19 @@ class MarketplaceQualificationRuntime:
         subject_id: str,
     ) -> QualificationDecision:
         if not observations or not requirements:
-            return self._decision(QualificationVerdict.INCONCLUSIVE, "missing_input", (), (), task_id=task_id, subject_id=subject_id, requirements=requirements)
+            return self._decision(\n                QualificationVerdict.INCONCLUSIVE,\n                "missing_input",\n                (),\n                (),\n                task_id=task_id,\n                subject_id=subject_id,\n                requirements=requirements,\n            )
 
         records = tuple(self._to_evidence(o, task_id) for o in observations)
         evaluated = tuple(self._policy(records))
         if len(evaluated) != len(records):
             return self._decision(
-                QualificationVerdict.INCONCLUSIVE, "policy_output_mismatch", observations, records, task_id=task_id, subject_id=subject_id, requirements=requirements
+                QualificationVerdict.INCONCLUSIVE,\n                "policy_output_mismatch",\n                observations,\n                records,\n                task_id=task_id,\n                subject_id=subject_id,\n                requirements=requirements,
             )
 
         by_id = {record.evidence_id: record for record in evaluated}
         if set(by_id) != {record.evidence_id for record in records}:
             return self._decision(
-                QualificationVerdict.INCONCLUSIVE, "policy_identity_mismatch", observations, records, task_id=task_id, subject_id=subject_id
+                QualificationVerdict.INCONCLUSIVE,\n                "policy_identity_mismatch",\n                observations,\n                records,\n                task_id=task_id,\n                subject_id=subject_id,
             )
 
         for record in evaluated:
@@ -149,7 +149,7 @@ class MarketplaceQualificationRuntime:
 
         verdict, reason = self._qualify(evaluated, requirements)
         snapshot = self.ledger.snapshot()
-        return self._decision(verdict, reason, observations, snapshot, task_id=task_id, subject_id=subject_id, requirements=requirements)
+        return self._decision(\n            verdict,\n            reason,\n            observations,\n            snapshot,\n            task_id=task_id,\n            subject_id=subject_id,\n            requirements=requirements,\n        )
 
     @staticmethod
     def _to_evidence(observation: RawObservation, task_id: str) -> EvidenceRecord:
@@ -226,7 +226,7 @@ class MarketplaceQualificationRuntime:
             "status": record.status.value,
             "metadata": record.metadata,
         }
-        return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))\n        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _hash_json(payload: Any) -> str:
@@ -246,16 +246,16 @@ class MarketplaceQualificationRuntime:
         evidence_digests = tuple(MarketplaceQualificationRuntime._record_digest(r) for r in records)
         observation_ids = tuple(sorted(o.observation_id for o in observations))
         evidence_ids = tuple(sorted(r.evidence_id for r in records))
-        evaluation_digests = tuple(MarketplaceQualificationRuntime._hash_json({"evidence_id": r.evidence_id, "scope": r.scope, "status": r.status.value}) for r in records)
-        requirement_set_hash = MarketplaceQualificationRuntime._hash_json([r.__dict__ for r in requirements])
-        evidence_scope_hash = MarketplaceQualificationRuntime._hash_json(list(zip(evidence_ids, evidence_digests, strict=True)))
-        ledger_snapshot_digest = MarketplaceQualificationRuntime._hash_json(list(zip(evidence_ids, evidence_digests, strict=True)))
+        evaluation_digests = tuple(\n            MarketplaceQualificationRuntime._hash_json(\n                {"evidence_id": r.evidence_id, "scope": r.scope, "status": r.status.value}\n            )\n            for r in records\n        )
+        requirement_set_hash = MarketplaceQualificationRuntime._hash_json(\n            [r.__dict__ for r in requirements]\n        )
+        evidence_scope_hash = MarketplaceQualificationRuntime._hash_json(\n            list(zip(evidence_ids, evidence_digests, strict=True))\n        )
+        ledger_snapshot_digest = MarketplaceQualificationRuntime._hash_json(\n            list(zip(evidence_ids, evidence_digests, strict=True))\n        )
         ledger_snapshot_id = f"snapshot:{ledger_snapshot_digest}"
         checker_id = "jamp.marketplace.qualification"
         checker_version = "0.1"
         checker_digest = hashlib.sha256(b"jamp.marketplace.qualification:0.1").hexdigest()
         created_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         decision_id = f"decision:{task_id}:{created_at}"
-        preimage = {"decision_contract_version": "0.1", "task_id": task_id, "subject_id": subject_id, "requirement_set_hash": requirement_set_hash, "evidence_scope_hash": evidence_scope_hash, "ledger_snapshot_id": ledger_snapshot_id, "ledger_snapshot_digest": ledger_snapshot_digest, "checker_id": checker_id, "checker_version": checker_version, "checker_digest": checker_digest, "decision_status": verdict.value, "created_at": created_at}
+        preimage = {\n            "decision_contract_version": "0.1",\n            "task_id": task_id,\n            "subject_id": subject_id,\n            "requirement_set_hash": requirement_set_hash,\n            "evidence_scope_hash": evidence_scope_hash,\n            "ledger_snapshot_id": ledger_snapshot_id,\n            "ledger_snapshot_digest": ledger_snapshot_digest,\n            "checker_id": checker_id,\n            "checker_version": checker_version,\n            "checker_digest": checker_digest,\n            "decision_status": verdict.value,\n            "created_at": created_at,\n        }
         decision_digest = MarketplaceQualificationRuntime._hash_json(preimage)
-        return QualificationDecision(decision_id, "0.1", task_id, subject_id, requirement_set_hash, evidence_scope_hash, ledger_snapshot_id, ledger_snapshot_digest, checker_id, checker_version, checker_digest, verdict, reason, observation_ids, evidence_ids, evidence_digests, evaluation_digests, created_at, decision_digest)
+        return QualificationDecision(\n            decision_id, "0.1", task_id, subject_id, requirement_set_hash,\n            evidence_scope_hash, ledger_snapshot_id, ledger_snapshot_digest,\n            checker_id, checker_version, checker_digest, verdict, reason,\n            observation_ids, evidence_ids, evidence_digests, evaluation_digests,\n            created_at, decision_digest,\n        )
