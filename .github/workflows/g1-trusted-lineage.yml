@@ -42,7 +42,7 @@ jobs:
 
           run_json=""
           for _ in $(seq 1 60); do
-            run_json="$(curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${GH_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "${api}/actions/workflows/${EXPECTED_WORKFLOW_ID}/runs?head=${HEAD_SHA}&event=${EXPECTED_EVENT}&per_page=100")"
+            run_json="$(curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${GH_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "${api}/actions/workflows/${EXPECTED_WORKFLOW_ID}/runs?head_sha=${HEAD_SHA}&event=${EXPECTED_EVENT}&per_page=100")"
 
             if python - "${run_json}" <<'PY'
           import json
