@@ -29,17 +29,17 @@ jobs:
         pip install pytest pytest-mock
     - name: Run architectural boundary validation
       env:
-        PYTHONPATH: src
+        PYTHONPATH: src:.
       run: |
         pytest -q tests/test_architectural_boundaries.py
     - name: Run full test suite
       env:
-        PYTHONPATH: src
+        PYTHONPATH: src:.
       run: |
         pytest -q -m 'not exp19_perf'
     - name: Generate empirical P17.6 report
       env:
-        PYTHONPATH: src
+        PYTHONPATH: src:.
       run: |
         python -m jamp.p17.closed_loop --export-report experiment_report.json --generations 4
         python -m jamp.p17.experiment_report --verify experiment_report.json
