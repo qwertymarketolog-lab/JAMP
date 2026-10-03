@@ -220,7 +220,7 @@ def main() -> None:
             "User-Agent": "JAMP-evidence-acquisition-e2e-1",
         },
     )
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             raw_response = response.read()
@@ -241,7 +241,7 @@ def main() -> None:
 
     finished = now()
     elapsed_ms = (
-        datetime.now(timezone.utc) - started
+        datetime.now(UTC) - started
     ).total_seconds() * 1000.0
 
     raw = RawOutput.create(
