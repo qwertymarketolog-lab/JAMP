@@ -202,7 +202,9 @@ def test_execution_envelope_has_all_contract_fields():
 
 def test_derived_objects_are_bound_to_execution_and_digests():
     envelope, frozen, raw, observation = _fixture_records()
-    assert frozen.execution_id == raw.execution_id == observation.execution_id == envelope.execution_id
+    assert (
+        frozen.execution_id == raw.execution_id == observation.execution_id == envelope.execution_id
+    )
     assert raw.input_digest == frozen.input_digest
     assert observation.frozen_input_digest == frozen.digest
     assert observation.raw_output_digest == raw.digest
