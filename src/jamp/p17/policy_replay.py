@@ -38,6 +38,7 @@ def _verify_policy_event(event: PolicyUpdateEvent, previous: PolicyWeights) -> P
     update_material = dict(payload)
     stored_update_digest = update_material.pop("policy_update_digest", None)
     from ..domain.event import canonical_json, sha256_text
+
     if stored_update_digest != sha256_text(canonical_json(update_material)):
         raise CausalConsistencyError(
             f"Policy replay integrity failure at {event.event_id}: policy payload was tampered."
