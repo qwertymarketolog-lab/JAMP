@@ -34,7 +34,7 @@ jobs:
         pytest -q tests/test_architectural_boundaries.py
     - name: Run full test suite
       env:
-        PYTHONPATH: src
+        PYTHONPATH: src:.
       run: |
         pytest -q -m 'not exp19_perf'
     - name: Generate empirical P17.6 report
