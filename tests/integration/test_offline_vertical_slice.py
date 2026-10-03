@@ -11,8 +11,6 @@ from jamp.marketplace_runtime import (
     Requirement,
 )
 
-
-
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "marketplace_product_payload.json"
 
 
