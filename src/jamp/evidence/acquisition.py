@@ -257,24 +257,42 @@ def persist_bundle(
     raw_output: RawOutput,
     observation: AtomicObservation,
     ledger_entry: LedgerEntry,
+    checker_contract: dict[str, Any],
+    checker_output: dict[str, Any],
+    created_at: str,
 ) -> Path:
     """Write a self-contained immutable bundle and refuse overwrite."""
     root = Path(path)
     if root.exists():
         raise FileExistsError(f"immutable bundle already exists: {root}")
     root.mkdir(parents=True)
+
+    checker_id = checker_contract["checker_id"]
+    checker_version = checker_contract["checker_version"]
+    checker_digest = _digest(checker_contract)
+    checker_input_digest = raw_output.raw_response_digest
+    checker_output_digest = _digest(checker_output)
+
     records = {
         "execution_envelope.json": _json_record(envelope),
         "frozen_input.json": _json_record(frozen_input),
         "raw_output.json": _json_record(raw_output),
         "atomic_observation.json": _json_record(observation),
         "ledger_entry.json": _json_record(ledger_entry),
+        "checker_contract.json": checker_contract,
+        "checker_input.json": {
+            "raw_response_digest": raw_output.raw_response_digest,
+            "http_status": raw_output.http_status,
+            "raw_response": raw_output.raw_response.hex(),
+        },
+        "checker.json": checker_output,
     }
     for name, record in records.items():
         (root / name).write_bytes(_canonical(record))
     (root / "raw_response.bin").write_bytes(raw_output.raw_response)
+
     manifest = {
-        "bundle_version": "0.1",
+        "bundle_version": "0.2",
         "execution_id": envelope.execution_id,
         "execution_envelope_digest": envelope.digest,
         "frozen_input_digest": frozen_input.digest,
@@ -282,7 +300,23 @@ def persist_bundle(
         "raw_response_digest": raw_output.raw_response_digest,
         "atomic_observation_ids": [observation.observation_id],
         "ledger_entry_id": ledger_entry.ledger_entry_id,
+        "checker_id": checker_id,
+        "checker_version": checker_version,
+        "checker_digest": checker_digest,
+        "checker_input_digest": checker_input_digest,
+        "checker_output_digest": checker_output_digest,
         "final_status": envelope.status,
+        "created_at": created_at,
+        "provenance": {
+            "git_sha": envelope.git_sha,
+            "workflow_sha": envelope.workflow_sha,
+            "execution_id": envelope.execution_id,
+            "input_digest": frozen_input.input_digest,
+            "raw_response_digest": raw_output.raw_response_digest,
+            "atomic_observation_id": observation.observation_id,
+            "checker_digest": checker_digest,
+            "checker_output_digest": checker_output_digest,
+        },
     }
     manifest["bundle_digest"] = _digest(manifest)
     (root / "manifest.json").write_bytes(_canonical(manifest))
