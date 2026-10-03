@@ -117,8 +117,8 @@ jobs:
           import json
           import os
 
-          pr = json.load(open("/tmp/g1-run.json"))
-          head_sha = sys.argv[2]
+          pr = json.load(open("/tmp/g1-pr.json"))
+          head_sha = os.environ["HEAD_SHA"]
           assert pr["number"] > 0
           assert pr["base"]["ref"] == "main"
           assert pr["base"]["repo"]["full_name"] == "qwertymarketolog-lab/JAMP"
@@ -134,8 +134,8 @@ jobs:
           import os
 
           run = json.load(open("/tmp/g1-run.json"))
-          jobs = json.loads(sys.argv[2])["jobs"]
-          head_sha = sys.argv[3]
+          jobs = json.load(open("/tmp/g1-jobs.json"))["jobs"]
+          head_sha = os.environ["HEAD_SHA"]
           matches = [
               job for job in jobs
               if job["name"] == "Research Loop v0 Gate /"
