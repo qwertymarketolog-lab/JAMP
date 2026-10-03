@@ -15,13 +15,22 @@ import pytest
 
 from jamp.evidence import (
     AtomicObservation,
+    ContractStateMachine,
     EvidenceLedger,
     ExecutionEnvelope,
+    ExecutionState,
     FrozenInput,
     RawOutput,
+    StateTransitionError,
     persist_bundle,
 )
-from jamp.evidence.checker import check, checker_digest, replay_check
+from jamp.evidence.checker import (
+    check,
+    checker_digest,
+    checker_source_digest,
+    compute_composite_checker_digest,
+    replay_check,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "docs/evidence/EVIDENCE-ACQUISITION-CONTRACT-v0.md"
@@ -43,6 +52,12 @@ REQUIRED_MANIFEST = {
     "checker_output_digest",
     "final_status",
     "created_at",
+    "manifest_version",
+    "object_digests",
+    "root_integrity_digest",
+    "checker_source_digest",
+    "checker_contract_digest",
+    "state",
 }
 
 REQUIRED_ENVELOPE = {
@@ -265,18 +280,28 @@ def test_manifest_commits_checker_and_bundle_objects_behaviorally(tmp_path):
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     checker = json.loads((bundle / "checker.json").read_text(encoding="utf-8"))
     contract = json.loads((bundle / "checker_contract.json").read_text(encoding="utf-8"))
-    assert (
-        manifest["checker_digest"]
-        == hashlib.sha256(
-            json.dumps(contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-        ).hexdigest()
+    assert manifest["checker_source_digest"] == checker_source_digest()
+    assert manifest["checker_contract_digest"] == hashlib.sha256(
+        json.dumps(
+            contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+    ).hexdigest()
+    assert manifest["checker_digest"] == compute_composite_checker_digest(
+        manifest["checker_source_digest"], contract
     )
-    assert (
-        manifest["checker_output_digest"]
-        == hashlib.sha256(
-            json.dumps(checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    assert manifest["checker_output_digest"] == hashlib.sha256(
+        json.dumps(
+            checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+    ).hexdigest()
+    actual = {
+        path.relative_to(bundle).as_posix(): hashlib.sha256(
+            path.read_bytes()
         ).hexdigest()
-    )
+        for path in bundle.rglob("*")
+        if path.is_file() and path.name != "manifest.json"
+    }
+    assert manifest["object_digests"] == actual
 
 
 def test_checker_rejects_corrupt_raw_response_digest():
@@ -353,15 +378,56 @@ def test_integrity_chain_is_behaviorally_bound(tmp_path):
 
 
 def test_state_machine_rejects_skipped_execution_state():
-    allowed = {
-        "DESIGNED": {"PREFLIGHT_VERIFIED"},
-        "PREFLIGHT_VERIFIED": {"EXECUTING"},
-        "EXECUTING": {"CAPTURED"},
-        "CAPTURED": {"CHECKED"},
-        "CHECKED": {"BUNDLED"},
-        "BUNDLED": {"REPLAY_VERIFIED"},
-    }
-    assert "CHECKED" not in allowed["DESIGNED"]
+    machine = ContractStateMachine()
+    with pytest.raises(StateTransitionError):
+        machine.transition_to(ExecutionState.CHECKED)
+    assert machine.current_state is ExecutionState.INCONCLUSIVE
+    assert machine.history == (
+        ExecutionState.DESIGNED,
+        ExecutionState.INCONCLUSIVE,
+    )
+
+
+def test_state_machine_accepts_only_contract_order():
+    machine = ContractStateMachine()
+    for state in (
+        ExecutionState.PREFLIGHT_VERIFIED,
+        ExecutionState.EXECUTING,
+        ExecutionState.CAPTURED,
+        ExecutionState.CHECKED,
+        ExecutionState.BUNDLED,
+        ExecutionState.REPLAY_VERIFIED,
+    ):
+        machine.transition_to(state)
+    assert machine.current_state is ExecutionState.REPLAY_VERIFIED
+
+
+def test_checker_source_digest_detects_one_byte_change(tmp_path):
+    source = tmp_path / "checker.py"
+    source.write_bytes((ROOT / "src/jamp/evidence/checker.py").read_bytes())
+    original = checker_source_digest(source)
+    source.write_bytes(source.read_bytes() + b"\n")
+    assert checker_source_digest(source) != original
+
+
+def test_bundle_object_bijection_rejects_extra_file(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    (bundle / "unexpected.bin").write_bytes(b"extra")
+    from research.experiments.evidence_acquisition_e2e import verify_object_digests
+
+    with pytest.raises(ValueError, match="object digest map mismatch"):
+        verify_object_digests(bundle, manifest)
+
+
+def test_bundle_object_bijection_rejects_tamper(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    (bundle / "checker.json").write_bytes(b"tampered")
+    from research.experiments.evidence_acquisition_e2e import verify_object_digests
+
+    with pytest.raises(ValueError, match="object digest map mismatch"):
+        verify_object_digests(bundle, manifest)
 
 
 def test_historical_v3_and_frozen_core_are_untouched():

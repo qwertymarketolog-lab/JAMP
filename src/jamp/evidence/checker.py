@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
 
 CHECKER_ID = "http-json-repo-checker"
@@ -50,8 +51,26 @@ def _canonical(value: Any) -> bytes:
     )
 
 
+def checker_source_digest(checker_path: str | Path | None = None) -> str:
+    """Digest the exact checker source bytes used for deterministic replay."""
+    path = Path(checker_path) if checker_path is not None else Path(__file__)
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def compute_composite_checker_digest(
+    source_digest: str, contract_data: dict[str, Any]
+) -> str:
+    """Bind checker source identity and declared contract content."""
+    contract_digest = hashlib.sha256(_canonical(contract_data)).hexdigest()
+    return hashlib.sha256(
+        f"{source_digest}:{contract_digest}".encode("utf-8")
+    ).hexdigest()
+
+
 def checker_digest() -> str:
-    return hashlib.sha256(_canonical(CHECKER_CONTRACT)).hexdigest()
+    return compute_composite_checker_digest(
+        checker_source_digest(), CHECKER_CONTRACT
+    )
 
 
 @dataclass(frozen=True)

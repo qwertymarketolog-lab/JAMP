@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from enum import Enum
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -184,6 +185,75 @@ class LedgerEntry:
         return _digest(asdict(self))
 
 
+class ExecutionState(str, Enum):
+    DESIGNED = "DESIGNED"
+    PREFLIGHT_VERIFIED = "PREFLIGHT_VERIFIED"
+    EXECUTING = "EXECUTING"
+    CAPTURED = "CAPTURED"
+    CHECKED = "CHECKED"
+    BUNDLED = "BUNDLED"
+    REPLAY_VERIFIED = "REPLAY_VERIFIED"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class StateTransitionError(Exception):
+    """Raised when an execution skips a required contract state."""
+
+
+class ContractStateMachine:
+    """Fail-closed implementation of the Contract v0 execution graph."""
+
+    ALLOWED_TRANSITIONS: dict[ExecutionState, set[ExecutionState]] = {
+        ExecutionState.DESIGNED: {ExecutionState.PREFLIGHT_VERIFIED},
+        ExecutionState.PREFLIGHT_VERIFIED: {ExecutionState.EXECUTING},
+        ExecutionState.EXECUTING: {
+            ExecutionState.CAPTURED,
+            ExecutionState.INCONCLUSIVE,
+        },
+        ExecutionState.CAPTURED: {
+            ExecutionState.CHECKED,
+            ExecutionState.INCONCLUSIVE,
+        },
+        ExecutionState.CHECKED: {
+            ExecutionState.BUNDLED,
+            ExecutionState.INCONCLUSIVE,
+        },
+        ExecutionState.BUNDLED: {
+            ExecutionState.REPLAY_VERIFIED,
+            ExecutionState.INCONCLUSIVE,
+        },
+        ExecutionState.REPLAY_VERIFIED: set(),
+        ExecutionState.INCONCLUSIVE: set(),
+    }
+
+    def __init__(
+        self, initial_state: ExecutionState = ExecutionState.DESIGNED
+    ) -> None:
+        self._current_state = initial_state
+        self._history = [initial_state]
+
+    @property
+    def current_state(self) -> ExecutionState:
+        return self._current_state
+
+    @property
+    def history(self) -> tuple[ExecutionState, ...]:
+        return tuple(self._history)
+
+    def transition_to(self, target_state: ExecutionState) -> None:
+        allowed = self.ALLOWED_TRANSITIONS.get(self._current_state, set())
+        if target_state not in allowed:
+            previous = self._current_state
+            self._current_state = ExecutionState.INCONCLUSIVE
+            self._history.append(ExecutionState.INCONCLUSIVE)
+            raise StateTransitionError(
+                f"Invalid transition {previous} -> {target_state}; "
+                "state machine entered INCONCLUSIVE."
+            )
+        self._current_state = target_state
+        self._history.append(target_state)
+
+
 class EvidenceLedger:
     """Durable JSONL ledger with explicit append-only/hash-chain semantics."""
 
@@ -291,7 +361,13 @@ def persist_bundle(
     created_at = created_at or envelope.execution_finished_at or envelope.execution_created_at
     checker_id = checker_contract["checker_id"]
     checker_version = checker_contract["checker_version"]
-    checker_digest = _digest(checker_contract)
+    from .checker import checker_source_digest, compute_composite_checker_digest
+
+    source_digest = checker_source_digest()
+    contract_digest = _digest(checker_contract)
+    checker_digest_value = compute_composite_checker_digest(
+        source_digest, checker_contract
+    )
     checker_input_digest = raw_output.raw_response_digest
     checker_output_digest = _digest(checker_output)
 
@@ -314,7 +390,8 @@ def persist_bundle(
     (root / "raw_response.bin").write_bytes(raw_output.raw_response)
 
     manifest = {
-        "bundle_version": "0.2",
+        "bundle_version": "0.3",
+        "manifest_version": "v0",
         "execution_id": envelope.execution_id,
         "execution_envelope_digest": envelope.digest,
         "frozen_input_digest": frozen_input.digest,
@@ -324,9 +401,12 @@ def persist_bundle(
         "ledger_entry_id": ledger_entry.ledger_entry_id,
         "checker_id": checker_id,
         "checker_version": checker_version,
-        "checker_digest": checker_digest,
+        "checker_digest": checker_digest_value,
+        "checker_source_digest": source_digest,
+        "checker_contract_digest": contract_digest,
         "checker_input_digest": checker_input_digest,
         "checker_output_digest": checker_output_digest,
+        "state": "BUNDLED",
         "final_status": envelope.status,
         "created_at": created_at,
         "provenance": {
@@ -336,10 +416,24 @@ def persist_bundle(
             "input_digest": frozen_input.input_digest,
             "raw_response_digest": raw_output.raw_response_digest,
             "atomic_observation_id": observation.observation_id,
-            "checker_digest": checker_digest,
+            "checker_digest": checker_digest_value,
             "checker_output_digest": checker_output_digest,
         },
     }
+    object_digests = {
+        file_path.relative_to(root).as_posix(): sha256(
+            file_path.read_bytes()
+        ).hexdigest()
+        for file_path in sorted(root.rglob("*"))
+        if file_path.is_file()
+    }
+    canonical_objects = ";".join(
+        f"{name}={object_digests[name]}" for name in sorted(object_digests)
+    )
+    manifest["object_digests"] = object_digests
+    manifest["root_integrity_digest"] = sha256(
+        canonical_objects.encode("utf-8")
+    ).hexdigest()
     manifest["bundle_digest"] = _digest(manifest)
     (root / "manifest.json").write_bytes(_canonical(manifest))
     return root

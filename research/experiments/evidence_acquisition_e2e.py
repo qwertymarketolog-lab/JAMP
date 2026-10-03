@@ -14,8 +14,10 @@ from pathlib import Path
 
 from jamp.evidence import (
     AtomicObservation,
+    ContractStateMachine,
     EvidenceLedger,
     ExecutionEnvelope,
+    ExecutionState,
     FrozenInput,
     RawOutput,
     persist_bundle,
@@ -26,6 +28,7 @@ from jamp.evidence.checker import (
     CHECKER_VERSION,
     check,
     checker_digest,
+    checker_source_digest,
     replay_check,
 )
 
@@ -85,7 +88,29 @@ def verify_manifest(bundle: Path) -> dict[str, object]:
     return manifest
 
 
+def verify_object_digests(bundle: Path, manifest: dict[str, object]) -> None:
+    declared = manifest["object_digests"]
+    if not isinstance(declared, dict):
+        raise ValueError("object_digests missing")
+    actual = {
+        file_path.relative_to(bundle).as_posix(): hashlib.sha256(
+            file_path.read_bytes()
+        ).hexdigest()
+        for file_path in sorted(bundle.rglob("*"))
+        if file_path.is_file() and file_path.name != "manifest.json"
+    }
+    if actual != declared:
+        raise ValueError("bundle object digest map mismatch")
+    canonical_objects = ";".join(
+        f"{name}={actual[name]}" for name in sorted(actual)
+    )
+    root_digest = hashlib.sha256(canonical_objects.encode("utf-8")).hexdigest()
+    if root_digest != manifest["root_integrity_digest"]:
+        raise ValueError("root_integrity_digest mismatch")
+
+
 def verify_referenced_digests(bundle: Path, manifest: dict[str, object]) -> None:
+    verify_object_digests(bundle, manifest)
     envelope = json.loads((bundle / "execution_envelope.json").read_text(encoding="utf-8"))
     if digest(envelope) != manifest["execution_envelope_digest"]:
         raise ValueError("execution_envelope_digest mismatch")
@@ -129,7 +154,16 @@ def verify_referenced_digests(bundle: Path, manifest: dict[str, object]) -> None
     if digest(checker) != manifest["checker_output_digest"]:
         raise ValueError("checker_output_digest mismatch")
     contract = json.loads((bundle / "checker_contract.json").read_text(encoding="utf-8"))
-    if digest(contract) != manifest["checker_digest"]:
+    if digest(contract) != manifest["checker_contract_digest"]:
+        raise ValueError("checker_contract_digest mismatch")
+    if manifest["checker_source_digest"] != checker_source_digest():
+        raise ValueError("checker_source_digest mismatch")
+    from jamp.evidence.checker import compute_composite_checker_digest
+
+    expected_checker_digest = compute_composite_checker_digest(
+        manifest["checker_source_digest"], contract
+    )
+    if expected_checker_digest != manifest["checker_digest"]:
         raise ValueError("checker_digest mismatch")
 
 
@@ -192,12 +226,15 @@ def replay_bundle(bundle: Path) -> str:
 
 def main() -> None:
     execution_id = f"e2e-{uuid.uuid4().hex}"
+    state_machine = ContractStateMachine()
+    state_machine.transition_to(ExecutionState.PREFLIGHT_VERIFIED)
     created = now()
     git_sha = os.environ["GITHUB_SHA"]
     workflow_sha = os.environ["GITHUB_WORKFLOW_SHA"]
     target_ref = os.environ.get("GITHUB_REF_NAME", "")
     if not workflow_sha:
         raise SystemExit("INCONCLUSIVE: missing workflow definition identity")
+    state_machine.transition_to(ExecutionState.EXECUTING)
     runtime = f"{platform.python_implementation()} {platform.python_version()}"
     environment_record = capture_environment()
     environment_digest = digest(environment_record)
@@ -272,6 +309,7 @@ def main() -> None:
     finished = now()
     elapsed_ms = (datetime.now(UTC) - started).total_seconds() * 1000.0
 
+    state_machine.transition_to(ExecutionState.CAPTURED)
     raw = RawOutput.create(
         execution_id=execution_id,
         input_digest=frozen.input_digest,
@@ -319,6 +357,7 @@ def main() -> None:
         http_status=status,
     )
     checker_output = checker_result.as_dict()
+    state_machine.transition_to(ExecutionState.CHECKED)
     final_status = checker_output["status"]
 
     bundle = persist_bundle(
@@ -340,11 +379,14 @@ def main() -> None:
         created_at=finished,
     )
 
+    state_machine.transition_to(ExecutionState.BUNDLED)
     replay_status = replay_bundle(bundle)
     if replay_status != "REPLAY_VERIFIED":
+        state_machine.transition_to(ExecutionState.INCONCLUSIVE)
         print(json.dumps({"replay": replay_status}))
         raise SystemExit(replay_status)
 
+    state_machine.transition_to(ExecutionState.REPLAY_VERIFIED)
     summary = {
         "execution_id": execution_id,
         "git_sha": git_sha,
@@ -357,7 +399,7 @@ def main() -> None:
         "checker_digest": checker_digest(),
         "bundle": str(bundle),
         "replay": replay_status,
-        "state": "REPLAY_VERIFIED",
+        "state": state_machine.current_state.value,
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "summary.json").write_text(
