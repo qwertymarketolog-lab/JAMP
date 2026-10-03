@@ -1,4 +1,5 @@
 """Deterministic replay of immutable P17.4 policy update events."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
