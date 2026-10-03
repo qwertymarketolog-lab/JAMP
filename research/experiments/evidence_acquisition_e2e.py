@@ -93,17 +93,13 @@ def verify_object_digests(bundle: Path, manifest: dict[str, object]) -> None:
     if not isinstance(declared, dict):
         raise ValueError("object_digests missing")
     actual = {
-        file_path.relative_to(bundle).as_posix(): hashlib.sha256(
-            file_path.read_bytes()
-        ).hexdigest()
+        file_path.relative_to(bundle).as_posix(): hashlib.sha256(file_path.read_bytes()).hexdigest()
         for file_path in sorted(bundle.rglob("*"))
         if file_path.is_file() and file_path.name != "manifest.json"
     }
     if actual != declared:
         raise ValueError("bundle object digest map mismatch")
-    canonical_objects = ";".join(
-        f"{name}={actual[name]}" for name in sorted(actual)
-    )
+    canonical_objects = ";".join(f"{name}={actual[name]}" for name in sorted(actual))
     root_digest = hashlib.sha256(canonical_objects.encode("utf-8")).hexdigest()
     if root_digest != manifest["root_integrity_digest"]:
         raise ValueError("root_integrity_digest mismatch")

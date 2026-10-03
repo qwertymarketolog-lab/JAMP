@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from enum import Enum
+from enum import StrEnum
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -185,7 +185,7 @@ class LedgerEntry:
         return _digest(asdict(self))
 
 
-class ExecutionState(str, Enum):
+class ExecutionState(StrEnum):
     DESIGNED = "DESIGNED"
     PREFLIGHT_VERIFIED = "PREFLIGHT_VERIFIED"
     EXECUTING = "EXECUTING"
@@ -226,9 +226,7 @@ class ContractStateMachine:
         ExecutionState.INCONCLUSIVE: set(),
     }
 
-    def __init__(
-        self, initial_state: ExecutionState = ExecutionState.DESIGNED
-    ) -> None:
+    def __init__(self, initial_state: ExecutionState = ExecutionState.DESIGNED) -> None:
         self._current_state = initial_state
         self._history = [initial_state]
 
@@ -365,9 +363,7 @@ def persist_bundle(
 
     source_digest = checker_source_digest()
     contract_digest = _digest(checker_contract)
-    checker_digest_value = compute_composite_checker_digest(
-        source_digest, checker_contract
-    )
+    checker_digest_value = compute_composite_checker_digest(source_digest, checker_contract)
     checker_input_digest = raw_output.raw_response_digest
     checker_output_digest = _digest(checker_output)
 
@@ -421,9 +417,7 @@ def persist_bundle(
         },
     }
     object_digests = {
-        file_path.relative_to(root).as_posix(): sha256(
-            file_path.read_bytes()
-        ).hexdigest()
+        file_path.relative_to(root).as_posix(): sha256(file_path.read_bytes()).hexdigest()
         for file_path in sorted(root.rglob("*"))
         if file_path.is_file()
     }
@@ -431,9 +425,7 @@ def persist_bundle(
         f"{name}={object_digests[name]}" for name in sorted(object_digests)
     )
     manifest["object_digests"] = object_digests
-    manifest["root_integrity_digest"] = sha256(
-        canonical_objects.encode("utf-8")
-    ).hexdigest()
+    manifest["root_integrity_digest"] = sha256(canonical_objects.encode("utf-8")).hexdigest()
     manifest["bundle_digest"] = _digest(manifest)
     (root / "manifest.json").write_bytes(_canonical(manifest))
     return root

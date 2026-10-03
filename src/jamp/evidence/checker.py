@@ -57,20 +57,14 @@ def checker_source_digest(checker_path: str | Path | None = None) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def compute_composite_checker_digest(
-    source_digest: str, contract_data: dict[str, Any]
-) -> str:
+def compute_composite_checker_digest(source_digest: str, contract_data: dict[str, Any]) -> str:
     """Bind checker source identity and declared contract content."""
     contract_digest = hashlib.sha256(_canonical(contract_data)).hexdigest()
-    return hashlib.sha256(
-        f"{source_digest}:{contract_digest}".encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256(f"{source_digest}:{contract_digest}".encode()).hexdigest()
 
 
 def checker_digest() -> str:
-    return compute_composite_checker_digest(
-        checker_source_digest(), CHECKER_CONTRACT
-    )
+    return compute_composite_checker_digest(checker_source_digest(), CHECKER_CONTRACT)
 
 
 @dataclass(frozen=True)

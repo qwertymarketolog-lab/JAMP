@@ -281,23 +281,23 @@ def test_manifest_commits_checker_and_bundle_objects_behaviorally(tmp_path):
     checker = json.loads((bundle / "checker.json").read_text(encoding="utf-8"))
     contract = json.loads((bundle / "checker_contract.json").read_text(encoding="utf-8"))
     assert manifest["checker_source_digest"] == checker_source_digest()
-    assert manifest["checker_contract_digest"] == hashlib.sha256(
-        json.dumps(
-            contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode()
-    ).hexdigest()
+    assert (
+        manifest["checker_contract_digest"]
+        == hashlib.sha256(
+            json.dumps(contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
     assert manifest["checker_digest"] == compute_composite_checker_digest(
         manifest["checker_source_digest"], contract
     )
-    assert manifest["checker_output_digest"] == hashlib.sha256(
-        json.dumps(
-            checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode()
-    ).hexdigest()
-    actual = {
-        path.relative_to(bundle).as_posix(): hashlib.sha256(
-            path.read_bytes()
+    assert (
+        manifest["checker_output_digest"]
+        == hashlib.sha256(
+            json.dumps(checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         ).hexdigest()
+    )
+    actual = {
+        path.relative_to(bundle).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in bundle.rglob("*")
         if path.is_file() and path.name != "manifest.json"
     }
