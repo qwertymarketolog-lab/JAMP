@@ -317,6 +317,7 @@ def test_replay_tamper_of_frozen_input_is_inconclusive(tmp_path):
     bundle = _persist_fixture_bundle(tmp_path)
     (bundle / "frozen_input.json").write_text('{"tampered":true}', encoding="utf-8")
     from research.experiments.evidence_acquisition_e2e import replay_bundle
+
     assert replay_bundle(bundle) == "REPLAY_INCONCLUSIVE"
 
 
@@ -327,6 +328,7 @@ def test_replay_tamper_of_checker_output_is_inconclusive(tmp_path):
     checker["accepted"] = not checker["accepted"]
     checker_path.write_text(json.dumps(checker), encoding="utf-8")
     from research.experiments.evidence_acquisition_e2e import replay_bundle
+
     assert replay_bundle(bundle) == "REPLAY_INCONCLUSIVE"
 
 
