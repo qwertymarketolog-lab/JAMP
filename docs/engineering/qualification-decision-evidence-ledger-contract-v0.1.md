@@ -1,6 +1,17 @@
 # Qualification Decision / Evidence Ledger Contract v0.1
 
-Status: DESIGN-ONLY / FAIL-CLOSED / NO-RUNTIME-CHANGE
+Status: SUPERSEDED / NON-NORMATIVE / HISTORICAL-DESIGN-ONLY
+
+> **Disposition:** This document is retained as historical design material only. It is **not authoritative** for Qualification Decision terminal statuses in v0.1.
+>
+> The authoritative qualification boundary is defined by PR #264/#265 and consumed by:
+> `docs/engineering/qualification-decision-evidence-ledger-v0.1.md`
+>
+> For v0.1, terminal qualification results remain exactly:
+> - `QUALIFIED`
+> - `INCONCLUSIVE`
+>
+> The `SUPPORTED`, `NOT_SUPPORTED`, and `BLOCKED` states below MUST NOT be interpreted or implemented as additional terminal qualification results. No change to PR #264/#265 semantics is implied.
 
 ## Purpose
 
@@ -14,7 +25,7 @@ This contract records why a decision was or was not supportable within a declare
 
 ## Decision states
 
-Allowed decision states:
+Historical/non-normative terminology retained below:
 
 - `SUPPORTED`
 - `NOT_SUPPORTED`
@@ -69,7 +80,7 @@ An evidence record with missing provenance is invalid and cannot be used to supp
 
 ## Fail-closed decision matrix
 
-| Evidence condition | Decision handling |
+| Evidence condition | Historical handling terminology |
 |---|---|
 | required evidence present and rule satisfied | SUPPORTED |
 | required evidence present but rule contradicted | NOT_SUPPORTED |
@@ -105,11 +116,11 @@ Derived records MAY add decision metadata, but MUST retain references to origina
 
 A requirement asks whether a canonical attribute is supported within a declared offline fixture scope.
 
-If #285 produces an `OBSERVED` RawObservation with deterministic source trace and the decision rule explicitly permits offline fixtures, the decision MAY be `SUPPORTED` for that scope.
+If #285 produces an `OBSERVED` RawObservation with deterministic source trace and the decision rule explicitly permits offline fixtures, the historical terminology below may describe the evidence as `SUPPORTED` for that scope, but the v0.1 terminal qualification result remains governed by #264/#265.
 
 That does not establish live-source availability or universal semantic validity.
 
-If the same observation is `UNKNOWN`, the qualification layer cannot promote it to `SUPPORTED`.
+If the same observation is `UNKNOWN`, the qualification layer cannot promote it to `QUALIFIED`.
 
 ## Compatibility
 
