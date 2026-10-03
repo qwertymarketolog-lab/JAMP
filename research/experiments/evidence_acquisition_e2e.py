@@ -88,12 +88,45 @@ def verify_manifest(bundle: Path) -> dict[str, object]:
 
 
 def verify_referenced_digests(bundle: Path, manifest: dict[str, object]) -> None:
+    envelope = json.loads((bundle / "execution_envelope.json").read_text(encoding="utf-8"))
+    if digest(envelope) != manifest["execution_envelope_digest"]:
+        raise ValueError("execution_envelope_digest mismatch")
+
+    frozen = json.loads((bundle / "frozen_input.json").read_text(encoding="utf-8"))
+    if digest(frozen) != manifest["frozen_input_digest"]:
+        raise ValueError("frozen_input_digest mismatch")
+
     raw = json.loads((bundle / "raw_output.json").read_text(encoding="utf-8"))
     response = (bundle / "raw_response.bin").read_bytes()
+    if digest({**raw, "raw_response": raw["raw_response"]}) != manifest["raw_output_digest"]:
+        raise ValueError("raw_output_digest mismatch")
     if raw["raw_response_digest"] != manifest["raw_response_digest"]:
         raise ValueError("raw_response_digest mismatch")
     if hashlib.sha256(response).hexdigest() != manifest["raw_response_digest"]:
         raise ValueError("raw response bytes mismatch")
+
+    observation = json.loads((bundle / "atomic_observation.json").read_text(encoding="utf-8"))
+    if observation["raw_output_digest"] != manifest["raw_output_digest"]:
+        raise ValueError("observation/raw_output relationship mismatch")
+    if observation["frozen_input_digest"] != manifest["frozen_input_digest"]:
+        raise ValueError("observation/frozen_input relationship mismatch")
+
+    ledger = json.loads((bundle / "ledger_entry.json").read_text(encoding="utf-8"))
+    if ledger["ledger_entry_id"] != manifest["ledger_entry_id"]:
+        raise ValueError("ledger_entry_id mismatch")
+    if ledger["evidence_id"] != observation["observation_id"]:
+        raise ValueError("ledger evidence identity mismatch")
+    if ledger["record_digest"] != digest(ledger["evidence"]):
+        raise ValueError("ledger record digest mismatch")
+    if ledger["digest"] if False else False:
+        raise ValueError("unreachable")
+
+    checker_input = json.loads((bundle / "checker_input.json").read_text(encoding="utf-8"))
+    if checker_input["raw_response_digest"] != manifest["checker_input_digest"]:
+        raise ValueError("checker_input_digest mismatch")
+    if checker_input["raw_response_digest"] != manifest["raw_response_digest"]:
+        raise ValueError("checker input/raw response relationship mismatch")
+
     checker = json.loads((bundle / "checker.json").read_text(encoding="utf-8"))
     if digest(checker) != manifest["checker_output_digest"]:
         raise ValueError("checker_output_digest mismatch")
@@ -221,6 +254,7 @@ def main() -> None:
         },
     )
     started = datetime.now(UTC)
+    envelope_started = started.isoformat().replace("+00:00", "Z")
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             raw_response = response.read()
@@ -298,6 +332,7 @@ def main() -> None:
         envelope=ExecutionEnvelope(
             **{
                 **asdict(envelope),
+                "execution_started_at": envelope_started,
                 "execution_finished_at": finished,
                 "status": final_status,
             }
