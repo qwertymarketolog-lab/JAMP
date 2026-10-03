@@ -1,4 +1,5 @@
 """Append-only registry with an authoritative commit boundary."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
