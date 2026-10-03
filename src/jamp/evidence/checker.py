@@ -73,6 +73,15 @@ def check(
     raw_response_digest: str,
     http_status: int | None,
 ) -> CheckerResult:
+    if hashlib.sha256(raw_response).hexdigest() != raw_response_digest:
+        return CheckerResult(
+            CHECKER_ID,
+            CHECKER_VERSION,
+            raw_response_digest,
+            False,
+            "INCONCLUSIVE",
+            "raw_response_digest_mismatch",
+        )
     if http_status is None:
         return CheckerResult(
             CHECKER_ID,
