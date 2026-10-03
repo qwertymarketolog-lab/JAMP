@@ -11,8 +11,6 @@ import hashlib
 import json
 from pathlib import Path
 
-from jamp.evidence.checker import check, checker_digest, replay_check
-
 import pytest
 
 from jamp.evidence import (
@@ -23,10 +21,10 @@ from jamp.evidence import (
     RawOutput,
     persist_bundle,
 )
+from jamp.evidence.checker import check, checker_digest, replay_check
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "docs/evidence/EVIDENCE-ACQUISITION-CONTRACT-v0.md"
-ACQUISITION = ROOT / "src/jamp/evidence/acquisition.py"
 PROBE = ROOT / "research/experiments/evidence_acquisition_e2e.py"
 FROZEN_CORE = ROOT / "src/jamp/run.py"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
@@ -84,9 +82,9 @@ def _fixture_records():
         execution_created_at="2026-10-03T10:00:00Z",
         execution_started_at="2026-10-03T10:00:01Z",
         execution_finished_at="2026-10-03T10:00:02Z",
-        git_sha="git-sha",
-        probe_sha="probe-sha",
-        workflow_sha="workflow-sha",
+        git_sha="a" * 40,
+        probe_sha="b" * 40,
+        workflow_sha="c" * 40,
         target_ref="main",
         entrypoint="probe.py",
         pid=1,
@@ -98,7 +96,7 @@ def _fixture_records():
         input_digest="input-digest",
         spec_hash="spec-digest",
         criterion_set_hash="criteria-digest",
-        implementation_ref="git-sha:probe.py",
+        implementation_ref=("a" * 40) + ":probe.py",
         environment_ref="environment-record-1",
         status="CHECKED",
     )
