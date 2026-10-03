@@ -36,6 +36,15 @@ FROZEN_SPEC_HASH = "9ea3ea4e57545b55ee29bb5709fe834b3363c6a9"
 FROZEN_CRITERION_SET_HASH = checker_digest()
 CONCRETE_ENVIRONMENT_RECORD = "environment-record-v1"
 WORKFLOW_PATH = ".github/workflows/test.yml"
+CHECKER_CONTRACT_MARKERS = (
+    "checker_digest",
+    "input_schema_version",
+    "canonicalization_rules",
+    "acceptance_predicate",
+    "rejection_predicate",
+    "inconclusive_predicate",
+    "self_test_fixtures",
+)
 
 
 def now() -> str:
