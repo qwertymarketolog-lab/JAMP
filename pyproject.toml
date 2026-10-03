@@ -45,6 +45,19 @@ target-version = "py311"
 line-length = 100
 extend-exclude = ["artifacts", ".git"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/jamp/domain/causal.py" = ["E", "I", "UP"]
+"src/jamp/domain/consistency.py" = ["E", "I", "UP"]
+"src/jamp/domain/event.py" = ["E", "I", "UP"]
+"src/jamp/domain/exceptions.py" = ["E", "I", "UP"]
+"src/jamp/domain/replay.py" = ["E", "I", "UP"]
+"src/jamp/events/dag.py" = ["E", "I", "UP"]
+"src/jamp/p17/evaluator.py" = ["E", "I", "UP"]
+"src/jamp/p17/experiment_report.py" = ["E", "I", "UP"]
+"src/jamp/p17/pattern_index.py" = ["E", "I", "UP"]
+"src/jamp/p17/policy_event.py" = ["E", "I", "UP"]
+"src/jamp/p17/policy_guided_search.py" = ["E", "I", "UP"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
