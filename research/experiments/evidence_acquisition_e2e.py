@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import importlib.metadata
+import json
 import os
 import platform
 import sys
 import urllib.request
 import uuid
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from jamp.evidence import (
@@ -48,7 +48,7 @@ CHECKER_CONTRACT_MARKERS = (
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def digest(value: object) -> str:
