@@ -1,0 +1,28 @@
+name: Evidence Acquisition E2E
+
+on:
+  push:
+    branches:
+      - 'exp/evidence-acquisition-e2e-1'
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run Evidence Acquisition E2E
+        env:
+          PYTHONPATH: src:.
+        run: python research/experiments/evidence_acquisition_e2e.py
+      - name: Upload E2E evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-acquisition-e2e-1
+          path: artifacts/evidence_acquisition/e2e-1
+          if-no-files-found: error
