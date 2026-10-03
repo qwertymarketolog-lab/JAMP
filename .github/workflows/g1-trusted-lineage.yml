@@ -40,15 +40,14 @@ jobs:
           assert re.fullmatch(r"[0-9a-f]{40}", head_sha)
           PY
 
-          run_json=""
           for _ in $(seq 1 60); do
-            run_json="$(curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${GH_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "${api}/actions/workflows/${EXPECTED_WORKFLOW_ID}/runs?head_sha=${HEAD_SHA}&event=${EXPECTED_EVENT}&per_page=100")"
+            curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${GH_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "${api}/actions/workflows/${EXPECTED_WORKFLOW_ID}/runs?head_sha=${HEAD_SHA}&event=${EXPECTED_EVENT}&per_page=100" > /tmp/g1-run.json
 
-            if python - "${run_json}" <<'PY'
+            if python /tmp/g1-run.json <<'PY'
           import json
           import sys
 
-          payload = json.loads(sys.argv[1])
+          payload = json.load(open("/tmp/g1-run.json"))
           runs = payload.get("workflow_runs", [])
           matching = [
               run for run in runs
@@ -67,12 +66,12 @@ jobs:
             sleep 10
           done
 
-          python - "${run_json}" <<'PY'
+          python /tmp/g1-run.json <<'PY'
           import json
           import os
           import sys
 
-          payload = json.loads(sys.argv[1])
+          payload = json.load(open("/tmp/g1-run.json"))
           head_sha = os.environ["HEAD_SHA"]
           runs = [
               run for run in payload.get("workflow_runs", [])
@@ -93,13 +92,13 @@ jobs:
           print(f"verified run {run['id']} head_sha={run['head_sha']}")
           PY
 
-          run_id="$(python - "${run_json}" <<'PY'
+          run_id="$(python /tmp/g1-run.json <<'PY'
           import json
           import os
           import sys
 
           runs = [
-              run for run in json.loads(sys.argv[1]).get("workflow_runs", [])
+              run for run in json.load(open("/tmp/g1-run.json")).get("workflow_runs", [])
               if run.get("workflow_id") == 366569738
               and run.get("path") == ".github/workflows/research-loop-v0.yml"
               and run.get("event") == "pull_request"
@@ -112,13 +111,13 @@ jobs:
           PY
           )"
 
-          pr_json="$(curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/pulls/${PR_NUMBER}")"
+          curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/pulls/${PR_NUMBER}" > /tmp/g1-pr.json
 
-          python - "${pr_json}" "${HEAD_SHA}" <<'PY'
+          python /tmp/g1-pr.json <<'PY'
           import json
-          import sys
+          import os
 
-          pr = json.loads(sys.argv[1])
+          pr = json.load(open("/tmp/g1-run.json"))
           head_sha = sys.argv[2]
           assert pr["number"] > 0
           assert pr["base"]["ref"] == "main"
@@ -128,13 +127,13 @@ jobs:
           print(f"verified PR #{pr['number']} head_sha={head_sha}")
           PY
 
-          jobs_json="$(curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/actions/runs/${run_id}/jobs?per_page=100")"
+          curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/actions/runs/${run_id}/jobs?per_page=100" > /tmp/g1-jobs.json
 
-          python - "${run_json}" "${jobs_json}" "${HEAD_SHA}" <<'PY'
+          python /tmp/g1-run.json /tmp/g1-jobs.json <<'PY'
           import json
-          import sys
+          import os
 
-          run = json.loads(sys.argv[1])
+          run = json.load(open("/tmp/g1-run.json"))
           jobs = json.loads(sys.argv[2])["jobs"]
           head_sha = sys.argv[3]
           matches = [
