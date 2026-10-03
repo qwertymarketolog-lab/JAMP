@@ -69,8 +69,7 @@ def render_cli(report: Mapping[str, Any]) -> str:
         f"Internal feedback only: {summary['internal_feedback_only']}",
         f"Report digest: {report['report_digest']}",
     ])
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def build_report(result: Any) -> dict[str, Any]:
@@ -135,8 +134,7 @@ def write_report(report: Mapping[str, Any], path: str | Path) -> Path:
     serialized = serialize_report(report)
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(serialized + "
-", encoding="utf-8")
+    destination.write_text(serialized + "\n", encoding="utf-8")
     return destination
 
 
