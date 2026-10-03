@@ -26,17 +26,17 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest pytest-mock
+        pip install ".[dev]"
     - name: Run architectural boundary validation
       env:
         PYTHONPATH: src
       run: |
-        pytest -q tests/test_architectural_boundaries.py
+        python -m pytest -q tests/test_architectural_boundaries.py
     - name: Run full test suite
       env:
         PYTHONPATH: src
       run: |
-        pytest -q -m 'not exp19_perf'
+        python -m pytest -q -m 'not exp19_perf'
     - name: Generate empirical P17.6 report
       env:
         PYTHONPATH: src
