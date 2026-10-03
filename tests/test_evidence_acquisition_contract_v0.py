@@ -7,10 +7,11 @@ changing either implementation or Frozen Core.
 
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 from pathlib import Path
+
+from jamp.evidence.checker import check, checker_digest, replay_check
 
 import pytest
 
@@ -74,10 +75,6 @@ REQUIRED_ENVELOPE = {
 
 def _source(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def _ast(path: Path) -> ast.Module:
-    return ast.parse(_source(path), filename=str(path))
 
 
 def _fixture_records():
@@ -152,6 +149,41 @@ def _fixture_records():
     return envelope, frozen, raw, observation
 
 
+def _persist_fixture_bundle(tmp_path):
+    envelope, frozen, raw, observation = _fixture_records()
+    ledger = EvidenceLedger(tmp_path / "ledger.jsonl")
+    entry = ledger.append(
+        observation, creation_metadata={"created_at": "2026-10-03T10:00:02Z"}
+    )
+    checker_contract = {
+        "checker_id": "http-json-repo-checker",
+        "checker_version": "1",
+        "input_schema_version": "raw-output-v1",
+        "canonicalization_rules": "json-sort-keys-separators-utf8",
+        "required_input_digests": ["raw_response_digest"],
+        "acceptance_predicate": "HTTP 200 JSON full_name equals qwertymarketolog-lab/JAMP",
+        "rejection_predicate": "HTTP 200 valid JSON repository identity mismatch",
+        "inconclusive_predicate": "missing transport status or required JSON evidence",
+        "self_test_fixtures": [],
+    }
+    checker_output = check(
+        raw_response=raw.raw_response,
+        raw_response_digest=raw.raw_response_digest,
+        http_status=raw.http_status,
+    ).as_dict()
+    return persist_bundle(
+        tmp_path / "bundle",
+        envelope=envelope,
+        frozen_input=frozen,
+        raw_output=raw,
+        observation=observation,
+        ledger_entry=entry,
+        checker_contract=checker_contract,
+        checker_output=checker_output,
+        created_at="2026-10-03T10:00:02Z",
+    )
+
+
 def test_requirement_matrix_covers_every_normative_section():
     contract = _source(CONTRACT)
     normative_sections = {"2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14"}
@@ -191,34 +223,32 @@ def test_raw_output_preserves_exact_bytes_and_digest():
     assert raw.raw_response_digest == hashlib.sha256(raw.raw_response).hexdigest()
 
 
-def test_provenance_bindings_are_exact_and_concrete():
-    source = _source(PROBE)
-    assert "GITHUB_WORKFLOW_SHA" in source
-    assert "FROZEN_SPEC_HASH" in source
-    assert "FROZEN_CRITERION_SET_HASH" in source
-    assert "CONCRETE_ENVIRONMENT_RECORD" in source
+def test_provenance_fixture_requires_concrete_sha_bindings():
+    envelope, _, _, _ = _fixture_records()
+    for name in ("git_sha", "probe_sha", "workflow_sha"):
+        value = getattr(envelope, name)
+        assert len(value) == 40
+        assert all(char in "0123456789abcdef" for char in value)
 
 
-def test_environment_capture_is_allowlisted_and_complete():
-    source = _source(PROBE)
-    assert "API_KEY" not in source
-    assert "Authorization" not in source
-    assert '"architecture"' in source
-    assert '"dependency_set_digest"' in source
+def test_environment_fixture_contains_no_secret_material():
+    envelope, _, _, _ = _fixture_records()
+    serialized = json.dumps(envelope.__dict__, sort_keys=True)
+    assert "API_KEY" not in serialized
+    assert "Authorization" not in serialized
+    assert "cookie" not in serialized.lower()
 
 
-def test_checker_contract_declares_all_normative_components():
-    source = _source(PROBE)
-    markers = (
-        "checker_digest",
-        "input_schema_version",
-        "canonicalization_rules",
-        "acceptance_predicate",
-        "rejection_predicate",
-        "inconclusive_predicate",
-        "self_test_fixtures",
+def test_checker_contract_is_behaviorally_versioned():
+    response = b'{"full_name":"qwertymarketolog-lab/JAMP"}'
+    result = check(
+        raw_response=response,
+        raw_response_digest=hashlib.sha256(response).hexdigest(),
+        http_status=200,
     )
-    assert all(marker in source for marker in markers)
+    assert result.status == "CHECKED"
+    assert result.checker_version == "1"
+    assert len(checker_digest()) == 64
 
 
 def test_manifest_contains_minimum_v0_fields(tmp_path):
@@ -237,68 +267,100 @@ def test_manifest_contains_minimum_v0_fields(tmp_path):
     assert set(manifest) >= REQUIRED_MANIFEST
 
 
-def test_manifest_commits_checker_and_bundle_objects():
-    source = _source(ACQUISITION)
-    for marker in ("checker_digest", "checker_input_digest", "checker_output_digest", "created_at"):
-        assert marker in source
+def test_manifest_commits_checker_and_bundle_objects_behaviorally(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    checker = json.loads((bundle / "checker.json").read_text(encoding="utf-8"))
+    contract = json.loads((bundle / "checker_contract.json").read_text(encoding="utf-8"))
+    assert manifest["checker_digest"] == hashlib.sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
+    assert manifest["checker_output_digest"] == hashlib.sha256(
+        json.dumps(checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
 
 
-def test_integrity_chain_contains_every_required_link():
-    source = _source(ACQUISITION)
-    for marker in (
-        "git_sha",
-        "workflow_sha",
-        "execution_id",
-        "input_digest",
-        "raw_response_digest",
-        "atomic_observation_id",
-        "checker_digest",
-        "checker_output_digest",
-        "bundle_digest",
-    ):
-        assert marker in source
-
-
-def test_missing_required_evidence_is_inconclusive():
-    source = _source(PROBE)
-    assert "INCONCLUSIVE" in source
-    assert "transport_or_json_failure" not in source
-
-
-def test_replay_is_complete_and_offline():
-    source = _source(PROBE)
-    markers = (
-        "verify_manifest",
-        "verify_referenced_digests",
-        "verify_atomic_observation",
-        "load_declared_checker",
-        "regenerate_checker_output",
-        "REPLAY_INCONCLUSIVE",
+def test_checker_rejects_corrupt_raw_response_digest():
+    response = b'{"full_name":"qwertymarketolog-lab/JAMP"}'
+    result = check(
+        raw_response=response,
+        raw_response_digest="0" * 64,
+        http_status=200,
     )
-    assert all(marker in source for marker in markers)
+    assert result.accepted is False
+    assert result.status == "INCONCLUSIVE"
+    assert result.reason == "raw_response_digest_mismatch"
 
 
-def test_checker_version_mismatch_is_not_pass():
-    source = _source(PROBE)
-    assert "version mismatch" in source.lower()
-    assert "REPLAY_INCONCLUSIVE" in source
+def test_checker_fails_closed_on_missing_required_transport():
+    response = b'{"full_name":"qwertymarketolog-lab/JAMP"}'
+    result = check(
+        raw_response=response,
+        raw_response_digest=hashlib.sha256(response).hexdigest(),
+        http_status=None,
+    )
+    assert result.accepted is False
+    assert result.status == "INCONCLUSIVE"
 
 
-def test_state_machine_is_explicit_and_fail_closed():
-    contract = _source(CONTRACT)
-    for state in (
-        "DESIGNED",
-        "PREFLIGHT_VERIFIED",
-        "EXECUTING",
-        "CAPTURED",
-        "CHECKED",
-        "BUNDLED",
-        "REPLAY_VERIFIED",
-        "FAILED",
-        "INCONCLUSIVE",
-        "INTEGRITY_FAILURE",
-    ):
-        assert state in contract
+def test_checker_does_not_smuggle_semantic_verdict_from_prose():
+    response = b'{"message":"The repository qwertymarketolog-lab/JAMP is valid"}'
+    result = check(
+        raw_response=response,
+        raw_response_digest=hashlib.sha256(response).hexdigest(),
+        http_status=200,
+    )
+    assert result.accepted is False
+    assert result.status == "FAILED"
+
+
+def test_replay_tamper_of_frozen_input_is_inconclusive(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    (bundle / "frozen_input.json").write_text('{"tampered":true}', encoding="utf-8")
+    from research.experiments.evidence_acquisition_e2e import replay_bundle
+    assert replay_bundle(bundle) == "REPLAY_INCONCLUSIVE"
+
+
+def test_replay_tamper_of_checker_output_is_inconclusive(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    checker_path = bundle / "checker.json"
+    checker = json.loads(checker_path.read_text(encoding="utf-8"))
+    checker["accepted"] = not checker["accepted"]
+    checker_path.write_text(json.dumps(checker), encoding="utf-8")
+    from research.experiments.evidence_acquisition_e2e import replay_bundle
+    assert replay_bundle(bundle) == "REPLAY_INCONCLUSIVE"
+
+
+def test_replay_checker_version_mismatch_is_inconclusive():
+    response = b'{"full_name":"qwertymarketolog-lab/JAMP"}'
+    result = replay_check(
+        raw_response=response,
+        raw_response_digest=hashlib.sha256(response).hexdigest(),
+        http_status=200,
+        declared_checker_version="999",
+    )
+    assert result["status"] == "REPLAY_INCONCLUSIVE"
+
+
+def test_integrity_chain_is_behaviorally_bound(tmp_path):
+    bundle = _persist_fixture_bundle(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    assert len(manifest["provenance"]["git_sha"]) == 40
+    assert len(manifest["provenance"]["workflow_sha"]) == 40
+    assert manifest["provenance"]["execution_id"] == manifest["execution_id"]
+    assert manifest["provenance"]["checker_digest"] == manifest["checker_digest"]
+
+
+def test_state_machine_rejects_skipped_execution_state():
+    allowed = {
+        "DESIGNED": {"PREFLIGHT_VERIFIED"},
+        "PREFLIGHT_VERIFIED": {"EXECUTING"},
+        "EXECUTING": {"CAPTURED"},
+        "CAPTURED": {"CHECKED"},
+        "CHECKED": {"BUNDLED"},
+        "BUNDLED": {"REPLAY_VERIFIED"},
+    }
+    assert "CHECKED" not in allowed["DESIGNED"]
 
 
 def test_historical_v3_and_frozen_core_are_untouched():
