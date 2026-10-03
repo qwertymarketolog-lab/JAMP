@@ -58,7 +58,7 @@ class Registry:
     def metadata(self) -> dict[str, Any]:
         """Compatibility view of conflict metadata."""
         return {
-            f"conflict_{record.payload['candidate_id']}": record.payload["statement"]
+            f'conflict_{record.payload["candidate_id"]}': record.payload["statement"]
             for record in self.by_kind("conflict")
             if "candidate_id" in record.payload and "statement" in record.payload
         }
