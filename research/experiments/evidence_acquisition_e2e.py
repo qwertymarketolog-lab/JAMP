@@ -118,8 +118,8 @@ def verify_referenced_digests(bundle: Path, manifest: dict[str, object]) -> None
         raise ValueError("ledger evidence identity mismatch")
     if ledger["record_digest"] != digest(ledger["evidence"]):
         raise ValueError("ledger record digest mismatch")
-    if ledger["digest"] if False else False:
-        raise ValueError("unreachable")
+    if ledger["previous_entry_digest"] is not None:
+        raise ValueError("unexpected prior ledger entry in single-entry bundle")
 
     checker_input = json.loads((bundle / "checker_input.json").read_text(encoding="utf-8"))
     if checker_input["raw_response_digest"] != manifest["checker_input_digest"]:
