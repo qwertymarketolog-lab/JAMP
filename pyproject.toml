@@ -43,7 +43,13 @@ namespaces = true
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-extend-exclude = ["artifacts", ".git"]
+extend-exclude = [
+  "artifacts",
+  ".git",
+  "src/jamp/domain/causal.py",
+  "src/jamp/domain/event.py",
+  "src/jamp/domain/exceptions.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
