@@ -52,9 +52,7 @@ def now() -> str:
 
 
 def digest(value: object) -> str:
-    payload = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode()
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -266,17 +264,13 @@ def main() -> None:
             }
         transport_state = "COMPLETE"
     except Exception as exc:
-        raw_response = json.dumps(
-            {"error_type": type(exc).__name__, "error": str(exc)}
-        ).encode()
+        raw_response = json.dumps({"error_type": type(exc).__name__, "error": str(exc)}).encode()
         status = None
         headers = {}
         transport_state = "ERROR"
 
     finished = now()
-    elapsed_ms = (
-        datetime.now(UTC) - started
-    ).total_seconds() * 1000.0
+    elapsed_ms = (datetime.now(UTC) - started).total_seconds() * 1000.0
 
     raw = RawOutput.create(
         execution_id=execution_id,

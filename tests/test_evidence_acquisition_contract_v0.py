@@ -150,9 +150,7 @@ def _fixture_records():
 def _persist_fixture_bundle(tmp_path):
     envelope, frozen, raw, observation = _fixture_records()
     ledger = EvidenceLedger(tmp_path / "ledger.jsonl")
-    entry = ledger.append(
-        observation, creation_metadata={"created_at": "2026-10-03T10:00:02Z"}
-    )
+    entry = ledger.append(observation, creation_metadata={"created_at": "2026-10-03T10:00:02Z"})
     checker_contract = {
         "checker_id": "http-json-repo-checker",
         "checker_version": "1",
@@ -204,12 +202,7 @@ def test_execution_envelope_has_all_contract_fields():
 
 def test_derived_objects_are_bound_to_execution_and_digests():
     envelope, frozen, raw, observation = _fixture_records()
-    assert (
-        frozen.execution_id
-        == raw.execution_id
-        == observation.execution_id
-        == envelope.execution_id
-    )
+    assert frozen.execution_id == raw.execution_id == observation.execution_id == envelope.execution_id
     assert raw.input_digest == frozen.input_digest
     assert observation.frozen_input_digest == frozen.digest
     assert observation.raw_output_digest == raw.digest
@@ -270,12 +263,18 @@ def test_manifest_commits_checker_and_bundle_objects_behaviorally(tmp_path):
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     checker = json.loads((bundle / "checker.json").read_text(encoding="utf-8"))
     contract = json.loads((bundle / "checker_contract.json").read_text(encoding="utf-8"))
-    assert manifest["checker_digest"] == hashlib.sha256(
-        json.dumps(contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    ).hexdigest()
-    assert manifest["checker_output_digest"] == hashlib.sha256(
-        json.dumps(checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    ).hexdigest()
+    assert (
+        manifest["checker_digest"]
+        == hashlib.sha256(
+            json.dumps(contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
+    assert (
+        manifest["checker_output_digest"]
+        == hashlib.sha256(
+            json.dumps(checker, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
 
 
 def test_checker_rejects_corrupt_raw_response_digest():
