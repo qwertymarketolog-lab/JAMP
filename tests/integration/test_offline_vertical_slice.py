@@ -45,10 +45,7 @@ def test_offline_vertical_slice_marketplace_three_ai_to_decision_audit():
 
     parser_observations = OfflineMarketplaceParser().parse(fixture)
     assert parser_observations
-    assert all(
-        observation.status is ParserStatus.OBSERVED
-        for observation in parser_observations
-    )
+    assert all(observation.status is ParserStatus.OBSERVED for observation in parser_observations)
 
     ai_observations = tuple(
         ai_double(provider, fixture["attributes"]["width_mm"])
