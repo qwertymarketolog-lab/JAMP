@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from jamp.aew.contract import EvidenceStatus
 from jamp.marketplace_runtime import (
     MarketplaceQualificationRuntime,
     OfflineMarketplaceParser,
@@ -9,7 +10,6 @@ from jamp.marketplace_runtime import (
     RawObservation,
     Requirement,
 )
-from jamp.aew.contract import EvidenceStatus
 
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "marketplace_product_payload.json"
