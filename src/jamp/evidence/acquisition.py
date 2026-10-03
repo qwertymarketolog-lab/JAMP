@@ -257,9 +257,9 @@ def persist_bundle(
     raw_output: RawOutput,
     observation: AtomicObservation,
     ledger_entry: LedgerEntry,
-    checker_contract: dict[str, Any],
-    checker_output: dict[str, Any],
-    created_at: str,
+    checker_contract: dict[str, Any] | None = None,
+    checker_output: dict[str, Any] | None = None,
+    created_at: str | None = None,
 ) -> Path:
     """Write a self-contained immutable bundle and refuse overwrite."""
     root = Path(path)
@@ -267,6 +267,28 @@ def persist_bundle(
         raise FileExistsError(f"immutable bundle already exists: {root}")
     root.mkdir(parents=True)
 
+    if checker_contract is None:
+        checker_contract = {
+            "checker_id": "unbound-persist",
+            "checker_version": "0",
+            "input_schema_version": "raw-output-v1",
+            "canonicalization_rules": "json-sort-keys-separators-utf8",
+            "required_input_digests": ["raw_response_digest"],
+            "acceptance_predicate": "none",
+            "rejection_predicate": "none",
+            "inconclusive_predicate": "checker_not_supplied",
+            "self_test_fixtures": [],
+        }
+    if checker_output is None:
+        checker_output = {
+            "checker_id": checker_contract["checker_id"],
+            "checker_version": checker_contract["checker_version"],
+            "input_digest": raw_output.raw_response_digest,
+            "accepted": False,
+            "status": "INCONCLUSIVE",
+            "reason": "checker_not_supplied",
+        }
+    created_at = created_at or envelope.execution_finished_at or envelope.execution_created_at
     checker_id = checker_contract["checker_id"]
     checker_version = checker_contract["checker_version"]
     checker_digest = _digest(checker_contract)
