@@ -146,5 +146,5 @@ jobs:
           assert job["status"] == "completed"
           assert job["conclusion"] == "success"
           assert job["head_sha"] == head_sha
-          print(f"verified job {job['id']} name={job['name']} head_sha={head_sha}")
+          print(f"verified job id={job.get('id', '<absent>')} name={job['name']} head_sha={head_sha}")
           PY
