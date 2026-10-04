@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   research-loop-gate:
-    name: G1 Trusted Lineage
+    name: Research Loop v0 Gate /
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact PR head
