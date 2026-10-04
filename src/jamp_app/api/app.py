@@ -22,14 +22,18 @@ def create_app(config: AppConfig | None = None):
         if method == "GET" and path == "/health":
             payload = {"status": "ok", "name": app_config.name, "version": app_config.version}
             body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-            start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+            start_response(
+                "200 OK",
+                [("Content-Type", "application/json"), ("Content-Length", str(len(body)))],
+            )
             return [body]
 
         body = b'{"error":"not_found"}'
-        start_response("404 Not Found", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+        start_response(
+            "404 Not Found",
+            [("Content-Type", "application/json"), ("Content-Length", str(len(body)))],
+        )
         return [body]
-
-    return application
 
 
 __all__ = ["create_app"]
