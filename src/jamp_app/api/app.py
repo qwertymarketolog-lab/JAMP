@@ -35,5 +35,7 @@ def create_app(config: AppConfig | None = None):
         )
         return [body]
 
+    return application
+
 
 __all__ = ["create_app"]
