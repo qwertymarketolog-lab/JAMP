@@ -1,0 +1,557 @@
+{
+  "schema": "JAMP-canonical-87-36-17-v1",
+  "base_sha": "c9734858ed360338d1da722684be0a8f27c05608",
+  "source": {
+    "n3_file": "artifacts/research/anymodel_availability_n3.json",
+    "n3_blob_sha": "13bcc9407e7a77d09ea0f2f631d903ba8dcfaae2",
+    "analysis_file": "artifacts/research/anymodel_identity_capability_v3_analysis.json",
+    "analysis_blob_sha": "51c3644c19f55857f3f13fd638382c548c134f60"
+  },
+  "counts": {
+    "catalog_87": 87,
+    "n3_available": 42,
+    "n3_intermittent": 17,
+    "n3_unavailable": 28,
+    "candidates_36": 36,
+    "r27_hold_17": 17,
+    "matrix_columns": 29
+  },
+  "candidate_gate": [
+    "N3 AVAILABLE",
+    "R01 VERIFIED",
+    "R05 VERIFIED",
+    "R06 VERIFIED",
+    "R09 VERIFIED",
+    "R11 VERIFIED"
+  ],
+  "matrix_contract": "R01-R30 excluding R27; V/C/I derived directly from committed v3 analysis. R27 is intentionally excluded.",
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "blob_sha": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "delta": 0
+  },
+  "manifest": [
+    {
+      "ordinal": 1,
+      "model_id": "ag/claude-sonnet-4-6",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 2,
+      "model_id": "ag/gemini-2.5-flash",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 3,
+      "model_id": "ag/gemini-2.5-flash-lite",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 4,
+      "model_id": "ag/gemini-3-flash",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 5,
+      "model_id": "ag/gemini-3.1-flash-image",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 6,
+      "model_id": "ag/gemini-3.1-flash-lite-preview",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 7,
+      "model_id": "ag/gemini-3.1-pro-low",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 8,
+      "model_id": "ag/gemini-3.6-flash-high",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 9,
+      "model_id": "ag/gemini-3.6-flash-low",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 10,
+      "model_id": "ag/gemini-3.6-flash-medium",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 11,
+      "model_id": "ag/gemini-3.7-flash-high",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 12,
+      "model_id": "ag/gemini-3.7-flash-low",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 13,
+      "model_id": "ag/gemini-3.7-flash-medium",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 14,
+      "model_id": "ag/gemini-pro-agent",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 15,
+      "model_id": "ag/gpt-oss-120b-medium",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 16,
+      "model_id": "am/diffusiongemma-26b-a4b-it",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 17,
+      "model_id": "am/flux.1-dev",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 18,
+      "model_id": "am/flux.2-klein-4b",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 19,
+      "model_id": "am/free",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 20,
+      "model_id": "am/gpt-oss-20b",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 21,
+      "model_id": "am/kimi-k3",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 22,
+      "model_id": "am/laguna-xs-2.1",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 23,
+      "model_id": "am/llama-3.2-11b-vision-instruct",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 24,
+      "model_id": "am/mistral-nemotron",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 25,
+      "model_id": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 26,
+      "model_id": "am/nemotron-3-super-120b-a12b",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 27,
+      "model_id": "am/nemotron-3-ultra-550b-a55b",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 28,
+      "model_id": "am/nemotron-3.5-content-safety",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 29,
+      "model_id": "am/nemotron-3.5-lightning-30b-a3b",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 30,
+      "model_id": "am/riva-translate-4b-instruct-v2",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 31,
+      "model_id": "cc/claude-fable-5",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 32,
+      "model_id": "cc/claude-haiku-4-5-20251001",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 33,
+      "model_id": "cc/claude-opus-4-5-20251101",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 34,
+      "model_id": "cc/claude-opus-4-6",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 35,
+      "model_id": "cc/claude-opus-4-7",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 36,
+      "model_id": "cc/claude-opus-4-8",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 37,
+      "model_id": "cc/claude-opus-5",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 38,
+      "model_id": "cc/claude-opus-5-5",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 39,
+      "model_id": "cc/claude-sonnet-4-5-20250929",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 40,
+      "model_id": "cc/claude-sonnet-4-6",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 41,
+      "model_id": "cc/claude-sonnet-5",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 42,
+      "model_id": "cx/gpt-5.5",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 43,
+      "model_id": "cx/gpt-5.5-review",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 44,
+      "model_id": "cx/gpt-5.6-luna",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 45,
+      "model_id": "cx/gpt-5.6-luna-review",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 46,
+      "model_id": "cx/gpt-5.6-sol",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 47,
+      "model_id": "cx/gpt-5.6-sol-review",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 48,
+      "model_id": "cx/gpt-5.6-terra",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 49,
+      "model_id": "cx/gpt-5.6-terra-review",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 50,
+      "model_id": "cx/gpt-6-astra",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 51,
+      "model_id": "cx/gpt-6-luna",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 52,
+      "model_id": "cx/gpt-6-luna-review",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 53,
+      "model_id": "cx/gpt-6-sol",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 54,
+      "model_id": "cx/gpt-6-sol-review",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 55,
+      "model_id": "cx/gpt-image-1.5",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 56,
+      "model_id": "cx/gpt-image-2",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 57,
+      "model_id": "ds/deepseek-v4-flash",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 58,
+      "model_id": "ds/deepseek-v4-pro",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 59,
+      "model_id": "flow/nano-banana",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 60,
+      "model_id": "flow/nano-banana-lite",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 61,
+      "model_id": "flow/nano-banana-pro",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 62,
+      "model_id": "gcli/grok-4.7",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 63,
+      "model_id": "glm/glm-4.6v",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 64,
+      "model_id": "glm/glm-4.7",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 65,
+      "model_id": "glm/glm-5",
+      "n3_status": "AVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 66,
+      "model_id": "glm/glm-5.1",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 67,
+      "model_id": "glm/glm-5.2",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 68,
+      "model_id": "glm/glm-5.3",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 69,
+      "model_id": "glm/glm-5.3-flash",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 70,
+      "model_id": "kmc/k3",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 71,
+      "model_id": "kmc/kimi-for-coding",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 72,
+      "model_id": "nano-banana",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 73,
+      "model_id": "nano-banana-lite",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 74,
+      "model_id": "nano-banana-pro",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 75,
+      "model_id": "qwen/qwen3.7-max",
+      "n3_status": "AVAILABLE",
+      "stage": "R27_HOLD"
+    },
+    {
+      "ordinal": 76,
+      "model_id": "qwen/qwen3.7-plus",
+      "n3_status": "AVAILABLE",
+      "stage": "CANDIDATE"
+    },
+    {
+      "ordinal": 77,
+      "model_id": "qwen/qwen3.8-max",
+      "n3_status": "INTERMITTENT",
+      "stage": null
+    },
+    {
+      "ordinal": 78,
+      "model_id": "xai/grok-4.20-0309-non-reasoning",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 79,
+      "model_id": "xai/grok-4.20-0309-reasoning",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 80,
+      "model_id": "xai/grok-4.20-multi-agent-0309",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 81,
+      "model_id": "xai/grok-4.3",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 82,
+      "model_id": "xai/grok-4.5",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 83,
+      "model_id": "xai/grok-4.6",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 84,
+      "model_id": "xai/grok-4.7",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 85,
+      "model_id": "xai/grok-build-0.1",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 86,
+      "model_id": "xai/grok-imagine-image",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    },
+    {
+      "ordinal": 87,
+      "model_id": "xai/grok-imagine-image-quality",
+      "n3_status": "UNAVAILABLE",
+      "stage": null
+    }
+  ]
+}
