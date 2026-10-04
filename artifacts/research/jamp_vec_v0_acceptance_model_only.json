@@ -1,0 +1,31 @@
+{
+  "artifact": "JAMP-VEC-v0",
+  "artifact_type": "metamorphic_acceptance_run",
+  "evidence_scope": "REFERENCE_MODEL_ONLY",
+  "status": "MODEL_ONLY",
+  "execution_record": {
+    "cases_total": 54,
+    "positive_post_snapshot": 42,
+    "negative_pre_snapshot": 6,
+    "negative_during_snapshot": 6,
+    "reported_result": "54/54 acceptance cases pass",
+    "reason_code_drift": 0,
+    "fail_closed_violations": 0
+  },
+  "negative_reason_codes": {
+    "N01": "ARTIFACT_IDENTITY_MISMATCH",
+    "N02-N06": "SNAPSHOT_MUTATION_DETECTED",
+    "N07-N12": "SNAPSHOT_MUTATION_DETECTED"
+  },
+  "reason_code_status": "CANDIDATE_MODEL_OUTPUTS_NOT_CANONICAL_PRODUCTION_ENUM",
+  "production_runtime_verified": false,
+  "canonical_production_reason_codes_verified": false,
+  "unknown_evidence_policy": "HOLD_OR_INCONCLUSIVE_NEVER_VERIFIED",
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "delta": 0
+  },
+  "base_main_sha_at_capture": "c6d2ea1fe298edd1dc231605e24b896135a0bca8",
+  "note": "This artifact records the acceptance matrix/run result as MODEL_ONLY. It is not production runtime evidence and does not establish canonical production reason-code identifiers."
+}
