@@ -81,6 +81,16 @@ jobs:
               and run.get("head_sha") == head_sha
           ]
           assert len(runs) >= 1
+          runs.sort(
+              key=lambda run: (
+                  run.get("run_started_at")
+                  or run.get("updated_at")
+                  or run.get("created_at")
+                  or "",
+                  run.get("id", 0),
+              ),
+              reverse=True,
+          )
           run = runs[0]
           assert run["repository"]["full_name"] == "qwertymarketolog-lab/JAMP"
           assert run["workflow_id"] == 366569738
