@@ -79,6 +79,8 @@ jobs:
               and run.get("path") == ".github/workflows/research-loop-v0.yml"
               and run.get("event") == "pull_request"
               and run.get("head_sha") == head_sha
+              and run.get("status") == "completed"
+              and run.get("conclusion") == "success"
           ]
           assert len(runs) >= 1
           runs.sort(
