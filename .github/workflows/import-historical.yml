@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'import/jamp-from-visual-merchant-hub'
+      - '!main'
 
 permissions:
   contents: write
