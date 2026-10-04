@@ -117,6 +117,16 @@ jobs:
               and run.get("conclusion") == "success"
           ]
           assert runs
+          runs.sort(
+              key=lambda run: (
+                  run.get("run_started_at")
+                  or run.get("updated_at")
+                  or run.get("created_at")
+                  or "",
+                  run.get("id", 0),
+              ),
+              reverse=True,
+          )
           print(runs[0]["id"])
           PY
           )"
