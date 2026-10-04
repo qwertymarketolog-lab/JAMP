@@ -10,9 +10,9 @@ permissions:
 
 jobs:
   assemble:
-    # The candidate commit created below triggers this workflow again; that second
-    # invocation must not recursively assemble another candidate.
-    if: ${{ !startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
+    # Defense-in-depth: this legacy assembler may mutate only the dedicated
+    # historical migration branch. Fail closed on any other ref.
+    if: ${{ github.ref == 'refs/heads/import/jamp-from-visual-merchant-hub' && !startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target branch
