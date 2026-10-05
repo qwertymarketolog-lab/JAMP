@@ -38,3 +38,9 @@ Merge authority remains outside the agent loop.
 
 Every CI assertion records commit SHA, workflow, run ID, job ID, status, conclusion, artifact/output when present, and scope (PR or post-merge main).
 source_sha and target_sha are bound to the exact task execution.
+
+## GitHub capability / visibility protocol
+
+A GitHub connector or API visibility/execution limitation is not evidence of a repository or workflow failure. When a workflow is not visible through one interface, distinguish PR-triggered runs from manual `workflow_dispatch` runs and inspect the direct run/job state when available.
+
+Do not infer PASS, failure, or root cause from missing telemetry. If the required run/job/artifact evidence cannot be obtained, record **UNKNOWN / HOLD**. Do not modify workflows, tests, thresholds, or repository state merely to compensate for a tooling/connector limitation.
