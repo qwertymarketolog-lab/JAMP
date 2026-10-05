@@ -77,13 +77,17 @@ def aggregate(records: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
         checks = record.get("checks")
         if not isinstance(checks, list):
             raise ValueError(f"missing checks for {record.get('model_id')}")
-        by_check = {check.get("check_id"): check for check in checks if isinstance(check, dict)}
+        by_check = {
+            check.get("check_id"): check for check in checks if isinstance(check, dict)
+        }
         if set(by_check) != set(CHECK_IDS):
             raise ValueError(f"check coverage mismatch for {record.get('model_id')}")
         for cid in CHECK_IDS:
             status = by_check[cid].get("status")
             if status not in {"VERIFIED", "CONTRADICTED", "INCONCLUSIVE"}:
-                raise ValueError(f"invalid status {status!r} for {record.get('model_id')} {cid}")
+                raise ValueError(
+                    f"invalid status {status!r} for {record.get('model_id')} {cid}"
+                )
             counts[cid][status] += 1
     out = {}
     for cid in CHECK_IDS:
@@ -149,7 +153,9 @@ def main(argv: list[str] | None = None) -> int:
     manifest, manifest_sha = load_manifest(args.manifest)
     module = load_audit_module()
     availability = module.load_available(module.DEFAULT_AVAILABILITY)
-    headers = {"Authorization": f"Bearer {__import__('os').environ.get('ANYMODEL_API_KEY', '')}"}
+    headers = {
+        "Authorization": f"Bearer {__import__('os').environ.get('ANYMODEL_API_KEY', '')}"
+    }
     if headers["Authorization"] == "Bearer ":
         raise SystemExit("ANYMODEL_API_KEY is required")
 
@@ -169,7 +175,8 @@ def main(argv: list[str] | None = None) -> int:
     artifact["finished_at"] = dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(artifact, ensure_ascii=False, indent=2) + "
+", encoding="utf-8"
     )
     print(f"WROTE {args.output}")
     return 0
