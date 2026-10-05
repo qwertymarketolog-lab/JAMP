@@ -1,0 +1,41 @@
+{
+  "contract_version": "jamp-product-router-policy-v1",
+  "source_matrix": "artifacts/research/jamp_model_task_matrix_v1.csv",
+  "source_matrix_sha256": "a33b0426484b825d9ebccbedee264adb89489399563d5cca45ffe6dc59adbb13",
+  "source_capability_artifact": "artifact_jamp_17_capability_v1.json",
+  "source_capability_artifact_sha256": "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1",
+  "source_gate": "PASS",
+  "fail_closed": true,
+  "eligibility_gate": {
+    "qualification_required": "QUALIFIED",
+    "task_status_required": "ALLOWED",
+    "rule": "EXECUTE only when both gates pass"
+  },
+  "task_requirements": {
+    "Search & Extraction": ["C01", "C06"],
+    "Tool Execution / Agent": ["C02", "C05"],
+    "Long-Context Analysis": ["C03", "C08"],
+    "Strict Compliance / Safety": ["C04", "C07", "C09"]
+  },
+  "decision_rules": {
+    "ALLOWED": "EXECUTE only if model qualification is QUALIFIED",
+    "HOLD": "ESCALATE; never execute",
+    "REJECT": "REFUSE; never execute"
+  },
+  "current_evidence": {
+    "models": 17,
+    "qualified_models": 0,
+    "task_allowed_before_global_qualification_gate": {
+      "Search & Extraction": 12,
+      "Tool Execution / Agent": 7,
+      "Long-Context Analysis": 0,
+      "Strict Compliance / Safety": 2
+    },
+    "eligible_execute_models": 0,
+    "state": "HOLD"
+  },
+  "unknowns": [
+    "No QUALIFIED model exists in the accepted 17-model capability artifact.",
+    "A task-scoped qualification policy has not been independently evidenced."
+  ]
+}
