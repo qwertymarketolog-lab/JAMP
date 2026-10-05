@@ -28,7 +28,7 @@ from typing import Any
 
 import requests
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parent
 DEFAULT_AVAILABILITY = ROOT / "artifacts/research/anymodel_availability_n3.json"
 DEFAULT_OUTPUT = ROOT / "artifacts/research/anymodel_identity_capability_audit_v3.json"
 CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models")
