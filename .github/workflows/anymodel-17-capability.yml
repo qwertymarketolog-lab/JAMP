@@ -1,0 +1,40 @@
+name: AnyModel 17 Capability Contract
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anymodel-17-capability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependency
+        run: python -m pip install requests
+      - name: Execute C01-C10 capability contract
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python harness/audit_17_capability.py
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          p = Path("artifacts/research/artifact_jamp_17_capability_v1.json")
+          print("artifact_bytes=", p.stat().st_size)
+          print("artifact_sha256=", hashlib.sha256(p.read_bytes()).hexdigest())
+          PY
+      - name: Upload capability evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-17-capability-v1
+          path: artifacts/research/artifact_jamp_17_capability_v1.json
+          if-no-files-found: error
+          retention-days: 30
