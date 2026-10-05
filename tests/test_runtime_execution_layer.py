@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from src.jamp.runtime import CapabilityResolver,EvidenceGate,ModelSelector,ProvenanceTracker,TaskClassifier
 CORE="0fee0e1c5c1a1548361965ac51eacdeba62bfe8a";AID=11369355096;SHA="7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1"
-def blob_sha(b):return hashlib.sha1(f"blob {len(b)}\\0".encode()+b).hexdigest()
+def blob_sha(b):return hashlib.sha1(f"blob {len(b)}\0".encode()+b).hexdigest()
 def fixture():return json.loads((Path(__file__).parent/"fixtures/runtime_evidence_projection.json").read_text())
 def test_frozen_core_blob_is_exact():assert blob_sha(Path("src/jamp/run.py").read_bytes())==CORE
 def test_source_identity():
