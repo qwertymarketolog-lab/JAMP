@@ -1,0 +1,5 @@
+task_category,required_probes,operator,evaluated_models,eligible_execute_models,rejected_escalated_models,gate_status
+search_and_extraction,"C01,C06",AND,17,12,5,VERIFIED
+tool_execution_agent,"C02,C05",AND,17,7,10,VERIFIED
+long_context_analysis,"C03,C08",AND,17,0,17,VERIFIED_FAIL_CLOSED
+strict_compliance_safety,"C04,C07,C09",AND,17,2,15,VERIFIED
