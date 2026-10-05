@@ -175,8 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     artifact["finished_at"] = dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(artifact, ensure_ascii=False, indent=2) + "
-", encoding="utf-8"
+        json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(f"WROTE {args.output}")
     return 0
