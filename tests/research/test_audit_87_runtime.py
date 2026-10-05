@@ -41,12 +41,15 @@ def test_cohort_gate_rejects_duplicate_and_missing():
 def test_aggregate_requires_30_checks_per_model():
     records = []
     for i in range(87):
-        records.append({
-            "model_id": f"m{i}",
-            "checks": [
-                {"check_id": cid, "status": "INCONCLUSIVE"} for cid in harness.CHECK_IDS
-            ],
-        })
+        records.append(
+            {
+                "model_id": f"m{i}",
+                "checks": [
+                    {"check_id": cid, "status": "INCONCLUSIVE"}
+                    for cid in harness.CHECK_IDS
+                ],
+            }
+        )
     aggregate = harness.aggregate(records)
     assert len(aggregate) == 30
     assert all(v["total"] == 87 for v in aggregate.values())
