@@ -45,8 +45,7 @@ def test_aggregate_requires_30_checks_per_model():
             {
                 "model_id": f"m{i}",
                 "checks": [
-                    {"check_id": cid, "status": "INCONCLUSIVE"}
-                    for cid in harness.CHECK_IDS
+                    {"check_id": cid, "status": "INCONCLUSIVE"} for cid in harness.CHECK_IDS
                 ],
             }
         )
