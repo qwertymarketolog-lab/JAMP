@@ -30,7 +30,7 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def digest(value: Any) -> str:
-    raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    raw = json.dumps(\n        value, sort_keys=True, ensure_ascii=False, separators=(",", ":")\n    ).encode()
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
