@@ -159,14 +159,18 @@ def main(argv: list[str] | None = None) -> int:
     for ordinal, row in enumerate(rows, 1):
         record = module.run_model(headers, row, availability)
         record["ordinal"] = ordinal
-        record["execution_id"] = digest({"ordinal": ordinal, "model_id": row["id"], "started": started})
+        record["execution_id"] = digest(
+            {"ordinal": ordinal, "model_id": row["id"], "started": started}
+        )
         records.append(record)
 
     artifact = deterministic_artifact(manifest_sha, manifest["manifest"], records)
     artifact["started_at"] = started
     artifact["finished_at"] = dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"WROTE {args.output}")
     return 0
 
