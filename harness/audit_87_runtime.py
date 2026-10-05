@@ -30,9 +30,7 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def digest(value: Any) -> str:
-    raw = json.dumps(
-        value, sort_keys=True, ensure_ascii=False, separators=(",", ":")
-    ).encode()
+    raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
@@ -77,17 +75,13 @@ def aggregate(records: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
         checks = record.get("checks")
         if not isinstance(checks, list):
             raise ValueError(f"missing checks for {record.get('model_id')}")
-        by_check = {
-            check.get("check_id"): check for check in checks if isinstance(check, dict)
-        }
+        by_check = {check.get("check_id"): check for check in checks if isinstance(check, dict)}
         if set(by_check) != set(CHECK_IDS):
             raise ValueError(f"check coverage mismatch for {record.get('model_id')}")
         for cid in CHECK_IDS:
             status = by_check[cid].get("status")
             if status not in {"VERIFIED", "CONTRADICTED", "INCONCLUSIVE"}:
-                raise ValueError(
-                    f"invalid status {status!r} for {record.get('model_id')} {cid}"
-                )
+                raise ValueError(f"invalid status {status!r} for {record.get('model_id')} {cid}")
             counts[cid][status] += 1
     out = {}
     for cid in CHECK_IDS:
@@ -153,9 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest, manifest_sha = load_manifest(args.manifest)
     module = load_audit_module()
     availability = module.load_available(module.DEFAULT_AVAILABILITY)
-    headers = {
-        "Authorization": f"Bearer {__import__('os').environ.get('ANYMODEL_API_KEY', '')}"
-    }
+    headers = {"Authorization": f"Bearer {__import__('os').environ.get('ANYMODEL_API_KEY', '')}"}
     if headers["Authorization"] == "Bearer ":
         raise SystemExit("ANYMODEL_API_KEY is required")
 
