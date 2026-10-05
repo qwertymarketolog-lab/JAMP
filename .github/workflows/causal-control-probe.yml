@@ -1,0 +1,21 @@
+name: JAMP Causal Control Probe
+
+on:
+  push:
+    branches:
+      - forensic/causal-control-20261005
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Control execution
+        run: |
+          echo "CONTROL_PROBE=workflow_push"
+          echo "SHA=${GITHUB_SHA}"
+          echo "REF=${GITHUB_REF}"
+          echo "RUN_ID=${GITHUB_RUN_ID}"
+          test -n "${GITHUB_RUN_ID}"
