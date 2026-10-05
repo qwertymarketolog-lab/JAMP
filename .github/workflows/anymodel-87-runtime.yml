@@ -1,0 +1,44 @@
+name: AnyModel 87 Runtime Contract
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anymodel-87-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Execute 87-model runtime contract
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python harness/audit_87_runtime.py
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          p = Path("artifacts/research/anymodel_87_runtime_v1.json")
+          print(f"artifact_bytes={p.stat().st_size}")
+          print(f"artifact_sha256={hashlib.sha256(p.read_bytes()).hexdigest()}")
+          PY
+
+      - name: Upload runtime evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-87-runtime-v1
+          path: artifacts/research/anymodel_87_runtime_v1.json
+          if-no-files-found: error
+          retention-days: 30
