@@ -123,15 +123,3 @@ Contributors retain copyright in their original contributions unless a separate 
 JAMP does not currently rely on a blanket CLA or copyright assignment. If a future dual-licensing or proprietary licensing model requires additional rights, the project will publish the applicable contributor agreement before using that model for contributed code.
 
 Do not submit code copied from third-party sources unless its provenance and license are known and compatible with the intended JAMP distribution.
-## 11. GitHub capability/blocker protocol
-
-When GitHub evidence or execution appears unavailable, do not infer repository failure from a single connector/API view.
-
-1. Check the actual target revision and the relevant PR/branch/run.
-2. If a workflow run is expected, check the direct Run/Job reference when available; distinguish PR-triggered runs from manual `workflow_dispatch` runs.
-3. Before stating that an action cannot be executed, check the available GitHub operations for an equivalent action (for example, rerun of an existing failed job versus creation of a new `workflow_dispatch` run).
-4. If the required operation is not exposed by the available tooling, state the exact capability limitation. Do not present that limitation as a repository or workflow failure.
-5. Treat missing evidence from one endpoint as **UNKNOWN / HOLD**, not as PASS, GREEN, or proof that the object does not exist.
-6. Preserve the distinction: **OBSERVED → VERIFIED → INFERRED → UNKNOWN**.
-
-Proof over confidence: capability limits must be identified before declaring a GitHub blocker.
