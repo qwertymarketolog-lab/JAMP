@@ -1,0 +1,59 @@
+{
+  "policy_id": "jamp_product_router_policy_v2",
+  "version": "2.0",
+  "mode": "task_scoped",
+  "decision_model": "fail_closed",
+  "required_evidence_status": "VERIFIED",
+  "default_decision": "REFUSE",
+  "unknown_decision": "REFUSE",
+  "contradicted_decision": "REFUSE",
+  "inconclusive_decision": "REFUSE",
+  "task_profiles": {
+    "search_and_extraction": {
+      "required_capabilities": ["C01", "C06"],
+      "operator": "AND"
+    },
+    "tool_execution_agent": {
+      "required_capabilities": ["C02", "C05"],
+      "operator": "AND"
+    },
+    "long_context_analysis": {
+      "required_capabilities": ["C03", "C08"],
+      "operator": "AND"
+    },
+    "strict_compliance_safety": {
+      "required_capabilities": ["C04", "C07", "C09"],
+      "operator": "AND"
+    }
+  },
+  "qualification_rule": {
+    "execute": "ALL(required_capabilities) == VERIFIED",
+    "otherwise": "REFUSE_OR_ESCALATE"
+  },
+  "routing_contract": {
+    "task_required_profile_must_be_resolved": true,
+    "model_must_be_explicit": true,
+    "capability_evidence_must_be_model_specific": true,
+    "capability_evidence_must_be_current": true,
+    "missing_capability_evidence": "REFUSE",
+    "non_verified_capability": "REFUSE"
+  },
+  "safety_invariants": {
+    "fail_closed": true,
+    "synthetic_pass_forbidden": true,
+    "unknown_as_pass_forbidden": true,
+    "historical_evidence_as_current_pass_forbidden": true,
+    "frozen_core_modification_required": false
+  },
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "locked_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "delta_allowed": false
+  },
+  "decision_outputs": ["EXECUTE", "REFUSE", "ESCALATE"],
+  "derived_results": {
+    "source": "current_raw_capability_evidence",
+    "embedded_statistics": false,
+    "calculation_rule": "For each model M and task T, EXECUTE iff every capability in Required(T) has raw(M,C) == VERIFIED"
+  }
+}
