@@ -12,6 +12,8 @@ Agent may:
 - collect CI, job and artifact evidence;
 - return observations to the deterministic gate.
 
+Before creating any new PR, branch, or commit, the agent must first inspect the current repository state and verify whether the requested file, rule, PR, branch, or change already exists. If the required solution already exists, the agent must reuse it and must not create a duplicate PR, branch, commit, or instruction. Unnecessary PRs and branches are prohibited.
+
 Agent must not:
 - modify src/jamp/run.py;
 - weaken tests, thresholds, workflow protections or task scope;
