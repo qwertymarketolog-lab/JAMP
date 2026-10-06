@@ -45,10 +45,7 @@ class DashboardAggregator:
                 raise ValueError(f"invalid decision: {decision!r}")
             grouped[_scope(record)].append(record)
 
-        return [
-            self._aggregate_scope(scope, rows)
-            for scope, rows in sorted(grouped.items(), key=str)
-        ]
+        return [self._aggregate_scope(scope, rows) for scope, rows in sorted(grouped.items(), key=str)]
 
     def _aggregate_scope(
         self, scope: tuple[Any, ...], rows: list[Mapping[str, Any]]
@@ -73,22 +70,12 @@ class DashboardAggregator:
             for r in verified
             if r.get("task_instance_id") is not None
         )
-        task_counts = Counter(
-            r["task_instance_id"]
-            for r in verified
-            if r.get("task_instance_id") is not None
-        )
+        task_counts = Counter(r["task_instance_id"] for r in verified if r.get("task_instance_id") is not None)
         comparable_tasks = sum(1 for count in task_counts.values() if count > 1)
         stable_tasks = sum(
             1
             for task_id in task_counts
-            if len(
-                {
-                    decision
-                    for (candidate_task, decision) in repeated
-                    if candidate_task == task_id
-                }
-            )
+            if len({decision for (candidate_task, decision) in repeated if candidate_task == task_id})
             == 1
             and task_counts[task_id] > 1
         )
@@ -96,11 +83,7 @@ class DashboardAggregator:
 
         boundaries = []
         for task_id in sorted(task_counts, key=str):
-            outcomes = {
-                decision
-                for (candidate_task, decision) in repeated
-                if candidate_task == task_id
-            }
+            outcomes = {decision for (candidate_task, decision) in repeated if candidate_task == task_id}
             if len(outcomes) > 1:
                 boundaries.append({"task_instance_id": task_id, "outcomes": sorted(outcomes)})
 
