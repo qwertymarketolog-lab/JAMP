@@ -102,7 +102,8 @@ class DashboardAggregator:
                 boundaries.append({"task_instance_id": task_id, "outcomes": sorted(outcomes)})
 
         if not verified:
-            state = "UNKNOWN" if not rows else "INCONCLUSIVE"
+            decisions_present = {r["decision"] for r in rows}
+            state = "UNKNOWN" if decisions_present == {"UNKNOWN"} else "INCONCLUSIVE"
         elif stability is None and comparable_tasks == 0:
             state = "INCONCLUSIVE"
         else:
