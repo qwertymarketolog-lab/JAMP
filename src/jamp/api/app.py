@@ -13,7 +13,7 @@ from jamp.runtime import (
 )
 
 
-DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests" / "fixtures" / "runtime_evidence_projection.json"
+DEFAULT_EVIDENCE = (\n    Path(__file__).parents[3] / "tests" / "fixtures" / "runtime_evidence_projection.json"\n)
 
 
 def _load_evidence(path: str | Path) -> dict[str, Any]:
