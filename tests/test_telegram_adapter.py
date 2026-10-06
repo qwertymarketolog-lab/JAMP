@@ -46,9 +46,7 @@ def test_telegram_refuse_renders_reason_and_trace_id():
 def test_telegram_update_without_text_does_not_call_runtime():
     client = Mock()
 
-    result = TelegramBotAdapter(client).handle_update(
-        {"message": {"chat": {"id": 42}}}
-    )
+    result = TelegramBotAdapter(client).handle_update({"message": {"chat": {"id": 42}}})
 
     client.execute_payload.assert_not_called()
     assert result is None
