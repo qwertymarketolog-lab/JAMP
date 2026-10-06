@@ -23,9 +23,7 @@ class JampClientAdapter:
     def __init__(self, api_base_url: str = "http://127.0.0.1:8000") -> None:
         self.api_base_url = api_base_url.rstrip("/")
 
-    def execute_payload(
-        self, payload: dict[str, Any], timeout: float = 10.0
-    ) -> AdapterResult:
+    def execute_payload(self, payload: dict[str, Any], timeout: float = 10.0) -> AdapterResult:
         url = f"{self.api_base_url}/v1/execute"
         try:
             response = httpx.post(url, json=payload, timeout=timeout)
@@ -57,6 +55,4 @@ class JampClientAdapter:
                 reason=data.get("reason", "EXECUTION_BLOCKED"),
             )
 
-        raise RuntimeError(
-            f"Runtime API returned unknown contract status: {status!r}"
-        )
+        raise RuntimeError(f"Runtime API returned unknown contract status: {status!r}")
