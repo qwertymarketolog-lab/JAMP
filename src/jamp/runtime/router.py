@@ -119,9 +119,7 @@ class CapabilityRouter:
         return matrix
 
     @staticmethod
-    def _eligible_models(
-        matrix: dict[str, Any], required: tuple[str, ...]
-    ) -> list[str]:
+    def _eligible_models(matrix: dict[str, Any], required: tuple[str, ...]) -> list[str]:
         eligible: list[str] = []
         for row in matrix.get("matrix", []):
             model_id = row.get("model_id")
