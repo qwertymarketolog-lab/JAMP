@@ -5,7 +5,9 @@ from src.jamp.audit.exporter import AuditLogExporter, S3StorageAdapter, UploadRe
 
 
 def make_exporter(tmp_path, adapter):
-    return AuditLogExporter(str(tmp_path / "provenance_traces.jsonl"), str(tmp_path / "state.json"), adapter)
+    return AuditLogExporter(
+        str(tmp_path / "provenance_traces.jsonl"), str(tmp_path / "state.json"), adapter
+    )
 
 
 def test_incremental_cursor_and_idempotent_batch(tmp_path):
@@ -19,7 +21,10 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
     assert first["exported_records"] == 1
     assert exporter.export_pending()["status"] == "UP_TO_DATE"
     assert adapter.upload.call_count == 1
-    audit.write_text(audit.read_text(encoding="utf-8") + json.dumps({"trace_id": "tr_2"}) + "\n", encoding="utf-8")
+    audit.write_text(
+        audit.read_text(encoding="utf-8") + json.dumps({"trace_id": "tr_2"}) + "\n",
+        encoding="utf-8",
+    )
     second = exporter.export_pending()
     assert second["status"] == "SUCCESS"
     assert second["exported_records"] == 1
