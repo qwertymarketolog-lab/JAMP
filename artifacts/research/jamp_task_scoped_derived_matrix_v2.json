@@ -1,0 +1,460 @@
+{
+  "schema_version": "jamp-task-scoped-derived-matrix-v2",
+  "evidence_anchor": {
+    "artifact_id": 11369355096,
+    "artifact_sha256": "2f5282d40c087a0065dfbd9c59abc9c4cd79f2780f556ae5a18ef9ff1a75289f",
+    "canonical_manifest_sha256": "e208f0e8565815020e5718191f61075f1eb95282052c75c4ca0a80ed07c12ed6"
+  },
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "delta": 0
+  },
+  "source_contract": {
+    "expected_models": 17,
+    "executed_models": 17,
+    "expected_checks": 170,
+    "executed_checks": 170
+  },
+  "status_legend": [
+    "VERIFIED",
+    "CONTRADICTED",
+    "INCONCLUSIVE"
+  ],
+  "routing_rule": "EXECUTE only when every required capability is VERIFIED; otherwise REFUSE (fail-closed).",
+  "task_profiles": {
+    "search_and_extraction": {
+      "required_capabilities": [
+        "C01",
+        "C06"
+      ],
+      "eligible_model_count": 12,
+      "eligible_models": [
+        "am/nemotron-3-super-120b-a12b",
+        "cx/gpt-6-luna",
+        "cx/gpt-6-luna-review",
+        "cx/gpt-6-sol",
+        "cx/gpt-6-sol-review",
+        "cx/gpt-image-1.5",
+        "cx/gpt-image-2",
+        "ds/deepseek-v4-flash",
+        "ds/deepseek-v4-pro",
+        "glm/glm-5.2",
+        "glm/glm-5.3-flash",
+        "qwen/qwen3.7-max"
+      ]
+    },
+    "tool_execution_agent": {
+      "required_capabilities": [
+        "C02",
+        "C05"
+      ],
+      "eligible_model_count": 7,
+      "eligible_models": [
+        "ag/gemini-3-flash",
+        "ag/gemini-3.7-flash-low",
+        "cc/claude-sonnet-5",
+        "cx/gpt-6-luna",
+        "cx/gpt-6-sol-review",
+        "cx/gpt-image-2",
+        "qwen/qwen3.7-max"
+      ]
+    },
+    "strict_compliance_safety": {
+      "required_capabilities": [
+        "C04",
+        "C07",
+        "C09"
+      ],
+      "eligible_model_count": 2,
+      "eligible_models": [
+        "am/nemotron-3-super-120b-a12b",
+        "ds/deepseek-v4-flash"
+      ]
+    },
+    "long_context_analysis": {
+      "required_capabilities": [
+        "C03",
+        "C08"
+      ],
+      "eligible_model_count": 0,
+      "eligible_models": []
+    }
+  },
+  "matrix": [
+    {
+      "ordinal": 1,
+      "model_id": "ag/claude-sonnet-4-6",
+      "capabilities": {
+        "C01": "CONTRADICTED",
+        "C02": "CONTRADICTED",
+        "C03": "CONTRADICTED",
+        "C04": "CONTRADICTED",
+        "C05": "CONTRADICTED",
+        "C06": "CONTRADICTED",
+        "C07": "CONTRADICTED",
+        "C08": "CONTRADICTED",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "REFUSE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 2,
+      "model_id": "ag/gemini-3-flash",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "CONTRADICTED",
+        "C05": "VERIFIED",
+        "C06": "CONTRADICTED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "REFUSE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 3,
+      "model_id": "ag/gemini-3.7-flash-low",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "CONTRADICTED",
+        "C05": "VERIFIED",
+        "C06": "CONTRADICTED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "REFUSE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 4,
+      "model_id": "ag/gemini-3.7-flash-medium",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "CONTRADICTED",
+        "C05": "CONTRADICTED",
+        "C06": "CONTRADICTED",
+        "C07": "CONTRADICTED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "REFUSE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 5,
+      "model_id": "am/nemotron-3-super-120b-a12b",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "VERIFIED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "EXECUTE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 6,
+      "model_id": "cc/claude-sonnet-5",
+      "capabilities": {
+        "C01": "CONTRADICTED",
+        "C02": "VERIFIED",
+        "C03": "INCONCLUSIVE",
+        "C04": "CONTRADICTED",
+        "C05": "VERIFIED",
+        "C06": "CONTRADICTED",
+        "C07": "CONTRADICTED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "REFUSE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 7,
+      "model_id": "cx/gpt-6-luna",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "VERIFIED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 8,
+      "model_id": "cx/gpt-6-luna-review",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 9,
+      "model_id": "cx/gpt-6-sol",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 10,
+      "model_id": "cx/gpt-6-sol-review",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "VERIFIED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 11,
+      "model_id": "cx/gpt-image-1.5",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 12,
+      "model_id": "cx/gpt-image-2",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "VERIFIED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "CONTRADICTED",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 13,
+      "model_id": "ds/deepseek-v4-flash",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "VERIFIED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "EXECUTE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 14,
+      "model_id": "ds/deepseek-v4-pro",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "INCONCLUSIVE",
+        "C04": "INCONCLUSIVE",
+        "C05": "INCONCLUSIVE",
+        "C06": "VERIFIED",
+        "C07": "INCONCLUSIVE",
+        "C08": "INCONCLUSIVE",
+        "C09": "VERIFIED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 15,
+      "model_id": "glm/glm-5.2",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "CONTRADICTED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "CONTRADICTED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 16,
+      "model_id": "glm/glm-5.3-flash",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "CONTRADICTED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "INCONCLUSIVE",
+        "C09": "CONTRADICTED",
+        "C10": "VERIFIED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "REFUSE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    },
+    {
+      "ordinal": 17,
+      "model_id": "qwen/qwen3.7-max",
+      "capabilities": {
+        "C01": "VERIFIED",
+        "C02": "VERIFIED",
+        "C03": "VERIFIED",
+        "C04": "VERIFIED",
+        "C05": "VERIFIED",
+        "C06": "VERIFIED",
+        "C07": "VERIFIED",
+        "C08": "CONTRADICTED",
+        "C09": "CONTRADICTED",
+        "C10": "CONTRADICTED"
+      },
+      "task_profiles": {
+        "search_and_extraction": "EXECUTE",
+        "tool_execution_agent": "EXECUTE",
+        "strict_compliance_safety": "REFUSE",
+        "long_context_analysis": "REFUSE"
+      }
+    }
+  ]
+}
