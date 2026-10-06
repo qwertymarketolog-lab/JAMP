@@ -45,7 +45,10 @@ class DashboardAggregator:
                 raise ValueError(f"invalid decision: {decision!r}")
             grouped[_scope(record)].append(record)
 
-        return [self._aggregate_scope(scope, rows) for scope, rows in sorted(grouped.items(), key=str)]
+        return [
+            self._aggregate_scope(scope, rows)
+            for scope, rows in sorted(grouped.items(), key=str)
+        ]
 
     def _aggregate_scope(
         self, scope: tuple[Any, ...], rows: list[Mapping[str, Any]]
@@ -110,7 +113,7 @@ class DashboardAggregator:
             state = "VERIFIED"
 
         return {
-            "scope": dict(zip(SCOPE_FIELDS, scope)),
+            "scope": dict(zip(SCOPE_FIELDS, scope, strict=True)),
             "state": state,
             "decision_count": total,
             "execute_count": decisions["EXECUTE"],
