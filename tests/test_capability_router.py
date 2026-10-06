@@ -16,12 +16,16 @@ def test_execute_selects_deterministically_from_verified_evidence(tmp_path):
             "expected_checks": 170,
             "executed_checks": 170,
         },
-        "task_profiles": {
-            "tool_execution_agent": {"required_capabilities": ["C02", "C05"]}
-        },
+        "task_profiles": {"tool_execution_agent": {"required_capabilities": ["C02", "C05"]}},
         "matrix": [
-            {"model_id": "z-model", "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"}},
-            {"model_id": "a-model", "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"}},
+            {
+                "model_id": "z-model",
+                "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"},
+            },
+            {
+                "model_id": "a-model",
+                "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"},
+            },
         ],
     }
     path = tmp_path / "matrix.json"
@@ -111,11 +115,12 @@ def _base_matrix():
             "expected_checks": 170,
             "executed_checks": 170,
         },
-        "task_profiles": {
-            "tool_execution_agent": {"required_capabilities": ["C02", "C05"]}
-        },
+        "task_profiles": {"tool_execution_agent": {"required_capabilities": ["C02", "C05"]}},
         "matrix": [
-            {"model_id": "model-a", "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"}}
+            {
+                "model_id": "model-a",
+                "capabilities": {"C02": "VERIFIED", "C05": "VERIFIED"},
+            }
         ],
     }
 
