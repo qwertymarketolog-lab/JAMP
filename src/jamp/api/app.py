@@ -92,7 +92,7 @@ def create_app(
 
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(trace_id: str):
-        trace = traces.get(trace_id)
+        trace = persistence.read_trace_by_id(trace_id)
         if trace is None:
             return JSONResponse(status_code=404, content={"detail": "Trace not found"})
         return trace
