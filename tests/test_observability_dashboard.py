@@ -47,7 +47,11 @@ def test_capability_stability_and_boundary():
             record(task_instance_id="repeat-a", decision="EXECUTE"),
             record(task_instance_id="repeat-a", decision="EXECUTE"),
             record(task_instance_id="repeat-b", decision="EXECUTE"),
-            record(task_instance_id="repeat-b", decision="REFUSE", refusal_cause="POLICY_VIOLATION"),
+            record(
+                task_instance_id="repeat-b",
+                decision="REFUSE",
+                refusal_cause="POLICY_VIOLATION",
+            ),
         ]
     )[0]
 
