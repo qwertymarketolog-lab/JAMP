@@ -1,8 +1,6 @@
 from fastapi.testclient import TestClient
 
 from jamp.api import create_app
-
-
 client = TestClient(create_app())
 
 
