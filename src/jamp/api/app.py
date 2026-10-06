@@ -24,7 +24,7 @@ def _load_evidence(path: str | Path) -> dict[str, Any]:
 def create_app(
     evidence_path: str | Path = DEFAULT_EVIDENCE,
     executor: Callable[[str, dict[str, Any]], Any] | None = None,
-    audit_storage_path: str | Path = "artifacts/audit/provenance_traces.jsonl",
+    audit_storage_path: str | Path = "var/jamp/audit/provenance_traces.jsonl",
 ):
     try:
         from fastapi import FastAPI
