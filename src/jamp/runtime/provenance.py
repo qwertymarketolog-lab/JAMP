@@ -4,6 +4,7 @@ import hashlib
 import json
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1"
@@ -11,7 +12,7 @@ EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f
 
 class ProvenanceTracker:
     @staticmethod
-    def output_digest(output):
+    def output_digest(output: Any) -> str:
         payload = json.dumps(
             output,
             ensure_ascii=False,
@@ -22,16 +23,18 @@ class ProvenanceTracker:
 
     def create_trace(
         self,
-        task_profile,
-        required_caps,
-        action,
-        selected_model,
-        eligible_count,
-        output=None,
-    ):
+        task_profile: str,
+        required_caps: tuple[str, ...],
+        action: str,
+        selected_model: str,
+        eligible_count: int,
+        output: Any = None,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
         trace = {
             "trace_id": f"trace_{uuid.uuid4().hex[:8]}",
             "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": request_id or f"req_{uuid.uuid4().hex[:8]}",
             "status": action,
             "task_profile": task_profile,
             "required_capabilities": list(required_caps),
@@ -39,7 +42,15 @@ class ProvenanceTracker:
                 "evidence_base_sha256": EVIDENCE_SHA256,
                 "eligible_models_count": eligible_count,
             },
+            "evidence_hashes": {
+                "raw_artifact_sha256": EVIDENCE_SHA256,
+            },
             "frozen_core_state": {
+                "blob": FROZEN_CORE_BLOB,
+                "delta": 0,
+            },
+            "frozen_core": {
+                "path": "src/jamp/run.py",
                 "blob": FROZEN_CORE_BLOB,
                 "delta": 0,
             },

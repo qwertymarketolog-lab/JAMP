@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from jamp.runtime import (
+    AuditPersistence,
     CapabilityResolver,
     EvidenceGate,
     ModelSelector,
@@ -23,6 +24,7 @@ def _load_evidence(path: str | Path) -> dict[str, Any]:
 def create_app(
     evidence_path: str | Path = DEFAULT_EVIDENCE,
     executor: Callable[[str, dict[str, Any]], Any] | None = None,
+    audit_storage_path: str | Path | None = None,
 ):
     try:
         from fastapi import FastAPI
@@ -48,7 +50,7 @@ def create_app(
     resolver = CapabilityResolver()
     selector = ModelSelector()
     provenance = ProvenanceTracker()
-    traces: dict[str, dict[str, Any]] = {}
+    persistence = AuditPersistence(audit_storage_path)
 
     app = FastAPI(title="JAMP API", version="v1", openapi_version="3.0.3")
 
@@ -60,27 +62,58 @@ def create_app(
 
     @app.post("/v1/execute")
     def execute(payload: dict[str, Any]):
+        request_id = payload.get("request_id")
         try:
             task_profile = classifier.classify(payload)
             required = resolver.get_required_capabilities(task_profile)
             eligible = gate.get_eligible_models(required)
             action, selected = selector.select_model(eligible, task_profile)
         except ValueError as exc:
+            trace = provenance.create_trace(
+                "unknown",
+                (),
+                "REFUSE",
+                str(exc),
+                0,
+                request_id=request_id,
+            )
+            persistence.write_trace(trace)
             return JSONResponse(
                 status_code=422,
-                content={"status": "REFUSE", "reason": str(exc)},
+                content={
+                    "status": "REFUSE",
+                    "reason": str(exc),
+                    "trace_id": trace["trace_id"],
+                },
             )
 
         if action == "REFUSE":
-            trace = provenance.create_trace(task_profile, required, action, selected, len(eligible))
-            traces[trace["trace_id"]] = trace
-            return {"status": "REFUSE", "reason": selected, "trace_id": trace["trace_id"]}
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                action,
+                selected,
+                len(eligible),
+                request_id=request_id,
+            )
+            persistence.write_trace(trace)
+            return {
+                "status": "REFUSE",
+                "reason": selected,
+                "trace_id": trace["trace_id"],
+            }
 
         output = executor(selected, payload) if executor is not None else None
         trace = provenance.create_trace(
-            task_profile, required, action, selected, len(eligible), output=output
+            task_profile,
+            required,
+            action,
+            selected,
+            len(eligible),
+            output=output,
+            request_id=request_id,
         )
-        traces[trace["trace_id"]] = trace
+        persistence.write_trace(trace)
         response = {
             "status": "EXECUTE",
             "selected_model": selected,
@@ -92,7 +125,7 @@ def create_app(
 
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(trace_id: str):
-        trace = traces.get(trace_id)
+        trace = persistence.read_trace_by_id(trace_id)
         if trace is None:
             return JSONResponse(status_code=404, content={"detail": "Trace not found"})
         return trace
