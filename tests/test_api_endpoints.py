@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 from jamp.api import create_app
 client = TestClient(create_app())
 
-
 def test_classify_search():
     response = client.post("/v1/classify", json={"intent": "search_and_extraction"})
     assert response.status_code == 200
