@@ -31,9 +31,7 @@ def test_execute_selects_deterministically_from_verified_evidence(tmp_path):
     path = tmp_path / "matrix.json"
     path.write_text(json.dumps(matrix), encoding="utf-8")
 
-    decision = CapabilityRouter(path).route_task(
-        TaskSpec("tool_execution_agent", "VERIFIED")
-    )
+    decision = CapabilityRouter(path).route_task(TaskSpec("tool_execution_agent", "VERIFIED"))
 
     assert decision.status == "EXECUTE"
     assert decision.selected_model == "a-model"
@@ -47,9 +45,7 @@ def test_non_verified_capability_refuses(tmp_path, status):
     path = tmp_path / "matrix.json"
     path.write_text(json.dumps(matrix), encoding="utf-8")
 
-    decision = CapabilityRouter(path).route_task(
-        TaskSpec("tool_execution_agent", "VERIFIED")
-    )
+    decision = CapabilityRouter(path).route_task(TaskSpec("tool_execution_agent", "VERIFIED"))
 
     assert decision.status == "REFUSE"
     assert decision.selected_model is None
@@ -61,9 +57,7 @@ def test_missing_capability_refuses(tmp_path):
     path = tmp_path / "matrix.json"
     path.write_text(json.dumps(matrix), encoding="utf-8")
 
-    decision = CapabilityRouter(path).route_task(
-        TaskSpec("tool_execution_agent", "VERIFIED")
-    )
+    decision = CapabilityRouter(path).route_task(TaskSpec("tool_execution_agent", "VERIFIED"))
 
     assert decision.status == "REFUSE"
 
@@ -87,9 +81,7 @@ def test_unknown_task_and_confidence_fail_closed(tmp_path):
     unknown = CapabilityRouter(path).route_task(TaskSpec("unknown", "VERIFIED"))
     assert unknown.status == "REFUSE"
 
-    unsupported = CapabilityRouter(path).route_task(
-        TaskSpec("tool_execution_agent", "LIKELY")
-    )
+    unsupported = CapabilityRouter(path).route_task(TaskSpec("tool_execution_agent", "LIKELY"))
     assert unsupported.status == "REFUSE"
     assert unsupported.evidence_trace["decision_reason"] == "UNSUPPORTED_CONFIDENCE_CONTRACT"
 
