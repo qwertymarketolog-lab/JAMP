@@ -11,7 +11,7 @@ class AuditPersistence:
 
     def __init__(
         self,
-        storage_path: str | Path = "artifacts/audit/provenance_traces.jsonl",
+        storage_path: str | Path = "var/jamp/audit/provenance_traces.jsonl",
     ) -> None:
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
