@@ -104,9 +104,15 @@ class CapabilityRouter:
         if matrix.get("schema_version") != MATRIX_SCHEMA:
             raise ValueError("Unsupported capability evidence matrix")
         source = matrix.get("source_contract", {})
-        if (source.get("expected_models"), source.get("executed_models")) != (17, 17):
+        if (source.get("expected_models"), source.get("executed_models")) != (
+            17,
+            17,
+        ):
             raise ValueError("Capability evidence model cardinality mismatch")
-        if (source.get("expected_checks"), source.get("executed_checks")) != (170, 170):
+        if (source.get("expected_checks"), source.get("executed_checks")) != (
+            170,
+            170,
+        ):
             raise ValueError("Capability evidence check cardinality mismatch")
         if matrix.get("frozen_core", {}).get("blob") != FROZEN_CORE_BLOB:
             raise ValueError("Frozen Core evidence mismatch")
@@ -122,10 +128,7 @@ class CapabilityRouter:
             capabilities = row.get("capabilities", {})
             if not isinstance(model_id, str) or not isinstance(capabilities, dict):
                 continue
-            if all(
-                capabilities.get(capability) == "VERIFIED"
-                for capability in required
-            ):
+            if all(capabilities.get(capability) == "VERIFIED" for capability in required):
                 eligible.append(model_id)
         return sorted(eligible)
 
