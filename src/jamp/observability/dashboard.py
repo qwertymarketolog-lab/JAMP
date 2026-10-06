@@ -31,6 +31,10 @@ def _task_outcomes(repeated: Counter[tuple[Any, str]], task_id: Any) -> set[str]
     return {decision for candidate_task, decision in repeated if candidate_task == task_id}
 
 
+def _task_counts(verified: list[Mapping[str, Any]]) -> Counter[Any]:
+    return Counter(r["task_instance_id"] for r in verified if r.get("task_instance_id") is not None)
+
+
 def _entropy(counts: Counter[str]) -> float:
     total = sum(counts.values())
     if not total:
@@ -75,18 +79,15 @@ class DashboardAggregator:
             for r in verified
             if r.get("task_instance_id") is not None
         )
-        task_counts = Counter(
-            r["task_instance_id"]
-            for r in verified
-            if r.get("task_instance_id") is not None
-        )
+        task_counts = _task_counts(verified)
         comparable_tasks = sum(1 for count in task_counts.values() if count > 1)
+        stable_outcomes = {
+            task_id: len(_task_outcomes(repeated, task_id)) for task_id in task_counts
+        }
         stable_tasks = sum(
             1
             for task_id in task_counts
-            if len(_task_outcomes(repeated, task_id))
-            == 1
-            and task_counts[task_id] > 1
+            if stable_outcomes[task_id] == 1 and task_counts[task_id] > 1
         )
         stability = stable_tasks / comparable_tasks if comparable_tasks else None
 
