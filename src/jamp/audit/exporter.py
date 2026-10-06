@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -37,7 +38,9 @@ class S3StorageAdapter:
             )
         except httpx.HTTPError:
             return UploadResult(False)
-        return UploadResult(response.status_code in (200, 201, 204), response.status_code)
+        return UploadResult(
+            response.status_code in (200, 201, 204), response.status_code
+        )
 
 
 class AuditLogExporter:
@@ -69,7 +72,6 @@ class AuditLogExporter:
         tmp.write_text(json.dumps({"last_offset": offset}), encoding="utf-8")
         with tmp.open("rb") as f:
             f.flush()
-            import os
             os.fsync(f.fileno())
         tmp.replace(self.state_file_path)
         try:
