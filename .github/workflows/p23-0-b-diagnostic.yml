@@ -28,6 +28,9 @@ jobs:
       - name: Install test runner
         run: python -m pip install --upgrade pytest
 
+      - name: Install project and runtime dependencies
+        run: python -m pip install ".[dev]"
+
       - name: Run P23.0-B target telemetry
         env:
           PYTHONPATH: src

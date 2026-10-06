@@ -17,12 +17,16 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-dependencies = []
+dependencies = ["fastapi>=0.115,<1"]
+
+[project.scripts]
+jamp-run = "jamp.cli:main"
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8,<9",
   "pytest-mock>=3,<4",
+  "httpx2>=2,<3",
   "mypy>=1.11,<2",
   "ruff>=0.6,<1",
   "pre-commit>=3.8,<5",
