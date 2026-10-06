@@ -10,9 +10,7 @@ def main(args: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="JAMP CLI Client Adapter v0.1")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    execute_parser = subparsers.add_parser(
-        "execute", help="Execute task request via Runtime API"
-    )
+    execute_parser = subparsers.add_parser("execute", help="Execute task request via Runtime API")
     execute_parser.add_argument("prompt", help="User prompt or payload")
     execute_parser.add_argument(
         "--api-url",
