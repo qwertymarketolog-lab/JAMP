@@ -17,8 +17,10 @@ def record(**overrides):
 
 def test_decision_ratio_and_entropy():
     result = DashboardAggregator().aggregate(
-        [record(decision="EXECUTE", task_instance_id="i1"),
-         record(decision="REFUSE", refusal_cause="POLICY_VIOLATION", task_instance_id="i2")]
+        [
+            record(decision="EXECUTE", task_instance_id="i1"),
+            record(decision="REFUSE", refusal_cause="POLICY_VIOLATION", task_instance_id="i2"),
+        ]
     )[0]
 
     assert result["execute_ratio"] == 0.5
