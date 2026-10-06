@@ -18,9 +18,7 @@ def test_adapter_execute_flow(mock_post):
     }
     mock_post.return_value = mock_response
 
-    result = JampClientAdapter("http://testserver").execute_payload(
-        {"prompt": "test search"}
-    )
+    result = JampClientAdapter("http://testserver").execute_payload({"prompt": "test search"})
 
     assert isinstance(result, AdapterResult)
     assert result.status == "EXECUTE"
@@ -60,9 +58,7 @@ def test_adapter_refuse_422_flow(mock_post):
     }
     mock_post.return_value = mock_response
 
-    result = JampClientAdapter("http://testserver").execute_payload(
-        {"intent": "unknown"}
-    )
+    result = JampClientAdapter("http://testserver").execute_payload({"intent": "unknown"})
 
     assert result.status == "REFUSE"
     assert result.trace_id == "trace_refuse_422"
