@@ -12,8 +12,6 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
-
-
 DEFAULT_EVIDENCE = (
     Path(__file__).parents[3]
     / "tests"
