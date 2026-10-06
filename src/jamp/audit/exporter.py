@@ -38,9 +38,7 @@ class S3StorageAdapter:
             )
         except httpx.HTTPError:
             return UploadResult(False)
-        return UploadResult(
-            response.status_code in (200, 201, 204), response.status_code
-        )
+        return UploadResult(response.status_code in (200, 201, 204), response.status_code)
 
 
 class AuditLogExporter:
