@@ -21,11 +21,14 @@ class AuditPersistence:
         if not trace_id:
             raise ValueError("Trace payload missing required 'trace_id' field.")
 
-        serialized_entry = json.dumps(
-            trace_payload,
-            ensure_ascii=False,
-            sort_keys=True,
-        ) + "\n"
+        serialized_entry = (
+            json.dumps(
+                trace_payload,
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
         with self.storage_path.open("a", encoding="utf-8") as handle:
             handle.write(serialized_entry)
             handle.flush()
