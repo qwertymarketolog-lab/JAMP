@@ -19,10 +19,8 @@ DEFAULT_EVIDENCE = (
     / "runtime_evidence_projection.json"
 )
 
-
 def _load_evidence(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
-
 
 def create_app(
     evidence_path: str | Path = DEFAULT_EVIDENCE,
