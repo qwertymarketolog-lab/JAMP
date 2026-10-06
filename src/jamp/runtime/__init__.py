@@ -2,6 +2,7 @@
 
 from .classifier import TaskClassifier
 from .evidence_gate import EvidenceGate
+from .persistence import AuditPersistence
 from .provenance import ProvenanceTracker
 from .resolver import CapabilityResolver
 from .selector import ModelSelector
@@ -12,4 +13,5 @@ __all__ = [
     "EvidenceGate",
     "ModelSelector",
     "ProvenanceTracker",
+    "AuditPersistence",
 ]
