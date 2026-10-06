@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from jamp.runtime import (
     CapabilityResolver,
@@ -13,7 +14,12 @@ from jamp.runtime import (
 )
 
 
-DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests" / "fixtures" / "runtime_evidence_projection.json"
+DEFAULT_EVIDENCE = (
+    Path(__file__).parents[3]
+    / "tests"
+    / "fixtures"
+    / "runtime_evidence_projection.json"
+)
 
 
 def _load_evidence(path: str | Path) -> dict[str, Any]:
@@ -66,10 +72,15 @@ def create_app(
             eligible = gate.get_eligible_models(required)
             action, selected = selector.select_model(eligible, task_profile)
         except ValueError as exc:
-            return JSONResponse(status_code=422, content={"status": "REFUSE", "reason": str(exc)})
+            return JSONResponse(
+                status_code=422,
+                content={"status": "REFUSE", "reason": str(exc)},
+            )
 
         if action == "REFUSE":
-            trace = provenance.create_trace(task_profile, required, action, selected, len(eligible))
+            trace = provenance.create_trace(
+                task_profile, required, action, selected, len(eligible)
+            )
             traces[trace["trace_id"]] = trace
             return {"status": "REFUSE", "reason": selected, "trace_id": trace["trace_id"]}
 
