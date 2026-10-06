@@ -13,7 +13,12 @@ from jamp.runtime import (
     TaskClassifier,
 )
 
-DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests" / "fixtures" / "runtime_evidence_projection.json"
+DEFAULT_EVIDENCE = (
+    Path(__file__).parents[3]
+    / "tests"
+    / "fixtures"
+    / "runtime_evidence_projection.json"
+)
 
 
 def _load_evidence(path: str | Path) -> dict[str, Any]:
@@ -72,7 +77,9 @@ def create_app(
             )
 
         if action == "REFUSE":
-            trace = provenance.create_trace(task_profile, required, action, selected, len(eligible))
+            trace = provenance.create_trace(
+                task_profile, required, action, selected, len(eligible)
+            )
             traces[trace["trace_id"]] = trace
             return {"status": "REFUSE", "reason": selected, "trace_id": trace["trace_id"]}
 
