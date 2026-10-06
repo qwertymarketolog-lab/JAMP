@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+import tempfile
 
 
 class AuditPersistence:
@@ -11,8 +12,13 @@ class AuditPersistence:
 
     def __init__(
         self,
-        storage_path: str | Path = "var/jamp/audit/provenance_traces.jsonl",
+        storage_path: str | Path | None = None,
     ) -> None:
+        if storage_path is None:
+            default_dir = Path(tempfile.gettempdir()) / "jamp" / "audit"
+            storage_path = os.environ.get(
+                "JAMP_AUDIT_PATH", str(default_dir / "provenance_traces.jsonl")
+            )
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
 
