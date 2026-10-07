@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 
 from .telegram import TelegramTransport
+
 TELEGRAM_SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
 
 
