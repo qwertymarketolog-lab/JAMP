@@ -1,4 +1,10 @@
-from .ozon import OzonProduct, OzonProductInfoResponse, OzonProviderAdapter, OzonProviderResult, ProviderDecision
+from .ozon import (
+    OzonProduct,
+    OzonProductInfoResponse,
+    OzonProviderAdapter,
+    OzonProviderResult,
+    ProviderDecision,
+)
 
 __all__ = [
     "OzonProduct",
