@@ -46,7 +46,7 @@ class TelegramTransport:
         ) == "EXECUTE":
             response_text = getattr(result, "output", "") or ""
         else:
-            response_text = f"REFUSE: {getattr(result, "reason", "unknown_refusal")}"
+            response_text = f"REFUSE: {getattr(result, 'reason', 'unknown_refusal')}"
 
         return TelegramTransportResponse(
             chat_id=chat_id,
