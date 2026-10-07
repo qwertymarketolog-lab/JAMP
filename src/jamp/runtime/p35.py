@@ -46,9 +46,7 @@ class P35Executor:
             TaskSpec(task_type=task_type, required_confidence="VERIFIED")
         )
         if decision.status != "EXECUTE":
-            reason = decision.evidence_trace.get(
-                "decision_reason", "ROUTER_REFUSE"
-            )
+            reason = decision.evidence_trace.get("decision_reason", "ROUTER_REFUSE")
             return P35Result(status="REFUSE", trace_id=trace_id, reason=reason)
 
         if not offer_id.strip():
