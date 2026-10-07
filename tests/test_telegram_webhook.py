@@ -1,52 +1,80 @@
-from unittest.mock import MagicMock
+from unittest.mock import Mock
 
-from jamp.transport.telegram import TelegramTransportResponse
-from jamp.transport.telegram_webhook import TelegramWebhookAdapter
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from jamp.transport.telegram import TelegramTransport
+from jamp.transport.webhook import create_telegram_webhook_router
+
+SECRET = "test-secret"
 
 
-def test_webhook_forwards_valid_update():
-    transport = MagicMock()
-    expected = TelegramTransportResponse(chat_id=123, text="Hello", trace_id="trace-1")
-    transport.handle_update.return_value = expected
+def make_client():
+    transport = Mock(spec=TelegramTransport)
+    app = FastAPI()
+    app.include_router(create_telegram_webhook_router(transport, SECRET))
+    return TestClient(app), transport
 
-    response = TelegramWebhookAdapter(transport).handle_update(
-        {"message": {"chat": {"id": 123}, "text": "Hello"}}
+
+def test_webhook_valid_payload():
+    client, transport = make_client()
+
+    response = client.post(
+        "/webhook/telegram",
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+        json={"update_id": 1},
     )
 
-    assert response == expected
-    transport.handle_update.assert_called_once_with(
-        {"message": {"chat": {"id": 123}, "text": "Hello"}}
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    transport.handle_update.assert_called_once_with({"update_id": 1})
+
+
+def test_webhook_invalid_secret_token():
+    client, transport = make_client()
+
+    response = client.post(
+        "/webhook/telegram",
+        headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"},
+        json={"update_id": 1},
     )
 
-
-def test_webhook_preserves_refuse_response():
-    transport = MagicMock()
-    expected = TelegramTransportResponse(
-        chat_id=123, text="REFUSE: policy_violation", trace_id="trace-2"
-    )
-    transport.handle_update.return_value = expected
-
-    response = TelegramWebhookAdapter(transport).handle_update(
-        {"message": {"chat": {"id": 123}, "text": "Unsafe"}}
-    )
-
-    assert response == expected
-
-
-def test_webhook_fail_closed_for_malformed_update():
-    transport = MagicMock()
-
-    response = TelegramWebhookAdapter(transport).handle_update("not-a-dict")
-
-    assert response is None
+    assert response.status_code == 403
     transport.handle_update.assert_not_called()
 
 
-def test_webhook_preserves_transport_rejection():
-    transport = MagicMock()
+def test_webhook_missing_secret_token():
+    client, transport = make_client()
+
+    response = client.post("/webhook/telegram", json={"update_id": 1})
+
+    assert response.status_code == 403
+    transport.handle_update.assert_not_called()
+
+
+def test_webhook_malformed_json():
+    client, transport = make_client()
+
+    response = client.post(
+        "/webhook/telegram",
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+        content=b"{not-json",
+    )
+
+    assert response.status_code == 400
+    transport.handle_update.assert_not_called()
+
+
+def test_webhook_transport_returns_none():
+    client, transport = make_client()
     transport.handle_update.return_value = None
 
-    response = TelegramWebhookAdapter(transport).handle_update({"message": {"chat": {"id": 123}}})
+    response = client.post(
+        "/webhook/telegram",
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+        json={"message": {"chat": {"id": 42}}},
+    )
 
-    assert response is None
-    transport.handle_update.assert_called_once()
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    transport.handle_update.assert_called_once_with({"message": {"chat": {"id": 42}}})
