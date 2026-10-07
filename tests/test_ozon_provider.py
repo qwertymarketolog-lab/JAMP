@@ -29,7 +29,7 @@ def test_ozon_200_valid_schema():
     http.post.assert_awaited_once()
 
 
-async def test_ozon_200_invalid_schema():
+def test_ozon_200_invalid_schema():
     http = AsyncMock()
     http.post.return_value = response(200, {"items": [{"product_id": "123"}]})
     with patch("jamp.provider.ozon.httpx.AsyncClient") as factory:
@@ -60,7 +60,7 @@ def test_ozon_5xx_server_error(status_code):
     http.post.return_value = response(status_code, {"error": "server"})
     with patch("jamp.provider.ozon.httpx.AsyncClient") as factory:
         factory.return_value.__aenter__.return_value = http
-        result = await OzonProviderAdapter("client", "key").fetch_product_info("offer-1")
+        result = asyncio.run(OzonProviderAdapter("client", "key").fetch_product_info("offer-1"))
 
     assert result.status is EvidenceStatus.INCONCLUSIVE
     assert result.decision is ProviderDecision.REFUSE
