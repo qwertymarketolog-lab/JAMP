@@ -17,9 +17,7 @@ class TelegramTransport:
     def __init__(self, client_adapter: Any) -> None:
         self.client_adapter = client_adapter
 
-    def handle_update(
-        self, update: dict[str, Any]
-    ) -> TelegramTransportResponse | None:
+    def handle_update(self, update: dict[str, Any]) -> TelegramTransportResponse | None:
         if not isinstance(update, dict):
             return None
 
@@ -33,17 +31,14 @@ class TelegramTransport:
 
         chat_id = chat.get("id")
         text = message.get("text")
-        if (
-            not isinstance(chat_id, int)
-            or not isinstance(text, str)
-            or not text.strip()
-        ):
+        if not isinstance(chat_id, int) or not isinstance(text, str) or not text.strip():
             return None
 
         result = self.client_adapter.execute_payload({"prompt": text})
-        if getattr(result, "status", None) == "EXECUTE" or getattr(
-            result, "decision", None
-        ) == "EXECUTE":
+        if (
+            getattr(result, "status", None) == "EXECUTE"
+            or getattr(result, "decision", None) == "EXECUTE"
+        ):
             response_text = getattr(result, "output", "") or ""
         else:
             response_text = f"REFUSE: {getattr(result, 'reason', 'unknown_refusal')}"
