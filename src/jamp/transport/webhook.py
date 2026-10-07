@@ -22,8 +22,10 @@ def create_telegram_webhook_router(
     @router.post("/webhook/telegram")
     async def telegram_webhook(request: Request) -> dict[str, str]:
         supplied_token = request.headers.get(TELEGRAM_SECRET_HEADER)
-        if not secret_token or not supplied_token or not hmac.compare_digest(
-            supplied_token, secret_token
+        if (
+            not secret_token
+            or not supplied_token
+            or not hmac.compare_digest(supplied_token, secret_token)
         ):
             raise HTTPException(status_code=403, detail="Forbidden")
 
