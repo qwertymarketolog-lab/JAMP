@@ -25,6 +25,7 @@ jamp-run = "jamp.cli:main"
 [project.optional-dependencies]
 dev = [
   "pytest>=8,<9",
+  "pytest-asyncio>=0.24,<1",
   "pytest-mock>=3,<4",
   "httpx2>=2,<3",
   "mypy>=1.11,<2",
