@@ -72,7 +72,7 @@ def test_ozon_timeout():
     http.post.side_effect = __import__("httpx2").TimeoutException("timeout")
     with patch("jamp.provider.ozon.httpx.AsyncClient") as factory:
         factory.return_value.__aenter__.return_value = http
-        result = await OzonProviderAdapter("client", "key").fetch_product_info("offer-1")
+        result = asyncio.run(OzonProviderAdapter("client", "key").fetch_product_info("offer-1"))
 
     assert result.status is EvidenceStatus.INCONCLUSIVE
     assert result.decision is ProviderDecision.REFUSE
