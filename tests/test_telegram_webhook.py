@@ -6,9 +6,7 @@ from jamp.transport.telegram_webhook import TelegramWebhookAdapter
 
 def test_webhook_forwards_valid_update():
     transport = MagicMock()
-    expected = TelegramTransportResponse(
-        chat_id=123, text="Hello", trace_id="trace-1"
-    )
+    expected = TelegramTransportResponse(chat_id=123, text="Hello", trace_id="trace-1")
     transport.handle_update.return_value = expected
 
     response = TelegramWebhookAdapter(transport).handle_update(
@@ -48,9 +46,7 @@ def test_webhook_preserves_transport_rejection():
     transport = MagicMock()
     transport.handle_update.return_value = None
 
-    response = TelegramWebhookAdapter(transport).handle_update(
-        {"message": {"chat": {"id": 123}}}
-    )
+    response = TelegramWebhookAdapter(transport).handle_update({"message": {"chat": {"id": 123}}})
 
     assert response is None
     transport.handle_update.assert_called_once()
