@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -74,7 +75,12 @@ class OzonProviderAdapter:
             return self._refuse("upstream_connect_error")
 
         if 400 <= response.status_code < 500:
-            return self._refuse("upstream_auth_error" if response.status_code in {401, 403} else "upstream_client_error")
+            reason = (
+                "upstream_auth_error"
+                if response.status_code in {401, 403}
+                else "upstream_client_error"
+            )
+            return self._refuse(reason)
         if response.status_code >= 500:
             return self._refuse("upstream_server_error")
         if response.status_code < 200 or response.status_code >= 300:
@@ -107,6 +113,7 @@ class OzonProviderAdapter:
                 "offer_id": offer_id,
                 "http_status": response.status_code,
                 "endpoint": "/v3/product/info/list",
+                "retrieved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             },
         )
         return OzonProviderResult(
