@@ -33,7 +33,11 @@ class TelegramTransport:
 
         chat_id = chat.get("id")
         text = message.get("text")
-        if not isinstance(chat_id, int) or not isinstance(text, str) or not text.strip():
+        if (
+            not isinstance(chat_id, int)
+            or not isinstance(text, str)
+            or not text.strip()
+        ):
             return None
 
         result = self.client_adapter.execute_payload({"prompt": text})
