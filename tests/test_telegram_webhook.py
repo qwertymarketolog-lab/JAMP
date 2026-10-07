@@ -77,6 +77,4 @@ def test_webhook_transport_returns_none():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-    transport.handle_update.assert_called_once_with(
-        {"message": {"chat": {"id": 42}}}
-    )
+    transport.handle_update.assert_called_once_with({"message": {"chat": {"id": 42}}})
