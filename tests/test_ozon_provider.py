@@ -41,21 +41,19 @@ async def test_ozon_200_invalid_schema():
     assert result.reason == "schema_mismatch"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("status_code", [401, 403])
 def test_ozon_401_unauthorized(status_code):
     http = AsyncMock()
     http.post.return_value = response(status_code, {"error": "unauthorized"})
     with patch("jamp.provider.ozon.httpx.AsyncClient") as factory:
         factory.return_value.__aenter__.return_value = http
-        result = await OzonProviderAdapter("client", "key").fetch_product_info("offer-1")
+        result = asyncio.run(OzonProviderAdapter("client", "key").fetch_product_info("offer-1"))
 
     assert result.status is EvidenceStatus.INCONCLUSIVE
     assert result.decision is ProviderDecision.REFUSE
     assert result.reason == "upstream_auth_error"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("status_code", [500, 502, 503])
 def test_ozon_5xx_server_error(status_code):
     http = AsyncMock()
@@ -69,7 +67,6 @@ def test_ozon_5xx_server_error(status_code):
     assert result.reason == "upstream_server_error"
 
 
-@pytest.mark.asyncio
 def test_ozon_timeout():
     http = AsyncMock()
     http.post.side_effect = __import__("httpx2").TimeoutException("timeout")
@@ -82,7 +79,6 @@ def test_ozon_timeout():
     assert result.reason == "timeout_exceeded"
 
 
-@pytest.mark.asyncio
 def test_ozon_missing_credentials():
     with patch("jamp.provider.ozon.httpx.AsyncClient") as factory:
         result = asyncio.run(OzonProviderAdapter(None, "key").fetch_product_info("offer-1"))
