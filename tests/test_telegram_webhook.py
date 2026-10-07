@@ -5,8 +5,6 @@ from fastapi.testclient import TestClient
 
 from jamp.transport.telegram import TelegramTransport
 from jamp.transport.webhook import create_telegram_webhook_router
-
-
 SECRET = "test-secret"
 
 
