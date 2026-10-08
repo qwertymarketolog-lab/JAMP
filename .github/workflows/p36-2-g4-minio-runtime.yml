@@ -10,12 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: docker.io/bitnami/minio:2024.11.7
+        image: docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5
         env:
           MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_ROOT_PASSWORD: minioadminpassword
         ports:
           - 9000:9000
+          - 9001:9001
         options: >-
           --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
           --health-interval 5s
@@ -29,11 +30,10 @@ jobs:
           python-version: "3.11"
       - name: Install dev dependencies
         run: python -m pip install -e ".[dev]"
-      - name: Configure MinIO bucket
+      - name: Configure MinIO Bucket
         run: |
-          docker run --network host --rm docker.io/bitnami/minio-client:2024.11.5 alias set local http://127.0.0.1:9000 minioadmin minioadmin
-          docker run --network host --rm docker.io/bitnami/minio-client:2024.11.5 mb --ignore-existing local/jamp-g4
-          docker run --network host --rm docker.io/bitnami/minio-client:2024.11.5 anonymous set public local/jamp-g4
+          docker run --network host --rm docker.io/bitnamilegacy/minio-client:2025.7.23-debian-12-r5 alias set myminio http://127.0.0.1:9000 minioadmin minioadminpassword
+          docker run --network host --rm docker.io/bitnamilegacy/minio-client:2025.7.23-debian-12-r5 mb myminio/g4-audit-bucket || true
       - name: Run G4 runtime test
         env:
           JAMP_G4_MINIO_ENDPOINT: http://127.0.0.1:9000
