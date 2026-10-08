@@ -5,7 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.jamp.audit.exporter import AuditLogExporter, S3StorageAdapter, UploadResult
-from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION, ProvenanceTracker, validate_audit_trace
+from src.jamp.runtime.provenance import (
+    AUDIT_TRACE_SCHEMA_VERSION,
+    ProvenanceTracker,
+    validate_audit_trace,
+)
 
 
 def make_exporter(tmp_path, adapter):
@@ -16,7 +20,11 @@ def make_exporter(tmp_path, adapter):
 
 def test_incremental_cursor_and_idempotent_batch(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    audit.write_text(json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n", encoding="utf-8")
+    audit.write_text(
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
+        + "\n",
+        encoding="utf-8",
+    )
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
     exporter = make_exporter(tmp_path, adapter)
@@ -26,7 +34,11 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
     assert exporter.export_pending()["status"] == "UP_TO_DATE"
     assert adapter.upload.call_count == 1
     audit.write_text(
-        audit.read_text(encoding="utf-8") + json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"}) + "\n",
+        audit.read_text(encoding="utf-8")
+        + json.dumps(
+            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"}
+        )
+        + "\n",
         encoding="utf-8",
     )
     second = exporter.export_pending()
@@ -38,7 +50,8 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
 def test_partial_line_waits_for_newline(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_text(
-        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\npartial",
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
+        + "\npartial",
         encoding="utf-8",
     )
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -54,7 +67,8 @@ def test_partial_line_waits_for_newline(tmp_path):
 def test_retry_keeps_cursor_on_upload_failure(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_text(
-        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n",
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
+        + "\n",
         encoding="utf-8",
     )
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -112,15 +126,23 @@ def test_payload_sha256_changes_when_payload_changes(tmp_path):
     adapter.upload.return_value = UploadResult(True, 200)
     exporter = make_exporter(tmp_path, adapter)
 
-    payload_a = json.dumps(
-        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_a"}, sort_keys=True
-    ).encode() + b"\n"
+    payload_a = (
+        json.dumps(
+            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_a"},
+            sort_keys=True,
+        ).encode()
+        + b"\n"
+    )
     audit.write_bytes(payload_a)
     first = exporter.export_pending()
 
-    payload_b = json.dumps(
-        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_b"}, sort_keys=True
-    ).encode() + b"\n"
+    payload_b = (
+        json.dumps(
+            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_b"},
+            sort_keys=True,
+        ).encode()
+        + b"\n"
+    )
     audit.write_bytes(payload_a + payload_b)
     second = exporter.export_pending()
 
@@ -146,7 +168,9 @@ def test_trace_id_preserved_in_export_metadata(tmp_path):
         {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"},
         {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"},
     ]
-    payload = b"".join(json.dumps(record, sort_keys=True).encode() + b"\n" for record in records)
+    payload = b"".join(
+        json.dumps(record, sort_keys=True).encode() + b"\n" for record in records
+    )
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_bytes(payload)
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -167,9 +191,13 @@ def test_batch_identity_independent_of_cursor_offsets(tmp_path):
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
 
-    prefix = json.dumps(
-        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "prefix"}, sort_keys=True
-    ).encode() + b"\n"
+    prefix = (
+        json.dumps(
+            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "prefix"},
+            sort_keys=True,
+        ).encode()
+        + b"\n"
+    )
     audit.write_bytes(prefix + payload)
     first = make_exporter(tmp_path, adapter).export_pending()
 
@@ -182,9 +210,13 @@ def test_batch_identity_independent_of_cursor_offsets(tmp_path):
 
 def test_existing_upload_failure_preserves_cursor(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    payload = json.dumps(
-        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}, sort_keys=True
-    ).encode() + b"\n"
+    payload = (
+        json.dumps(
+            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"},
+            sort_keys=True,
+        ).encode()
+        + b"\n"
+    )
     audit.write_bytes(payload)
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(False, 503)
