@@ -19,9 +19,7 @@ class ProductOffer(BaseModel):
     price_rub: float = Field(..., gt=0, description="Цена в рублях")
     in_stock: bool = Field(..., description="Статус наличия")
     url: HttpUrl = Field(..., description="Прямая ссылка на товар")
-    image_url: HttpUrl | None = Field(
-        None, description="Ссылка на изображение товара"
-    )
+    image_url: HttpUrl | None = Field(None, description="Ссылка на изображение товара")
     raw_payload_hash: str = Field(
         ..., description="SHA-256 хэш сырого ответа API маркетплейса"
     )
