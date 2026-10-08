@@ -10,6 +10,8 @@ from typing import Any, Protocol
 
 import httpx2 as httpx
 
+from jamp.runtime.provenance import validate_audit_trace
+
 
 class UploadResult:
     def __init__(self, success: bool, status_code: int | None = None):
@@ -108,6 +110,7 @@ class AuditLogExporter:
         trace_ids: list[str] = []
         for line in payload.splitlines():
             record = json.loads(line)
+            validate_audit_trace(record)
             trace_id = record.get("trace_id")
             if isinstance(trace_id, str) and trace_id and trace_id not in trace_ids:
                 trace_ids.append(trace_id)
