@@ -11,11 +11,11 @@ import os
 import time
 from pathlib import Path
 
-from jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
-from jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
-
 import httpx2 as httpx
 import pytest
+
+from jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
+from jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
 
 
 MINIO_ENDPOINT = os.environ.get("JAMP_G4_MINIO_ENDPOINT")
