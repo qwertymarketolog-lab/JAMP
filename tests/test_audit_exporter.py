@@ -2,8 +2,10 @@ import hashlib
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.jamp.audit.exporter import AuditLogExporter, S3StorageAdapter, UploadResult
-from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION, ProvenanceTracker
+from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION, ProvenanceTracker, validate_audit_trace
 
 
 def make_exporter(tmp_path, adapter):
@@ -14,7 +16,7 @@ def make_exporter(tmp_path, adapter):
 
 def test_incremental_cursor_and_idempotent_batch(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    audit.write_text(json.dumps({"trace_id": "tr_1"}) + "\n", encoding="utf-8")
+    audit.write_text(json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n", encoding="utf-8")
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
     exporter = make_exporter(tmp_path, adapter)
@@ -24,7 +26,7 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
     assert exporter.export_pending()["status"] == "UP_TO_DATE"
     assert adapter.upload.call_count == 1
     audit.write_text(
-        audit.read_text(encoding="utf-8") + json.dumps({"trace_id": "tr_2"}) + "\n",
+        audit.read_text(encoding="utf-8") + json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"}) + "\n",
         encoding="utf-8",
     )
     second = exporter.export_pending()
@@ -35,7 +37,10 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
 
 def test_partial_line_waits_for_newline(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    audit.write_text(json.dumps({"trace_id": "tr_1"}) + "\npartial", encoding="utf-8")
+    audit.write_text(
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\npartial",
+        encoding="utf-8",
+    )
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
     exporter = make_exporter(tmp_path, adapter)
@@ -48,7 +53,10 @@ def test_partial_line_waits_for_newline(tmp_path):
 
 def test_retry_keeps_cursor_on_upload_failure(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    audit.write_text(json.dumps({"trace_id": "tr_1"}) + "\n", encoding="utf-8")
+    audit.write_text(
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n",
+        encoding="utf-8",
+    )
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.side_effect = [UploadResult(False, 503), UploadResult(True, 200)]
     exporter = make_exporter(tmp_path, adapter)
@@ -74,13 +82,14 @@ def test_trace_schema_version_required():
 
 def test_trace_schema_version_value():
     trace = ProvenanceTracker().create_trace("tool_execution_agent", (), "REFUSE", "", 0)
-    assert trace["schema_version"] == AUDIT_TRACE_SCHEMA_VERSION == "jamp-audit-trace-v0.1"
+    assert trace["schema_version"] == "jamp-audit-trace-v0.1"
 
 
 def test_trace_schema_version_missing_is_contract_violation():
     trace = ProvenanceTracker().create_trace("tool_execution_agent", (), "REFUSE", "", 0)
     del trace["schema_version"]
-    assert "schema_version" not in trace
+    with pytest.raises(ValueError, match="schema_version contract violation"):
+        validate_audit_trace(trace)
 
 
 def test_payload_sha256_matches_payload(tmp_path):
@@ -109,9 +118,10 @@ def test_payload_sha256_changes_when_payload_changes(tmp_path):
     audit.write_bytes(payload_a)
     first = exporter.export_pending()
 
-    audit.write_bytes(payload_a + json.dumps(
+    payload_b = json.dumps(
         {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_b"}, sort_keys=True
-    ).encode() + b"\n")
+    ).encode() + b"\n"
+    audit.write_bytes(payload_a + payload_b)
     second = exporter.export_pending()
 
     assert first["payload_sha256"] != second["payload_sha256"]
@@ -157,7 +167,9 @@ def test_batch_identity_independent_of_cursor_offsets(tmp_path):
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
 
-    prefix = b'{"schema_version":"jamp-audit-trace-v0.1","trace_id":"prefix"}\n'
+    prefix = json.dumps(
+        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "prefix"}, sort_keys=True
+    ).encode() + b"\n"
     audit.write_bytes(prefix + payload)
     first = make_exporter(tmp_path, adapter).export_pending()
 
