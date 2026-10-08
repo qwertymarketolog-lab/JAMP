@@ -1,7 +1,8 @@
-"""P27 incremental audit-log exporter."""
+"""P27 incremental audit-log exporter with P36.1 contract evidence."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,15 +10,26 @@ from typing import Any, Protocol
 
 import httpx2 as httpx
 
+from jamp.runtime.provenance import validate_audit_trace
+
 
 class UploadResult:
     def __init__(self, success: bool, status_code: int | None = None):
         self.success = success
         self.status_code = status_code
+        self.payload_sha256: str | None = None
+        self.batch_id: str | None = None
+        self.trace_ids: tuple[str, ...] = ()
+        self.metadata: dict[str, str] = {}
 
 
 class StorageAdapter(Protocol):
-    def upload(self, object_key: str, payload_bytes: bytes) -> UploadResult: ...
+    def upload(
+        self,
+        object_key: str,
+        payload_bytes: bytes,
+        metadata: dict[str, str] | None = None,
+    ) -> UploadResult: ...
 
 
 class S3StorageAdapter:
@@ -27,13 +39,21 @@ class S3StorageAdapter:
         self.endpoint_url = endpoint_url.rstrip("/")
         self.bucket_name = bucket_name
 
-    def upload(self, object_key: str, payload_bytes: bytes) -> UploadResult:
+    def upload(
+        self,
+        object_key: str,
+        payload_bytes: bytes,
+        metadata: dict[str, str] | None = None,
+    ) -> UploadResult:
         url = f"{self.endpoint_url}/{self.bucket_name}/{object_key}"
+        headers = {"Content-Type": "application/x-ndjson"}
+        for key, value in (metadata or {}).items():
+            headers[f"x-amz-meta-{key}"] = value
         try:
             response = httpx.put(
                 url,
                 content=payload_bytes,
-                headers={"Content-Type": "application/x-ndjson"},
+                headers=headers,
                 timeout=10.0,
             )
         except httpx.HTTPError:
@@ -81,6 +101,21 @@ class AuditLogExporter:
         except OSError:
             pass
 
+    @staticmethod
+    def _batch_identity(payload: bytes) -> str:
+        return "batch_" + hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def _trace_ids(payload: bytes) -> tuple[str, ...]:
+        trace_ids: list[str] = []
+        for line in payload.splitlines():
+            record = json.loads(line)
+            validate_audit_trace(record)
+            trace_id = record.get("trace_id")
+            if isinstance(trace_id, str) and trace_id and trace_id not in trace_ids:
+                trace_ids.append(trace_id)
+        return tuple(trace_ids)
+
     def export_pending(self) -> dict[str, Any]:
         if not self.audit_file_path.exists():
             return {"status": "NO_FILE", "exported_records": 0, "bytes_sent": 0}
@@ -115,9 +150,23 @@ class AuditLogExporter:
                 "end_offset": start,
             }
 
+        payload_bytes = bytes(payload)
         end = cursor
+        batch_id = self._batch_identity(payload_bytes)
+        trace_ids = self._trace_ids(payload_bytes)
+        metadata = {
+            "batch-id": batch_id,
+            "trace-ids": ",".join(trace_ids),
+        }
+        payload_sha256 = hashlib.sha256(payload_bytes).hexdigest()
         object_key = f"audit/{start}-{end}.jsonl"
-        result = self.storage_adapter.upload(object_key, bytes(payload))
+
+        result = self.storage_adapter.upload(object_key, payload_bytes, metadata)
+        result.payload_sha256 = payload_sha256
+        result.batch_id = batch_id
+        result.trace_ids = trace_ids
+        result.metadata = dict(metadata)
+
         if not result.success:
             return {
                 "status": "UPLOAD_FAILED",
@@ -126,14 +175,22 @@ class AuditLogExporter:
                 "start_offset": start,
                 "end_offset": start,
                 "object_key": object_key,
+                "payload_sha256": payload_sha256,
+                "batch_id": batch_id,
+                "trace_ids": list(trace_ids),
+                "storage_metadata": metadata,
             }
 
         self._write_cursor(end)
         return {
             "status": "SUCCESS",
             "exported_records": records,
-            "bytes_sent": len(payload),
+            "bytes_sent": len(payload_bytes),
             "start_offset": start,
             "end_offset": end,
             "object_key": object_key,
+            "payload_sha256": payload_sha256,
+            "batch_id": batch_id,
+            "trace_ids": list(trace_ids),
+            "storage_metadata": metadata,
         }
