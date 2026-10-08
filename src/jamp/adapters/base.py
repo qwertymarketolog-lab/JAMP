@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.jamp.adapters.dto import MarketplaceType, ProductOffer
 
@@ -12,8 +12,8 @@ class BaseMarketplaceAdapter(ABC):
     async def search_products(
         self,
         query: str,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[ProductOffer]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[ProductOffer]:
         """
         Ищет товары на площадке и возвращает список нормализованных офферов.
         Каждый оффер обязательно содержит provenance_hash и raw_payload_hash.
