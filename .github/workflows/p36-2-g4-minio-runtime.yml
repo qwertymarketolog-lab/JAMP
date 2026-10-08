@@ -1,0 +1,49 @@
+name: P36.2 G4 MinIO Runtime
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  g4-minio-runtime:
+    runs-on: ubuntu-latest
+    services:
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+        command: server /data --address :9000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dev dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Configure MinIO bucket
+        run: |
+          docker run --network host --rm minio/mc:latest             alias set local http://127.0.0.1:9000 minioadmin minioadmin
+          docker run --network host --rm minio/mc:latest             mb --ignore-existing local/jamp-g4
+          docker run --network host --rm minio/mc:latest             anonymous set public local/jamp-g4
+      - name: Run G4 runtime test
+        env:
+          JAMP_G4_MINIO_ENDPOINT: http://127.0.0.1:9000
+          JAMP_G4_MINIO_BUCKET: jamp-g4
+          JAMP_G4_EVIDENCE_PATH: artifacts/g4-runtime-evidence.json
+        run: python -m pytest -q tests/test_g4_minio_runtime.py
+      - name: Upload G4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-minio-runtime-evidence
+          path: artifacts/g4-runtime-evidence.json
+          if-no-files-found: warn
