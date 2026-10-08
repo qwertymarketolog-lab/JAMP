@@ -113,4 +113,6 @@ def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
         "status": result["status"],
     }
     EVIDENCE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE_PATH.write_text(\n        json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"\n    )
+    EVIDENCE_PATH.write_text(
+        json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
