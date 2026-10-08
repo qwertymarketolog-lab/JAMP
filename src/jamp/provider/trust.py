@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from jamp.aew.contract import EvidenceStatus
-
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Generic, TypeVar
+
+from jamp.aew.contract import EvidenceStatus
 
 
 T = TypeVar("T")
