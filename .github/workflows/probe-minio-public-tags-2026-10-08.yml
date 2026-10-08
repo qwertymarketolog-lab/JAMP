@@ -1,0 +1,30 @@
+name: Probe MinIO public tags
+
+on:
+  push:
+    branches:
+      - probe/minio-public-tags-2026-10-08
+
+jobs:
+  minio-pull:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pull and inspect candidates
+        shell: bash
+        run: |
+          set -u
+          tags=(
+            "docker.io/minio/minio:latest"
+            "docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
+            "quay.io/minio/minio:latest"
+            "quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z"
+          )
+          for image in "${tags[@]}"; do
+            echo "=== IMAGE: $image ==="
+            if docker pull "$image"; then
+              docker image inspect "$image" --format='repo={{index .RepoTags 0}} digests={{json .RepoDigests}}'
+              echo "PULL_RESULT=SUCCESS image=$image"
+            else
+              echo "PULL_RESULT=FAIL image=$image"
+            fi
+          done
