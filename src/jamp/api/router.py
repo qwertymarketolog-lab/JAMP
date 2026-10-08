@@ -5,8 +5,6 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from .sse import SSEEvent, stream_sse_events
-
 from .dto import (
     AttachmentResponse,
     AttachmentUploadRequest,
@@ -15,6 +13,7 @@ from .dto import (
     ExecutionRequest,
     ExecutionResult,
 )
+from .sse import SSEEvent, stream_sse_events
 
 router = APIRouter(prefix="/v1", tags=["JAMP API Gateway v0"])
 
@@ -31,7 +30,9 @@ async def _sse_not_implemented() -> AsyncIterator[str]:
         event="execution.refused",
         data={
             "reason": "BACKEND_ORCHESTRATION_UNAVAILABLE",
-            "message": "P32 transport contract is defined; backend orchestration is not configured.",
+            "message": (
+                "P32 transport contract is defined; backend orchestration is not configured."
+            ),
         },
     )
     async for chunk in stream_sse_events([event]):
