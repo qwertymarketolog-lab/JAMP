@@ -46,11 +46,11 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
 
 def test_partial_line_waits_for_newline(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    audit.write_text(
+    partial_record = (
         json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
-        + "\n",
-        encoding="utf-8",
+        + "\npartial"
     )
+    audit.write_text(partial_record, encoding="utf-8")
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
     exporter = make_exporter(tmp_path, adapter)
