@@ -14,12 +14,8 @@ from src.jamp.adapters import (
 
 def test_provenance_hash_determinism():
     filters = {"category": "electronics", "sort": "price_asc"}
-    hash1 = compute_request_provenance_hash(
-        MarketplaceType.OZON, "Sony WH-1000XM5", filters
-    )
-    hash2 = compute_request_provenance_hash(
-        MarketplaceType.OZON, "Sony WH-1000XM5 ", filters
-    )
+    hash1 = compute_request_provenance_hash(MarketplaceType.OZON, "Sony WH-1000XM5", filters)
+    hash2 = compute_request_provenance_hash(MarketplaceType.OZON, "Sony WH-1000XM5 ", filters)
 
     assert hash1 == hash2
     assert len(hash1) == 64
@@ -35,18 +31,14 @@ def test_provenance_hash_filters_none_normalization():
 
 def test_provenance_hash_excludes_credentials():
     filters = {"category": "audio"}
-    hash_clean = compute_request_provenance_hash(
-        MarketplaceType.WILDBERRIES, "headphones", filters
-    )
+    hash_clean = compute_request_provenance_hash(MarketplaceType.WILDBERRIES, "headphones", filters)
 
     assert "api_key" not in json.dumps(filters)
     assert isinstance(hash_clean, str)
 
 
 def test_product_offer_contract_validation():
-    provenance = compute_request_provenance_hash(
-        MarketplaceType.YANDEX_MARKET, "phone", None
-    )
+    provenance = compute_request_provenance_hash(MarketplaceType.YANDEX_MARKET, "phone", None)
     raw_payload_hash = hashlib.sha256(b'{"raw": "payload"}').hexdigest()
 
     offer = ProductOffer(
