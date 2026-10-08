@@ -1,9 +1,8 @@
 name: Probe MinIO public tags
 
 on:
-  push:
-    branches:
-      - probe/minio-public-tags-2026-10-08
+  pull_request:
+    branches: [main]
 
 jobs:
   minio-pull:
