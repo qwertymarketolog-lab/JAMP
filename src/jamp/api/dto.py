@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl
 
 
-class AttachmentType(str, Enum):
+class AttachmentType(StrEnum):
     IMAGE = "image"
     DOCUMENT = "document"
     AUDIO = "audio"
@@ -33,12 +33,16 @@ class ChatCompletionOptions(BaseModel):
     adapters: list[str] = Field(
         default_factory=lambda: ["default"], description="Список подключаемых адаптеров"
     )
-    require_evidence: bool = Field(default=True, description="Требовать ли публикацию provenances/evidence")
+    require_evidence: bool = Field(
+        default=True, description="Требовать ли публикацию provenances/evidence"
+    )
     timeout_seconds: int = Field(default=30, ge=1, le=120)
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str = Field(..., description="Capability / Model ID (e.g., capability/marketplace-router)")
+    model: str = Field(
+        ..., description="Capability / Model ID (e.g., capability/marketplace-router)"
+    )
     messages: list[ChatMessage]
     stream: bool = Field(default=False, description="Флаг потоковой SSE-отдачи")
     options: ChatCompletionOptions | None = Field(default_factory=ChatCompletionOptions)
