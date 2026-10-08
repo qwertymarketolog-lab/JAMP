@@ -21,8 +21,7 @@ def make_exporter(tmp_path, adapter):
 def test_incremental_cursor_and_idempotent_batch(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_text(
-        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
-        + "\n",
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n",
         encoding="utf-8",
     )
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -35,9 +34,7 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
     assert adapter.upload.call_count == 1
     audit.write_text(
         audit.read_text(encoding="utf-8")
-        + json.dumps(
-            {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"}
-        )
+        + json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"})
         + "\n",
         encoding="utf-8",
     )
@@ -50,8 +47,7 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
 def test_partial_line_waits_for_newline(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_text(
-        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
-        + "\npartial",
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\npartial",
         encoding="utf-8",
     )
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -168,9 +164,7 @@ def test_trace_id_preserved_in_export_metadata(tmp_path):
         {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"},
         {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_2"},
     ]
-    payload = b"".join(
-        json.dumps(record, sort_keys=True).encode() + b"\n" for record in records
-    )
+    payload = b"".join(json.dumps(record, sort_keys=True).encode() + b"\n" for record in records)
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_bytes(payload)
     adapter = MagicMock(spec=S3StorageAdapter)
