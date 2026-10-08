@@ -14,12 +14,12 @@ def ev(value, status=EvidenceStatus.OBSERVED):
     return EvidenceValue(value=value, status=status, source="ozon")
 
 
-def manufacturer_ref(name="official-manufacturer"):
+def manufacturer_ref(name="official-manufacturer", identity="Реноме"):
     return EvidenceRef(
         source="official_manufacturer",
         locator=name,
         status=EvidenceStatus.VERIFIED,
-        identity="Реноме",
+        identity=identity,
     )
 
 
@@ -112,7 +112,7 @@ def test_st_007_conflicting_manufacturer_sources():
             manufacturer_identity=ev("Реноме", EvidenceStatus.VERIFIED),
             manufacturer_evidence=(
                 manufacturer_ref("official-renome"),
-                manufacturer_ref("conflicting-source"),
+                manufacturer_ref("conflicting-source", identity="Other Manufacturer"),
             ),
         )
     )
