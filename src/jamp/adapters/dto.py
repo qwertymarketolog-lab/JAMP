@@ -20,12 +20,8 @@ class ProductOffer(BaseModel):
     in_stock: bool = Field(..., description="Статус наличия")
     url: HttpUrl = Field(..., description="Прямая ссылка на товар")
     image_url: HttpUrl | None = Field(None, description="Ссылка на изображение товара")
-    raw_payload_hash: str = Field(
-        ..., description="SHA-256 хэш сырого ответа API маркетплейса"
-    )
-    provenance_hash: str = Field(
-        ..., description="Детерминированный SHA-256 хэш контекста запроса"
-    )
+    raw_payload_hash: str = Field(..., description="SHA-256 хэш сырого ответа API маркетплейса")
+    provenance_hash: str = Field(..., description="Детерминированный SHA-256 хэш контекста запроса")
 
 
 def compute_request_provenance_hash(
@@ -43,8 +39,7 @@ def compute_request_provenance_hash(
         "marketplace": str(marketplace),
         "query": query.strip().lower(),
         "filters": {
-            k: sorted(v) if isinstance(v, list) else v
-            for k, v in sorted(safe_filters.items())
+            k: sorted(v) if isinstance(v, list) else v for k, v in sorted(safe_filters.items())
         },
     }
     dumped = json.dumps(normalized_payload, sort_keys=True, separators=(",", ":"))
