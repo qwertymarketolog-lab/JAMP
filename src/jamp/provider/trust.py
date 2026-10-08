@@ -94,6 +94,8 @@ def classify_seller(profile: SellerTrustProfile) -> SellerTrustProfile:
         return _classified(profile, SellerType.UNKNOWN, TrustState.INCONCLUSIVE)
 
     if identity_values and identities:
+        if identities != identity_values:
+            return _classified(profile, SellerType.UNKNOWN, TrustState.INCONCLUSIVE)
         return _classified(profile, SellerType.MANUFACTURER, TrustState.VERIFIED)
 
     if (
