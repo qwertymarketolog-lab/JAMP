@@ -26,15 +26,22 @@ jobs:
       - name: Configure MinIO bucket
         run: |
           python - <<'PY'
-          import httpx
-          response = httpx.put(
-              "http://127.0.0.1:9000/jamp-g4",
-              timeout=10.0,
-              auth=("minioadmin", "minioadmin"),
-          )
-          if response.status_code not in (200, 204, 409):
-              raise SystemExit(f"bucket create failed: {response.status_code} {response.text}")
-          print(f"bucket create status={response.status_code}")
+          import base64
+          import urllib.error
+          import urllib.request
+          request = urllib.request.Request("http://127.0.0.1:9000/jamp-g4", method="PUT")
+          token = base64.b64encode(b"minioadmin:minioadmin").decode()
+          request.add_header("Authorization", "Basic " + token)
+          try:
+              with urllib.request.urlopen(request, timeout=10) as response:
+                  status = response.status
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              if status != 409:
+                  raise
+          if status not in (200, 204, 409):
+              raise SystemExit(f"bucket create failed: {status}")
+          print(f"bucket create status={status}")
           PY
       - name: Run G4 runtime test
         env:
