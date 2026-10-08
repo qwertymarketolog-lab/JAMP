@@ -39,6 +39,7 @@ class EvidenceRef:
     source: str
     locator: str
     status: EvidenceStatus
+    identity: str | None = None
     raw_hash: str | None = None
 
 
@@ -68,9 +69,9 @@ def classify_seller(profile: SellerTrustProfile) -> SellerTrustProfile:
         return _classified(profile, SellerType.UNKNOWN, TrustState.UNKNOWN)
 
     identities = {
-        ref.locator
+        ref.identity
         for ref in profile.manufacturer_evidence
-        if ref.status is EvidenceStatus.VERIFIED
+        if ref.status is EvidenceStatus.VERIFIED and ref.identity
     }
     identity_values = {
         profile.manufacturer_identity.value
