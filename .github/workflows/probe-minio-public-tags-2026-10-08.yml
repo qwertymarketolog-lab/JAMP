@@ -17,6 +17,7 @@ jobs:
             "docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
             "quay.io/minio/minio:latest"
             "quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z"
+            "ghcr.io/golithus/minio:RELEASE.2025-10-15T17-29-55Z"
           )
           for image in "${tags[@]}"; do
             echo "=== IMAGE: $image ==="
