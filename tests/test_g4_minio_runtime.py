@@ -14,8 +14,8 @@ from pathlib import Path
 import httpx2 as httpx
 import pytest
 
-from src.jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
-from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
+from jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
+from jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
 
 
 MINIO_ENDPOINT = os.environ.get("JAMP_G4_MINIO_ENDPOINT")
@@ -113,4 +113,4 @@ def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
         "status": result["status"],
     }
     EVIDENCE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    EVIDENCE_PATH.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    EVIDENCE_PATH.write_text(\n        json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"\n    )
