@@ -21,7 +21,7 @@ jobs:
           chmod +x /tmp/minio
           sudo mv /tmp/minio /usr/local/bin/minio
 
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2025-08-13T08-35-41Z -o /tmp/mc
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
           chmod +x /tmp/mc
           sudo mv /tmp/mc /usr/local/bin/mc
 
