@@ -11,6 +11,11 @@ EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f
 AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.1"
 
 
+def validate_audit_trace(trace: dict[str, Any]) -> None:
+    if trace.get("schema_version") != AUDIT_TRACE_SCHEMA_VERSION:
+        raise ValueError("AuditTrace schema_version contract violation")
+
+
 class ProvenanceTracker:
     @staticmethod
     def output_digest(output: Any) -> str:
@@ -66,4 +71,5 @@ class ProvenanceTracker:
                 "reason": "FAIL_CLOSED_ZERO_QUALIFIED_MODELS",
                 "message": f"Execution blocked: no model satisfies {list(required_caps)}.",
             }
+        validate_audit_trace(trace)
         return trace
