@@ -11,8 +11,8 @@ import os
 import time
 from pathlib import Path
 
-import httpx2 as httpx
 import pytest
+import httpx2 as httpx
 
 from jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
 from jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
