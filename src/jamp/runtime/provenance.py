@@ -8,6 +8,7 @@ from typing import Any
 
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1"
+AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.1"
 
 
 class ProvenanceTracker:
@@ -32,6 +33,7 @@ class ProvenanceTracker:
         request_id: str | None = None,
     ) -> dict[str, Any]:
         trace = {
+            "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
             "trace_id": f"trace_{uuid.uuid4().hex[:8]}",
             "timestamp": datetime.now(UTC).isoformat(),
             "request_id": request_id or f"req_{uuid.uuid4().hex[:8]}",
