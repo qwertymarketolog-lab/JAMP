@@ -72,13 +72,15 @@ def classify_seller(profile: SellerTrustProfile) -> SellerTrustProfile:
         for ref in profile.manufacturer_evidence
         if ref.status is EvidenceStatus.VERIFIED and ref.identity
     }
-    identity_values = {
-        profile.manufacturer_identity.value
-    } if (
-        profile.manufacturer_identity is not None
-        and profile.manufacturer_identity.status is EvidenceStatus.VERIFIED
-        and profile.manufacturer_identity.value
-    ) else set()
+    identity_values = (
+        {profile.manufacturer_identity.value}
+        if (
+            profile.manufacturer_identity is not None
+            and profile.manufacturer_identity.status is EvidenceStatus.VERIFIED
+            and profile.manufacturer_identity.value
+        )
+        else set()
+    )
 
     if len(identity_values) > 1:
         return _classified(profile, SellerType.UNKNOWN, TrustState.INCONCLUSIVE)
