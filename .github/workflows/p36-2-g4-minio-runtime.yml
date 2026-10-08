@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: quay.io/minio/minio:latest
+        image: quay.io/minio/aistor/minio:RELEASE.2026-03-26T21-24-40Z
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
@@ -31,9 +31,9 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Configure MinIO bucket
         run: |
-          docker run --network host --rm minio/mc:latest alias set local http://127.0.0.1:9000 minioadmin minioadmin
-          docker run --network host --rm minio/mc:latest mb --ignore-existing local/jamp-g4
-          docker run --network host --rm minio/mc:latest anonymous set public local/jamp-g4
+          docker run --network host --rm quay.io/minio/aistor/mc:RELEASE.2026-03-12T04-18-55Z alias set local http://127.0.0.1:9000 minioadmin minioadmin
+          docker run --network host --rm quay.io/minio/aistor/mc:RELEASE.2026-03-12T04-18-55Z mb --ignore-existing local/jamp-g4
+          docker run --network host --rm quay.io/minio/aistor/mc:RELEASE.2026-03-12T04-18-55Z anonymous set public local/jamp-g4
       - name: Run G4 runtime test
         env:
           JAMP_G4_MINIO_ENDPOINT: http://127.0.0.1:9000
