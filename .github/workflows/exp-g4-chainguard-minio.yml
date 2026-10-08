@@ -25,23 +25,23 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Configure MinIO bucket
         run: |
+          python -m pip install boto3
           python - <<'PY'
-          import base64
-          import urllib.error
-          import urllib.request
-          request = urllib.request.Request("http://127.0.0.1:9000/jamp-g4", method="PUT")
-          token = base64.b64encode(b"minioadmin:minioadmin").decode()
-          request.add_header("Authorization", "Basic " + token)
+          import boto3
+          from botocore.config import Config
+          client = boto3.client(
+              "s3",
+              endpoint_url="http://127.0.0.1:9000",
+              aws_access_key_id="minioadmin",
+              aws_secret_access_key="minioadmin",
+              region_name="us-east-1",
+              config=Config(s3={"addressing_style": "path"}),
+          )
           try:
-              with urllib.request.urlopen(request, timeout=10) as response:
-                  status = response.status
-          except urllib.error.HTTPError as exc:
-              status = exc.code
-              if status != 409:
-                  raise
-          if status not in (200, 204, 409):
-              raise SystemExit(f"bucket create failed: {status}")
-          print(f"bucket create status={status}")
+              client.create_bucket(Bucket="jamp-g4")
+              print("bucket create status=200")
+          except client.exceptions.BucketAlreadyOwnedByYou:
+              print("bucket create status=409")
           PY
       - name: Run G4 runtime test
         env:
