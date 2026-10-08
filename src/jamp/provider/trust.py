@@ -6,7 +6,6 @@ from typing import Generic, TypeVar
 
 from jamp.aew.contract import EvidenceStatus
 
-
 T = TypeVar("T")
 
 
