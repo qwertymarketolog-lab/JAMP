@@ -19,7 +19,7 @@ def manufacturer_ref(name="official-manufacturer"):
         source="official_manufacturer",
         locator=name,
         status=EvidenceStatus.VERIFIED,
-        identity="Реноме" if name == "official-renome" else "Other Manufacturer",
+        identity="Реноме",
     )
 
 
