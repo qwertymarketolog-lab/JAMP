@@ -1,0 +1,17 @@
+name: Probe MinIO public candidate
+
+on:
+  push:
+    branches:
+      - probe/minio-pull-2025-09-07
+
+jobs:
+  docker-pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull exact public MinIO candidate
+        run: |
+          set -euxo pipefail
+          docker pull minio/minio:RELEASE.2025-09-07T16-13-09Z
+          docker image inspect minio/minio:RELEASE.2025-09-07T16-13-09Z \
+            --format='repo={{index .RepoTags 0}} digests={{json .RepoDigests}}'
