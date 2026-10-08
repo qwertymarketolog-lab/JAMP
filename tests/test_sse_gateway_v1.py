@@ -21,12 +21,18 @@ def test_encode_sse_event_preserves_event_id():
 
 def test_stream_sse_events_forwards_events_in_order():
     async def collect():
-        return [item async for item in stream_sse_events(
-            [
-                SSEEvent("execution.started", {"execution_id": "ex-1"}),
-                SSEEvent("execution.completed", {"execution_id": "ex-1", "status": "SUCCESS"}),
-            ]
-        )]
+        return [
+            item
+            async for item in stream_sse_events(
+                [
+                    SSEEvent("execution.started", {"execution_id": "ex-1"}),
+                    SSEEvent(
+                        "execution.completed",
+                        {"execution_id": "ex-1", "status": "SUCCESS"},
+                    ),
+                ]
+            )
+        ]
 
     chunks = asyncio.run(collect())
 
@@ -38,9 +44,12 @@ def test_stream_sse_events_forwards_events_in_order():
 
 def test_stream_sse_events_does_not_invent_provenance():
     async def collect():
-        return [item async for item in stream_sse_events(
-            [SSEEvent("execution.completed", {"status": "SUCCESS"})]
-        )]
+        return [
+            item
+            async for item in stream_sse_events(
+                [SSEEvent("execution.completed", {"status": "SUCCESS"})]
+            )
+        ]
 
     chunk = asyncio.run(collect())[0]
 
