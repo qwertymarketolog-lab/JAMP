@@ -8,21 +8,6 @@ on:
 jobs:
   g4-minio-runtime:
     runs-on: ubuntu-latest
-    services:
-      minio:
-        image: quay.io/minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadminpassword
-        ports:
-          - 9000:9000
-          - 9001:9001
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 20
-        command: server /data --console-address ":9001"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,15 +15,34 @@ jobs:
           python-version: "3.11"
       - name: Install dev dependencies
         run: python -m pip install -e ".[dev]"
-      - name: Install MinIO Client
+      - name: Install MinIO Server and Client
         run: |
+          curl -fsSL https://dl.min.io/server/minio/release/linux-amd64/minio -o /tmp/minio
+          chmod +x /tmp/minio
+          sudo mv /tmp/minio /usr/local/bin/minio
+
           curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2025-08-13T08-35-41Z -o /tmp/mc
           chmod +x /tmp/mc
           sudo mv /tmp/mc /usr/local/bin/mc
+
+          minio --version
           mc --version
+      - name: Start MinIO Server Background
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadminpassword
+        run: |
+          mkdir -p /tmp/minio-data
+          nohup minio server /tmp/minio-data --console-address ":9001" > /tmp/minio.log 2>&1 &
+
+          echo "Waiting for MinIO to start..."
+          until curl -fsS http://127.0.0.1:9000/minio/health/live; do
+            sleep 1
+          done
+          echo "MinIO is up and running!"
       - name: Configure MinIO bucket
         run: |
-          mc alias set local http://127.0.0.1:9000 minioadmin minioadmin
+          mc alias set local http://127.0.0.1:9000 minioadmin minioadminpassword
           mc mb --ignore-existing local/jamp-g4
           mc anonymous set public local/jamp-g4
       - name: Run G4 runtime test
