@@ -1,7 +1,7 @@
 import hashlib
 import json
 from enum import StrEnum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -19,7 +19,7 @@ class ProductOffer(BaseModel):
     price_rub: float = Field(..., gt=0, description="Цена в рублях")
     in_stock: bool = Field(..., description="Статус наличия")
     url: HttpUrl = Field(..., description="Прямая ссылка на товар")
-    image_url: Optional[HttpUrl] = Field(None, description="Ссылка на изображение товара")
+    image_url: HttpUrl | None = Field(None, description="Ссылка на изображение товара")
     raw_payload_hash: str = Field(..., description="SHA-256 хэш сырого ответа API маркетплейса")
     provenance_hash: str = Field(..., description="Детерминированный SHA-256 хэш контекста запроса")
 
@@ -27,7 +27,7 @@ class ProductOffer(BaseModel):
 def compute_request_provenance_hash(
     marketplace: MarketplaceType,
     query: str,
-    filters: Optional[Dict[str, Any]] = None,
+    filters: dict[str, Any] | None = None,
 ) -> str:
     """
     Вычисляет детерминированный SHA-256 хэш контекста запроса.
