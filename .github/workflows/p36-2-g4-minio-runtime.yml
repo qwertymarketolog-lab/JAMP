@@ -18,6 +18,7 @@ jobs:
           - 9000:9000
           - 9001:9001
         options: >-
+          --user 0:0
           --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
           --health-interval 5s
           --health-timeout 3s
