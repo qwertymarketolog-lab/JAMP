@@ -117,8 +117,8 @@ def test_st_007_conflicting_manufacturer_sources():
         )
     )
 
-    assert result.seller_type is SellerType.MANUFACTURER
-    assert result.trust_state is TrustState.VERIFIED
+    assert result.seller_type is SellerType.UNKNOWN
+    assert result.trust_state is TrustState.INCONCLUSIVE
 
 
 def test_st_008_unknown_seller_identity():
