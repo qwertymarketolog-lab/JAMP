@@ -46,9 +46,7 @@ def test_incremental_cursor_and_idempotent_batch(tmp_path):
 
 def test_partial_line_waits_for_newline(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
-    partial_record = json.dumps(
-        {"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}
-    )
+    partial_record = json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
     partial_record += "\npartial"
     audit.write_text(partial_record, encoding="utf-8")
     adapter = MagicMock(spec=S3StorageAdapter)
@@ -64,8 +62,7 @@ def test_partial_line_waits_for_newline(tmp_path):
 def test_retry_keeps_cursor_on_upload_failure(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_text(
-        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"})
-        + "\n",
+        json.dumps({"schema_version": AUDIT_TRACE_SCHEMA_VERSION, "trace_id": "tr_1"}) + "\n",
         encoding="utf-8",
     )
     adapter = MagicMock(spec=S3StorageAdapter)
