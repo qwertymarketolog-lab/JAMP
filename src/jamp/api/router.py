@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException
@@ -14,6 +13,7 @@ from .dto import (
     ExecutionRequest,
     ExecutionResult,
 )
+from .sse import SSEEvent, stream_sse_events
 
 router = APIRouter(prefix="/v1", tags=["JAMP API Gateway v0"])
 
@@ -26,11 +26,17 @@ def _not_implemented() -> None:
 
 
 async def _sse_not_implemented() -> AsyncIterator[str]:
-    payload = {
-        "code": "NOT_IMPLEMENTED",
-        "message": "P32 transport contract is defined; backend orchestration is not configured.",
-    }
-    yield f"event: error\ndata: {json.dumps(payload)}\n\n"
+    event = SSEEvent(
+        event="execution.refused",
+        data={
+            "reason": "BACKEND_ORCHESTRATION_UNAVAILABLE",
+            "message": (
+                "P32 transport contract is defined; backend orchestration is not configured."
+            ),
+        },
+    )
+    async for chunk in stream_sse_events([event]):
+        yield chunk
 
 
 @router.post("/attachments", response_model=AttachmentResponse, status_code=201)
