@@ -6,6 +6,8 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from .sse import SSEEvent, stream_sse_events
+
 from .dto import (
     AttachmentResponse,
     AttachmentUploadRequest,
