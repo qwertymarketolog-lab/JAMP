@@ -25,9 +25,17 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Configure MinIO bucket
         run: |
-          docker run --network host --rm minio/mc:latest alias set local http://127.0.0.1:9000 minioadmin minioadmin
-          docker run --network host --rm minio/mc:latest mb --ignore-existing local/jamp-g4
-          docker run --network host --rm minio/mc:latest anonymous set public local/jamp-g4
+          python - <<'PY'
+          import httpx
+          response = httpx.put(
+              "http://127.0.0.1:9000/jamp-g4",
+              timeout=10.0,
+              auth=("minioadmin", "minioadmin"),
+          )
+          if response.status_code not in (200, 204, 409):
+              raise SystemExit(f"bucket create failed: {response.status_code} {response.text}")
+          print(f"bucket create status={response.status_code}")
+          PY
       - name: Run G4 runtime test
         env:
           JAMP_G4_MINIO_ENDPOINT: http://127.0.0.1:9000
