@@ -1,0 +1,14 @@
+name: Probe MinIO fixed tags
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pull-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull MinIO server fixed tag
+        run: docker pull minio/minio:RELEASE.2025-09-07T16-13-09Z
+      - name: Pull MinIO client fixed tag
+        run: docker pull minio/mc:RELEASE.2025-08-13T08-35-41Z
