@@ -20,8 +20,6 @@ from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
 
 MINIO_ENDPOINT = os.environ.get("JAMP_G4_MINIO_ENDPOINT")
 MINIO_BUCKET = os.environ.get("JAMP_G4_MINIO_BUCKET", "jamp-g4")
-MINIO_ACCESS_KEY = os.environ.get("JAMP_G4_MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.environ.get("JAMP_G4_MINIO_SECRET_KEY", "minioadmin")
 EVIDENCE_PATH = Path(os.environ.get("JAMP_G4_EVIDENCE_PATH", "artifacts/g4-runtime-evidence.json"))
 
 
@@ -46,35 +44,15 @@ def _wait_for_minio() -> None:
     raise RuntimeError(f"MinIO health check failed: {last_error}")
 
 
-def _put_object(endpoint: str, bucket: str, key: str, payload: bytes) -> None:
-    response = httpx.put(
-        f"{endpoint.rstrip('/')}/{bucket}/{key}",
-        content=payload,
-        timeout=10.0,
-        auth=(MINIO_ACCESS_KEY, MINIO_SECRET_KEY),
-    )
-    response.raise_for_status()
-
-
-def _get_object(endpoint: str, bucket: str, key: str) -> bytes:
-    response = httpx.get(
-        f"{endpoint.rstrip('/')}/{bucket}/{key}",
-        timeout=10.0,
-        auth=(MINIO_ACCESS_KEY, MINIO_SECRET_KEY),
-    )
-    response.raise_for_status()
-    return response.content
-
-
 def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
     _require_runtime()
     _wait_for_minio()
 
-    # The MinIO service used by CI must already expose the configured bucket.
-    # The test deliberately avoids adding a second storage implementation.
+    adapter = S3StorageAdapter(MINIO_ENDPOINT, MINIO_BUCKET)
     probe_key = "g4/probe.txt"
-    _put_object(MINIO_ENDPOINT, MINIO_BUCKET, probe_key, b"g4-probe")
-    assert _get_object(MINIO_ENDPOINT, MINIO_BUCKET, probe_key) == b"g4-probe"
+    probe_result = adapter.upload(probe_key, b"g4-probe", {"purpose": "runtime-probe"})
+    assert probe_result.success
+    assert adapter.download(probe_key) == b"g4-probe"
 
     audit_path = tmp_path / "provenance_traces.jsonl"
     state_path = tmp_path / "state.json"
@@ -82,7 +60,6 @@ def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
     payload = json.dumps(trace, sort_keys=True).encode() + b"\n"
     audit_path.write_bytes(payload)
 
-    adapter = S3StorageAdapter(MINIO_ENDPOINT, MINIO_BUCKET)
     exporter = AuditLogExporter(str(audit_path), str(state_path), adapter)
     result = exporter.export_pending()
 
@@ -93,7 +70,7 @@ def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
     assert json.loads(state_path.read_text(encoding="utf-8"))["last_offset"] == len(payload)
 
     object_key = result["object_key"]
-    downloaded = _get_object(MINIO_ENDPOINT, MINIO_BUCKET, object_key)
+    downloaded = adapter.download(object_key)
     downloaded_sha256 = hashlib.sha256(downloaded).hexdigest()
     assert downloaded == payload
     assert downloaded_sha256 == result["payload_sha256"]
