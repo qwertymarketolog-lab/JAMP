@@ -17,11 +17,11 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Install MinIO Server and Client
         run: |
-          curl -fsSL https://dl.min.io/server/minio/release/linux-amd64/minio -o /tmp/minio
+          curl -fsSL https://dl.min.io/aistor/minio/release/linux-amd64/minio -o /tmp/minio
           chmod +x /tmp/minio
           sudo mv /tmp/minio /usr/local/bin/minio
 
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+          curl -fsSL https://dl.min.io/aistor/mc/release/linux-amd64/mc -o /tmp/mc
           chmod +x /tmp/mc
           sudo mv /tmp/mc /usr/local/bin/mc
 
