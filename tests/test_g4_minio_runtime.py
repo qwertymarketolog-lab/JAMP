@@ -22,9 +22,7 @@ MINIO_ENDPOINT = os.environ.get("JAMP_G4_MINIO_ENDPOINT")
 MINIO_BUCKET = os.environ.get("JAMP_G4_MINIO_BUCKET", "jamp-g4")
 MINIO_ACCESS_KEY = os.environ.get("JAMP_G4_MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.environ.get("JAMP_G4_MINIO_SECRET_KEY", "minioadmin")
-EVIDENCE_PATH = Path(
-    os.environ.get("JAMP_G4_EVIDENCE_PATH", "artifacts/g4-runtime-evidence.json")
-)
+EVIDENCE_PATH = Path(os.environ.get("JAMP_G4_EVIDENCE_PATH", "artifacts/g4-runtime-evidence.json"))
 
 
 def _require_runtime() -> None:
@@ -92,10 +90,7 @@ def test_g4_minio_runtime_evidence(tmp_path: Path) -> None:
     assert result["payload_sha256"] == hashlib.sha256(payload).hexdigest()
     assert result["batch_id"] == "batch_" + hashlib.sha256(payload).hexdigest()
     assert state_path.exists()
-    assert (
-        json.loads(state_path.read_text(encoding="utf-8"))["last_offset"]
-        == len(payload)
-    )
+    assert json.loads(state_path.read_text(encoding="utf-8"))["last_offset"] == len(payload)
 
     object_key = result["object_key"]
     downloaded = _get_object(MINIO_ENDPOINT, MINIO_BUCKET, object_key)
