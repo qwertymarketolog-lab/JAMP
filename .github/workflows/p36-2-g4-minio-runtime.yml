@@ -25,10 +25,9 @@ jobs:
           go install github.com/minio/minio@latest
           sudo mv "$(go env GOPATH)/bin/minio" /usr/local/bin/minio
 
-          # The official MinIO Client download remains available as a binary.
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
-          chmod +x /tmp/mc
-          sudo mv /tmp/mc /usr/local/bin/mc
+          # Install MinIO Client from its Go module instead of the retired download endpoint.
+          go install github.com/minio/mc@latest
+          sudo mv "$(go env GOPATH)/bin/mc" /usr/local/bin/mc
 
           minio --version
           mc --version
