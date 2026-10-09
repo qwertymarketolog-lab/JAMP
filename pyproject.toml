@@ -17,7 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-dependencies = ["fastapi>=0.115,<1"]
+dependencies = ["fastapi>=0.115,<1", "boto3>=1.35,<2"]
 
 [project.scripts]
 jamp-run = "jamp.cli:main"
@@ -73,10 +73,3 @@ files = ["src/jamp"]
 exclude = ["^tests/", "^artifacts/"]
 warn_unused_configs = true
 no_site_packages = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra"
-markers = [
-  "exp19_perf: EXP-19 synthetic scale benchmark (non-blocking diagnostic contour)",
-]
