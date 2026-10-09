@@ -8,7 +8,9 @@ import os
 from pathlib import Path
 from typing import Any, Protocol
 
-import httpx2 as httpx
+import boto3
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 
 from jamp.runtime.provenance import validate_audit_trace
 
@@ -33,11 +35,22 @@ class StorageAdapter(Protocol):
 
 
 class S3StorageAdapter:
-    """Minimal S3-compatible HTTP object-storage adapter."""
+    """S3-compatible object storage using AWS Signature Version 4."""
 
     def __init__(self, endpoint_url: str, bucket_name: str):
         self.endpoint_url = endpoint_url.rstrip("/")
         self.bucket_name = bucket_name
+        self.client = boto3.client(
+            "s3",
+            endpoint_url=self.endpoint_url,
+            aws_access_key_id=os.environ.get("JAMP_G4_MINIO_ACCESS_KEY", "minioadmin"),
+            aws_secret_access_key=os.environ.get("JAMP_G4_MINIO_SECRET_KEY", "minioadminpassword"),
+            region_name=os.environ.get("JAMP_G4_MINIO_REGION", "us-east-1"),
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "path"},
+            ),
+        )
 
     def upload(
         self,
@@ -45,20 +58,23 @@ class S3StorageAdapter:
         payload_bytes: bytes,
         metadata: dict[str, str] | None = None,
     ) -> UploadResult:
-        url = f"{self.endpoint_url}/{self.bucket_name}/{object_key}"
-        headers = {"Content-Type": "application/x-ndjson"}
-        for key, value in (metadata or {}).items():
-            headers[f"x-amz-meta-{key}"] = value
         try:
-            response = httpx.put(
-                url,
-                content=payload_bytes,
-                headers=headers,
-                timeout=10.0,
+            response = self.client.put_object(
+                Bucket=self.bucket_name,
+                Key=object_key,
+                Body=payload_bytes,
+                ContentType="application/x-ndjson",
+                Metadata=metadata or {},
             )
-        except httpx.HTTPError:
+        except (BotoCoreError, ClientError):
             return UploadResult(False)
-        return UploadResult(response.status_code in (200, 201, 204), response.status_code)
+        status_code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        return UploadResult(status_code in (200, 201, 204), status_code)
+
+    def download(self, object_key: str) -> bytes:
+        """Download an object from the configured bucket."""
+        response = self.client.get_object(Bucket=self.bucket_name, Key=object_key)
+        return response["Body"].read()
 
 
 class AuditLogExporter:

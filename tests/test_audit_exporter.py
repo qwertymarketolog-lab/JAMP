@@ -222,16 +222,17 @@ def test_existing_upload_failure_preserves_cursor(tmp_path):
 
 
 def test_s3_object_metadata_contains_identity(monkeypatch):
-    class Response:
-        status_code = 200
-
     calls = []
 
-    def fake_put(url, content, headers, timeout):
-        calls.append((url, content, headers, timeout))
-        return Response()
+    class FakeS3Client:
+        def put_object(self, **kwargs):
+            calls.append(kwargs)
+            return {"ResponseMetadata": {"HTTPStatusCode": 200}}
 
-    monkeypatch.setattr("src.jamp.audit.exporter.httpx.put", fake_put)
+    def fake_boto3_client(*args, **kwargs):
+        return FakeS3Client()
+
+    monkeypatch.setattr("src.jamp.audit.exporter.boto3.client", fake_boto3_client)
     adapter = S3StorageAdapter("https://example.invalid", "bucket")
     result = adapter.upload(
         "audit/object.jsonl",
@@ -240,5 +241,8 @@ def test_s3_object_metadata_contains_identity(monkeypatch):
     )
 
     assert result.success is True
-    assert calls[0][2]["x-amz-meta-batch-id"] == "batch_test"
-    assert calls[0][2]["x-amz-meta-trace-ids"] == "tr_1"
+    assert calls[0]["Bucket"] == "bucket"
+    assert calls[0]["Key"] == "audit/object.jsonl"
+    assert calls[0]["Body"] == b"payload"
+    assert calls[0]["Metadata"]["batch-id"] == "batch_test"
+    assert calls[0]["Metadata"]["trace-ids"] == "tr_1"
