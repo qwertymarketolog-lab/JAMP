@@ -17,7 +17,6 @@ import pytest
 from src.jamp.audit.exporter import AuditLogExporter, S3StorageAdapter
 from src.jamp.runtime.provenance import AUDIT_TRACE_SCHEMA_VERSION
 
-
 MINIO_ENDPOINT = os.environ.get("JAMP_G4_MINIO_ENDPOINT")
 MINIO_BUCKET = os.environ.get("JAMP_G4_MINIO_BUCKET", "jamp-g4")
 MINIO_ACCESS_KEY = os.environ.get("JAMP_G4_MINIO_ACCESS_KEY", "minioadmin")
