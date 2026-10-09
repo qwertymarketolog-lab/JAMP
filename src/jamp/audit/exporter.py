@@ -73,6 +73,11 @@ class S3StorageAdapter:
         status_code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
         return UploadResult(status_code in (200, 201, 204), status_code)
 
+    def download(self, object_key: str) -> bytes:
+        """Download an object from the configured bucket."""
+        response = self.client.get_object(Bucket=self.bucket_name, Key=object_key)
+        return response["Body"].read()
+
 
 class AuditLogExporter:
     """Incremental, at-least-once exporter for append-only JSONL."""
