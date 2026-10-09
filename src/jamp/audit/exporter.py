@@ -44,9 +44,7 @@ class S3StorageAdapter:
             "s3",
             endpoint_url=self.endpoint_url,
             aws_access_key_id=os.environ.get("JAMP_G4_MINIO_ACCESS_KEY", "minioadmin"),
-            aws_secret_access_key=os.environ.get(
-                "JAMP_G4_MINIO_SECRET_KEY", "minioadminpassword"
-            ),
+            aws_secret_access_key=os.environ.get("JAMP_G4_MINIO_SECRET_KEY", "minioadminpassword"),
             region_name=os.environ.get("JAMP_G4_MINIO_REGION", "us-east-1"),
             config=Config(
                 signature_version="s3v4",
