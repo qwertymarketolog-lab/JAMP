@@ -1,0 +1,19 @@
+name: Probe coollabsio MinIO immutable digest
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  minio-cold-pull:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Anonymous cold-pull and inspect
+        shell: bash
+        run: |
+          set -u
+          image="ghcr.io/coollabsio/minio@sha256:4f75fd76598afa23919555d1363e1fb13c632d9bcd4ce8edcf21d3cca2ed0579"
+          echo "=== IMAGE: $image ==="
+          docker pull "$image"
+          docker image inspect "$image" --format='repo-digests={{json .RepoDigests}}'
+          echo "PULL_RESULT=SUCCESS image=$image"
