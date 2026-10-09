@@ -3,6 +3,7 @@
 The test uses a real MinIO service supplied by the CI environment.
 No mock replaces the storage HTTP boundary.
 """
+
 from __future__ import annotations
 
 import hashlib
