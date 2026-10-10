@@ -26,6 +26,9 @@ def inputs(tmp_path: Path) -> dict[str, Any]:
         "expected_weights_sha256": digest(weights.read_bytes()),
         "model_id": "test-model",
         "model_version": "1",
+        "tool_id": "test-analyzer",
+        "tool_version": "1.2.3",
+        "analyzed_at": "2026-10-10T19:00:00Z",
     }
 
 
@@ -103,7 +106,72 @@ def test_empty_model_output_is_inconclusive(inputs: dict[str, Any]) -> None:
     assert result.status == INCONCLUSIVE
 
 
-def test_success_preserves_raw_output_and_provenance(inputs: dict[str, Any]) -> None:
+def test_inference_receives_exact_verified_bytes_even_if_paths_change(
+    inputs: dict[str, Any],
+) -> None:
+    target_path = Path(inputs["target_path"])
+    weights_path = Path(inputs["weights_path"])
+    expected_target = target_path.read_bytes()
+    expected_weights = weights_path.read_bytes()
+
+    def infer(target_bytes: bytes, weights_bytes: bytes) -> dict[str, Any]:
+        assert target_bytes == expected_target
+        assert weights_bytes == expected_weights
+        target_path.write_bytes(b"changed after verification")
+        weights_path.write_bytes(b"changed weights after verification")
+        return {
+            "synthetic_probability": 0.91,
+            "human_performance_probability": 0.07,
+            "confidence_score": 0.95,
+            "detected_artifacts": [],
+        }
+
+    result = call(inputs, infer)
+    assert result.status == VERIFIED
+    assert result.target_sha256 == digest(expected_target)
+    assert result.weights_sha256 == digest(expected_weights)
+    assert target_path.read_bytes() != expected_target
+    assert weights_path.read_bytes() != expected_weights
+
+
+def test_missing_analyzer_provenance_is_not_verified(inputs: dict[str, Any]) -> None:
+    inputs["tool_version"] = ""
+    invoked = False
+
+    def infer(*_args: Any) -> Any:
+        nonlocal invoked
+        invoked = True
+        return {
+            "synthetic_probability": 0.5,
+            "human_performance_probability": 0.5,
+            "confidence_score": 0.5,
+            "detected_artifacts": [],
+        }
+
+    result = call(inputs, infer)
+    assert result.status == INCONCLUSIVE
+    assert result.reason == "analyzer_provenance_incomplete"
+    assert not invoked
+
+
+def test_invalid_analyzer_timestamp_is_not_verified(inputs: dict[str, Any]) -> None:
+    inputs["analyzed_at"] = "not-a-timestamp"
+    result = call(
+        inputs,
+        lambda *_: {
+            "synthetic_probability": 0.5,
+            "human_performance_probability": 0.5,
+            "confidence_score": 0.5,
+            "detected_artifacts": [],
+        },
+    )
+    assert result.status == INCONCLUSIVE
+    assert result.reason == "analyzer_timestamp_invalid"
+
+
+def test_success_preserves_raw_output_metrics_and_provenance(
+    inputs: dict[str, Any],
+) -> None:
     raw = {
         "synthetic_probability": 0.91,
         "human_performance_probability": 0.07,
@@ -124,3 +192,9 @@ def test_success_preserves_raw_output_and_provenance(inputs: dict[str, Any]) -> 
     assert result.weights_sha256 == inputs["expected_weights_sha256"]
     assert result.model_id == "test-model"
     assert result.model_version == "1"
+    assert result.provenance == {
+        "tool_id": "test-analyzer",
+        "tool_version": "1.2.3",
+        "model_version": "1",
+        "analyzed_at": "2026-10-10T19:00:00Z",
+    }
