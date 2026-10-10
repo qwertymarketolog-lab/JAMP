@@ -69,53 +69,81 @@ def analyze(
     }
     if not all(isinstance(value, str) and value.strip() for value in provenance.values()):
         return EvidenceResult(
-            INCONCLUSIVE, "analyzer_provenance_incomplete",
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            INCONCLUSIVE,
+            "analyzer_provenance_incomplete",
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
     if not _valid_timestamp(analyzed_at):
         return EvidenceResult(
-            INCONCLUSIVE, "analyzer_timestamp_invalid",
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            INCONCLUSIVE,
+            "analyzer_timestamp_invalid",
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
 
     weights = Path(weights_path)
     if not weights.is_file():
         return EvidenceResult(
-            HOLD, "weights_missing", model_id=model_id, model_version=model_version,
+            HOLD,
+            "weights_missing",
+            model_id=model_id,
+            model_version=model_version,
             provenance=provenance,
         )
     try:
         weights_bytes = weights.read_bytes()
     except OSError:
         return EvidenceResult(
-            HOLD, "weights_unreadable", model_id=model_id, model_version=model_version,
+            HOLD,
+            "weights_unreadable",
+            model_id=model_id,
+            model_version=model_version,
             provenance=provenance,
         )
     weights_digest = hashlib.sha256(weights_bytes).hexdigest()
     if weights_digest.lower() != expected_weights_sha256.lower():
         return EvidenceResult(
-            HOLD, "weights_sha256_mismatch", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            HOLD,
+            "weights_sha256_mismatch",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
 
     target = Path(target_path)
     if not target.is_file():
         return EvidenceResult(
-            REFUSE, "target_missing", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            REFUSE,
+            "target_missing",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
     try:
         target_bytes = target.read_bytes()
     except OSError:
         return EvidenceResult(
-            REFUSE, "target_unreadable", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            REFUSE,
+            "target_unreadable",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
     target_digest = hashlib.sha256(target_bytes).hexdigest()
     if target_digest.lower() != expected_target_sha256.lower():
         return EvidenceResult(
-            REFUSE, "target_sha256_mismatch", target_sha256=target_digest,
-            weights_sha256=weights_digest, model_id=model_id, model_version=model_version,
+            REFUSE,
+            "target_sha256_mismatch",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
             provenance=provenance,
         )
 
@@ -123,15 +151,23 @@ def analyze(
         raw = infer(target_bytes, weights_bytes)
     except Exception as exc:
         return EvidenceResult(
-            INCONCLUSIVE, f"inference_error:{type(exc).__name__}",
-            target_sha256=target_digest, weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, provenance=provenance,
+            INCONCLUSIVE,
+            f"inference_error:{type(exc).__name__}",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            provenance=provenance,
         )
     if not isinstance(raw, Mapping) or not raw:
         return EvidenceResult(
-            INCONCLUSIVE, "empty_or_invalid_model_output",
-            target_sha256=target_digest, weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, raw_output=raw,
+            INCONCLUSIVE,
+            "empty_or_invalid_model_output",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            raw_output=raw,
             provenance=provenance,
         )
 
@@ -145,24 +181,36 @@ def analyze(
         value = raw.get(key)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return EvidenceResult(
-                INCONCLUSIVE, f"missing_or_invalid_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                INCONCLUSIVE,
+                f"missing_or_invalid_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
                 provenance=provenance,
             )
         number = float(value)
         if not math.isfinite(number):
             return EvidenceResult(
-                REFUSE, f"non_finite_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                REFUSE,
+                f"non_finite_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
                 provenance=provenance,
             )
         if not 0.0 <= number <= 1.0:
             return EvidenceResult(
-                REFUSE, f"out_of_range_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                REFUSE,
+                f"out_of_range_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
                 provenance=provenance,
             )
         values[key] = number
@@ -170,9 +218,13 @@ def analyze(
     artifacts = raw.get("detected_artifacts")
     if not isinstance(artifacts, list) or not all(isinstance(item, str) for item in artifacts):
         return EvidenceResult(
-            INCONCLUSIVE, "missing_or_invalid_metric:detected_artifacts",
-            target_sha256=target_digest, weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, raw_output=raw,
+            INCONCLUSIVE,
+            "missing_or_invalid_metric:detected_artifacts",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            raw_output=raw,
             provenance=provenance,
         )
     values["detected_artifacts"] = list(artifacts)
@@ -180,16 +232,25 @@ def analyze(
     if "notes" in raw:
         if not isinstance(raw["notes"], str):
             return EvidenceResult(
-                INCONCLUSIVE, "missing_or_invalid_metric:notes",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                INCONCLUSIVE,
+                "missing_or_invalid_metric:notes",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
                 provenance=provenance,
             )
         values["notes"] = raw["notes"]
 
     return EvidenceResult(
-        VERIFIED, "hashes_metrics_and_provenance_valid",
-        target_sha256=target_digest, weights_sha256=weights_digest,
-        model_id=model_id, model_version=model_version, raw_output=raw,
-        metrics=values, provenance=provenance,
+        VERIFIED,
+        "hashes_metrics_and_provenance_valid",
+        target_sha256=target_digest,
+        weights_sha256=weights_digest,
+        model_id=model_id,
+        model_version=model_version,
+        raw_output=raw,
+        metrics=values,
+        provenance=provenance,
     )
