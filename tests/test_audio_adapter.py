@@ -78,9 +78,21 @@ def test_target_hash_mismatch_refuses_without_inference(inputs: dict[str, Any]) 
     assert not invoked
 
 
+@pytest.mark.parametrize(
+    "metric_key",
+    ["synthetic_probability", "human_performance_probability", "confidence_score"],
+)
 @pytest.mark.parametrize("value", [-0.01, 1.01, float("nan"), float("inf")])
-def test_invalid_ai_probability_refuses(inputs: dict[str, Any], value: float) -> None:
-    raw = {"ai_generated_probability": value, "human_performance_probability": 0.2}
+def test_invalid_normalized_probability_refuses(
+    inputs: dict[str, Any], metric_key: str, value: float
+) -> None:
+    raw = {
+        "synthetic_probability": 0.7,
+        "human_performance_probability": 0.2,
+        "confidence_score": 0.9,
+        "detected_artifacts": [],
+    }
+    raw[metric_key] = value
     result = call(inputs, lambda *_: raw)
     assert result.status == REFUSE
     assert result.raw_output is raw
@@ -93,16 +105,20 @@ def test_empty_model_output_is_inconclusive(inputs: dict[str, Any]) -> None:
 
 def test_success_preserves_raw_output_and_provenance(inputs: dict[str, Any]) -> None:
     raw = {
-        "ai_generated_probability": 0.91,
+        "synthetic_probability": 0.91,
         "human_performance_probability": 0.07,
+        "confidence_score": 0.95,
+        "detected_artifacts": ["fixture_artifact"],
         "vendor_trace": {"token": "unchanged"},
     }
     result = call(inputs, lambda *_: raw)
     assert result.status == VERIFIED
     assert result.raw_output is raw
     assert result.metrics == {
-        "ai_generated_probability": 0.91,
+        "synthetic_probability": 0.91,
         "human_performance_probability": 0.07,
+        "confidence_score": 0.95,
+        "detected_artifacts": ["fixture_artifact"],
     }
     assert result.target_sha256 == inputs["expected_target_sha256"]
     assert result.weights_sha256 == inputs["expected_weights_sha256"]
