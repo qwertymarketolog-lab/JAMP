@@ -164,9 +164,7 @@ def analyze(
         values[key] = number
 
     artifacts = raw.get("detected_artifacts")
-    if not isinstance(artifacts, list) or not all(
-        isinstance(item, str) for item in artifacts
-    ):
+    if not isinstance(artifacts, list) or not all(isinstance(item, str) for item in artifacts):
         return EvidenceResult(
             INCONCLUSIVE,
             "missing_or_invalid_metric:detected_artifacts",
