@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import math
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 
 VERIFIED = "VERIFIED"
 HOLD = "HOLD"
@@ -51,11 +52,15 @@ def analyze(
     """Validate trusted hashes before calling infer, then preserve raw output."""
     weights = Path(weights_path)
     if not weights.is_file():
-        return EvidenceResult(HOLD, "weights_missing", model_id=model_id, model_version=model_version)
+        return EvidenceResult(
+            HOLD, "weights_missing", model_id=model_id, model_version=model_version
+        )
     try:
         weights_digest = sha256_file(weights)
     except OSError:
-        return EvidenceResult(HOLD, "weights_unreadable", model_id=model_id, model_version=model_version)
+        return EvidenceResult(
+            HOLD, "weights_unreadable", model_id=model_id, model_version=model_version
+        )
     if weights_digest.lower() != expected_weights_sha256.lower():
         return EvidenceResult(
             HOLD, "weights_sha256_mismatch", weights_sha256=weights_digest,
