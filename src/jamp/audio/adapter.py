@@ -122,9 +122,13 @@ def analyze(
             raw_output=raw,
         )
 
-    required = ("ai_generated_probability", "human_performance_probability")
-    values: dict[str, float] = {}
-    for key in required:
+    probability_keys = (
+        "synthetic_probability",
+        "human_performance_probability",
+        "confidence_score",
+    )
+    values: dict[str, Any] = {}
+    for key in probability_keys:
         value = raw.get(key)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return EvidenceResult(
@@ -158,6 +162,34 @@ def analyze(
                 raw_output=raw,
             )
         values[key] = number
+
+    artifacts = raw.get("detected_artifacts")
+    if not isinstance(artifacts, list) or not all(
+        isinstance(item, str) for item in artifacts
+    ):
+        return EvidenceResult(
+            INCONCLUSIVE,
+            "missing_or_invalid_metric:detected_artifacts",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            raw_output=raw,
+        )
+    values["detected_artifacts"] = list(artifacts)
+
+    if "notes" in raw:
+        if not isinstance(raw["notes"], str):
+            return EvidenceResult(
+                INCONCLUSIVE,
+                "missing_or_invalid_metric:notes",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
+            )
+        values["notes"] = raw["notes"]
 
     return EvidenceResult(
         VERIFIED,
