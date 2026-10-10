@@ -87,7 +87,7 @@ def fixture_schema_errors(instance: dict[str, Any], schema: dict[str, Any]) -> l
         if not isinstance(result, dict):
             errors.append(f"{prefix} must be an object")
             continue
-        allowed_result = {"analyzer", "target_sha256", "metrics"}
+        allowed_result = {"analyzer", "target_sha256", "metrics", "raw_output"}
         if set(result) - allowed_result:
             errors.append(f"{prefix} contains unknown property")
         if not all(key in result for key in allowed_result):
@@ -95,6 +95,9 @@ def fixture_schema_errors(instance: dict[str, Any], schema: dict[str, Any]) -> l
         digest = result.get("target_sha256")
         if not isinstance(digest, str) or len(digest) != 64:
             errors.append(f"{prefix} has invalid target digest shape")
+
+        if not isinstance(result.get("raw_output"), dict):
+            errors.append(f"{prefix} raw_output must be an object")
 
         analyzer = result.get("analyzer")
         required_analyzer = (
