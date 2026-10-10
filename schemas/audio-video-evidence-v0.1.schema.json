@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jamp.dev/schemas/audio-video-evidence-contract-v0.1.schema.json",
+  "title": "JAMP Audio/Video Evidence Contract v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "target_anchor", "analysis_results"],
+  "properties": {
+    "contract_version": { "const": "jamp-audio-video-evidence-v0.1" },
+    "target_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size_bytes", "media_type", "format"],
+      "properties": {
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "media_type": { "enum": ["audio", "video"] },
+        "format": { "type": "string", "minLength": 1 },
+        "duration_ms": { "type": "integer", "minimum": 1 },
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_rate_hz", "channels"],
+          "properties": {
+            "sample_rate_hz": { "type": "integer", "minimum": 1 },
+            "channels": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "video": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width_px", "height_px", "frame_rate_num", "frame_rate_den"],
+          "properties": {
+            "width_px": { "type": "integer", "minimum": 1 },
+            "height_px": { "type": "integer", "minimum": 1 },
+            "frame_rate_num": { "type": "integer", "minimum": 1 },
+            "frame_rate_den": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "media_type": { "const": "audio" } }, "required": ["media_type"] },
+          "then": { "required": ["duration_ms", "audio"], "not": { "required": ["video"] } }
+        },
+        {
+          "if": { "properties": { "media_type": { "const": "video" } }, "required": ["media_type"] },
+          "then": { "required": ["duration_ms", "video"], "not": { "required": ["audio"] } }
+        }
+      ]
+    },
+    "analysis_results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["analyzer", "metrics"],
+        "properties": {
+          "analyzer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tool_id", "tool_version", "model_version", "analyzed_at"],
+            "properties": {
+              "tool_id": { "type": "string", "minLength": 1 },
+              "tool_version": { "type": "string", "minLength": 1 },
+              "model_version": { "type": "string", "minLength": 1 },
+              "analyzed_at": { "type": "string", "format": "date-time" },
+              "result_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["synthetic_probability", "human_performance_probability", "confidence_score", "detected_artifacts"],
+            "properties": {
+              "synthetic_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "human_performance_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "confidence_score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "detected_artifacts": { "type": "array", "items": { "type": "string" } },
+              "notes": { "type": "string" }
+            }
+          },
+          "target_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+        }
+      }
+    }
+  }
+}
