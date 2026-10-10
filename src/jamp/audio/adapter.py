@@ -83,7 +83,9 @@ def analyze(
     if target_digest.lower() != expected_target_sha256.lower():
         return EvidenceResult(
             REFUSE, "target_sha256_mismatch", target_sha256=target_digest,
-            weights_sha256=weights_digest, model_id=model_id, model_version=model_version,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
         )
 
     try:

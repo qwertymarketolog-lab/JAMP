@@ -148,9 +148,7 @@ def _test_only_conflict_policy(results: list[dict[str, Any]]) -> bool:
         for result in results
         if isinstance(result, dict)
         and isinstance(result.get("metrics"), dict)
-        and isinstance(
-            result["metrics"].get("synthetic_probability"), (int, float)
-        )
+        and isinstance(result["metrics"].get("synthetic_probability"), (int, float))
     ]
     return len(values) >= 2 and min(values) < 0.5 < max(values)
 
