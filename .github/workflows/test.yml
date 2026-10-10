@@ -29,6 +29,7 @@ jobs:
         pip install -e .
         pip install httpx2
         pip install pytest pytest-mock pytest-asyncio
+        pip install "jsonschema>=4.23,<5"
     - name: Run architectural boundary validation
       env:
         PYTHONPATH: src:.
