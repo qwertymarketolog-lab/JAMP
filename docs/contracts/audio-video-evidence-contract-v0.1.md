@@ -14,19 +14,21 @@ Define a transport-neutral evidence envelope for external audio/music and video 
 - `src/jamp/audio/adapter.py`: minimal isolated fail-closed audio adapter reference implementation.
 
 ## Gate semantics
-- `VERIFIED`: schema is valid, target hash matches the independently computed file hash, required metadata/metrics are present, and analyzer provenance is structurally complete. This verifies the evidence procedure only—not the truth of an analyzer's classification.
+- `VERIFIED`: schema is valid, target hash matches the independently computed digest, required metadata/metrics are present, and analyzer provenance is structurally complete. This verifies the evidence procedure only—not the truth of an analyzer's classification.
 - `REFUSE`: target digest mismatch or invalid schema/unsupported shape.
 - `HOLD`: required analysis data is absent or not yet available. Schema validation alone will reject missing required fields; a gate adapter may classify a recognized incomplete/in-progress envelope as HOLD before final schema acceptance.
 - `INCONCLUSIVE`: independently identified analyzer outputs conflict under a separately versioned conflict policy. Schema validity alone cannot decide conflict.
 
 ## Integrity requirements
-1. Compute target SHA-256 from the actual bytes at ingestion; never trust a supplied digest by itself.
-2. Every analyzer result must bind to that computed target digest.
-3. Preserve each analyzer result separately; do not average or silently select a winner.
-4. Keep raw output and normalized metrics distinct. If raw output is not available, record that limitation rather than synthesizing it.
-5. Probability fields are analyzer-reported values, not calibrated or comparable across tools unless separately evidenced.
-6. A timestamp is provenance metadata, not proof that an analyzer actually ran.
-7. Test vectors are fixtures, not evidence of production detector accuracy.
+1. Compute target and weights SHA-256 from the exact bytes supplied to inference; never trust a supplied digest by itself.
+2. The reference adapter reads each input into a byte string, verifies its digest, and passes those same byte strings to the inference callback. It does not pass file paths for the callback to reopen, preventing a path replacement between verification and inference from changing the bytes consumed.
+3. Every analyzer result must bind to the computed target digest.
+4. Preserve each analyzer result separately; do not average or silently select a winner.
+5. Keep raw output and normalized metrics distinct. If raw output is not available, record that limitation rather than synthesizing it.
+6. The reference adapter requires non-empty analyzer tool ID/version, model version, and a timezone-aware ISO-8601 analysis timestamp before inference. This is structural provenance validation only: caller-supplied metadata is not independent proof that an analyzer actually ran.
+7. Probability fields are analyzer-reported values, not calibrated or comparable across tools unless separately evidenced.
+8. A timestamp is provenance metadata, not proof that an analyzer actually ran.
+9. Test vectors are fixtures, not evidence of production detector accuracy.
 
 ## Boundaries and non-goals
 - No real media decoding, production model weights, or external analyzer integration is included.
