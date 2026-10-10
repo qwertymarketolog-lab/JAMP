@@ -1,6 +1,9 @@
-# Audio/Video Evidence Contract v0.1 — design boundary
+# Audio/Video Evidence Contract v0.1 — specification and isolated reference adapter
 
-Status: OPEN / design-and-fixtures only.
+Status: OPEN / specification, synthetic fixtures, and isolated fail-closed audio adapter.
+
+## Scope
+This v0.1 increment includes the transport-neutral evidence-envelope specification, JSON Schema, deterministic synthetic test vectors, and a minimal isolated reference adapter at `src/jamp/audio/adapter.py`. The adapter applies fail-closed evidence checks for target identity, model-weight integrity, reported metrics, output completeness, and provenance. It does not connect to the existing JAMP runtime or API.
 
 ## Purpose
 Define a transport-neutral evidence envelope for external audio/music and video analyzers. JAMP validates identity, schema, completeness, and provenance; it does not itself decode media or infer whether content is AI-generated.
@@ -8,6 +11,7 @@ Define a transport-neutral evidence envelope for external audio/music and video 
 ## Files
 - `schemas/audio-video-evidence-v0.1.schema.json`: JSON Schema Draft 2020-12.
 - `test-vectors/audio-video-evidence-v0.1.json`: deterministic synthetic cases.
+- `src/jamp/audio/adapter.py`: minimal isolated fail-closed audio adapter reference implementation.
 
 ## Gate semantics
 - `VERIFIED`: schema is valid, target hash matches the independently computed file hash, required metadata/metrics are present, and analyzer provenance is structurally complete. This verifies the evidence procedure only—not the truth of an analyzer's classification.
@@ -24,8 +28,11 @@ Define a transport-neutral evidence envelope for external audio/music and video 
 6. A timestamp is provenance metadata, not proof that an analyzer actually ran.
 7. Test vectors are fixtures, not evidence of production detector accuracy.
 
-## Frozen Core
-`src/jamp/run.py` is outside scope and must remain at blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a` (expected code delta = 0).
+## Boundaries and non-goals
+- No real media decoding, production model weights, or external analyzer integration is included.
+- No production audio/video detection capability or accuracy claim is made.
+- The adapter is isolated; this increment does not integrate it into the existing JAMP runtime/API and does not change workflows.
+- Synthetic fixtures and passing tests establish only the tested procedure, not real-world detector accuracy.
 
-## Non-goals
-No real media decoding, no external analyzer integration, no runtime/API changes, no claim of audio/video detection capability, and no workflow changes in this design-only increment.
+## Frozen Core
+`src/jamp/run.py` is outside scope and must remain byte-for-byte unchanged at blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a` (expected code delta = 0).
