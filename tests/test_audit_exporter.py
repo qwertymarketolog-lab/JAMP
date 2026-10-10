@@ -246,3 +246,13 @@ def test_s3_object_metadata_contains_identity(monkeypatch):
     assert calls[0]["Body"] == b"payload"
     assert calls[0]["Metadata"]["batch-id"] == "batch_test"
     assert calls[0]["Metadata"]["trace-ids"] == "tr_1"
+
+
+def test_read_cursor_corrupted_json(tmp_path):
+    """A malformed cursor safely resets the read offset to zero."""
+    adapter = MagicMock(spec=S3StorageAdapter)
+    exporter = make_exporter(tmp_path, adapter)
+    cursor_file = tmp_path / "state.json"
+    cursor_file.write_text("{ malformed json content ...", encoding="utf-8")
+
+    assert exporter._read_cursor() == 0
