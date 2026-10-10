@@ -37,6 +37,17 @@
               "detected_artifacts": [
                 "fixture_artifact"
               ]
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.72,
+                "human_performance_probability": 0.28,
+                "confidence_score": 0.91,
+                "detected_artifacts": [
+                  "fixture_artifact"
+                ]
+              }
             }
           }
         ]
@@ -74,6 +85,15 @@
               "human_performance_probability": 0.5,
               "confidence_score": 0.8,
               "detected_artifacts": []
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.5,
+                "human_performance_probability": 0.5,
+                "confidence_score": 0.8,
+                "detected_artifacts": []
+              }
             }
           }
         ]
@@ -110,6 +130,14 @@
               "synthetic_probability": 0.5,
               "confidence_score": 0.8,
               "detected_artifacts": []
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.5,
+                "confidence_score": 0.8,
+                "detected_artifacts": []
+              }
             }
           }
         ]
@@ -151,6 +179,17 @@
               "detected_artifacts": [
                 "synthetic_frame_pattern"
               ]
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.93,
+                "human_performance_probability": 0.07,
+                "confidence_score": 0.89,
+                "detected_artifacts": [
+                  "synthetic_frame_pattern"
+                ]
+              }
             }
           },
           {
@@ -166,6 +205,15 @@
               "human_performance_probability": 0.92,
               "confidence_score": 0.86,
               "detected_artifacts": []
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.08,
+                "human_performance_probability": 0.92,
+                "confidence_score": 0.86,
+                "detected_artifacts": []
+              }
             }
           }
         ]
@@ -204,6 +252,15 @@
               "human_performance_probability": 0.9,
               "confidence_score": 0.9,
               "detected_artifacts": []
+            },
+            "raw_output": {
+              "fixture_raw_output": true,
+              "reported_metrics": {
+                "synthetic_probability": 0.1,
+                "human_performance_probability": 0.9,
+                "confidence_score": 0.9,
+                "detected_artifacts": []
+              }
             }
           }
         ]
