@@ -55,7 +55,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["analyzer", "target_sha256", "metrics"],
+        "required": ["analyzer", "target_sha256", "metrics", "raw_output"],
         "properties": {
           "analyzer": {
             "type": "object",
@@ -81,7 +81,8 @@
               "notes": { "type": "string" }
             }
           },
-          "target_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+          "target_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+          "raw_output": { "type": "object" }
         }
       }
     }
