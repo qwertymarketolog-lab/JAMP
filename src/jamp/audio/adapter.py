@@ -4,6 +4,7 @@ This module does not bundle or select a model. Callers must supply an explicit
 inference function and a trusted weights digest from an independently managed
 manifest. No inference is performed until weights and target bytes are verified.
 """
+
 from __future__ import annotations
 
 import hashlib
