@@ -63,26 +63,37 @@ def analyze(
         )
     if weights_digest.lower() != expected_weights_sha256.lower():
         return EvidenceResult(
-            HOLD, "weights_sha256_mismatch", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version,
+            HOLD,
+            "weights_sha256_mismatch",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
         )
 
     target = Path(target_path)
     if not target.is_file():
         return EvidenceResult(
-            REFUSE, "target_missing", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version,
+            REFUSE,
+            "target_missing",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
         )
     try:
         target_digest = sha256_file(target)
     except OSError:
         return EvidenceResult(
-            REFUSE, "target_unreadable", weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version,
+            REFUSE,
+            "target_unreadable",
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
         )
     if target_digest.lower() != expected_target_sha256.lower():
         return EvidenceResult(
-            REFUSE, "target_sha256_mismatch", target_sha256=target_digest,
+            REFUSE,
+            "target_sha256_mismatch",
+            target_sha256=target_digest,
             weights_sha256=weights_digest,
             model_id=model_id,
             model_version=model_version,
@@ -92,15 +103,22 @@ def analyze(
         raw = infer(target, weights)
     except Exception as exc:
         return EvidenceResult(
-            INCONCLUSIVE, f"inference_error:{type(exc).__name__}",
-            target_sha256=target_digest, weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version,
+            INCONCLUSIVE,
+            f"inference_error:{type(exc).__name__}",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
         )
     if not isinstance(raw, Mapping) or not raw:
         return EvidenceResult(
-            INCONCLUSIVE, "empty_or_invalid_model_output",
-            target_sha256=target_digest, weights_sha256=weights_digest,
-            model_id=model_id, model_version=model_version, raw_output=raw,
+            INCONCLUSIVE,
+            "empty_or_invalid_model_output",
+            target_sha256=target_digest,
+            weights_sha256=weights_digest,
+            model_id=model_id,
+            model_version=model_version,
+            raw_output=raw,
         )
 
     required = ("ai_generated_probability", "human_performance_probability")
@@ -109,27 +127,44 @@ def analyze(
         value = raw.get(key)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return EvidenceResult(
-                INCONCLUSIVE, f"missing_or_invalid_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                INCONCLUSIVE,
+                f"missing_or_invalid_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
             )
         number = float(value)
         if not math.isfinite(number):
             return EvidenceResult(
-                REFUSE, f"non_finite_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                REFUSE,
+                f"non_finite_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
             )
         if not 0.0 <= number <= 1.0:
             return EvidenceResult(
-                REFUSE, f"out_of_range_metric:{key}",
-                target_sha256=target_digest, weights_sha256=weights_digest,
-                model_id=model_id, model_version=model_version, raw_output=raw,
+                REFUSE,
+                f"out_of_range_metric:{key}",
+                target_sha256=target_digest,
+                weights_sha256=weights_digest,
+                model_id=model_id,
+                model_version=model_version,
+                raw_output=raw,
             )
         values[key] = number
 
     return EvidenceResult(
-        VERIFIED, "hashes_and_metrics_valid", target_sha256=target_digest,
-        weights_sha256=weights_digest, model_id=model_id, model_version=model_version,
-        raw_output=raw, metrics=values,
+        VERIFIED,
+        "hashes_and_metrics_valid",
+        target_sha256=target_digest,
+        weights_sha256=weights_digest,
+        model_id=model_id,
+        model_version=model_version,
+        raw_output=raw,
+        metrics=values,
     )

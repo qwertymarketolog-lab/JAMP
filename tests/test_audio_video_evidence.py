@@ -4,6 +4,7 @@ The gate helper is a test reference, not production runtime behavior. The confli
 policy is test-only because the contract leaves its threshold to a separately
 versioned policy.
 """
+
 import copy
 import hashlib
 import json
@@ -35,9 +36,7 @@ def vectors() -> dict[str, dict[str, Any]]:
     return {item["id"]: item for item in payload["vectors"]}
 
 
-def fixture_schema_errors(
-    instance: dict[str, Any], schema: dict[str, Any]
-) -> list[str]:
+def fixture_schema_errors(instance: dict[str, Any], schema: dict[str, Any]) -> list[str]:
     """Check schema constraints exercised by these five deterministic vectors.
 
     This focused checker avoids adding a new dependency and is not a general
@@ -104,9 +103,7 @@ def fixture_schema_errors(
             "model_version",
             "analyzed_at",
         )
-        if not isinstance(analyzer, dict) or not all(
-            key in analyzer for key in required_analyzer
-        ):
+        if not isinstance(analyzer, dict) or not all(key in analyzer for key in required_analyzer):
             errors.append(f"{prefix} analyzer provenance incomplete")
 
         metrics = result.get("metrics")
@@ -123,9 +120,7 @@ def fixture_schema_errors(
             "confidence_score",
         ):
             value = metrics.get(metric)
-            if value is not None and (
-                not isinstance(value, (int, float)) or not 0 <= value <= 1
-            ):
+            if value is not None and (not isinstance(value, (int, float)) or not 0 <= value <= 1):
                 errors.append(f"{prefix} invalid {metric}")
     return errors
 
@@ -170,10 +165,7 @@ def evaluate_fixture_gate(
     digest = actual_target_sha256.lower()
     if instance["target_anchor"]["sha256"].lower() != digest:
         return "REFUSE", "TARGET_HASH_MISMATCH"
-    if any(
-        result["target_sha256"].lower() != digest
-        for result in instance["analysis_results"]
-    ):
+    if any(result["target_sha256"].lower() != digest for result in instance["analysis_results"]):
         return "REFUSE", "TARGET_HASH_MISMATCH"
 
     if _test_only_conflict_policy(instance["analysis_results"]):
@@ -235,8 +227,7 @@ def test_av004_conflicting_analyzers_are_inconclusive(
     )
     # Preserve each analyzer output; do not average or select a winner.
     assert [
-        result["metrics"]["synthetic_probability"]
-        for result in instance["analysis_results"]
+        result["metrics"]["synthetic_probability"] for result in instance["analysis_results"]
     ] == [0.93, 0.08]
 
 
