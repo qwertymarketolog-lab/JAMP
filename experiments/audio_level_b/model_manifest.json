@@ -1,0 +1,35 @@
+{
+  "model_name": "ArtifactNet",
+  "version": "v94_full",
+  "source_repository": "intrect/artifactnet",
+  "source_platform": "Hugging Face Hub",
+  "source_url": "https://huggingface.co/intrect/artifactnet/tree/d4f62684ac703b671c43795f3c9eafc6bd5365cd",
+  "revision_id": "d4f62684ac703b671c43795f3c9eafc6bd5365cd",
+  "license": "CC BY-NC 4.0",
+  "identity_gate_status": "HOLD",
+  "local_verification_status": "UNVERIFIED_LOCAL",
+  "expected_metadata_origin": "Upstream Hugging Face LFS/Xet metadata; not yet independently verified against locally downloaded bytes.",
+  "components": [
+    {
+      "file_name": "artifactnet_v94_full.onnx",
+      "role": "model_architecture",
+      "expected_size_bytes": 226020,
+      "expected_sha256": "a923b53899fbb01fcf4436cc5e1837628516de6044c9f238b31b4b02ed601a19",
+      "local_verification_status": "UNVERIFIED_LOCAL"
+    },
+    {
+      "file_name": "artifactnet_v94_full.onnx.data",
+      "role": "model_weights_external",
+      "expected_size_bytes": 16973824,
+      "expected_sha256": "d3f291b4f531e22e5c17dff8b3888050033d301c7b7f3cb24bf4741cdaabbc05",
+      "local_verification_status": "UNVERIFIED_LOCAL"
+    }
+  ],
+  "gate_policy": {
+    "require_all_components_present": true,
+    "verify_size_before_hash": true,
+    "verify_sha256_from_local_bytes": true,
+    "fail_closed_on_missing_component_size_or_hash_mismatch": true,
+    "permit_inference_before_all_components_verified": false
+  }
+}
