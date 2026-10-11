@@ -1,0 +1,50 @@
+name: EXP-19.MEM
+
+on:
+  push:
+    branches:
+      - research/exp19-mem-benchmark
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  memory-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psutil
+      - name: Run EXP-19.MEM harness
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -m pytest -q tests/research/exp19/test_benchmark_memory_g_scale.py
+      - name: Generate benchmark artifact
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          from tests.research.exp19.test_benchmark_memory_g_scale import build_artifact
+
+          path = Path("artifacts/exp19-mem/benchmark-memory.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(
+              json.dumps(build_artifact(), sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(path)
+          PY
+      - name: Upload benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp19-mem-benchmark
+          path: artifacts/exp19-mem/benchmark-memory.json
