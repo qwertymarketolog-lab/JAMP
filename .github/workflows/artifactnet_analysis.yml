@@ -1,0 +1,214 @@
+name: ArtifactNet Identity Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/artifactnet_analysis.yml"
+      - "experiments/audio_level_b/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/artifactnet_analysis.yml"
+      - "experiments/audio_level_b/**"
+
+permissions:
+  contents: read
+
+jobs:
+  identity-gate:
+    name: Verify pinned model bytes (no inference)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout pinned revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download and independently verify manifest components
+        id: identity
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import tempfile
+          import time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          started = time.monotonic()
+          root = Path("experiments/audio_level_b")
+          manifest_path = root / "model_manifest.json"
+          out_dir = Path("artifactnet-ci-report")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          report_path = out_dir / "artifactnet-integrity-report.json"
+          metrics_path = out_dir / "artifactnet-integrity-metrics.json"
+
+          report = {
+              "schema_version": 1,
+              "experiment": "ArtifactNet Level B identity gate",
+              "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+              "gate_status": "HOLD",
+              "inference_executed": False,
+              "inference_policy": "No inference step exists in this workflow; identity mismatch always blocks the gate.",
+              "manifest_path": str(manifest_path),
+              "revision_id": None,
+              "components_expected": 0,
+              "components_verified": 0,
+              "components_failed": 0,
+              "components": [],
+              "errors": [],
+          }
+
+          try:
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+              repository = manifest["source_repository"]
+              revision = manifest["revision_id"]
+              report["revision_id"] = revision
+              components = manifest["components"]
+              report["components_expected"] = len(components)
+              if not components:
+                  raise ValueError("Manifest has no components")
+              if not re.fullmatch(r"[0-9a-f]{40}", revision):
+                  raise ValueError("revision_id must be a pinned 40-character lowercase commit SHA")
+
+              with tempfile.TemporaryDirectory(prefix="artifactnet-model-") as tmp:
+                  tmp_path = Path(tmp)
+                  for item in components:
+                      name = item.get("file_name", "")
+                      expected_size = item.get("expected_size_bytes")
+                      expected_sha = item.get("expected_sha256", "")
+                      row = {
+                          "file_name": name,
+                          "expected_size_bytes": expected_size,
+                          "expected_sha256": expected_sha,
+                          "status": "HOLD",
+                          "actual_size_bytes": None,
+                          "actual_sha256": None,
+                          "size_check": "NOT_RUN",
+                          "sha256_check": "NOT_RUN",
+                          "download_status": "NOT_STARTED",
+                      }
+                      report["components"].append(row)
+                      try:
+                          if not name or Path(name).name != name:
+                              raise ValueError("Unsafe or empty component filename")
+                          if not isinstance(expected_size, int) or expected_size <= 0:
+                              raise ValueError("Invalid expected_size_bytes")
+                          if not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+                              raise ValueError("Invalid expected_sha256")
+                          url = (
+                              f"https://huggingface.co/{repository}/resolve/"
+                              f"{revision}/{quote(name)}"
+                          )
+                          request = Request(url, headers={"User-Agent": "JAMP-ArtifactNet-Identity-Gate/1.0"})
+                          local_path = tmp_path / name
+                          with urlopen(request, timeout=120) as response, local_path.open("wb") as target:
+                              while True:
+                                  chunk = response.read(1024 * 1024)
+                                  if not chunk:
+                                      break
+                                  target.write(chunk)
+                          row["download_status"] = "DOWNLOADED"
+
+                          actual_size = local_path.stat().st_size
+                          row["actual_size_bytes"] = actual_size
+                          row["size_check"] = "PASS" if actual_size == expected_size else "FAIL"
+                          # Preserve the manifest policy: compare size first; hash only exact-size bytes.
+                          if actual_size != expected_size:
+                              row["status"] = "FAIL"
+                              row["error"] = f"Size mismatch: expected {expected_size}, got {actual_size}"
+                              continue
+
+                          digest = hashlib.sha256()
+                          with local_path.open("rb") as source:
+                              for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                                  digest.update(chunk)
+                          actual_sha = digest.hexdigest()
+                          row["actual_sha256"] = actual_sha
+                          row["sha256_check"] = "PASS" if actual_sha == expected_sha else "FAIL"
+                          row["status"] = "VERIFIED" if actual_sha == expected_sha else "FAIL"
+                          if actual_sha != expected_sha:
+                              row["error"] = "SHA-256 mismatch"
+                      except (HTTPError, URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+                          row["download_status"] = "ERROR"
+                          row["status"] = "FAIL"
+                          row["error"] = f"{type(exc).__name__}: {exc}"
+
+              report["components_verified"] = sum(c["status"] == "VERIFIED" for c in report["components"])
+              report["components_failed"] = sum(c["status"] != "VERIFIED" for c in report["components"])
+              report["gate_status"] = (
+                  "VERIFIED"
+                  if report["components_expected"] > 0
+                  and report["components_verified"] == report["components_expected"]
+                  and report["components_failed"] == 0
+                  else "HOLD"
+              )
+          except Exception as exc:
+              report["errors"].append(f"{type(exc).__name__}: {exc}")
+              report["gate_status"] = "HOLD"
+          finally:
+              report["duration_seconds"] = round(time.monotonic() - started, 3)
+              report["inference_executed"] = False
+              report["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
+              metrics = {
+                  "schema_version": 1,
+                  "gate_status": report["gate_status"],
+                  "duration_seconds": report["duration_seconds"],
+                  "components_expected": report["components_expected"],
+                  "components_verified": report["components_verified"],
+                  "components_failed": report["components_failed"],
+                  "inference_executed": False,
+                  "per_component": [
+                      {
+                          "file_name": c.get("file_name"),
+                          "status": c.get("status"),
+                          "size_check": c.get("size_check"),
+                          "sha256_check": c.get("sha256_check"),
+                      }
+                      for c in report["components"]
+                  ],
+              }
+              report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+              metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(metrics, indent=2))
+          PY
+
+      - name: Upload integrity report and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifactnet-integrity-report
+          path: artifactnet-ci-report/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce fail-closed identity gate
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("artifactnet-ci-report/artifactnet-integrity-report.json")
+          if not report.is_file():
+              raise SystemExit("HOLD: integrity report is missing; refusing any downstream inference.")
+          data = json.loads(report.read_text(encoding="utf-8"))
+          if data.get("gate_status") != "VERIFIED":
+              raise SystemExit("HOLD: model identity verification failed or is incomplete; inference is forbidden.")
+          if data.get("inference_executed") is not False:
+              raise SystemExit("FAIL: unexpected inference execution flag.")
+          print("Identity gate VERIFIED. This workflow performs validation only; inference was not run.")
+          PY
