@@ -33,7 +33,7 @@ def test_artifactnet_manifest():
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
-    assert REQUIRED_TOP_LEVEL <= manifest.keys()
+    assert manifest.keys() >= REQUIRED_TOP_LEVEL
     assert manifest["model_name"] == "ArtifactNet"
     assert manifest["identity_gate_status"] == "HOLD"
     assert manifest["local_verification_status"] == "UNVERIFIED_LOCAL"
@@ -42,7 +42,7 @@ def test_artifactnet_manifest():
 
     names = []
     for component in manifest["components"]:
-        assert REQUIRED_COMPONENT_FIELDS <= component.keys()
+        assert component.keys() >= REQUIRED_COMPONENT_FIELDS
         assert isinstance(component["file_name"], str) and component["file_name"]
         assert isinstance(component["expected_size_bytes"], int)
         assert component["expected_size_bytes"] > 0
