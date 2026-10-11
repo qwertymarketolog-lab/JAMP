@@ -258,7 +258,6 @@ def test_read_cursor_corrupted_json(tmp_path):
     assert exporter._read_cursor() == 0
 
 
-
 def test_empty_file_is_up_to_date_without_upload(tmp_path):
     audit = tmp_path / "provenance_traces.jsonl"
     audit.write_bytes(b"")
