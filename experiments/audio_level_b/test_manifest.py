@@ -27,9 +27,7 @@ REQUIRED_COMPONENT_FIELDS = {
 
 
 def test_artifactnet_manifest():
-    assert MANIFEST_PATH.is_file(), (
-        "model_manifest.json not found in experiments/audio_level_b/"
-    )
+    assert MANIFEST_PATH.is_file(), "model_manifest.json not found in experiments/audio_level_b/"
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
