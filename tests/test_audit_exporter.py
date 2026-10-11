@@ -256,3 +256,48 @@ def test_read_cursor_corrupted_json(tmp_path):
     cursor_file.write_text("{ malformed json content ...", encoding="utf-8")
 
     assert exporter._read_cursor() == 0
+
+
+def test_empty_file_is_up_to_date_without_upload(tmp_path):
+    audit = tmp_path / "provenance_traces.jsonl"
+    audit.write_bytes(b"")
+    adapter = MagicMock(spec=S3StorageAdapter)
+    exporter = make_exporter(tmp_path, adapter)
+
+    result = exporter.export_pending()
+
+    assert result["status"] == "UP_TO_DATE"
+    assert result["exported_records"] == 0
+    assert result["bytes_sent"] == 0
+    adapter.upload.assert_not_called()
+
+
+def test_blank_lines_are_skipped_and_cursor_advances(tmp_path):
+    audit = tmp_path / "provenance_traces.jsonl"
+    payload = b"\n  \n\t\n"
+    audit.write_bytes(payload)
+    adapter = MagicMock(spec=S3StorageAdapter)
+    exporter = make_exporter(tmp_path, adapter)
+
+    result = exporter.export_pending()
+
+    assert result["status"] == "UP_TO_DATE"
+    assert result["exported_records"] == 0
+    assert result["bytes_sent"] == 0
+    assert exporter._read_cursor() == len(payload)
+    adapter.upload.assert_not_called()
+
+
+def test_repeated_export_of_blank_only_file_is_idempotent(tmp_path):
+    audit = tmp_path / "provenance_traces.jsonl"
+    audit.write_bytes(b"\n\n")
+    adapter = MagicMock(spec=S3StorageAdapter)
+    exporter = make_exporter(tmp_path, adapter)
+
+    first = exporter.export_pending()
+    second = exporter.export_pending()
+
+    assert first["status"] == "UP_TO_DATE"
+    assert second["status"] == "UP_TO_DATE"
+    assert first["end_offset"] == second["end_offset"]
+    adapter.upload.assert_not_called()

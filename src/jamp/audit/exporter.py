@@ -158,8 +158,18 @@ class AuditLogExporter:
                 cursor = source.tell()
 
         if not payload:
+            if cursor == file_size:
+                if cursor > start:
+                    self._write_cursor(cursor)
+                return {
+                    "status": "UP_TO_DATE",
+                    "exported_records": 0,
+                    "bytes_sent": 0,
+                    "start_offset": start,
+                    "end_offset": cursor,
+                }
             return {
-                "status": "PARTIAL_RECORD_PENDING" if start < file_size else "UP_TO_DATE",
+                "status": "PARTIAL_RECORD_PENDING",
                 "exported_records": 0,
                 "bytes_sent": 0,
                 "start_offset": start,
