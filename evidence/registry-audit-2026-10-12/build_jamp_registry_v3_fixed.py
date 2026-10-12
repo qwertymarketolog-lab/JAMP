@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import json
 import os
@@ -159,10 +160,8 @@ def _write_csv_atomically(records, output_path, fieldnames):
     try:
         os.replace(temp_name, output_path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(temp_name)
-        except OSError:
-            pass
         raise
     return output_path
 
