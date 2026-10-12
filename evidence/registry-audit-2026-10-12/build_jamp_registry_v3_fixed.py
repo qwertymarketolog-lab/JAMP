@@ -13,6 +13,7 @@ CSV_FILENAME = "jamp_audit_master_registry_v3.csv"
 
 class GhApiError(RuntimeError):
     """Ошибка запроса к GitHub CLI/API."""
+
     pass
 
 
@@ -26,9 +27,7 @@ def _decode_json_pages(stdout, endpoint):
         ) from exc
 
     if not isinstance(payload, list):
-        raise GhApiError(
-            f"Unexpected paginated response shape from {endpoint}: expected list"
-        )
+        raise GhApiError(f"Unexpected paginated response shape from {endpoint}: expected list")
     return payload
 
 
@@ -55,8 +54,7 @@ def _merge_pages(pages, endpoint):
 
             if len(total_counts) > 1:
                 raise GhApiError(
-                    f"Inconsistent total_count values across pages for {endpoint}: "
-                    f"{total_counts}"
+                    f"Inconsistent total_count values across pages for {endpoint}: {total_counts}"
                 )
 
             expected_tc = total_counts.pop() if total_counts else len(all_runs)
@@ -71,9 +69,7 @@ def _merge_pages(pages, endpoint):
 
         if len(pages) == 1:
             return pages[0]
-        raise GhApiError(
-            f"Cannot safely merge {len(pages)} object-shaped pages from {endpoint}"
-        )
+        raise GhApiError(f"Cannot safely merge {len(pages)} object-shaped pages from {endpoint}")
 
     raise GhApiError(f"Inconsistent page response types from {endpoint}")
 
@@ -175,13 +171,9 @@ def execute_controlled_audit():
     if err:
         errors.append(err)
     baseline_main_sha = (
-        main_info.get("commit", {}).get("sha")
-        if isinstance(main_info, dict)
-        else None
+        main_info.get("commit", {}).get("sha") if isinstance(main_info, dict) else None
     )
-    print(
-        f"      Main HEAD SHA: {baseline_main_sha or 'UNKNOWN / HOLD'}"
-    )
+    print(f"      Main HEAD SHA: {baseline_main_sha or 'UNKNOWN / HOLD'}")
 
     print("[2/5] Checking Frozen Core (src/jamp/run.py)...")
     file_info, err = run_gh_api_single(f"repos/{REPO}/contents/src/jamp/run.py")
@@ -213,37 +205,32 @@ def execute_controlled_audit():
     if err3:
         errors.append(err3)
 
-    inventory_ok, val_errors = _validate_inventory(
-        baseline_main_sha, branches_raw, prs_raw, ci_raw
-    )
+    inventory_ok, val_errors = _validate_inventory(baseline_main_sha, branches_raw, prs_raw, ci_raw)
     errors.extend(val_errors)
 
     inventory_complete = (
-        baseline_main_sha is not None and
-        delta_status == 0 and
-        inventory_ok and
-        not errors
+        baseline_main_sha is not None and delta_status == 0 and inventory_ok and not errors
     )
 
     print(f"      Inventory complete status: {inventory_complete}")
 
     if not inventory_complete:
         print(
-            "[HOLD] Inventory validation failed or errors encountered. "
-            "CSV generation is BLOCKED."
+            "[HOLD] Inventory validation failed or errors encountered. CSV generation is BLOCKED."
         )
         print(f"      Encountered errors: {errors}")
         return {
             "inventory_complete": False,
             "main_sha": baseline_main_sha,
             "frozen_core_delta": delta_status,
-            "errors": errors
+            "errors": errors,
         }
 
     print("[4/5] Building registry records...")
     branches = [
         {"branch": b.get("name"), "sha": b.get("commit", {}).get("sha")}
-        for b in branches_raw if isinstance(b, dict)
+        for b in branches_raw
+        if isinstance(b, dict)
     ]
 
     pr_map = {}
@@ -254,12 +241,14 @@ def execute_controlled_audit():
         ref = head.get("ref")
         sha = head.get("sha")
         if ref and sha:
-            pr_map.setdefault(ref, []).append({
-                "number": pr.get("number"),
-                "state": pr.get("state"),
-                "merged": pr.get("merged_at") is not None,
-                "head_sha": sha
-            })
+            pr_map.setdefault(ref, []).append(
+                {
+                    "number": pr.get("number"),
+                    "state": pr.get("state"),
+                    "merged": pr.get("merged_at") is not None,
+                    "head_sha": sha,
+                }
+            )
 
     ci_map = {}
     for run in ci_raw.get("workflow_runs", []):
@@ -267,12 +256,14 @@ def execute_controlled_audit():
             continue
         sha = run.get("head_sha")
         if sha:
-            ci_map.setdefault(sha, []).append({
-                "run_id": run.get("id"),
-                "workflow": run.get("name") or run.get("path"),
-                "status": run.get("status"),
-                "conclusion": run.get("conclusion")
-            })
+            ci_map.setdefault(sha, []).append(
+                {
+                    "run_id": run.get("id"),
+                    "workflow": run.get("name") or run.get("path"),
+                    "status": run.get("status"),
+                    "conclusion": run.get("conclusion"),
+                }
+            )
 
     master_records = []
     for b in branches:
@@ -287,9 +278,7 @@ def execute_controlled_audit():
             else "N/A"
         )
         pr_state = (
-            ";".join(sorted({str(pr.get("state")) for pr in matched_prs}))
-            if matched_prs
-            else "N/A"
+            ";".join(sorted({str(pr.get("state")) for pr in matched_prs})) if matched_prs else "N/A"
         )
         ci_summary = f"{len(matched_ci)} runs" if matched_ci else "No CI runs for exact SHA"
 
@@ -304,15 +293,17 @@ def execute_controlled_audit():
         else:
             rec, reason = "HOLD", "Unlinked branch or insufficient evidence"
 
-        master_records.append({
-            "branch": b_name,
-            "sha": b_sha,
-            "pr_info": pr_summary,
-            "pr_state": pr_state,
-            "ci_info": ci_summary,
-            "recommendation": rec,
-            "reason": reason
-        })
+        master_records.append(
+            {
+                "branch": b_name,
+                "sha": b_sha,
+                "pr_info": pr_summary,
+                "pr_state": pr_state,
+                "ci_info": ci_summary,
+                "recommendation": rec,
+                "reason": reason,
+            }
+        )
 
     print("[5/5] Writing CSV atomically...")
     fieldnames = ["branch", "sha", "pr_info", "pr_state", "ci_info", "recommendation", "reason"]
@@ -328,7 +319,7 @@ def execute_controlled_audit():
         "main_sha": baseline_main_sha,
         "frozen_core_delta": delta_status,
         "csv_path": str(output_path.resolve()),
-        "branch_count": len(master_records)
+        "branch_count": len(master_records),
     }
 
 

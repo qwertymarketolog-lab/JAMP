@@ -11,6 +11,7 @@ SPEC.loader.exec_module(registry)
 
 SHA = "a" * 40
 
+
 class RegistryFailClosedTests(unittest.TestCase):
     def test_paginated_ci_count_must_match(self):
         pages = [{"total_count": 2, "workflow_runs": [{"id": 1}, {"id": 2}]}]
@@ -23,10 +24,13 @@ class RegistryFailClosedTests(unittest.TestCase):
 
     def test_paginated_ci_counts_must_agree(self):
         with self.assertRaises(registry.GhApiError):
-            registry._merge_pages([
-                {"total_count": 2, "workflow_runs": [{"id": 1}]},
-                {"total_count": 3, "workflow_runs": [{"id": 2}]},
-            ], "actions/runs")
+            registry._merge_pages(
+                [
+                    {"total_count": 2, "workflow_runs": [{"id": 1}]},
+                    {"total_count": 3, "workflow_runs": [{"id": 2}]},
+                ],
+                "actions/runs",
+            )
 
     @patch.object(registry.subprocess, "run")
     def test_single_json_decode_error_is_handled(self, mock_run):
@@ -67,15 +71,17 @@ class RegistryFailClosedTests(unittest.TestCase):
         self.assertNotEqual("UNKNOWN / HOLD", "MISMATCH / HOLD")
 
     def test_atomic_csv_replace_failure_preserves_original_and_cleans_temp(self):
-        records = [{
-            "branch": "main",
-            "sha": SHA,
-            "pr_info": "N/A",
-            "pr_state": "N/A",
-            "ci_info": "No CI runs for exact SHA",
-            "recommendation": "KEEP",
-            "reason": "Protected main branch baseline",
-        }]
+        records = [
+            {
+                "branch": "main",
+                "sha": SHA,
+                "pr_info": "N/A",
+                "pr_state": "N/A",
+                "ci_info": "No CI runs for exact SHA",
+                "recommendation": "KEEP",
+                "reason": "Protected main branch baseline",
+            }
+        ]
         fieldnames = ["branch", "sha", "pr_info", "pr_state", "ci_info", "recommendation", "reason"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -97,15 +103,17 @@ class RegistryFailClosedTests(unittest.TestCase):
             self.assertEqual(list(Path(temp_dir).iterdir()), [output_path])
 
     def test_atomic_csv_write(self):
-        records = [{
-            "branch": "main",
-            "sha": SHA,
-            "pr_info": "N/A",
-            "pr_state": "N/A",
-            "ci_info": "No CI runs for exact SHA",
-            "recommendation": "KEEP",
-            "reason": "Protected main branch baseline",
-        }]
+        records = [
+            {
+                "branch": "main",
+                "sha": SHA,
+                "pr_info": "N/A",
+                "pr_state": "N/A",
+                "ci_info": "No CI runs for exact SHA",
+                "recommendation": "KEEP",
+                "reason": "Protected main branch baseline",
+            }
+        ]
         fieldnames = ["branch", "sha", "pr_info", "pr_state", "ci_info", "recommendation", "reason"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -120,7 +128,6 @@ class RegistryFailClosedTests(unittest.TestCase):
             self.assertEqual(rows[0]["sha"], SHA)
             self.assertEqual(rows[0]["recommendation"], "KEEP")
             self.assertEqual(list(Path(temp_dir).iterdir()), [output_path])
-
 
     @patch.object(registry, "run_gh_api_single")
     @patch.object(registry, "run_gh_api")
@@ -150,7 +157,6 @@ class RegistryFailClosedTests(unittest.TestCase):
             self.assertEqual(mock_run_gh_api.call_count, 3)
             self.assertEqual(mock_run_gh_api_single.call_count, 2)
 
-
     @patch.object(registry, "run_gh_api_single")
     @patch.object(registry, "run_gh_api")
     def test_full_audit_fail_closed_on_main_sha_mismatch(
@@ -176,9 +182,7 @@ class RegistryFailClosedTests(unittest.TestCase):
 
             self.assertFalse(result["inventory_complete"])
             self.assertEqual(result["frozen_core_delta"], 0)
-            self.assertTrue(
-                any("changed between baseline" in error for error in result["errors"])
-            )
+            self.assertTrue(any("changed between baseline" in error for error in result["errors"]))
             self.assertEqual(output_path.read_text(encoding="utf-8"), original_content)
             self.assertEqual(list(Path(temp_dir).iterdir()), [output_path])
             self.assertEqual(mock_run_gh_api.call_count, 3)
