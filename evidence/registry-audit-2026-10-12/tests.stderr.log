@@ -1,0 +1,17 @@
+test_atomic_csv_replace_failure_preserves_original_and_cleans_temp (__main__.RegistryFailClosedTests) ... ok
+test_atomic_csv_write (__main__.RegistryFailClosedTests) ... ok
+test_empty_branch_inventory_is_rejected (__main__.RegistryFailClosedTests) ... ok
+test_frozen_core_unknown_differs_from_mismatch (__main__.RegistryFailClosedTests) ... ok
+test_full_audit_fail_closed_on_bad_inventory (__main__.RegistryFailClosedTests) ... ok
+test_full_audit_fail_closed_on_main_sha_mismatch (__main__.RegistryFailClosedTests) ... ok
+test_main_sha_race_is_rejected (__main__.RegistryFailClosedTests) ... ok
+test_paginated_ci_count_must_match (__main__.RegistryFailClosedTests) ... ok
+test_paginated_ci_counts_must_agree (__main__.RegistryFailClosedTests) ... ok
+test_paginated_permission_error_is_handled (__main__.RegistryFailClosedTests) ... ok
+test_permission_error_is_handled (__main__.RegistryFailClosedTests) ... ok
+test_single_json_decode_error_is_handled (__main__.RegistryFailClosedTests) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.003s
+
+OK

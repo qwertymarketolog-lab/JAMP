@@ -1,0 +1,21 @@
+=== JAMP Controlled Read-Only Audit v3 Fixed ===
+[1/5] Fetching baseline main HEAD SHA...
+      Main HEAD SHA: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[2/5] Checking Frozen Core (src/jamp/run.py)...
+      [VERIFIED] Blob matches: 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a (Δ = 0)
+[3/5] Fetching branches, PRs, and CI runs...
+      Inventory complete status: False
+[HOLD] Inventory validation failed or errors encountered. CSV generation is BLOCKED.
+      Encountered errors: ['Branch inventory is empty or malformed.']
+=== JAMP Controlled Read-Only Audit v3 Fixed ===
+[1/5] Fetching baseline main HEAD SHA...
+      Main HEAD SHA: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+[2/5] Checking Frozen Core (src/jamp/run.py)...
+      [VERIFIED] Blob matches: 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a (Δ = 0)
+[3/5] Fetching branches, PRs, and CI runs...
+      Inventory complete status: False
+[HOLD] Inventory validation failed or errors encountered. CSV generation is BLOCKED.
+      Encountered errors: ['Main SHA changed between baseline (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) and inventory (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb).']
+[UNKNOWN / HOLD] GitHub API request failed for repos/example?per_page=100: Permission denied for gh
+[UNKNOWN / HOLD] GitHub API request failed for repos/example: Permission denied for gh
+[UNKNOWN / HOLD] Invalid JSON from endpoint repos/example: Expecting property name enclosed in double quotes at char 1
