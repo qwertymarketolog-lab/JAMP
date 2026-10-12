@@ -83,13 +83,15 @@ class RegistryFailClosedTests(unittest.TestCase):
             original_bytes = b"existing-registry-must-remain\\n"
             output_path.write_bytes(original_bytes)
 
-            with patch.object(
-                registry.os,
-                "replace",
-                side_effect=OSError("simulated replace failure"),
+            with (
+                patch.object(
+                    registry.os,
+                    "replace",
+                    side_effect=OSError("simulated replace failure"),
+                ),
+                self.assertRaisesRegex(OSError, "simulated replace failure"),
             ):
-                with self.assertRaisesRegex(OSError, "simulated replace failure"):
-                    registry._write_csv_atomically(records, output_path, fieldnames)
+                registry._write_csv_atomically(records, output_path, fieldnames)
 
             self.assertEqual(output_path.read_bytes(), original_bytes)
             self.assertEqual(list(Path(temp_dir).iterdir()), [output_path])
