@@ -25,7 +25,9 @@ def _decode_json_pages(stdout, endpoint):
         ) from exc
 
     if not isinstance(payload, list):
-        raise GhApiError(f"Unexpected paginated response shape from {endpoint}: expected list")
+        raise GhApiError(
+            f"Unexpected paginated response shape from {endpoint}: expected list"
+        )
     return payload
 
 
@@ -51,7 +53,10 @@ def _merge_pages(pages, endpoint):
                     total_counts.add(tc)
 
             if len(total_counts) > 1:
-                raise GhApiError(f"Inconsistent total_count values across pages for {endpoint}: {total_counts}")
+                raise GhApiError(
+                    f"Inconsistent total_count values across pages for {endpoint}: "
+                    f"{total_counts}"
+                )
 
             expected_tc = total_counts.pop() if total_counts else len(all_runs)
             if len(all_runs) != expected_tc:
@@ -64,7 +69,9 @@ def _merge_pages(pages, endpoint):
 
         if len(pages) == 1:
             return pages[0]
-        raise GhApiError(f"Cannot safely merge {len(pages)} object-shaped pages from {endpoint}")
+        raise GhApiError(
+            f"Cannot safely merge {len(pages)} object-shaped pages from {endpoint}"
+        )
 
     raise GhApiError(f"Inconsistent page response types from {endpoint}")
 
@@ -122,7 +129,10 @@ def _validate_inventory(baseline_main_sha, branches_raw, prs_raw, ci_raw):
             main_found = True
             b_sha = b.get("commit", {}).get("sha")
             if b_sha != baseline_main_sha:
-                errors.append(f"Main SHA changed between baseline ({baseline_main_sha}) and inventory ({b_sha}).")
+                errors.append(
+                    f"Main SHA changed between baseline ({baseline_main_sha}) "
+                    f"and inventory ({b_sha})."
+                )
     if not main_found:
         errors.append("Main branch not found in branch inventory.")
 
@@ -165,7 +175,9 @@ def execute_controlled_audit():
     if err:
         errors.append(err)
     baseline_main_sha = main_info.get("commit", {}).get("sha") if isinstance(main_info, dict) else None
-    print(f"      Main HEAD SHA: {baseline_main_sha or 'UNKNOWN / HOLD'}")
+    print(
+        f"      Main HEAD SHA: {baseline_main_sha or 'UNKNOWN / HOLD'}"
+    )
 
     print("[2/5] Checking Frozen Core (src/jamp/run.py)...")
     file_info, err = run_gh_api_single(f"repos/{REPO}/contents/src/jamp/run.py")
@@ -292,7 +304,10 @@ def execute_controlled_audit():
 
     output_path = _write_csv_atomically(master_records, Path(CSV_FILENAME), fieldnames)
 
-    print(f"[SUCCESS] Registry successfully written atomically to {output_path.resolve()} with {len(master_records)} records.")
+    print(
+        f"[SUCCESS] Registry successfully written atomically to {output_path.resolve()} "
+        f"with {len(master_records)} records."
+    )
     return {
         "inventory_complete": True,
         "main_sha": baseline_main_sha,
