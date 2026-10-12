@@ -1,11 +1,9 @@
 import csv
 import importlib.util
-import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 SPEC = importlib.util.spec_from_file_location("registry", "build_jamp_registry_v3_fixed.py")
 registry = importlib.util.module_from_spec(SPEC)
@@ -19,7 +17,9 @@ class RegistryFailClosedTests(unittest.TestCase):
         merged = registry._merge_pages(pages, "actions/runs")
         self.assertEqual(merged["total_count"], 2)
         with self.assertRaises(registry.GhApiError):
-            registry._merge_pages([{"total_count": 3, "workflow_runs": [{"id": 1}]}], "actions/runs")
+            registry._merge_pages(
+                [{"total_count": 3, "workflow_runs": [{"id": 1}]}], "actions/runs"
+            )
 
     def test_paginated_ci_counts_must_agree(self):
         with self.assertRaises(registry.GhApiError):
@@ -57,7 +57,9 @@ class RegistryFailClosedTests(unittest.TestCase):
 
     def test_main_sha_race_is_rejected(self):
         branches = [{"name": "main", "commit": {"sha": "b" * 40}}]
-        ok, errors = registry._validate_inventory(SHA, branches, [], {"total_count": 0, "workflow_runs": []})
+        ok, errors = registry._validate_inventory(
+            SHA, branches, [], {"total_count": 0, "workflow_runs": []}
+        )
         self.assertFalse(ok)
         self.assertTrue(any("changed between baseline" in e for e in errors))
 
@@ -81,7 +83,11 @@ class RegistryFailClosedTests(unittest.TestCase):
             original_bytes = b"existing-registry-must-remain\\n"
             output_path.write_bytes(original_bytes)
 
-            with patch.object(registry.os, "replace", side_effect=OSError("simulated replace failure")):
+            with patch.object(
+                registry.os,
+                "replace",
+                side_effect=OSError("simulated replace failure"),
+            ):
                 with self.assertRaisesRegex(OSError, "simulated replace failure"):
                     registry._write_csv_atomically(records, output_path, fieldnames)
 
