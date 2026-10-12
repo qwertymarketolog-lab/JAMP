@@ -61,7 +61,8 @@ def _merge_pages(pages, endpoint):
             expected_tc = total_counts.pop() if total_counts else len(all_runs)
             if len(all_runs) != expected_tc:
                 raise GhApiError(
-                    f"Workflow runs count mismatch for {endpoint}: got {len(all_runs)}, expected total_count {expected_tc}"
+                    f"Workflow runs count mismatch for {endpoint}: got {len(all_runs)}, "
+                    f"expected total_count {expected_tc}"
                 )
             merged["workflow_runs"] = all_runs
             merged["total_count"] = expected_tc
@@ -174,7 +175,11 @@ def execute_controlled_audit():
     main_info, err = run_gh_api_single(f"repos/{REPO}/branches/main")
     if err:
         errors.append(err)
-    baseline_main_sha = main_info.get("commit", {}).get("sha") if isinstance(main_info, dict) else None
+    baseline_main_sha = (
+        main_info.get("commit", {}).get("sha")
+        if isinstance(main_info, dict)
+        else None
+    )
     print(
         f"      Main HEAD SHA: {baseline_main_sha or 'UNKNOWN / HOLD'}"
     )
@@ -224,7 +229,10 @@ def execute_controlled_audit():
     print(f"      Inventory complete status: {inventory_complete}")
 
     if not inventory_complete:
-        print("[HOLD] Inventory validation failed or errors encountered. CSV generation is BLOCKED.")
+        print(
+            "[HOLD] Inventory validation failed or errors encountered. "
+            "CSV generation is BLOCKED."
+        )
         print(f"      Encountered errors: {errors}")
         return {
             "inventory_complete": False,
@@ -274,8 +282,16 @@ def execute_controlled_audit():
         matched_prs = pr_map.get(b_name, [])
         matched_ci = ci_map.get(b_sha, [])
 
-        pr_summary = ";".join(f"#{pr['number']}@{pr['head_sha']}" for pr in matched_prs) if matched_prs else "N/A"
-        pr_state = ";".join(sorted({str(pr.get("state")) for pr in matched_prs})) if matched_prs else "N/A"
+        pr_summary = (
+            ";".join(f"#{pr['number']}@{pr['head_sha']}" for pr in matched_prs)
+            if matched_prs
+            else "N/A"
+        )
+        pr_state = (
+            ";".join(sorted({str(pr.get("state")) for pr in matched_prs}))
+            if matched_prs
+            else "N/A"
+        )
         ci_summary = f"{len(matched_ci)} runs" if matched_ci else "No CI runs for exact SHA"
 
         if b_name == "main":
