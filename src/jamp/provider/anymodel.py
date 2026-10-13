@@ -84,8 +84,8 @@ class AnyModelChatExecutor:
 
     def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Call the selected model and return a compact, auditable result."""
-        if not selected_model:
-            raise AnyModelError("JAMP did not select a model")
+        if not isinstance(selected_model, str) or not selected_model:
+            raise AnyModelError("JAMP must select exactly one model for this executor")
         body = json.dumps(
             {
                 "model": selected_model,
