@@ -74,3 +74,9 @@ def test_executor_refuses_missing_prompt():
 def test_executor_rejects_non_https_endpoint():
     with pytest.raises(ValueError, match="HTTPS"):
         AnyModelChatExecutor("test-secret", chat_url="http://example.invalid/v1/chat/completions")
+
+
+def test_executor_refuses_multi_model_selection():
+    executor = AnyModelChatExecutor("test-secret")
+    with pytest.raises(AnyModelError, match="exactly one model"):
+        executor(("model-a", "model-b"), {"prompt": "Hi"})
