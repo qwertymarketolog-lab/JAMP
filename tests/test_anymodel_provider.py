@@ -53,9 +53,7 @@ def test_executor_posts_selected_model_and_returns_content():
 def test_executor_accepts_valid_messages():
     executor = AnyModelChatExecutor(
         "test-secret",
-        opener=lambda request, timeout: FakeResponse(
-            b'{"choices":[{"message":{"content":"ok"}}]}'
-        ),
+        opener=lambda request, timeout: FakeResponse(b'{"choices":[{"message":{"content":"ok"}}]}'),
     )
     result = executor(
         "ag/gemini-3.7-flash-high",
