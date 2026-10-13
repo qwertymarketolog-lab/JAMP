@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -51,6 +52,7 @@ def create_app(
     selector = ModelSelector()
     provenance = ProvenanceTracker()
     persistence = AuditPersistence(audit_storage_path)
+    configured_executor = executor if executor is not None else AnyModelChatExecutor.from_env()
 
     app = FastAPI(title="JAMP API", version="v1", openapi_version="3.0.3")
 
@@ -76,13 +78,14 @@ def create_app(
                 str(exc),
                 0,
                 request_id=request_id,
+                refusal_reason="UNKNOWN_OR_UNSUPPORTED_TASK",
             )
             persistence.write_trace(trace)
             return JSONResponse(
                 status_code=422,
                 content={
                     "status": "REFUSE",
-                    "reason": str(exc),
+                    "reason": "UNKNOWN_OR_UNSUPPORTED_TASK",
                     "trace_id": trace["trace_id"],
                 },
             )
@@ -95,6 +98,7 @@ def create_app(
                 selected,
                 len(eligible),
                 request_id=request_id,
+                refusal_reason=selected,
             )
             persistence.write_trace(trace)
             return {
@@ -103,7 +107,46 @@ def create_app(
                 "trace_id": trace["trace_id"],
             }
 
-        output = executor(selected, payload) if executor is not None else None
+        if configured_executor is None:
+            reason = "PROVIDER_NOT_CONFIGURED"
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                "REFUSE",
+                reason,
+                len(eligible),
+                request_id=request_id,
+                refusal_reason=reason,
+            )
+            persistence.write_trace(trace)
+            return JSONResponse(
+                status_code=503,
+                content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+            )
+
+        try:
+            output = configured_executor(selected, payload)
+        except Exception as exc:
+            reason = (
+                "PROVIDER_EXECUTION_FAILED"
+                if isinstance(exc, AnyModelError)
+                else "EXECUTOR_ERROR"
+            )
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                "REFUSE",
+                reason,
+                len(eligible),
+                request_id=request_id,
+                refusal_reason=reason,
+            )
+            persistence.write_trace(trace)
+            return JSONResponse(
+                status_code=502,
+                content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+            )
+
         trace = provenance.create_trace(
             task_profile,
             required,
