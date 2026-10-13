@@ -128,9 +128,7 @@ def create_app(
             output = configured_executor(selected, payload)
         except Exception as exc:
             reason = (
-                "PROVIDER_EXECUTION_FAILED"
-                if isinstance(exc, AnyModelError)
-                else "EXECUTOR_ERROR"
+                "PROVIDER_EXECUTION_FAILED" if isinstance(exc, AnyModelError) else "EXECUTOR_ERROR"
             )
             trace = provenance.create_trace(
                 task_profile,
