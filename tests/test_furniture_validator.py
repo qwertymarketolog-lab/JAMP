@@ -84,3 +84,10 @@ def test_unreadable_measurement_is_inconclusive():
                                   source_readable=False)
     result = FurnitureValidator(parts).validate(values)
     assert result.status is ValidationStatus.INCONCLUSIVE
+
+
+def test_incomplete_specification_is_hold():
+    parts = specs()
+    result = FurnitureValidator(parts).validate(records(parts[:-1]))
+    assert result.status is ValidationStatus.HOLD
+    assert "MISSING_PART:P23" in result.reasons
