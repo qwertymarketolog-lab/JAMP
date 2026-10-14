@@ -49,7 +49,7 @@ def github_request(url: str, token: str, binary: bool = False) -> Any:
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             payload = response.read()
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+    except (TimeoutError, OSError) as exc:
         raise EvidenceError(f"GitHub source unavailable: {type(exc).__name__}") from exc
     if binary:
         return payload
@@ -285,7 +285,7 @@ def claude_summary(
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             raw = response.read()
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+    except (TimeoutError, OSError) as exc:
         raise EvidenceError(f"Anthropic source unavailable: {type(exc).__name__}") from exc
     try:
         response_json = json.loads(raw.decode("utf-8"))
