@@ -10,7 +10,6 @@ import json
 import os
 import pathlib
 import sys
-import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
