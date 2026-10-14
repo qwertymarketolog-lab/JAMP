@@ -31,7 +31,7 @@ def test_audit_persistence_requires_trace_id(tmp_path):
         store.write_trace({"decision": "REFUSE"})
 
 
-def test_execute_trace_survives_app_restart(tmp_path):
+def test_provider_refusal_trace_survives_app_restart(tmp_path):
     from fastapi.testclient import TestClient
 
     from jamp.api import create_app
@@ -46,8 +46,11 @@ def test_execute_trace_survives_app_restart(tmp_path):
             },
         )
 
-    assert response.status_code == 200
-    trace_id = response.json()["trace_id"]
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "REFUSE"
+    assert body["reason"] == "PROVIDER_NOT_CONFIGURED"
+    trace_id = body["trace_id"]
 
     with TestClient(create_app(audit_storage_path=path)) as restarted:
         restored = restarted.get(f"/v1/provenance/{trace_id}")
@@ -81,7 +84,7 @@ def test_refuse_trace_is_persisted(tmp_path):
     record = AuditPersistence(path).read_trace_by_id(body["trace_id"])
     assert record is not None
     assert record["request_id"] == "req_p24_refuse"
-    assert record["refusal_details"]["reason"] == "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
+    assert record["refusal_details"]["reason"] == "ZERO_ELIGIBLE_MODELS"
 
 
 def test_unknown_task_persists_refusal_trace(tmp_path):

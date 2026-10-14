@@ -36,6 +36,7 @@ class ProvenanceTracker:
         eligible_count: int,
         output: Any = None,
         request_id: str | None = None,
+        refusal_reason: str | None = None,
     ) -> dict[str, Any]:
         trace = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
@@ -67,9 +68,14 @@ class ProvenanceTracker:
             if output is not None:
                 trace["execution_details"]["output_digest"] = self.output_digest(output)
         else:
+            reason = refusal_reason or "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
             trace["refusal_details"] = {
-                "reason": "FAIL_CLOSED_ZERO_QUALIFIED_MODELS",
-                "message": f"Execution blocked: no model satisfies {list(required_caps)}.",
+                "reason": reason,
+                "message": (
+                    f"Execution refused: {reason}."
+                    if refusal_reason
+                    else f"Execution blocked: no model satisfies {list(required_caps)}."
+                ),
             }
         validate_audit_trace(trace)
         return trace
