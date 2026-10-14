@@ -1,0 +1,46 @@
+name: Gemini Argon AnyModel API Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Frozen Core baseline
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD:src/jamp/run.py)"
+          echo "Frozen Core blob: $actual"
+          test "$actual" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Run read-only AnyModel catalog and single-request probe
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: python scripts/research/gemini_argon_anymodel_probe.py
+
+      - name: Upload raw API evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-argon-anymodel-api-probe
+          path: artifacts/research/gemini_argon_api_probe/
+          if-no-files-found: error
+          retention-days: 30
