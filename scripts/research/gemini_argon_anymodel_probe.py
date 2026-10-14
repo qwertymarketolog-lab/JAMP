@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only AnyModel catalog + single-request probe for Gemini 4 Argon.
+"""Read-only AnyModel catalog + single-request probe for GPT-6 Astra.
 
 This is provider/API availability evidence only. It does not qualify a model,
 modify AnyModel, or change JAMP routing. Missing/ambiguous model mappings are
@@ -20,11 +20,11 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-OUT = pathlib.Path("artifacts/research/gemini_argon_api_probe")
+OUT = pathlib.Path("artifacts/research/gpt6_astra_api_probe")
 CATALOG_URL = os.environ.get("ANYMODEL_CATALOG_URL", "https://anymodel.org/v1/models")
 CHAT_URL = os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions")
 TIMEOUT_S = float(os.environ.get("ANYMODEL_TIMEOUT_S", "30"))
-REQUESTED_ID = "gemini-4-argon"
+REQUESTED_ID = "cx/gpt-6-astra"
 EXPECTED_FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 PROBE_TEXT = "Reply with exactly: JAMP_ANYMODEL_API_PROBE_OK"
 
@@ -73,7 +73,7 @@ def request_json(
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "User-Agent": "JAMP-Gemini-Argon-API-Probe/1.0",
+            "User-Agent": "JAMP-GPT-6-Astra-API-Probe/1.0",
         },
     )
     started = time.perf_counter()
@@ -127,7 +127,7 @@ def main() -> int:
 
     manifest: dict[str, Any] = {
         "schema_version": "1.0",
-        "experiment_id": "jamp-gemini-argon-anymodel-api-probe",
+        "experiment_id": "jamp-gpt-6-astra-anymodel-api-probe",
         "status": "RUNNING",
         "created_at": now(),
         "github": {
@@ -237,7 +237,7 @@ def main() -> int:
         manifest.update(
             status="BLOCKED",
             decision="BLOCKED",
-            reason="No Gemini 4 Argon ID/name found in AnyModel catalog; no model ID guessed",
+            reason="No GPT-6 Astra ID/name found in AnyModel catalog; no model ID guessed",
         )
         return finalize(manifest, events_path, manifest_path)
     if len(candidates) > 1:
