@@ -131,14 +131,19 @@ def main() -> int:
         )
         if status == 200 and error is None:
             manifest["decision"] = "INCONCLUSIVE"
-            manifest["reason"] = "One Google API response received; transport evidence only, not model qualification"
+            manifest["reason"] = (
+                "One Google API response received; transport evidence only, "
+                "not model qualification"
+            )
         else:
             manifest["reason"] = f"Google API request did not return HTTP 200: {error or status}"
         event("API_RESPONSE", http_status=status, latency_seconds=elapsed,
               response_sha256=sha256(raw), transport_error=error)
 
     manifest["finished_at"] = now()
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     decision = {
         "experiment_id": manifest["experiment_id"],
         "outcome": manifest["decision"],
@@ -150,7 +155,9 @@ def main() -> int:
         "terminal_bench": "NOT_STARTED",
         "source_artifacts": ["run_manifest.json", "events.jsonl", "response_raw.json"],
     }
-    decision_path.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    decision_path.write_text(
+        json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     checksums = []
     for path in sorted(OUT.iterdir()):
         if path.is_file() and path.name != "checksums.sha256":
