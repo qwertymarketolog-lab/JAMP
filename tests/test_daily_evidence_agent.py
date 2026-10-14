@@ -42,9 +42,7 @@ def test_event_delta_ignores_unchanged_items() -> None:
     }
     current = {
         "pull_requests": [{"number": 1, "updated_at": "2026-10-14T10:00:00Z"}],
-        "workflow_runs": [
-            {"id": 10, "run_attempt": 1, "updated_at": "2026-10-14T10:00:00Z"}
-        ],
+        "workflow_runs": [{"id": 10, "run_attempt": 1, "updated_at": "2026-10-14T10:00:00Z"}],
     }
 
     result = event_delta(current, previous)
