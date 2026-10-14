@@ -83,8 +83,16 @@ def main() -> int:
     events_path = OUT / "events.jsonl"
     manifest_path = OUT / "run_manifest.json"
     (OUT / "metrics.json").write_text(json.dumps({"status": "NOT_CALCULATED"}, indent=2) + "\n", encoding="utf-8")
-    for stale in (events_path, OUT / "catalog_raw.json", OUT / "chat_raw.json", OUT / "checksums.sha256", OUT / "decision.json"):
+    for stale in (
+        events_path,
+        OUT / "catalog_raw.json",
+        OUT / "chat_raw.json",
+        OUT / "checksums.sha256",
+        OUT / "decision.json",
+    ):
         stale.unlink(missing_ok=True)
+    (OUT / "catalog_raw.json").write_bytes(b"")
+    (OUT / "chat_raw.json").write_bytes(b"")
 
     try:
         frozen_blob = subprocess.check_output(
