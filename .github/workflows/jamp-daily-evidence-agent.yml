@@ -1,0 +1,63 @@
+name: JAMP Daily Evidence Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: jamp-daily-evidence-agent
+  cancel-in-progress: false
+
+jobs:
+  daily-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Frozen Core baseline
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD:src/jamp/run.py)"
+          echo "Frozen Core blob: $actual"
+          test "$actual" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Collect GitHub and CI evidence; summarize with Anthropic
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: \${{ github.repository }}
+          GITHUB_RUN_ID: \${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: \${{ github.run_attempt }}
+          ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: \${{ vars.ANTHROPIC_MODEL }}
+        run: python scripts/agents/daily_evidence_agent.py
+
+      - name: Upload report and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-daily-evidence-report
+          path: |
+            artifacts/daily_evidence/report.md
+            artifacts/daily_evidence/evidence.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist deduplication state
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-daily-evidence-state
+          path: artifacts/daily_evidence/state.json
+          if-no-files-found: error
+          retention-days: 90
