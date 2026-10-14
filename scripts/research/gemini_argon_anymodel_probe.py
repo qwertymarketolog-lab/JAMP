@@ -36,7 +36,8 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def sha256_json(value: Any) -> str:
-    return sha256_bytes(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
+    serialized = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return sha256_bytes(serialized.encode())
 
 
 def append_event(events_path: pathlib.Path, event_type: str, **fields: Any) -> None:
@@ -51,8 +52,17 @@ def append_event(events_path: pathlib.Path, event_type: str, **fields: Any) -> N
         stream.write(json.dumps(event, sort_keys=True, ensure_ascii=False) + "\n")
 
 
-def request_json(url: str, api_key: str, method: str = "GET", payload: dict[str, Any] | None = None) -> tuple[int | None, bytes, dict[str, str], float, str | None]:
-    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode() if payload is not None else None
+def request_json(
+    url: str,
+    api_key: str,
+    method: str = "GET",
+    payload: dict[str, Any] | None = None,
+) -> tuple[int | None, bytes, dict[str, str], float, str | None]:
+    body = (
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+        if payload is not None
+        else None
+    )
     request = urllib.request.Request(
         url,
         data=body,
@@ -68,11 +78,19 @@ def request_json(url: str, api_key: str, method: str = "GET", payload: dict[str,
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
             raw = response.read()
-            headers = {k.lower(): v for k, v in response.headers.items() if k.lower() in {"content-type", "x-request-id", "request-id", "retry-after"}}
+            headers = {
+                k.lower(): v
+                for k, v in response.headers.items()
+                if k.lower() in {"content-type", "x-request-id", "request-id", "retry-after"}
+            }
             return response.status, raw, headers, round(time.perf_counter() - started, 6), None
     except urllib.error.HTTPError as exc:
         raw = exc.read()
-        headers = {k.lower(): v for k, v in exc.headers.items() if k.lower() in {"content-type", "x-request-id", "request-id", "retry-after"}}
+        headers = {
+            k.lower(): v
+            for k, v in exc.headers.items()
+            if k.lower() in {"content-type", "x-request-id", "request-id", "retry-after"}
+        }
         return exc.code, raw, headers, round(time.perf_counter() - started, 6), None
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         return None, b"", {}, round(time.perf_counter() - started, 6), type(exc).__name__
@@ -82,7 +100,8 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     events_path = OUT / "events.jsonl"
     manifest_path = OUT / "run_manifest.json"
-    (OUT / "metrics.json").write_text(json.dumps({"status": "NOT_CALCULATED"}, indent=2) + "\n", encoding="utf-8")
+    metrics = json.dumps({"status": "NOT_CALCULATED"}, indent=2) + "\n"
+    (OUT / "metrics.json").write_text(metrics, encoding="utf-8")
     for stale in (
         events_path,
         OUT / "catalog_raw.json",
@@ -96,7 +115,9 @@ def main() -> int:
 
     try:
         frozen_blob = subprocess.check_output(
-            ["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True, stderr=subprocess.DEVNULL
+            ["git", "rev-parse", "HEAD:src/jamp/run.py"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         frozen_blob = None
@@ -127,19 +148,41 @@ def main() -> int:
         "decision": "INCONCLUSIVE",
         "reason": "API probe not completed",
     }
-    append_event(events_path, "RUN_STARTED", experiment_id=manifest["experiment_id"], frozen_core_blob=frozen_blob, frozen_core_delta_zero=frozen_ok)
+    append_event(
+        events_path,
+        "RUN_STARTED",
+        experiment_id=manifest["experiment_id"],
+        frozen_core_blob=frozen_blob,
+        frozen_core_delta_zero=frozen_ok,
+    )
 
     api_key = os.environ.get("ANYMODEL_API_KEY")
     if not api_key:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason="ANYMODEL_API_KEY secret is not configured")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason="ANYMODEL_API_KEY secret is not configured",
+        )
         append_event(events_path, "BLOCKED", reason=manifest["reason"])
         return finalize(manifest, events_path, manifest_path)
 
     status, raw, headers, elapsed, error = request_json(CATALOG_URL, api_key)
     (OUT / "catalog_raw.json").write_bytes(raw)
-    append_event(events_path, "CATALOG_RESPONSE", http_status=status, elapsed_seconds=elapsed, response_sha256=sha256_bytes(raw), response_headers=headers, transport_error=error)
+    append_event(
+        events_path,
+        "CATALOG_RESPONSE",
+        http_status=status,
+        elapsed_seconds=elapsed,
+        response_sha256=sha256_bytes(raw),
+        response_headers=headers,
+        transport_error=error,
+    )
     if error or status != 200:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason=f"AnyModel catalog request failed: {error or f'HTTP {status}'}")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason=f"AnyModel catalog request failed: {error or f'HTTP {status}'}",
+        )
         return finalize(manifest, events_path, manifest_path)
 
     try:
@@ -147,9 +190,16 @@ def main() -> int:
         rows = payload.get("data", payload) if isinstance(payload, dict) else payload
         if not isinstance(rows, list):
             raise ValueError("unexpected catalog shape")
-        model_rows = [row for row in rows if isinstance(row, dict) and isinstance(row.get("id"), str)]
+        model_rows = [
+            row for row in rows
+            if isinstance(row, dict) and isinstance(row.get("id"), str)
+        ]
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason=f"Invalid catalog response: {type(exc).__name__}")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason=f"Invalid catalog response: {type(exc).__name__}",
+        )
         append_event(events_path, "BLOCKED", reason=manifest["reason"])
         return finalize(manifest, events_path, manifest_path)
 
@@ -166,16 +216,34 @@ def main() -> int:
         "candidate_count": len(candidates),
         "candidate_ids": [row["id"] for row in candidates],
     }
-    append_event(events_path, "CATALOG_MATCH", model_count=len(model_rows), unique_id_count=len({row["id"] for row in model_rows}), candidate_ids=[row["id"] for row in candidates])
+    append_event(
+        events_path,
+        "CATALOG_MATCH",
+        model_count=len(model_rows),
+        unique_id_count=len({row["id"] for row in model_rows}),
+        candidate_ids=[row["id"] for row in candidates],
+    )
 
     if not frozen_ok:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason="Frozen Core blob does not match pinned baseline; no chat request made")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason="Frozen Core blob does not match pinned baseline; no chat request made",
+        )
         return finalize(manifest, events_path, manifest_path)
     if len(candidates) == 0:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason="No Gemini 4 Argon ID/name found in AnyModel catalog; no model ID guessed")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason="No Gemini 4 Argon ID/name found in AnyModel catalog; no model ID guessed",
+        )
         return finalize(manifest, events_path, manifest_path)
     if len(candidates) > 1:
-        manifest.update(status="INCONCLUSIVE", decision="INCONCLUSIVE", reason="Multiple possible AnyModel model IDs; no ambiguous selection made")
+        manifest.update(
+            status="INCONCLUSIVE",
+            decision="INCONCLUSIVE",
+            reason="Multiple possible AnyModel model IDs; no ambiguous selection made",
+        )
         return finalize(manifest, events_path, manifest_path)
 
     model_id = candidates[0]["id"]
@@ -185,9 +253,20 @@ def main() -> int:
         "messages": [{"role": "user", "content": PROBE_TEXT}],
         "temperature": 0,
     }
-    chat_status, chat_raw, chat_headers, chat_elapsed, chat_error = request_json(CHAT_URL, api_key, "POST", chat_payload)
+    chat_status, chat_raw, chat_headers, chat_elapsed, chat_error = request_json(
+        CHAT_URL, api_key, "POST", chat_payload
+    )
     (OUT / "chat_raw.json").write_bytes(chat_raw)
-    append_event(events_path, "CHAT_RESPONSE", model_id=model_id, http_status=chat_status, elapsed_seconds=chat_elapsed, response_sha256=sha256_bytes(chat_raw), response_headers=chat_headers, transport_error=chat_error)
+    append_event(
+        events_path,
+        "CHAT_RESPONSE",
+        model_id=model_id,
+        http_status=chat_status,
+        elapsed_seconds=chat_elapsed,
+        response_sha256=sha256_bytes(chat_raw),
+        response_headers=chat_headers,
+        transport_error=chat_error,
+    )
 
     parsed: Any = None
     try:
@@ -206,36 +285,70 @@ def main() -> int:
         "elapsed_seconds": chat_elapsed,
         "response_sha256": sha256_bytes(chat_raw),
         "response_id": parsed.get("id") if isinstance(parsed, dict) else None,
-        "usage": parsed.get("usage") if isinstance(parsed, dict) and isinstance(parsed.get("usage"), dict) else None,
+        "usage": (
+            parsed.get("usage")
+            if isinstance(parsed, dict) and isinstance(parsed.get("usage"), dict)
+            else None
+        ),
         "exact_probe_text": text == "JAMP_ANYMODEL_API_PROBE_OK",
     }
     if chat_error or chat_status != 200 or text is None:
-        manifest.update(status="BLOCKED", decision="BLOCKED", reason=f"AnyModel chat request failed contract: {chat_error or f'HTTP {chat_status} or no text choice'}")
+        manifest.update(
+            status="BLOCKED",
+            decision="BLOCKED",
+            reason=(
+                f"AnyModel chat request failed contract: "
+                f"{chat_error or f'HTTP {chat_status} or no text choice'}"
+            ),
+        )
     else:
-        manifest.update(status="COMPLETED", decision="INCONCLUSIVE", reason="One AnyModel request completed; this confirms transport only, not independent model identity or JAMP capability")
+        manifest.update(
+            status="COMPLETED",
+            decision="INCONCLUSIVE",
+            reason=(
+                "One AnyModel request completed; this confirms transport only, "
+                "not independent model identity or JAMP capability"
+            ),
+        )
     return finalize(manifest, events_path, manifest_path)
 
 
-def finalize(manifest: dict[str, Any], events_path: pathlib.Path, manifest_path: pathlib.Path) -> int:
+def finalize(
+    manifest: dict[str, Any], events_path: pathlib.Path, manifest_path: pathlib.Path
+) -> int:
     manifest["finished_at"] = now()
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    serialized_manifest = json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False)
+    manifest_path.write_text(serialized_manifest + "\n", encoding="utf-8")
     decision = {
         "experiment_id": manifest["experiment_id"],
         "outcome": manifest["decision"],
         "status": manifest["status"],
         "reason": manifest["reason"],
         "routing_eligibility": "REFUSE",
-        "source_artifacts": ["run_manifest.json", "events.jsonl", "catalog_raw.json", "chat_raw.json", "metrics.json"],
+        "source_artifacts": [
+            "run_manifest.json",
+            "events.jsonl",
+            "catalog_raw.json",
+            "chat_raw.json",
+            "metrics.json",
+        ],
         "frozen_core_delta_zero": manifest["frozen_core"]["delta_zero"],
         "benchmark_status": manifest["benchmark"]["status"],
     }
-    (OUT / "decision.json").write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    serialized_decision = json.dumps(decision, indent=2, sort_keys=True) + "\n"
+    (OUT / "decision.json").write_text(serialized_decision, encoding="utf-8")
     lines = []
     for path in sorted(OUT.iterdir()):
         if path.is_file() and path.name != "checksums.sha256":
             lines.append(f"{sha256_bytes(path.read_bytes())}  {path.name}")
     (OUT / "checksums.sha256").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(json.dumps({"status": manifest["status"], "decision": manifest["decision"], "reason": manifest["reason"], "frozen_core_delta_zero": manifest["frozen_core"]["delta_zero"]}, sort_keys=True))
+    summary = {
+        "status": manifest["status"],
+        "decision": manifest["decision"],
+        "reason": manifest["reason"],
+        "frozen_core_delta_zero": manifest["frozen_core"]["delta_zero"],
+    }
+    print(json.dumps(summary, sort_keys=True))
     return 0
 
 
