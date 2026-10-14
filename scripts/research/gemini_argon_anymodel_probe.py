@@ -5,6 +5,7 @@ This is provider/API availability evidence only. It does not qualify a model,
 modify AnyModel, or change JAMP routing. Missing/ambiguous model mappings are
 recorded as BLOCKED/INCONCLUSIVE rather than guessed.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -192,8 +193,7 @@ def main() -> int:
         if not isinstance(rows, list):
             raise ValueError("unexpected catalog shape")
         model_rows = [
-            row for row in rows
-            if isinstance(row, dict) and isinstance(row.get("id"), str)
+            row for row in rows if isinstance(row, dict) and isinstance(row.get("id"), str)
         ]
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         manifest.update(
@@ -205,7 +205,8 @@ def main() -> int:
         return finalize(manifest, events_path, manifest_path)
 
     candidates = [
-        row for row in model_rows
+        row
+        for row in model_rows
         if REQUESTED_ID in row["id"].lower()
         or (isinstance(row.get("name"), str) and REQUESTED_ID in row["name"].lower())
     ]
