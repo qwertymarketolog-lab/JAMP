@@ -7,6 +7,7 @@ recorded as BLOCKED/INCONCLUSIVE rather than guessed.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -269,10 +270,8 @@ def main() -> int:
     )
 
     parsed: Any = None
-    try:
+    with contextlib.suppress(UnicodeDecodeError, json.JSONDecodeError):
         parsed = json.loads(chat_raw.decode("utf-8")) if chat_raw else None
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        pass
     text = None
     if isinstance(parsed, dict):
         choices = parsed.get("choices")
