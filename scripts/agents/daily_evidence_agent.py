@@ -99,10 +99,11 @@ def prior_state(repo: str, token: str, current_run_id: str) -> dict[str, Any] | 
         for item in _api_list(response, "artifacts", "artifact listing")
         if item.get("name") == STATE_ARTIFACT and item.get("expired") is False
     ]
-    if len(artifacts) > 1:
-        raise EvidenceError("Multiple unexpired state artifacts make prior memory ambiguous")
+    artifacts.sort(key=lambda item: item.get("created_at", ""), reverse=True)
     if artifacts:
         artifact = artifacts[0]
+        if not isinstance(artifact.get("created_at"), str) or not artifact["created_at"]:
+            raise EvidenceError("Prior state artifact is missing creation timestamp")
         archive_url = artifact.get("archive_download_url")
         provenance = artifact.get("workflow_run")
         if not isinstance(archive_url, str) or not archive_url:
