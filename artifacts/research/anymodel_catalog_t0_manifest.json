@@ -1,0 +1,547 @@
+{
+  "audit_id": "ANYMODEL-CATALOG-AUDIT-T0",
+  "manifest_id": "ANYMODEL-CATALOG-T0-EVIDENCE",
+  "source_endpoint": "https://anymodel.org/v1/models",
+  "observed_at": "2026-09-30T23:29:32Z",
+  "http_status": 200,
+  "raw_payload_sha256": "bee3be19970d1806ced31c889fd1eaef594d951fad6d00dd8e4e840c4dcd06e6",
+  "raw_payload_bytes": 38832,
+  "n_raw": 88,
+  "index_range": "0..87",
+  "provenance": {
+    "capture": "Termux curl GET /v1/models",
+    "authorization": "Bearer $ANYMODEL_API_KEY",
+    "secret_material_excluded": true,
+    "payload_preserved_locally": true
+  },
+  "models": [
+    {
+      "index": 0,
+      "id": "nano-banana-lite",
+      "name": null,
+      "owned_by": "combo"
+    },
+    {
+      "index": 1,
+      "id": "nano-banana",
+      "name": null,
+      "owned_by": "combo"
+    },
+    {
+      "index": 2,
+      "id": "nano-banana-pro",
+      "name": null,
+      "owned_by": "combo"
+    },
+    {
+      "index": 3,
+      "id": "ag/gemini-3.7-flash-high",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 4,
+      "id": "ag/gemini-3.7-flash-medium",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 5,
+      "id": "ag/gemini-3.7-flash-low",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 6,
+      "id": "ag/gemini-3.6-flash-high",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 7,
+      "id": "ag/gemini-3.6-flash-medium",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 8,
+      "id": "ag/gemini-3.6-flash-low",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 9,
+      "id": "ag/gemini-pro-agent",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 10,
+      "id": "ag/gemini-3.1-pro-low",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 11,
+      "id": "ag/claude-sonnet-4-6",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 12,
+      "id": "ag/gpt-oss-120b-medium",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 13,
+      "id": "ag/gemini-3-flash",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 14,
+      "id": "ag/gemini-2.5-flash",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 15,
+      "id": "ag/gemini-2.5-flash-lite",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 16,
+      "id": "ag/gemini-3.1-flash-lite-preview",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 17,
+      "id": "ag/gemini-3.1-flash-image",
+      "name": null,
+      "owned_by": "ag"
+    },
+    {
+      "index": 18,
+      "id": "am/nemotron-3-ultra-550b-a55b",
+      "name": "Nemotron 3 Ultra",
+      "owned_by": "am"
+    },
+    {
+      "index": 19,
+      "id": "am/gpt-oss-20b",
+      "name": "GPT-OSS 20B",
+      "owned_by": "am"
+    },
+    {
+      "index": 20,
+      "id": "am/nemotron-3-super-120b-a12b",
+      "name": "Nemotron 3 Super 120B A12B",
+      "owned_by": "am"
+    },
+    {
+      "index": 21,
+      "id": "am/nemotron-3.5-lightning-30b-a3b",
+      "name": "Nemotron 3.5 Lightning 30B A3B",
+      "owned_by": "am"
+    },
+    {
+      "index": 22,
+      "id": "am/laguna-xs-2.1",
+      "name": "Laguna XS 2.1",
+      "owned_by": "am"
+    },
+    {
+      "index": 23,
+      "id": "am/kimi-k3",
+      "name": "Kimi K3 1M",
+      "owned_by": "am"
+    },
+    {
+      "index": 24,
+      "id": "am/llama-3.2-11b-vision-instruct",
+      "name": "Llama 3.2 11B Vision Instruct",
+      "owned_by": "am"
+    },
+    {
+      "index": 25,
+      "id": "am/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "name": "Nemotron 3 Nano Omni 30B A3B Reasoning",
+      "owned_by": "am"
+    },
+    {
+      "index": 26,
+      "id": "am/diffusiongemma-26b-a4b-it",
+      "name": "DiffusionGemma 26B A4B IT",
+      "owned_by": "am"
+    },
+    {
+      "index": 27,
+      "id": "am/riva-translate-4b-instruct-v2",
+      "name": "Riva Translate 4B Instruct v2",
+      "owned_by": "am"
+    },
+    {
+      "index": 28,
+      "id": "am/nemotron-3.5-content-safety",
+      "name": "Nemotron 3.5 Content Safety",
+      "owned_by": "am"
+    },
+    {
+      "index": 29,
+      "id": "am/flux.2-klein-4b",
+      "name": "FLUX.2 Klein 4B",
+      "owned_by": "am"
+    },
+    {
+      "index": 30,
+      "id": "am/flux.1-dev",
+      "name": "FLUX.1 Dev",
+      "owned_by": "am"
+    },
+    {
+      "index": 31,
+      "id": "cx/gpt-6-astra",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 32,
+      "id": "cx/gpt-6-sol",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 33,
+      "id": "cx/gpt-6-sol-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 34,
+      "id": "cx/gpt-6-luna",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 35,
+      "id": "cx/gpt-6-luna-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 36,
+      "id": "cx/gpt-5.6-sol",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 37,
+      "id": "cx/gpt-5.6-sol-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 38,
+      "id": "cx/gpt-5.6-terra",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 39,
+      "id": "cx/gpt-5.6-terra-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 40,
+      "id": "cx/gpt-5.6-luna",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 41,
+      "id": "cx/gpt-5.6-luna-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 42,
+      "id": "cx/gpt-5.5",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 43,
+      "id": "cx/gpt-5.5-review",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 44,
+      "id": "cx/gpt-image-2",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 45,
+      "id": "cx/gpt-image-1.5",
+      "name": null,
+      "owned_by": "cx"
+    },
+    {
+      "index": 46,
+      "id": "kmc/kimi-for-coding",
+      "name": null,
+      "owned_by": "kmc"
+    },
+    {
+      "index": 47,
+      "id": "kmc/k3",
+      "name": null,
+      "owned_by": "kmc"
+    },
+    {
+      "index": 48,
+      "id": "glm/glm-5.3",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 49,
+      "id": "glm/glm-5.3-flash",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 50,
+      "id": "glm/glm-5.2",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 51,
+      "id": "glm/glm-5.1",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 52,
+      "id": "glm/glm-5",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 53,
+      "id": "glm/glm-4.7",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 54,
+      "id": "glm/glm-4.6v",
+      "name": null,
+      "owned_by": "glm"
+    },
+    {
+      "index": 55,
+      "id": "gcli/grok-4.7",
+      "name": null,
+      "owned_by": "gcli"
+    },
+    {
+      "index": 56,
+      "id": "gcli/grok-4.7-build-fast",
+      "name": null,
+      "owned_by": "gcli"
+    },
+    {
+      "index": 57,
+      "id": "gcli/grok-4.6",
+      "name": null,
+      "owned_by": "gcli"
+    },
+    {
+      "index": 58,
+      "id": "gcli/grok-4.5",
+      "name": null,
+      "owned_by": "gcli"
+    },
+    {
+      "index": 59,
+      "id": "xai/grok-4.7",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 60,
+      "id": "xai/grok-4.6",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 61,
+      "id": "xai/grok-4.5",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 62,
+      "id": "xai/grok-4.3",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 63,
+      "id": "xai/grok-build-0.1",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 64,
+      "id": "xai/grok-4.20-0309-reasoning",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 65,
+      "id": "xai/grok-4.20-0309-non-reasoning",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 66,
+      "id": "xai/grok-4.20-multi-agent-0309",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 67,
+      "id": "xai/grok-imagine-image",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 68,
+      "id": "xai/grok-imagine-image-quality",
+      "name": null,
+      "owned_by": "xai"
+    },
+    {
+      "index": 69,
+      "id": "cc/claude-opus-5",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 70,
+      "id": "cc/claude-fable-5",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 71,
+      "id": "cc/claude-sonnet-5",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 72,
+      "id": "cc/claude-opus-4-8",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 73,
+      "id": "cc/claude-opus-4-7",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 74,
+      "id": "cc/claude-opus-4-6",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 75,
+      "id": "cc/claude-sonnet-4-6",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 76,
+      "id": "cc/claude-haiku-4-5-20251001",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 77,
+      "id": "cc/claude-opus-4-5-20251101",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 78,
+      "id": "cc/claude-sonnet-4-5-20250929",
+      "name": null,
+      "owned_by": "cc"
+    },
+    {
+      "index": 79,
+      "id": "ds/deepseek-v4-pro",
+      "name": null,
+      "owned_by": "ds"
+    },
+    {
+      "index": 80,
+      "id": "ds/deepseek-v4-flash",
+      "name": null,
+      "owned_by": "ds"
+    },
+    {
+      "index": 81,
+      "id": "qwen/qwen3.8-max",
+      "name": null,
+      "owned_by": "qwen"
+    },
+    {
+      "index": 82,
+      "id": "qwen/qwen3.7-max",
+      "name": null,
+      "owned_by": "qwen"
+    },
+    {
+      "index": 83,
+      "id": "qwen/qwen3.7-plus",
+      "name": null,
+      "owned_by": "qwen"
+    },
+    {
+      "index": 84,
+      "id": "flow/nano-banana-pro",
+      "name": null,
+      "owned_by": "flow"
+    },
+    {
+      "index": 85,
+      "id": "flow/nano-banana",
+      "name": null,
+      "owned_by": "flow"
+    },
+    {
+      "index": 86,
+      "id": "flow/nano-banana-lite",
+      "name": null,
+      "owned_by": "flow"
+    },
+    {
+      "index": 87,
+      "id": "am/free",
+      "name": "Free Models Auto Router",
+      "owned_by": "am"
+    }
+  ]
+}
