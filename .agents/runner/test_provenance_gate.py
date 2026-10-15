@@ -2,7 +2,13 @@ from decision import Decision
 from gate import evaluate_gate
 from task_loader import TaskContract
 
-from provenance import LOCKED_CORE_BLOB, CICheck, ProvenanceEvidence
+from provenance import (
+    LOCKED_CORE_BLOB,
+    CICheck,
+    IndependenceClass,
+    ProvenanceEvidence,
+    derive_independence,
+)
 
 BASE = "6b066b282e7727a6bb01de33e64ce39df96f8d8c"
 TARGET = "2c836157267ce08626ff3ebdbde37e22d7d1c3f8"
@@ -35,16 +41,33 @@ def ok_check():
     return CICheck("quality", "100", "200", "completed", "success")
 
 
-def test_allow_requires_complete_provenance_and_ci():
+def test_local_evidence_is_unverified_even_with_successful_ci_claims():
+    local = evidence((ok_check(),))
+    assert derive_independence(local) is IndependenceClass.UNVERIFIED_LOCAL
     assert (
         evaluate_gate(
             task=TASK,
-            evidence=evidence((ok_check(),)),
+            evidence=local,
             expected_source_sha=BASE,
             expected_target_sha=TARGET,
             required_workflows=("quality",),
         )
-        is Decision.ALLOW
+        is Decision.INCONCLUSIVE
+    )
+
+
+def test_fake_independence_field_cannot_escalate_trust():
+    local = evidence((ok_check(),))
+    assert derive_independence(local) is IndependenceClass.UNVERIFIED_LOCAL
+    assert (
+        evaluate_gate(
+            task=TASK,
+            evidence=local,
+            expected_source_sha=BASE,
+            expected_target_sha=TARGET,
+            required_workflows=("quality",),
+        )
+        is Decision.INCONCLUSIVE
     )
 
 
