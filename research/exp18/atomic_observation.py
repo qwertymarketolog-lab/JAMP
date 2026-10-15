@@ -14,6 +14,11 @@ class AtomicObservation:
     content: str
     type: str
     source_ref: str
+    source_id: str
+    subject: str
+    event: str
+    value: str
+    confidence: float
     provenance: dict[str, Any]
     parent_link: dict[str, Any]
 
@@ -30,6 +35,11 @@ def create_atomic_observation(
     operator_id: str,
     operator_version: str,
     params: dict[str, Any],
+    source_id: str = "",
+    subject: str = "",
+    event: str = "",
+    value: str = "",
+    confidence: float = 1.0,
     parent_id: str | None = None,
 ) -> AtomicObservation:
     if not source_ref:
@@ -38,6 +48,8 @@ def create_atomic_observation(
         raise AtomicObservationError("operator id and version are required")
     if atom_type not in ALLOWED_TYPES:
         raise AtomicObservationError(f"unsupported atom type: {atom_type}")
+    if not 0.0 <= confidence <= 1.0:
+        raise AtomicObservationError("confidence must be between 0.0 and 1.0")
 
     provenance = {
         "input_hash": source_ref,
@@ -57,6 +69,11 @@ def create_atomic_observation(
         "params": params,
         "content": content,
         "type": atom_type,
+        "source_id": source_id,
+        "subject": subject,
+        "event": event,
+        "value": value,
+        "confidence": confidence,
         "parent_link": parent_link,
     }
     canonical = json.dumps(
@@ -71,6 +88,11 @@ def create_atomic_observation(
         content=content,
         type=atom_type,
         source_ref=source_ref,
+        source_id=source_id,
+        subject=subject,
+        event=event,
+        value=value,
+        confidence=confidence,
         provenance=provenance,
         parent_link=parent_link,
     )
