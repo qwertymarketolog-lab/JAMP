@@ -288,3 +288,61 @@ Do not describe JAMP as a production-ready universal platform until evidence sup
 - an operational deployment and recovery process.
 
 Until these gates are met, the broader platform remains a target architecture and roadmap, not a verified product capability.
+
+## AI Development Team and Governance
+
+**Recorded:** 2026-10-15  
+**Status:** agreed operating model / governance contract proposal. This section records roles and boundaries; it does not claim that Codex or any other agent is already connected, continuously running, or authorized to perform actions.
+
+### Roles and accountability
+
+- **Human owner / Architect (user):** owns product direction, priorities, acceptance criteria, risk tolerance, and final architectural decisions. Approves merges and any exception to protected boundaries.
+- **Codex / Implementer:** primary coding worker when connected and available. Inspects repository state before acting, selects an assigned task, works on an isolated branch/worktree, makes the smallest justified change, runs relevant checks, and prepares a PR with evidence. It has no authority to merge its own changes or directly modify `main`.
+- **ChatGPT / Coordinator and independent auditor:** helps break goals into verifiable tasks, inspects repository and CI evidence, reviews diffs and acceptance criteria, identifies gaps and risks, and reports PASS / FAIL / HOLD only when supported. It must not treat its own analysis or an agent's assertion as verification evidence.
+- **Other AI systems / Specialists and adversarial reviewers:** perform bounded, explicitly assigned research or review (for example, security, API contracts, tests, dependency risk, performance, or counterexample search). They return source-linked findings and uncertainty, not unqualified approval.
+- **GitHub / CI / evidence artifacts:** provide the durable source of truth for changes, reviews, test executions, Run → Job → artifact lineage, and recorded decisions. A model's narrative is not a substitute for these records.
+
+### Authority boundaries
+
+1. The human architect retains final product and merge authority.
+2. Agents work through isolated branches and pull requests. No direct writes to `main`; no automatic merge.
+3. No agent may self-approve its own implementation. Implementation and review should be separated where feasible; where an independent reviewer is unavailable, status remains REVIEW / HOLD rather than claiming independent approval.
+4. Before creating a branch, file, issue, or PR, inspect existing repository state, open PRs, branches, and relevant evidence. Extend an existing canonical artifact when appropriate; do not create duplicate work.
+5. Do not change thresholds, suppress failing checks, rewrite raw evidence, or turn missing/unknown/inconclusive results into PASS / VERIFIED.
+6. Do not expose secrets, credentials, private user data, or unrestricted tokens in prompts, logs, artifacts, or PRs. Grant only the minimum required permissions.
+7. Frozen Core is protected: `src/jamp/run.py`, expected blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`, required invariant `Δ = 0`. Any proposed exception requires explicit human authorization and its own evidence-backed change process; routine agent tasks must leave it unchanged.
+8. An agent may attempt bounded self-correction, but every attempt must be recorded and re-tested. Repeated failure or missing evidence results in HOLD, not an invented success.
+
+### Task lifecycle
+
+Use the existing GitHub Issues, branches, PRs, and Actions as the initial task-control surface. Do not build a second dispatcher until a read-only capability audit proves it is needed.
+
+- `READY` — scope, owner, acceptance criteria, protected paths, and required evidence are explicit.
+- `IN_PROGRESS` — one named implementer owns the active change; overlapping edits are coordinated.
+- `REVIEW` — implementation is complete enough to inspect; no merge is implied.
+- `HOLD` — required context, permissions, independent review, Run/Job/artifact evidence, or acceptance criteria are missing or contradictory.
+- `DONE` — acceptance criteria are met, relevant evidence is linked, and the human owner accepts the result.
+- `REJECTED` — the proposal fails its acceptance criteria or violates a protected boundary.
+
+Every task handoff should include: task ID/link; base commit and branch; exact scope; files allowed/protected; acceptance criteria; commands/checks actually run; terminal Run → Job → artifact links where applicable; changed-file review; Frozen Core comparison; unresolved risks; and the next decision requested.
+
+### Evidence and review protocol
+
+1. Inspect before editing: current base SHA, relevant source, existing issues/PRs/branches, and prior results.
+2. State the hypothesis and expected observable result before a risky change.
+3. Keep raw evidence separate from summaries and bind conclusions to exact commits, runs, jobs, and artifacts.
+4. Verify terminal CI status and the relevant Job and artifact contents. A green workflow alone does not prove an unrelated or broader claim.
+5. Preserve explicit `UNKNOWN`, `INCONCLUSIVE`, `CONTRADICTED`, `REFUSE`, and `HOLD` states. Missing evidence must not be replaced by inferred or synthetic evidence.
+6. Prefer a distinct reviewer for adversarial review. Ask reviewers to find counterexamples and defects, not to agree with the implementer.
+7. The final report states what changed, what was actually tested, what evidence exists, what remains unverified, and whether the next step is PASS, FAIL, or HOLD.
+
+### Initial rollout
+
+- First connect and verify the actual Codex ↔ GitHub capability and permissions; this document alone does not establish a working connection or paid/cloud availability.
+- Start with a read-only repository and open-PR inventory; do not let the first task rewrite code.
+- Reuse existing autonomous-worker trust-boundary and safety-contract work (including PRs #170 and #176) and inspect the existing daily evidence agent work (PR #365) before proposing new orchestration.
+- Run one bounded pilot task through branch → tests → CI Run → Job → artifact → independent review. Inspect the results before granting broader permissions or unattended task chaining.
+- Only after the pilot is accepted should we consider scheduled task selection or multi-agent orchestration. Any schedule, write permission, or expanded autonomy is a separate decision with explicit limits and rollback.
+
+This governance section is a working agreement, not evidence that these controls are already enforced by code or GitHub settings. Enforcement must be verified separately.
+
