@@ -1,0 +1,16 @@
+{
+  "fixture_id": "wildberries-product-v0.1",
+  "marketplace": "wildberries",
+  "format": "json",
+  "source_locator": "fixture://wildberries/product/001",
+  "retrieved_at": "2026-01-01T00:00:00Z",
+  "payload": {
+    "title": "Example cabinet",
+    "characteristics": {
+      "Материал": "сталь",
+      "Ширина, мм": "850",
+      "Высота, мм": "2000",
+      "Количество дверей": "2"
+    }
+  }
+}
