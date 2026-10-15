@@ -58,18 +58,62 @@ def github_request(url: str, token: str, binary: bool = False) -> Any:
         raise EvidenceError("GitHub returned invalid JSON") from exc
 
 
+def validate_state(state: Any) -> dict[str, Any]:
+    """Validate the complete persisted-state contract before using it for a delta."""
+    if not isinstance(state, dict) or state.get("schema_version") != "1.0":
+        raise EvidenceError("Prior state schema is unsupported")
+    if not isinstance(state.get("saved_at"), str) or not state["saved_at"]:
+        raise EvidenceError("Prior state is missing saved_at")
+    for field in ("pull_requests", "workflow_runs"):
+        values = state.get(field)
+        if not isinstance(values, dict):
+            raise EvidenceError(f"Prior state field {field} must be an object")
+        for key, timestamp in values.items():
+            if not isinstance(key, str) or not key or not isinstance(timestamp, str) or not timestamp:
+                raise EvidenceError(f"Prior state field {field} contains an invalid entry")
+    for key in state["pull_requests"]:
+        if not key.isdecimal():
+            raise EvidenceError("Prior state contains an invalid pull request key")
+    for key in state["workflow_runs"]:
+        parts = key.split(":")
+        if len(parts) != 2 or not all(part.isdecimal() for part in parts):
+            raise EvidenceError("Prior state contains an invalid workflow run key")
+    return state
+
+
+def _api_list(response: Any, field: str, source: str) -> list[dict[str, Any]]:
+    if not isinstance(response, dict) or not isinstance(response.get(field), list):
+        raise EvidenceError(f"{source} returned malformed {field}")
+    values = response[field]
+    if any(not isinstance(item, dict) for item in values):
+        raise EvidenceError(f"{source} returned a non-object item in {field}")
+    return values
+
+
 def prior_state(repo: str, token: str, current_run_id: str) -> dict[str, Any] | None:
     query = urllib.parse.urlencode({"name": STATE_ARTIFACT, "per_page": 100})
     artifacts_url = f"{API}/repos/{repo}/actions/artifacts?{query}"
     response = github_request(artifacts_url, token)
     artifacts = [
         item
-        for item in response.get("artifacts", [])
-        if item.get("name") == STATE_ARTIFACT and not item.get("expired", False)
+        for item in _api_list(response, "artifacts", "artifact listing")
+        if item.get("name") == STATE_ARTIFACT and item.get("expired") is False
     ]
-    artifacts.sort(key=lambda item: item.get("created_at", ""), reverse=True)
+    if len(artifacts) > 1:
+        raise EvidenceError("Multiple unexpired state artifacts make prior memory ambiguous")
     if artifacts:
-        archive = github_request(artifacts[0]["archive_download_url"], token, binary=True)
+        artifact = artifacts[0]
+        archive_url = artifact.get("archive_download_url")
+        provenance = artifact.get("workflow_run")
+        if not isinstance(archive_url, str) or not archive_url:
+            raise EvidenceError("Prior state artifact is missing archive URL")
+        if not isinstance(provenance, dict) or not isinstance(provenance.get("id"), int):
+            raise EvidenceError("Prior state artifact has missing workflow provenance")
+        if provenance.get("head_repository_id") is not None and not isinstance(
+            provenance.get("head_repository_id"), int
+        ):
+            raise EvidenceError("Prior state artifact has invalid repository provenance")
+        archive = github_request(archive_url, token, binary=True)
         try:
             with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
                 candidates = [
@@ -80,11 +124,11 @@ def prior_state(repo: str, token: str, current_run_id: str) -> dict[str, Any] | 
                 if len(candidates) != 1:
                     raise EvidenceError("Prior state artifact has missing/ambiguous state.json")
                 state = json.loads(bundle.read(candidates[0]).decode("utf-8"))
-        except (zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except EvidenceError:
+            raise
+        except (zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError, KeyError) as exc:
             raise EvidenceError("Prior state artifact is unreadable") from exc
-        if not isinstance(state, dict) or state.get("schema_version") != "1.0":
-            raise EvidenceError("Prior state schema is unsupported")
-        return state
+        return validate_state(state)
 
     workflow_url = (
         f"{API}/repos/{repo}/actions/workflows/jamp-daily-evidence-agent.yml/runs?per_page=100"
@@ -92,7 +136,7 @@ def prior_state(repo: str, token: str, current_run_id: str) -> dict[str, Any] | 
     runs_response = github_request(workflow_url, token)
     earlier_runs = [
         item
-        for item in runs_response.get("workflow_runs", [])
+        for item in _api_list(runs_response, "workflow_runs", "workflow run listing")
         if str(item.get("id")) != current_run_id
     ]
     if earlier_runs:
@@ -167,46 +211,48 @@ def fetch_snapshot(repo: str, token: str) -> dict[str, Any]:
                 )
                 jobs = jobs_response.get("jobs", [])
                 artifacts = artifacts_response.get("artifacts", [])
+                jobs = _api_list(jobs_response, "jobs", f"run {run_id} jobs")
+                artifacts = _api_list(artifacts_response, "artifacts", f"run {run_id} artifacts")
                 run_evidence.append(
                     {
-                    "id": run_id,
-                    "name": item.get("name"),
-                    "workflow_id": item.get("workflow_id"),
-                    "event": item.get("event"),
-                    "head_sha": item.get("head_sha"),
-                    "branch": item.get("head_branch"),
-                    "status": item.get("status"),
-                    "conclusion": item.get("conclusion"),
-                    "run_attempt": item.get("run_attempt"),
-                    "updated_at": item.get("updated_at"),
-                    "url": item.get("html_url"),
-                    "jobs": [
-                        {
-                            "id": job.get("id"),
-                            "name": job.get("name"),
-                            "status": job.get("status"),
-                            "conclusion": job.get("conclusion"),
-                            "steps": [
-                                {
-                                    "name": step.get("name"),
-                                    "status": step.get("status"),
-                                    "conclusion": step.get("conclusion"),
-                                }
-                                for step in job.get("steps", [])
-                            ],
-                        }
-                        for job in jobs
-                    ],
-                    "artifacts": [
-                        {
-                            "name": artifact.get("name"),
-                            "expired": artifact.get("expired"),
-                            "size_in_bytes": artifact.get("size_in_bytes"),
-                            "url": artifact.get("archive_download_url"),
-                        }
-                        for artifact in artifacts
-                    ],
-                    "zero_jobs_anomaly": len(jobs) == 0,
+                        "id": run_id,
+                        "name": item.get("name"),
+                        "workflow_id": item.get("workflow_id"),
+                        "event": item.get("event"),
+                        "head_sha": item.get("head_sha"),
+                        "branch": item.get("head_branch"),
+                        "status": item.get("status"),
+                        "conclusion": item.get("conclusion"),
+                        "run_attempt": item.get("run_attempt"),
+                        "updated_at": item.get("updated_at"),
+                        "url": item.get("html_url"),
+                        "jobs": [
+                            {
+                                "id": job.get("id"),
+                                "name": job.get("name"),
+                                "status": job.get("status"),
+                                "conclusion": job.get("conclusion"),
+                                "steps": [
+                                    {
+                                        "name": step.get("name"),
+                                        "status": step.get("status"),
+                                        "conclusion": step.get("conclusion"),
+                                    }
+                                    for step in job.get("steps", [])
+                                ],
+                            }
+                            for job in jobs
+                        ],
+                        "artifacts": [
+                            {
+                                "name": artifact.get("name"),
+                                "expired": artifact.get("expired"),
+                                "size_in_bytes": artifact.get("size_in_bytes"),
+                                "url": artifact.get("archive_download_url"),
+                            }
+                            for artifact in artifacts
+                        ],
+                        "zero_jobs_anomaly": len(jobs) == 0,
                     }
                 )
             except (EvidenceError, TypeError) as exc:
