@@ -69,7 +69,12 @@ def validate_state(state: Any) -> dict[str, Any]:
         if not isinstance(values, dict):
             raise EvidenceError(f"Prior state field {field} must be an object")
         for key, timestamp in values.items():
-            if not isinstance(key, str) or not key or not isinstance(timestamp, str) or not timestamp:
+            if (
+                not isinstance(key, str)
+                or not key
+                or not isinstance(timestamp, str)
+                or not timestamp
+            ):
                 raise EvidenceError(f"Prior state field {field} contains an invalid entry")
     for key in state["pull_requests"]:
         if not key.isdecimal():
