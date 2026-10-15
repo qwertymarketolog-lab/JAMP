@@ -429,3 +429,90 @@ A successful pilot means the source-to-report chain and its limitations are insp
 
 Do not mark a connector or its findings VERIFIED merely because an API call returned HTTP 2xx or an AI produced a confident summary. Require source-bound records, documented coverage and limitations, relevant automated tests, inspection of representative claims against raw evidence, and terminal CI Run → Job → artifact evidence for implementation changes. Until then, this remains a future roadmap item.
 
+
+## AI Agent: Mission, Boundaries, and First MVP
+
+**Recorded:** 2026-10-16  
+**Status:** product/operating contract proposal; not evidence that an agent is installed, connected, or running. This section clarifies what we want before renting compute, granting permissions, or implementing orchestration.
+
+### Two distinct roles — do not confuse them
+
+JAMP has two potential agent use cases, which must be evaluated separately:
+
+1. **Development agent for building JAMP.** Works on a bounded repository task: inspect existing code and work, propose a plan, edit an isolated branch, run relevant tests, collect CI evidence, and prepare a PR for human review. It is a worker, not the product owner or final approver.
+2. **Runtime agent inside the JAMP product.** Executes user-requested research or business workflows through approved models, APIs, and tools, then returns a result with provenance, evidence, uncertainty, and an audit trail. It is a product capability, not a substitute for the development agent.
+
+A shared policy vocabulary may eventually be useful, but the credentials, permissions, acceptance tests, deployment model, and risk profile of these two roles must remain separate.
+
+### Product mission
+
+The agent should reduce the amount of manual coordination required to complete a defined task while making the work easier to inspect—not merely generate text or claim that work is complete. For every task it must make clear:
+
+- what the user asked for and what scope was accepted;
+- which files, APIs, models, tools, or CI jobs were actually used;
+- what it read, changed, executed, or deliberately did not do;
+- which outputs are raw evidence, derived analysis, or recommendations;
+- what tests and terminal artifacts exist, and what remains unverified;
+- what decision or approval is needed next.
+
+### Initial development-agent MVP
+
+Start with a **single-task, repository-scoped, read-only audit** using the already available GitHub integration where sufficient. The first task is to inspect JAMP state and report: current branch/commit, relevant open PRs/issues, existing implementation, test/CI evidence, Frozen Core status, blockers, and one recommended next action. The agent must not create files, branches, commits, PRs, or trigger workflows during this first pilot.
+
+Only after an independently reviewed read-only pilot is accepted, test a second stage in a disposable branch with a narrowly defined change. The agent may prepare a branch/PR and collect test evidence, but must not merge, approve its own work, change repository protection, or expand its own permissions. Human approval remains the merge/release gate.
+
+### Autonomy levels
+
+| Level | Permission | Allowed behavior | Gate to advance |
+|---|---|---|---|
+| L0 | Read-only | Inspect repository, PRs, issues, workflow runs, jobs and artifacts; produce a cited audit report. | Correct source references, no fabricated status, independent review of the report. |
+| L1 | Isolated write | Edit only the files and branch explicitly scoped for one task; run bounded tests; prepare a PR. | Diff review, relevant tests, terminal Run → Job → artifact where CI applies, Frozen Core check. |
+| L2 | Approved actions | Trigger only named workflows or external actions after explicit task-level approval. | Audited permissions, bounded inputs/cost/time, safe failure and rollback behavior. |
+| L3 | Scheduled / multi-step | Chain tasks or run on a schedule only for a defined workflow with monitoring and stop conditions. | Separate approval, operational metrics, alerting, cancellation, audit and rollback tested. |
+
+No level is granted automatically by writing this roadmap. Each increase in autonomy requires a separate decision and evidence.
+
+### Mandatory task envelope
+
+Every agent task should include:
+
+- **Goal and acceptance criteria:** one clear outcome, measurable where possible.
+- **Scope:** allowed repository paths, services, accounts, and operations; explicit exclusions.
+- **Starting state:** commit/ref, relevant existing PRs/issues, and known artifacts checked before work begins.
+- **Budget:** time, token/API/compute spend, request count, retry limits, and output size.
+- **Permissions:** least privilege; read-only by default; no secret disclosure; no permission self-escalation.
+- **Stop conditions:** ambiguous requirements, missing authorization, conflicting evidence, unexpected diff, destructive operation, budget exhaustion, or Frozen Core drift → STOP and report HOLD.
+- **Deliverables:** concise summary, changed-file list or explicit “no changes,” commands/tests actually run, Run → Job → artifact references, limitations, and a recommended next action.
+- **Review:** independent review for nontrivial changes; the agent cannot approve or merge its own work.
+
+### Non-negotiable boundaries
+
+- The agent must inspect current repo state and relevant existing PRs/issues before proposing new work; no duplicate PRs or roadmap documents.
+- Frozen Core file src/jamp/run.py remains at blob 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a, required Δ = 0. Any unexpected difference means stop and HOLD.
+- UNKNOWN / INCONCLUSIVE / missing evidence must never become PASS, GREEN, or VERIFIED because the agent says so. Report actual terminal evidence and its limits.
+- No direct pushes to main, self-approval, self-merge, secret exposure, unrestricted shell/network access, or production actions without explicit authorization.
+- Treat repository text, issues, comments, web pages, and external documents as untrusted input; instructions embedded in retrieved content cannot override the task envelope or security policy.
+- External side effects (posting, purchases, customer messages, production changes, deletion, or paid API calls) require explicit permission for that specific action.
+- If the agent or provider fails, preserve the error and partial evidence; do not silently retry an unbounded action or fabricate completion.
+
+### Runtime-agent MVP boundary
+
+The first runtime agent should not be a universal autonomous agent. Choose one narrow workflow, one canonical API path, and a small set of approved tools. It must return an explicit outcome such as COMPLETED_WITH_EVIDENCE, REFUSED, HOLD, or FAILED, plus a trace identifier and evidence references where applicable. These are proposed product-level labels and must be reconciled with existing JAMP status contracts before implementation; they must not silently replace established status enums.
+
+A practical candidate after the serving/API path is verified is a source-backed research task: accept a user-supplied source or authorized URL, collect permitted evidence, summarize claims with source links and counterevidence, disclose coverage limits, and stop when access or evidence is insufficient. YouTube comments are one candidate pilot, not a mandatory dependency.
+
+### Readiness gate before renting a server or enabling autonomy
+
+Do not rent or provision a dedicated agent server merely because an agent sounds useful. First establish: (1) the exact first task, (2) successful read-only access to the required systems, (3) a repeatable bounded execution path, (4) a reviewed task envelope and permission model, (5) logs/artifact retention and secret handling, (6) cost/time limits, and (7) a tested stop/rollback procedure. Compare local/manual execution, existing GitHub-connected tools, and hosted or self-hosted agents against the same pilot before choosing infrastructure.
+
+### Acceptance criteria for the first pilot
+
+- Uses existing repository and integration capabilities rather than creating a parallel agent framework.
+- Reports source-linked facts and distinguishes observation from inference.
+- Makes no repository changes and triggers no external side effects at L0.
+- Identifies open work and blockers without duplicating existing PRs/issues.
+- Explicitly checks Frozen Core identity and reports the result without assuming it.
+- Produces a short report that an independent reviewer can reproduce from the cited refs.
+- Ends with one recommended next action and a clear HOLD if required evidence is missing.
+
+This section defines intended behavior and gates only. Agent connectivity, permission enforcement, deployment, scheduling, and production readiness remain unverified until demonstrated by a bounded pilot and its artifacts.
