@@ -186,3 +186,105 @@ The evolution of JAMP therefore proceeds outward from the foundation rather than
 ### Next action
 
 Complete **Stage A** as a read-only audit of dependency declarations, launch instructions, API request/response schemas, and relevant CI workflows. Then update this same roadmap with the verified findings before implementing UI or changing runtime contracts. Do not modify the Frozen Core or create a parallel backend.
+
+
+## Target Product Vision and Composition
+
+**Status:** strategic target / roadmap hypothesis. This section records the product direction discussed on 2026-10-15. It does not claim that the complete platform, interfaces, integrations, or commercial capabilities are implemented.
+
+### Product thesis
+
+JAMP is intended to become an **evidence-first infrastructure platform for checking the results of AI models, AI agents, software systems, and controlled automated processes**. It is not intended to be another general-purpose chatbot or a foundation-model provider.
+
+The central product question is:
+
+> What was actually executed, what evidence supports the result, what remains unknown or contradictory, and is there enough evidence to justify the next action?
+
+AI models and agents are instruments that produce observations or perform bounded tasks; they are not authorities. JAMP must preserve the distinction between raw evidence and derived interpretation and must not manufacture a positive status from missing or inconclusive evidence.
+
+### Target logical composition
+
+The intended platform is organized into separable layers:
+
+1. **JAMP Core / Evidence Infrastructure** — evidence records, provenance, conflict preservation, integrity checks, explicit epistemic states, deterministic qualification and audit history. The Frozen Core remains protected.
+2. **Execution and agent adapters** — controlled connections to models, coding agents, research tools, CI jobs and external APIs. Adapters return observations and artifacts; they do not decide that their own outputs are verified.
+3. **Capability Router and policies** — selects a compatible executor using known capabilities, task profiles, latency/cost constraints and policy. Unknown, unsupported or insufficiently evidenced routes fail closed.
+4. **Evidence Registry and lineage** — links task, model/provider and version where available, parameters, source inputs, Run → Job → artifact, checks, derived summaries and final decision. Raw evidence remains distinguishable from summaries.
+5. **JAMP API and integrations** — the programmatic boundary for applications and external systems. Extend the existing FastAPI serving lineage; do not create a parallel backend.
+6. **User interfaces** — Telegram as a lightweight control/notification surface; responsive web/PWA as the likely first general UI; mobile and desktop packaging only after the shared API and user journey are stable.
+7. **Extension ecosystem** — separately governed adapters and domain modules that add integrations or checks without bypassing core contracts or changing the Frozen Core.
+
+Conceptual flow:
+
+```
+User / Application / Telegram / Web-PWA / API
+                      |
+              JAMP API / Adapter
+                      |
+          Router + execution policies
+                      |
+       Model / Agent / Tool / CI / Data source
+                      |
+             Run -> Job -> Artifact
+                      |
+       Provenance + integrity + rule checks
+                      |
+         VERIFIED / CONTRADICTED /
+          INCONCLUSIVE / UNKNOWN
+                      |
+       Evidence-backed report and audit trail
+```
+
+This is a target architecture, not a claim that every edge is currently wired end-to-end. Each capability requires its own contract, implementation evidence and acceptance decision.
+
+### Product delivery sequence
+
+The delivery roadmap already recorded above (Stages A–G) remains the operational source for the serving/API/UI path. The strategic target is reached incrementally:
+
+1. **Reliable evidence and execution path:** confirm one canonical API entry point, connect only explicitly contracted execution paths, preserve Run → Job → artifact lineage, and verify real terminal outcomes.
+2. **Usable first product:** complete the end-to-end user journey through the existing API; prefer a responsive web/PWA before separate native applications. Telegram can remain a practical initial interface.
+3. **Operational readiness:** authentication/authorization, secret handling, bounded execution, monitoring, retention policy, deployment/recovery documentation and security tests must be defined before claiming production readiness.
+4. **Developer platform:** stabilize API contracts and documented adapters so external developers can connect models, tools and their own applications.
+5. **Extension ecosystem:** introduce versioned plugin contracts, compatibility checks, permissions, isolation, provenance requirements and an explicit review/revocation process.
+6. **Enterprise and domain applications:** pursue only after a narrow use case demonstrates value with real users. Possible research areas include software engineering/CI, AI-agent evaluation, source-backed research and enterprise document workflows. These are market hypotheses, not validated demand or shipped capabilities.
+
+### Plugin policy and rollout
+
+Plugins are an implementation and integration mechanism, not the product goal. Do not install a large bundle of extensions merely because it is available in a catalog.
+
+Before adopting a candidate, inspect its exact upstream repository, license, maintenance/activity, supported clients, permissions, network/data handling, secret access, command execution behavior, update mechanism and measurable benefit. Confirm that the capability is not already supplied by an existing JAMP integration.
+
+Evaluate at most one candidate per concrete need in an isolated, read-only or otherwise bounded experiment. Measure time, cost, failure rate and review quality against the existing workflow. Reject a plugin if it requires unnecessary privileges or cannot be safely isolated.
+
+Initial categories to evaluate, in order of practical need:
+- GitHub/CI navigation and evidence retrieval, reusing existing connected capabilities where sufficient;
+- independent code review and test assistance;
+- secret/dependency/security scanning;
+- bounded agent orchestration;
+- context and progress management only if a measured baseline shows material waste.
+
+Runtime JAMP plugins must never be allowed to silently upgrade evidence status, bypass fail-closed policy, write to the Frozen Core, access unrestricted secrets, or perform privileged actions without the relevant authorization. Agent claims are not verification evidence by themselves.
+
+### Product boundaries and non-goals
+
+- JAMP is an evidence and verification layer around existing models and tools; it does not need to train or own a foundation model.
+- A green CI run, HTTP 2xx response, successful agent completion, model consensus or matching SHA-256 alone does not prove a broader product claim. Evidence must be relevant to the exact claim.
+- The Frozen Core invariant remains `src/jamp/run.py`, blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`, with required `Δ = 0`.
+- New UI, integrations, plugins and domain products should be developed outside the Frozen Core through explicit contracts and isolated tests.
+- JAMP FURNITURE is a separate applied-business direction. It may reuse general evidence-first engineering patterns, but its business processes and product model must not be merged into JAMP without an explicit architectural decision.
+- Commercial packaging, subscription/API pricing, enterprise deployment and industry-specific compliance are future hypotheses requiring customer discovery, security work and validation; none is implied by this roadmap.
+
+### Acceptance gates for advancing the target
+
+Do not describe JAMP as a production-ready universal platform until evidence supports all applicable gates:
+
+- a canonical and documented API contract;
+- a verified end-to-end task → execution → Run/Job/artifact → provenance/result path;
+- explicit failure, UNKNOWN, INCONCLUSIVE, HOLD and REFUSE behavior;
+- reproducible CI evidence bound to the exact commit and artifacts;
+- confirmed Frozen Core invariant (`Δ = 0`);
+- defined identity, authorization, secrets, isolation and retention boundaries;
+- demonstrated user value in at least one narrow use case;
+- an operational deployment and recovery process.
+
+Until these gates are met, the broader platform remains a target architecture and roadmap, not a verified product capability.
