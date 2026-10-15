@@ -1,0 +1,18 @@
+name: Probe MinIO AIStor fixed tags
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pull-minio-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull MinIO server fixed tag
+        run: docker pull quay.io/minio/aistor/minio:RELEASE.2026-03-26T21-24-40Z
+
+  pull-minio-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull MinIO client fixed tag
+        run: docker pull quay.io/minio/aistor/mc:RELEASE.2026-03-12T04-18-55Z
