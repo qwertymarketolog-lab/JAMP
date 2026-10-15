@@ -1,0 +1,91 @@
+name: EXP-22 Phase 1B (Inter-Run Variability Profiling)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/research/exp22/**'
+      - '.github/workflows/exp22-phase1b.yml'
+
+jobs:
+  profile-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run_index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Phase 1 profiling
+        env:
+          PYTHONPATH: .:src
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          python scripts/research/exp22/phase1_environmental_profiling.py \
+            --target-commit "${{ github.event.pull_request.head.sha }}" \
+            --iterations 50 \
+            --output-artifact "exp22_phase1b_run_${{ matrix.run_index }}.json"
+
+      - name: Upload raw run artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase1b-run-${{ matrix.run_index }}
+          path: exp22_phase1b_run_${{ matrix.run_index }}.json
+          if-no-files-found: error
+
+  aggregate:
+    if: ${{ always() }}
+    needs: profile-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download all Phase 1B raw artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: exp22-phase1b-run-*
+          path: phase1b-input
+          merge-multiple: true
+
+      - name: Build composite evidence
+        env:
+          PYTHONPATH: .:src
+        run: |
+          python scripts/research/exp22/phase1b_aggregate.py \
+            --input-dir phase1b-input \
+            --target-commit "${{ github.event.pull_request.head.sha }}" \
+            --output artifacts/research/exp22_phase1b_composite.json
+
+      - name: Upload composite evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase1b-composite
+          path: artifacts/research/exp22_phase1b_composite.json
+          if-no-files-found: error

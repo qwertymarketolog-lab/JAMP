@@ -13,7 +13,7 @@ import os
 import platform
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,9 +23,7 @@ from research.exp19.observation_relation import ObservationRelation
 EXPERIMENT_ID = "EXP-22-PHASE0-MEASUREMENT-BOUNDARY-V1"
 PHASE = 0
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 G4_THRESHOLD_MS = 15.0
 DEFAULT_SEED = 2201
@@ -54,13 +52,9 @@ def _affinity() -> list[int] | None:
 
 
 def _canonical_workload() -> ObservationAdjacencyGraph:
-    edges = [
-        ObservationRelation(str(i), str(i + 1), "adjacent", {})
-        for i in range(10_000)
-    ]
+    edges = [ObservationRelation(str(i), str(i + 1), "adjacent", {}) for i in range(10_000)]
     edges.extend(
-        ObservationRelation(str(i), str(i + 10_000), "adjacent", {})
-        for i in range(10_000)
+        ObservationRelation(str(i), str(i + 10_000), "adjacent", {}) for i in range(10_000)
     )
     return ObservationAdjacencyGraph(tuple(edges))
 
@@ -74,7 +68,7 @@ def _validate_workload(graph: ObservationAdjacencyGraph) -> list[str]:
     return errors
 
 
-def run(target_commit: str, seed: int) -> dict[str, Any]:
+def run(target_commit: str, seed: int, artifact_path: Path) -> dict[str, Any]:
     errors: list[str] = []
 
     if not target_commit:
@@ -94,7 +88,7 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
     wall_clock = time.get_clock_info("perf_counter")
     cpu_clock = time.get_clock_info("process_time")
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     runner_name = os.environ.get("RUNNER_NAME", "")
     if not runner_name:
         errors.append("runner_name_missing")
@@ -253,8 +247,8 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
         },
     }
 
-    ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-    ARTIFACT.write_text(
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(
         json.dumps(artifact, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
@@ -265,8 +259,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--target-commit", required=True)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--output-artifact", type=Path, default=ARTIFACT)
     args = parser.parse_args()
-    artifact = run(args.target_commit, args.seed)
+    artifact = run(args.target_commit, args.seed, Path(args.output_artifact))
     print(json.dumps(artifact, indent=2, sort_keys=True))
     return 0 if artifact["status"] == "VERIFIED" else 1
 
