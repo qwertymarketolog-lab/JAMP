@@ -117,8 +117,7 @@ Only evidence demonstrating that an architectural change is necessary and justif
 | Component | Status | Evidence boundary |
 |---|---|---|
 | Frozen Core | VERIFIED / FROZEN | src/jamp/run.py blob 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a; Δ = 0 |
-| Evidence System | VERIFIED | Canonical records and content commitments |
-| Provenance Tracking | VERIFIED / HOLD | Temporal consistency verified; execution binding unresolved |
+| Evidence System | VERIFIED | Canonical records and content commitments || Provenance Tracking | VERIFIED / HOLD | Temporal consistency verified; execution binding unresolved |
 | Conflict Handling | VERIFIED | Contradictions remain explicit |
 | Atomic Observation | VERIFIED | Deterministic observation identity |
 | Multi-AI Federation / AnyModel v3 | VERIFIED / ONGOING | 87 × 30 = 2,610 checks |
@@ -238,7 +237,6 @@ User / Application / Telegram / Web-PWA / API
 This is a target architecture, not a claim that every edge is currently wired end-to-end. Each capability requires its own contract, implementation evidence and acceptance decision.
 
 ### Product delivery sequence
-
 The delivery roadmap already recorded above (Stages A–G) remains the operational source for the serving/API/UI path. The strategic target is reached incrementally:
 
 1. **Reliable evidence and execution path:** confirm one canonical API entry point, connect only explicitly contracted execution paths, preserve Run → Job → artifact lineage, and verify real terminal outcomes.
@@ -345,4 +343,89 @@ Every task handoff should include: task ID/link; base commit and branch; exact s
 - Only after the pilot is accepted should we consider scheduled task selection or multi-agent orchestration. Any schedule, write permission, or expanded autonomy is a separate decision with explicit limits and rollback.
 
 This governance section is a working agreement, not evidence that these controls are already enforced by code or GitHub settings. Enforcement must be verified separately.
+
+## Future API Integration and Evidence Plugins
+
+**Recorded:** 2026-10-15  
+**Status:** future product direction / unvalidated roadmap hypothesis. This section records intended exploration only; it does not claim that the connectors, collection pipeline, analysis plugins, or user interface are implemented or verified.
+
+### Goal
+
+Allow JAMP to connect to external services through documented APIs, ingest source data with explicit provenance, run bounded analysis, and return findings linked to the underlying evidence. The value proposition is not merely connecting many APIs: it is making each derived conclusion inspectable, reproducible where possible, and honest about missing, partial, or contradictory evidence.
+
+### Candidate source families
+
+Evaluate sources individually based on API availability, authorization, terms, data sensitivity, maintenance burden, and a concrete user need:
+
+1. **YouTube comments — first proposed feasibility pilot.** Retrieve accessible public comment threads and replies through the official YouTube Data API where permitted. Record pagination, quotas, comments-disabled cases, inaccessible data, and collection limits. Do not assume all comments or all replies were retrieved.
+2. **GitHub and CI — reuse existing integration capability first.** Read repositories, issues, pull requests, workflow runs, jobs, and artifacts where authorized. Avoid building a second GitHub connector if existing connected tools cover the required operation.
+3. **Reddit and public discussion sources.** Consider only documented, permitted API access and retain source links and collection constraints.
+4. **Customer feedback and app reviews.** Consider Google Play Developer APIs, App Store Connect, CRM/support systems, and other feedback sources where the account has authorized access.
+5. **Marketplaces and commerce sources.** Consider official seller/catalog APIs and authorized exports for product details, reviews, orders, or prices. Do not assume public access to private seller data, sales metrics, or complete review corpora.
+6. **Other business systems.** Add a connector only when a specific workflow and authorized source justify it.
+
+This list is a candidate inventory, not a statement that every source offers a public API or that access has been tested.
+
+### Proposed logical flow
+
+```
+Source URL / Authorized Account
+          -> Source Adapter
+          -> Raw Capture + Retrieval Metadata
+          -> Schema / Integrity / Completeness Checks
+          -> Evidence Records + Provenance
+          -> Bounded Analysis Plugin
+          -> Claim-to-Source Links + Limitations
+          -> Reviewable Report / API Response
+```
+
+Adapters acquire and describe source data; they must not certify the correctness of derived conclusions. Analysis plugins produce derived interpretations that remain distinguishable from raw records.
+
+### Minimum evidence contract for each connector
+
+- Source/platform and documented API operation or authorized export path.
+- Request scope, retrieval timestamp, pagination/cursor state, and applicable account/permission context without exposing secrets.
+- Source identifiers and stable source links where available.
+- Raw response or a policy-compliant retained representation, with a content digest when feasible.
+- Counts requested, fetched, skipped, and failed where measurable; explicit reasons and limits.
+- API version, adapter version, relevant parameters, rate-limit/quota behavior, and errors.
+- Separation of raw observations from normalized records, model-generated labels, summaries, and final claims.
+- Traceable mapping from each material report claim to supporting and contradicting source records.
+- Explicit UNKNOWN / INCONCLUSIVE / HOLD / REFUSE when access, coverage, schema, or evidence quality is insufficient. No synthetic success and no claim that a partial sample represents an entire audience or market.
+
+### First pilot: YouTube comment evidence
+
+The first experiment should be narrow and read-only:
+
+1. Use one user-supplied video URL.
+2. Check official API access, credential requirements, quota implications, and whether comments are available before implementing a reusable connector.
+3. Collect only the records allowed by the API and applicable rules; preserve identifiers and retrieval metadata.
+4. Produce a small report grouping themes, questions, complaints, ideas, and counterexamples, with links to the exact comments that support each finding.
+5. Manually inspect a sample of source records against the report and record sampling/coverage limitations.
+6. Decide whether to proceed to a versioned connector contract based on observed usefulness, access reliability, cost, and evidence quality.
+
+A successful pilot means the source-to-report chain and its limitations are inspectable; it does not prove market demand, audience-wide consensus, or the truth of every model-generated interpretation.
+
+### Delivery order and gates
+
+- **P0 — Source feasibility:** read-only access check; no code, credentials in repository, or Frozen Core changes.
+- **P1 — Connector contract:** define input/output schema, authorization boundary, pagination, error states, provenance fields, retention, and tests using captured or synthetic fixtures clearly labelled as such.
+- **P2 — One vertical implementation:** implement and test the YouTube path only if P0 demonstrates feasible permitted access.
+- **P3 — Evidence-linked analysis:** verify that report claims can be traced to raw records and that counterevidence and uncertainty remain visible.
+- **P4 — Reusable adapter interface:** generalize only after the first connector demonstrates value; add other sources one at a time.
+- **P5 — Product integration:** connect to the existing JAMP API and UI only after the canonical API path and execution/provenance contracts are verified. Do not create a parallel backend or a second task dispatcher.
+
+### Security, privacy, and architectural boundaries
+
+- Use official APIs or explicitly authorized exports; do not bypass access controls, authentication, rate limits, platform restrictions, or privacy settings.
+- Keep credentials in an appropriate secret store or environment configuration; never commit tokens or place them in logs/artifacts.
+- Define data minimization, retention/deletion, access controls, and handling of personal data before storing or sharing collected content.
+- Treat external text and comments as untrusted input, including possible prompt-injection attempts; source content must not be allowed to instruct privileged agents or trigger actions.
+- Enforce bounded network access, timeouts, size limits, retries, and quota handling.
+- Preserve the Frozen Core invariant: `src/jamp/run.py`, expected blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`, required `Δ = 0`. New connectors and analysis plugins must remain outside the Frozen Core and must not upgrade their own evidence status.
+- Before adding files or PRs, inspect current implementation and open work; extend existing contracts and integration points rather than creating duplicate connectors or roadmaps.
+
+### Acceptance gate
+
+Do not mark a connector or its findings VERIFIED merely because an API call returned HTTP 2xx or an AI produced a confident summary. Require source-bound records, documented coverage and limitations, relevant automated tests, inspection of representative claims against raw evidence, and terminal CI Run → Job → artifact evidence for implementation changes. Until then, this remains a future roadmap item.
 
