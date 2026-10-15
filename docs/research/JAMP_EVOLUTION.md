@@ -1,5 +1,7 @@
 # JAMP Evolution
 
+> **Visual project map:** [Open the JAMP project map (SVG)](assets/jamp-project-map.svg). This is a high-level orientation diagram; current implementation and evidence status remain governed by `STATUS.md`, the source files, CI runs, jobs, and artifacts—not by the diagram itself.
+
 ## Purpose
 
 JAMP remains independent of any specific AI model, hardware platform, or input data format.
