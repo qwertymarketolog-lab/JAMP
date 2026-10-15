@@ -146,3 +146,43 @@ This document is an architectural roadmap. It does not substitute for those resu
 The proven JAMP core remains frozen unless a separate, evidence-backed research process demonstrates that a change is required.
 
 The evolution of JAMP therefore proceeds outward from the foundation rather than by repeatedly rewriting the foundation.
+
+
+## Product Delivery Roadmap: API → Web/PWA → Mobile & Desktop
+
+**Recorded:** 2026-10-15  
+**Purpose:** turn the existing evidence infrastructure into a usable application without replacing the existing backend or weakening evidence contracts. This section is an execution plan, not a claim that deployment or end-to-end delivery is complete.
+
+### Current serving baseline (static source audit)
+
+- The primary FastAPI application is `src/jamp/api/app.py`; it exposes `POST /v1/classify`, `POST /v1/execute`, and `GET /v1/provenance/{trace_id}`.
+- The existing provider adapter is `src/jamp/provider/anymodel.py`. Missing provider configuration is intended to fail closed.
+- Existing endpoint and audit persistence tests are present in `tests/test_api_endpoints.py` and `tests/test_audit_persistence.py`. Their existence is not evidence that they passed in this audit; no tests were run as part of the source review.
+- `src/jamp/api/router.py` contains P32 Gateway routes whose chat/attachments/execute handlers return HTTP 501 because orchestration is not connected. The primary `create_app()` does not include that router.
+- `src/jamp_app/api/app.py` is a separate minimal WSGI health/404 application; it must not be mistaken for the primary product API.
+- Existing implementation lineage includes merged PRs [#295](https://github.com/qwertymarketolog-lab/JAMP/pull/295) (MVP API skeleton), [#317](https://github.com/qwertymarketolog-lab/JAMP/pull/317) (API/CLI serving layer v1), and [#344](https://github.com/qwertymarketolog-lab/JAMP/pull/344) (P32 API Gateway v0). Extend this lineage; do not create a second backend from scratch.
+- The Frozen Core remains `src/jamp/run.py`, expected blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`, with required `Δ = 0`.
+
+### Ordered execution plan
+
+| Order | Stage | Required work | Exit evidence | Current status |
+|---|---|---|---|---|
+| A | Serving inventory | Read-only review of package/dependency declarations, documented launch command, configuration/environment variables, CI workflow coverage, and current API schemas. Check current PRs/branches before changing files. | Inventory report with exact paths, gaps, and source/CI references. | PARTIAL — route/source inventory done; launch/dependency/CI audit still required. |
+| B | One canonical API contract | Decide which application is the product entry point; reconcile primary FastAPI routes with P32 Gateway contracts. Replace 501 only when the actual orchestration contract and tests exist. Avoid duplicate API implementations. | Contract table for endpoint, request/response schema, errors, provenance and fail-closed cases; tests cover every wired route. | BLOCKED — P32 orchestration is not connected and its router is not wired into the primary app. |
+| C | End-to-end API verification | Exercise classify → execute/refuse → trace/provenance using controlled fixtures and a configured/unconfigured provider. Verify persistence and error paths. | Terminal CI Run → Job → artifact, with commit SHA, test results, and Frozen Core check. | NOT VERIFIED — source tests exist; this audit did not run them or inspect a new terminal CI artifact. |
+| D | Responsive web app / PWA | Build a small responsive interface on the canonical API: submit task, show result and explicit execution/refusal status, show trace/provenance, and render actionable errors. Reuse existing UI files if present; check before adding new ones. | Browser/mobile viewport tests; API integration tests; clear UNKNOWN/INCONCLUSIVE/HOLD/REFUSE display; no false VERIFIED badge. | NOT STARTED / pending UI inventory. |
+| E | Safe deployment baseline | Define deployment target and operator model; document environment configuration and secret handling; set production CORS/host policy, request limits, timeouts, health/readiness behavior, logs and data-retention boundaries. Add authentication/authorization only with a defined user/ownership contract. | Reproducible deployment instructions, configuration checks, and security-focused tests; no secrets committed. | NOT VERIFIED — no public production deployment confirmed. |
+| F | Mobile and desktop delivery | First make the responsive PWA installable on Android and desktop browsers. Consider native wrappers only after the same API/UI flow is stable and measured requirements justify them. | Install/launch smoke tests on target devices, reconnect/error behavior, and a release artifact linked to its source commit. | ROADMAP. |
+| G | Release gate | Verify the complete user journey and operational recovery; record limitations and known unsupported paths. | Terminal Run → Job → artifact, provenance trace, release commit, and explicit acceptance decision. | HOLD until A–F evidence is available. |
+
+### Product status semantics
+
+- HTTP 2xx or a visually successful screen is **not** sufficient evidence for `VERIFIED`.
+- UI must display the backend's actual decision and evidence status; it must not upgrade UNKNOWN, INCONCLUSIVE, HOLD, or REFUSE to success.
+- Provider unconfigured, unknown task/profile, missing evidence, and execution errors must remain explicit and fail closed.
+- A successful CI run is not production-deployment evidence. Deployment, end-to-end behavior, and release status require their own evidence.
+- Keep raw evidence separate from derived summaries and bind reported results to trace/run identifiers and artifacts where available.
+
+### Next action
+
+Complete **Stage A** as a read-only audit of dependency declarations, launch instructions, API request/response schemas, and relevant CI workflows. Then update this same roadmap with the verified findings before implementing UI or changing runtime contracts. Do not modify the Frozen Core or create a parallel backend.
