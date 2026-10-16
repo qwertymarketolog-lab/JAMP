@@ -518,3 +518,70 @@ Do not rent or provision a dedicated agent server merely because an agent sounds
 - Ends with one recommended next action and a clear HOLD if required evidence is missing.
 
 This section defines intended behavior and gates only. Agent connectivity, permission enforcement, deployment, scheduling, and production readiness remain unverified until demonstrated by a bounded pilot and its artifacts.
+
+## Benchmark Integrity & Challenge Layer
+
+**Status:** proposed research-architecture layer; design intent only. It is not implemented or validated by this entry. The existing AnyModel cohort of 87 models and its 30-check evaluation structure is a potential source of candidate disagreements, not proof that all 87 models can independently verify an answer or that their votes establish truth.
+
+### Purpose
+
+JAMP must evaluate both sides of an evaluation: the model response and the benchmark item, reference answer, assumptions, and scoring rule. A benchmark answer is evidence to inspect, not an unquestionable source of truth. A model disagreeing with a reference answer is a challenge signal, not proof that the model is correct.
+
+The layer is intended to:
+
+- detect and preserve conflicts between model responses, reference answers, calculations, stated assumptions, and independent sources;
+- investigate potentially flawed questions, ambiguous wording, invalid premises, faulty calculations, outdated references, and scoring-rule errors;
+- preserve reproducible evidence for each challenge;
+- prevent automatic changes to a reference answer solely because one model—or a majority of models—disagrees;
+- revise benchmark scores only after independent review confirms a specific correction and its scope.
+
+### Proposed challenge workflow
+
+1. **Freeze the evaluated item.** Preserve the original question, reference answer, scoring rule, benchmark version, source/version metadata, and evaluation context. Never overwrite the original record.
+2. **Run the baseline.** Store model outputs, execution metadata, and the score under the original rubric. Keep raw responses separate from derived judgments.
+3. **Open a challenge on conflict.** Record the exact disputed claim, relevant answer span, model/run identity, and reason for challenge. Disagreement alone creates a challenge record, not a corrected answer.
+4. **Inspect independently.** Re-check the problem statement, units, assumptions, calculations, cited sources, and rubric. Where possible, use a method independent of the challenged model (for example, a deterministic calculation, a separate derivation, primary-source evidence, or a qualified human reviewer).
+5. **Seek counterevidence.** Actively test both hypotheses: the reference may be wrong, or the model may be wrong. Preserve contradictory evidence and alternative interpretations.
+6. **Classify the result.** Use explicit outcomes such as REFERENCE_ERROR_CONFIRMED, MODEL_ERROR_CONFIRMED, AMBIGUOUS_ITEM, RUBRIC_ERROR_CONFIRMED, or INCONCLUSIVE. These are proposed labels and must be reconciled with existing status contracts before implementation; they do not replace current enums yet.
+7. **Approve a versioned correction.** A reference answer or scoring rule changes only through an independently reviewed correction record with rationale, supporting evidence, reviewer identity, affected benchmark version/items, and a reproducible before/after score calculation.
+8. **Replay and report.** Re-evaluate affected outputs against the corrected, versioned item. Report both the original score and the corrected score, clearly identifying which benchmark version each score uses. Do not retroactively erase the original result.
+
+### Evidence record required for each challenge
+
+- benchmark ID/version and immutable item identifier;
+- exact question, reference answer, rubric, and original source/version;
+- model/provider/version, prompt/context where permitted, run/trace ID, timestamp, and raw output;
+- exact disagreement and claim being challenged;
+- calculations, tools, primary sources, counterexamples, and independent review records;
+- coverage gaps, uncertainty, conflicts, and limitations;
+- challenge disposition, reviewer/approver, correction diff, and new version identifier if changed;
+- original and recalculated scores with reproducible run/job/artifact references where applicable.
+
+### Decision and safety rules
+
+- One model's objection is sufficient to **open an investigation**, never sufficient by itself to change the reference answer.
+- Agreement among many models is not independent verification when the models share providers, training data, tools, prompts, or assumptions. Correlated outputs must not be counted as independent evidence.
+- Human credentials or expert status alone do not settle a disputed calculation; review should be supported by explicit reasoning and evidence. Equally, an AI's confidence or fluent explanation is not proof.
+- If the item is ambiguous, preserve that ambiguity and consider multiple defensible interpretations rather than forcing a single answer.
+- If evidence is insufficient or reviewers disagree, keep the item INCONCLUSIVE/HOLD under the applicable existing contract. Do not invent a PASS or silently alter the benchmark.
+- Preserve raw evidence, derived analysis, and final adjudication as separate layers. Corrections are append-only/versioned; original records remain available for audit.
+- Do not alter Frozen Core src/jamp/run.py; its expected blob remains 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a, with required Δ = 0.
+
+### Relationship to AnyModel (87-model cohort)
+
+The current 87-model cohort can help surface candidate disagreements and compare behavior across models. It must not be treated as 87 independent judges, and model count alone cannot validate a benchmark. A future pilot should select a small, auditable set of benchmark items, preserve all original answers and scores, and evaluate whether the challenge process finds reproducible reference/rubric defects without increasing false corrections. Expanding across all 87 models should happen only after the pilot's review quality, cost, latency, and evidence completeness are measured.
+
+### Proposed pilot and acceptance gate
+
+Pilot on a small set of existing evaluation items that have a clearly inspectable reference answer or deterministic check. Before running it, inspect existing benchmark scripts, schemas, artifacts, and open PRs to avoid duplicating work. The pilot passes only if:
+
+- original benchmark inputs, reference answers, rubric, and scores remain recoverable;
+- every challenge links to its exact raw response and supporting/counterevidence;
+- model disagreement never changes a reference answer automatically;
+- independent review can reproduce the disposition and any corrected score;
+- uncertain cases remain explicitly unresolved;
+- tests cover confirmed reference error, confirmed model error, ambiguity, conflicting reviewers, and insufficient evidence;
+- terminal Run → Job → artifact evidence is available for CI-backed claims;
+- Frozen Core remains unchanged.
+
+**Not yet decided:** benchmark format/schema, adjudication roles, independence criteria, storage location, score-revision policy, and which benchmark should be used for the first pilot. Resolve these through read-only discovery and a bounded design/validation task before implementing runtime code.
