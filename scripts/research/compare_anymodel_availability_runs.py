@@ -154,10 +154,7 @@ def classify(
         labels.append("HTTP_429_502_503_OBSERVED")
     if any(attempt.get("timed_out") is True for attempt in all_attempts):
         labels.append("TIMEOUT_OBSERVED")
-    if any(
-        attempt.get("status_code") is None and attempt.get("error")
-        for attempt in all_attempts
-    ):
+    if any(attempt.get("status_code") is None and attempt.get("error") for attempt in all_attempts):
         labels.append("ERROR_WITHOUT_HTTP_STATUS_OBSERVED")
 
     return ",".join(labels) if labels else "NO_CLASSIFICATION"
@@ -192,10 +189,7 @@ def main() -> int:
     changed_attempt_set = 0
 
     print("\n=== ATTEMPT-ALIGNED COMPARISON ===")
-    print(
-        "MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | "
-        "RUN2 MEDIAN MS | CLASSIFICATION"
-    )
+    print("MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | RUN2 MEDIAN MS | CLASSIFICATION")
     for model in sorted(ids1 | ids2):
         attempts1 = run1.get(model, {})
         attempts2 = run2.get(model, {})
