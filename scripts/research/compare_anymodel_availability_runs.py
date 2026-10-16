@@ -161,10 +161,13 @@ def classify(
 
 
 def status_sequence(attempts: dict[int, dict[str, Any]]) -> str:
-    return ",".join(
-        f"{number}:{'NO_STATUS' if item.get('status_code') is None else item['status_code']}"
-        for number, item in sorted(attempts.items())
-    ) or "MISSING"
+    return (
+        ",".join(
+            f"{number}:{'NO_STATUS' if item.get('status_code') is None else item['status_code']}"
+            for number, item in sorted(attempts.items())
+        )
+        or "MISSING"
+    )
 
 
 def main() -> int:
