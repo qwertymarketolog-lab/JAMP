@@ -192,7 +192,10 @@ def main() -> int:
     changed_attempt_set = 0
 
     print("\n=== ATTEMPT-ALIGNED COMPARISON ===")
-    print("MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | RUN2 MEDIAN MS | CLASSIFICATION")
+    print(
+        "MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | "
+        "RUN2 MEDIAN MS | CLASSIFICATION"
+    )
     for model in sorted(ids1 | ids2):
         attempts1 = run1.get(model, {})
         attempts2 = run2.get(model, {})
