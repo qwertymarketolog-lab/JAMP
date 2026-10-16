@@ -61,7 +61,7 @@ def normalize_attempt(attempt: dict[str, Any]) -> dict[str, Any]:
         status_code = attempt.get("http_status")
         error = attempt.get("error")
         error_text = str(error).lower() if error is not None else ""
-        timed_out = ("timeout" in error_text or "timed out" in error_text)
+        timed_out = "timeout" in error_text or "timed out" in error_text
         elapsed_ms = attempt.get("elapsed_ms")
 
     attempt_number = attempt.get("attempt")
@@ -193,8 +193,7 @@ def main() -> int:
 
     print("\n=== ATTEMPT-ALIGNED COMPARISON ===")
     print(
-        "MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | "
-        "RUN2 MEDIAN MS | CLASSIFICATION"
+"MODEL | RUN1 ATTEMPTS | RUN2 ATTEMPTS | RUN1 MEDIAN MS | RUN2 MEDIAN MS | CLASSIFICATION"
     )
     for model in sorted(ids1 | ids2):
         attempts1 = run1.get(model, {})
