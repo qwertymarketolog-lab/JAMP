@@ -15,8 +15,18 @@ class AnyModelComparisonTests(unittest.TestCase):
             "results": [{
                 "model": "provider/model-a",
                 "observations": [
-                    {"attempt": 2, "http_status": 503, "elapsed_ms": 900, "error": "HTTP 503"},
-                    {"attempt": 1, "http_status": 200, "elapsed_ms": 1200, "error": None},
+                    {
+                        "attempt": 2,
+                        "http_status": 503,
+                        "elapsed_ms": 900,
+                        "error": "HTTP 503",
+                    },
+                    {
+                        "attempt": 1,
+                        "http_status": 200,
+                        "elapsed_ms": 1200,
+                        "error": None,
+                    },
                 ],
             }]
         }
@@ -30,8 +40,22 @@ class AnyModelComparisonTests(unittest.TestCase):
             "models": [{
                 "model_id": "provider/model-a",
                 "attempts": [
-                    {"attempt": 2, "transport": {"status_code": 503, "timed_out": False, "elapsed_ms": 900}},
-                    {"attempt": 1, "transport": {"status_code": 200, "timed_out": False, "elapsed_ms": 1200}},
+                    {
+                        "attempt": 2,
+                        "transport": {
+                            "status_code": 503,
+                            "timed_out": False,
+                            "elapsed_ms": 900,
+                        },
+                    },
+                    {
+                        "attempt": 1,
+                        "transport": {
+                            "status_code": 200,
+                            "timed_out": False,
+                            "elapsed_ms": 1200,
+                        },
+                    },
                 ],
             }]
         }
@@ -48,7 +72,10 @@ class AnyModelComparisonTests(unittest.TestCase):
             1: {"status_code": 200, "timed_out": False, "elapsed_ms": 9000, "error": None},
             2: {"status_code": 503, "timed_out": False, "elapsed_ms": 8000, "error": "HTTP 503"},
         }
-        self.assertIn("SAME_HTTP_OR_TIMEOUT_SIGNATURE_BY_ATTEMPT", classify(run1, run2))
+        self.assertIn(
+            "SAME_HTTP_OR_TIMEOUT_SIGNATURE_BY_ATTEMPT",
+            classify(run1, run2),
+        )
         self.assertEqual(median_latency(run1), 150)
         self.assertEqual(median_latency(run2), 8500)
 
@@ -61,7 +88,10 @@ class AnyModelComparisonTests(unittest.TestCase):
             1: {"status_code": 200, "timed_out": False, "elapsed_ms": 900, "error": None},
             2: {"status_code": 503, "timed_out": False, "elapsed_ms": 800, "error": "HTTP 503"},
         }
-        self.assertIn("HTTP_OR_TIMEOUT_SIGNATURE_CHANGED_BY_ATTEMPT", classify(run1, run2))
+        self.assertIn(
+            "HTTP_OR_TIMEOUT_SIGNATURE_CHANGED_BY_ATTEMPT",
+            classify(run1, run2),
+        )
 
     def test_detects_missing_attempt_and_duplicate_attempt(self):
         run1 = {
