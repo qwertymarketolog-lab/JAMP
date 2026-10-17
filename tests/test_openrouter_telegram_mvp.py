@@ -19,7 +19,10 @@ def test_openrouter_executor_uses_selected_model_and_does_not_expose_key():
             return False
 
         def read(self):
-            return b'{"id":"or-test","choices":[{"message":{"content":"hello"}}],"usage":{"total_tokens":2}}'
+            return (
+                b'{"id":"or-test","choices":[{"message":'
+                b'{"content":"hello"}}],"usage":{"total_tokens":2}}'
+            )
 
     def fake_open(request, timeout):
         seen["url"] = request.full_url
@@ -115,6 +118,7 @@ def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
     monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
     calls = []
+
     def executor(model, payload):
         calls.append(payload)
         return {"content": "unexpected"}
