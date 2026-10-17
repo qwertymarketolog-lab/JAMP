@@ -226,9 +226,32 @@ def create_app(
             )
         if not isinstance(text_value, str) or not text_value.strip():
             return {"status": "IGNORED"}
+
+        # Telegram messages must declare a supported task profile explicitly.
+        # Plain text is never silently assigned a profile.
+        command, _, prompt = text_value.strip().partition(" ")
+        task_profiles = {
+            "/search": {"intent": "search_and_extraction"},
+            "/tools": {"intent": "tool_execution_agent"},
+        }
+        profile = task_profiles.get(command)
+        if profile is None or not prompt.strip():
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "REFUSE",
+                    "reason": "TELEGRAM_TASK_PROFILE_REQUIRED",
+                    "supported_commands": ["/search", "/tools"],
+                },
+            )
+
         request_id = payload.get("update_id")
         result = execute(
-            {"prompt": text_value.strip(), "request_id": f"telegram:{request_id}"}
+            {
+                **profile,
+                "prompt": prompt.strip(),
+                "request_id": f"telegram:{request_id}",
+            }
         )
         if isinstance(result, JSONResponse):
             try:
