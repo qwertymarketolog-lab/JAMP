@@ -195,7 +195,6 @@ def create_app(
         return response
 
 
-    @app.post("/v1/telegram/webhook")
     def telegram_webhook(payload: dict[str, Any], request: FastAPIRequest):
         """Authenticated Telegram webhook; allowlisted chat only, no secret logging."""
         webhook_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
@@ -263,6 +262,11 @@ def create_app(
                 },
             )
         return {"status": status, "trace_id": trace_id}
+
+    # FastAPI is imported lazily inside create_app; with postponed annotations,
+    # resolve the locally imported Request class before route registration.
+    telegram_webhook.__annotations__["request"] = FastAPIRequest
+    app.post("/v1/telegram/webhook")(telegram_webhook)
 
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(trace_id: str):
