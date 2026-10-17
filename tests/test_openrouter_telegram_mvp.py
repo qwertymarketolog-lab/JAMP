@@ -88,14 +88,42 @@ def test_telegram_webhook_executes_and_returns_trace(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
     monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
-    client = TestClient(
-        create_app(executor=lambda model, payload: {"content": "hello from model"})
-    )
+    calls = []
+
+    def executor(model, payload):
+        calls.append(payload)
+        return {"content": "hello from model"}
+
+    client = TestClient(create_app(executor=executor))
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
-        json={"update_id": 8, "message": {"chat": {"id": 42}, "text": "hello"}},
+        json={"update_id": 8, "message": {"chat": {"id": 42}, "text": "/search hello"}},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "EXECUTE"
     assert response.json()["trace_id"]
+    assert calls[0]["intent"] == "search_and_extraction"
+    assert calls[0]["prompt"] == "hello"
+
+
+def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
+    import jamp.api.app as app_module
+
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
+    calls = []
+    client = TestClient(
+        create_app(executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"})
+    )
+    response = client.post(
+        "/v1/telegram/webhook",
+        headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
+        json={"update_id": 9, "message": {"chat": {"id": 42}, "text": "hello without a command"}},
+    )
+    assert response.status_code == 422
+    assert response.json()["status"] == "REFUSE"
+    assert response.json()["reason"] == "TELEGRAM_TASK_PROFILE_REQUIRED"
+    assert calls == []
