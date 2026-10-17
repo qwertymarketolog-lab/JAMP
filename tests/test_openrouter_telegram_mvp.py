@@ -115,9 +115,11 @@ def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
     monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
     calls = []
-    client = TestClient(
-        create_app(executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"})
-    )
+    def executor(model, payload):
+        calls.append(payload)
+        return {"content": "unexpected"}
+
+    client = TestClient(create_app(executor=executor))
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
