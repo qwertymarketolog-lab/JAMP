@@ -63,7 +63,9 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
     calls = []
-    client = TestClient(create_app(executor=lambda model, payload: calls.append(payload) or {"content": "hello"}))
+    client = TestClient(
+        create_app(executor=lambda model, payload: calls.append(payload) or {"content": "hello"})
+    )
     bad_secret = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"},

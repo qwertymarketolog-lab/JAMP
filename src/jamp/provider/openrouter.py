@@ -46,7 +46,7 @@ class OpenRouterChatExecutor:
         api_key = os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
             return None
-        base_url = os.environ.get("ANYMODEL_BASE_URL", "https://openrouter.org/v1")
+        base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         chat_url = os.environ.get("OPENROUTER_CHAT_URL", f"{base_url.rstrip('/')}/chat/completions")
         timeout = float(os.environ.get("OPENROUTER_TIMEOUT_S", "30"))
         return cls(api_key, chat_url=chat_url, timeout=timeout)
