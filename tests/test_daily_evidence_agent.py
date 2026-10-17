@@ -110,6 +110,7 @@ def test_prior_state_rejects_artifact_missing_archive_url(monkeypatch) -> None:
         lambda *args, **kwargs: {"artifacts": [{
             "name": agent.STATE_ARTIFACT,
             "expired": False,
+            "created_at": "2026-10-14T10:00:00Z",
             "workflow_run": {"id": 123, "head_repository_id": 1},
         }]},
     )
@@ -125,6 +126,7 @@ def test_prior_state_rejects_missing_artifact_provenance(monkeypatch) -> None:
         lambda *args, **kwargs: {"artifacts": [{
             "name": agent.STATE_ARTIFACT,
             "expired": False,
+            "created_at": "2026-10-14T10:00:00Z",
             "archive_download_url": "https://example.invalid/archive",
         }]},
     )
@@ -144,6 +146,7 @@ def test_prior_state_rejects_corrupt_zip(monkeypatch) -> None:
         return {"artifacts": [{
             "name": agent.STATE_ARTIFACT,
             "expired": False,
+            "created_at": "2026-10-14T10:00:00Z",
             "archive_download_url": "https://example.invalid/archive",
             "workflow_run": {"id": 123, "head_repository_id": 1},
         }]}
@@ -165,6 +168,7 @@ def test_prior_state_rejects_invalid_json_inside_zip(monkeypatch) -> None:
         return {"artifacts": [{
             "name": agent.STATE_ARTIFACT,
             "expired": False,
+            "created_at": "2026-10-14T10:00:00Z",
             "archive_download_url": "https://example.invalid/archive",
             "workflow_run": {"id": 123, "head_repository_id": 1},
         }]}
@@ -186,6 +190,7 @@ def test_prior_state_rejects_invalid_state_contract_in_zip(monkeypatch) -> None:
         return {"artifacts": [{
             "name": agent.STATE_ARTIFACT,
             "expired": False,
+            "created_at": "2026-10-14T10:00:00Z",
             "archive_download_url": "https://example.invalid/archive",
             "workflow_run": {"id": 123, "head_repository_id": 1},
         }]}
