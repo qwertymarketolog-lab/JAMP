@@ -6,7 +6,8 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
@@ -157,9 +158,10 @@ def create_app(
         try:
             output = configured_executor(selected, payload)
         except Exception as exc:
-            reason = (
-                "PROVIDER_EXECUTION_FAILED" if isinstance(exc, (AnyModelError, OpenRouterError)) else "EXECUTOR_ERROR"
-            )
+            if isinstance(exc, (AnyModelError, OpenRouterError)):
+                reason = "PROVIDER_EXECUTION_FAILED"
+            else:
+                reason = "EXECUTOR_ERROR"
             trace = provenance.create_trace(
                 task_profile,
                 required,
