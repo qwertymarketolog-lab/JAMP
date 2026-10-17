@@ -49,9 +49,7 @@ def test_event_delta_ignores_unchanged_items() -> None:
     }
     current = {
         "pull_requests": [{"number": 1, "updated_at": "2026-10-14T10:00:00Z"}],
-        "workflow_runs": [
-            {"id": 10, "run_attempt": 1, "updated_at": "2026-10-14T10:00:00Z"}
-        ],
+        "workflow_runs": [{"id": 10, "run_attempt": 1, "updated_at": "2026-10-14T10:00:00Z"}],
     }
 
     result = event_delta(current, previous)
@@ -107,12 +105,16 @@ def test_prior_state_rejects_artifact_missing_archive_url(monkeypatch) -> None:
     monkeypatch.setattr(
         agent,
         "github_request",
-        lambda *args, **kwargs: {"artifacts": [{
-            "name": agent.STATE_ARTIFACT,
-            "expired": False,
-            "created_at": "2026-10-14T10:00:00Z",
-            "workflow_run": {"id": 123, "head_repository_id": 1},
-        }]},
+        lambda *args, **kwargs: {
+            "artifacts": [
+                {
+                    "name": agent.STATE_ARTIFACT,
+                    "expired": False,
+                    "created_at": "2026-10-14T10:00:00Z",
+                    "workflow_run": {"id": 123, "head_repository_id": 1},
+                }
+            ]
+        },
     )
 
     with pytest.raises(EvidenceError, match="archive URL"):
@@ -123,12 +125,16 @@ def test_prior_state_rejects_missing_artifact_provenance(monkeypatch) -> None:
     monkeypatch.setattr(
         agent,
         "github_request",
-        lambda *args, **kwargs: {"artifacts": [{
-            "name": agent.STATE_ARTIFACT,
-            "expired": False,
-            "created_at": "2026-10-14T10:00:00Z",
-            "archive_download_url": "https://example.invalid/archive",
-        }]},
+        lambda *args, **kwargs: {
+            "artifacts": [
+                {
+                    "name": agent.STATE_ARTIFACT,
+                    "expired": False,
+                    "created_at": "2026-10-14T10:00:00Z",
+                    "archive_download_url": "https://example.invalid/archive",
+                }
+            ]
+        },
     )
 
     with pytest.raises(EvidenceError, match="provenance"):
@@ -143,13 +149,17 @@ def test_prior_state_rejects_corrupt_zip(monkeypatch) -> None:
         calls += 1
         if binary:
             return b"not a zip archive"
-        return {"artifacts": [{
-            "name": agent.STATE_ARTIFACT,
-            "expired": False,
-            "created_at": "2026-10-14T10:00:00Z",
-            "archive_download_url": "https://example.invalid/archive",
-            "workflow_run": {"id": 123, "head_repository_id": 1},
-        }]}
+        return {
+            "artifacts": [
+                {
+                    "name": agent.STATE_ARTIFACT,
+                    "expired": False,
+                    "created_at": "2026-10-14T10:00:00Z",
+                    "archive_download_url": "https://example.invalid/archive",
+                    "workflow_run": {"id": 123, "head_repository_id": 1},
+                }
+            ]
+        }
 
     monkeypatch.setattr(agent, "github_request", fake_request)
 
@@ -165,13 +175,17 @@ def test_prior_state_rejects_invalid_json_inside_zip(monkeypatch) -> None:
     def fake_request(url, token, binary=False):
         if binary:
             return buffer.getvalue()
-        return {"artifacts": [{
-            "name": agent.STATE_ARTIFACT,
-            "expired": False,
-            "created_at": "2026-10-14T10:00:00Z",
-            "archive_download_url": "https://example.invalid/archive",
-            "workflow_run": {"id": 123, "head_repository_id": 1},
-        }]}
+        return {
+            "artifacts": [
+                {
+                    "name": agent.STATE_ARTIFACT,
+                    "expired": False,
+                    "created_at": "2026-10-14T10:00:00Z",
+                    "archive_download_url": "https://example.invalid/archive",
+                    "workflow_run": {"id": 123, "head_repository_id": 1},
+                }
+            ]
+        }
 
     monkeypatch.setattr(agent, "github_request", fake_request)
 
@@ -187,13 +201,17 @@ def test_prior_state_rejects_invalid_state_contract_in_zip(monkeypatch) -> None:
     def fake_request(url, token, binary=False):
         if binary:
             return buffer.getvalue()
-        return {"artifacts": [{
-            "name": agent.STATE_ARTIFACT,
-            "expired": False,
-            "created_at": "2026-10-14T10:00:00Z",
-            "archive_download_url": "https://example.invalid/archive",
-            "workflow_run": {"id": 123, "head_repository_id": 1},
-        }]}
+        return {
+            "artifacts": [
+                {
+                    "name": agent.STATE_ARTIFACT,
+                    "expired": False,
+                    "created_at": "2026-10-14T10:00:00Z",
+                    "archive_download_url": "https://example.invalid/archive",
+                    "workflow_run": {"id": 123, "head_repository_id": 1},
+                }
+            ]
+        }
 
     monkeypatch.setattr(agent, "github_request", fake_request)
 
