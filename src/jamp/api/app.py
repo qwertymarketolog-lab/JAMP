@@ -81,8 +81,10 @@ def create_app(
     selector = ModelSelector()
     provenance = ProvenanceTracker()
     persistence = AuditPersistence(audit_storage_path)
-    configured_executor = executor if executor is not None else (
-        OpenRouterChatExecutor.from_env() or AnyModelChatExecutor.from_env()
+    configured_executor = (
+        executor
+        if executor is not None
+        else (OpenRouterChatExecutor.from_env() or AnyModelChatExecutor.from_env())
     )
 
     app = FastAPI(title="JAMP API", version="v1", openapi_version="3.0.3")
@@ -195,7 +197,6 @@ def create_app(
         if output is not None:
             response["output"] = output
         return response
-
 
     def telegram_webhook(payload: dict[str, Any], request: FastAPIRequest):
         """Authenticated Telegram webhook; allowlisted chat only, no secret logging."""
