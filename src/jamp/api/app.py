@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import hmac
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.request import Request as UrlRequest, urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -14,6 +18,29 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
+
+
+def _send_telegram_message(bot_token: str, chat_id: int, text: str) -> None:
+    """Send one Telegram reply without logging the token or message contents."""
+    body = json.dumps(
+        {"chat_id": chat_id, "text": text},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    request = UrlRequest(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+        data=body,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        raise RuntimeError("Telegram delivery failed") from None
+    if not isinstance(result, dict) or result.get("ok") is not True:
+        raise RuntimeError("Telegram delivery failed")
+
 
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
 
@@ -29,6 +56,7 @@ def create_app(
 ):
     try:
         from fastapi import FastAPI
+        from fastapi import Request as FastAPIRequest
         from fastapi.responses import JSONResponse
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("FastAPI is required for the API serving layer") from exc
@@ -52,7 +80,7 @@ def create_app(
     selector = ModelSelector()
     provenance = ProvenanceTracker()
     persistence = AuditPersistence(audit_storage_path)
-    configured_executor = executor if executor is not None else AnyModelChatExecutor.from_env()
+    configured_executor = executor if executor is not None else (OpenRouterChatExecutor.from_env() or AnyModelChatExecutor.from_env())
 
     app = FastAPI(title="JAMP API", version="v1", openapi_version="3.0.3")
 
@@ -128,7 +156,7 @@ def create_app(
             output = configured_executor(selected, payload)
         except Exception as exc:
             reason = (
-                "PROVIDER_EXECUTION_FAILED" if isinstance(exc, AnyModelError) else "EXECUTOR_ERROR"
+                "PROVIDER_EXECUTION_FAILED" if isinstance(exc, (AnyModelError, OpenRouterError)) else "EXECUTOR_ERROR"
             )
             trace = provenance.create_trace(
                 task_profile,
@@ -163,6 +191,76 @@ def create_app(
         if output is not None:
             response["output"] = output
         return response
+
+
+    @app.post("/v1/telegram/webhook")
+    def telegram_webhook(payload: dict[str, Any], request: FastAPIRequest):
+        """Authenticated Telegram webhook; allowlisted chat only, no secret logging."""
+        webhook_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        allowed_chat = os.environ.get("TELEGRAM_CHAT_ID", "")
+        supplied_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if not webhook_secret or not bot_token or not allowed_chat:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "REFUSE", "reason": "TELEGRAM_NOT_CONFIGURED"},
+            )
+        if not hmac.compare_digest(supplied_secret, webhook_secret):
+            return JSONResponse(
+                status_code=403,
+                content={"status": "REFUSE", "reason": "TELEGRAM_WEBHOOK_UNAUTHORIZED"},
+            )
+        message = payload.get("message")
+        if not isinstance(message, dict):
+            return {"status": "IGNORED"}
+        chat = message.get("chat")
+        text_value = message.get("text")
+        if not isinstance(chat, dict) or not isinstance(chat.get("id"), int):
+            return {"status": "IGNORED"}
+        chat_id = chat["id"]
+        if str(chat_id) != allowed_chat:
+            return JSONResponse(
+                status_code=403,
+                content={"status": "REFUSE", "reason": "TELEGRAM_CHAT_NOT_ALLOWED"},
+            )
+        if not isinstance(text_value, str) or not text_value.strip():
+            return {"status": "IGNORED"}
+        request_id = payload.get("update_id")
+        result = execute(
+            {"prompt": text_value.strip(), "request_id": f"telegram:{request_id}"}
+        )
+        if isinstance(result, JSONResponse):
+            try:
+                result_body = json.loads(result.body.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                result_body = {"status": "REFUSE", "reason": "RUNTIME_RESPONSE_INVALID"}
+        else:
+            result_body = result
+        status = result_body.get("status", "REFUSE")
+        trace_id = result_body.get("trace_id", "unknown")
+        if status == "EXECUTE":
+            output = result_body.get("output")
+            if isinstance(output, dict):
+                reply_text = output.get("content")
+                if not isinstance(reply_text, str):
+                    reply_text = json.dumps(output, ensure_ascii=False)
+            else:
+                reply_text = str(output or "")
+        else:
+            reply_text = f"REFUSE: {result_body.get('reason', 'EXECUTION_BLOCKED')}"
+        reply_text = f"{reply_text[:3500]}\n\ntrace_id: {trace_id}"
+        try:
+            _send_telegram_message(bot_token, chat_id, reply_text)
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "status": "REFUSE",
+                    "reason": "TELEGRAM_DELIVERY_FAILED",
+                    "trace_id": trace_id,
+                },
+            )
+        return {"status": status, "trace_id": trace_id}
 
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(trace_id: str):
