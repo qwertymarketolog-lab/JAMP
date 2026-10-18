@@ -1,7 +1,7 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
 
