@@ -42,4 +42,4 @@ A model may proceed to a controlled provider-call test only after its exact Open
 
 ## Initial observation supplied during the 2026-10-18 audit
 
-A public catalog request returned HTTP 200 and 471 catalog entries. The displayed filter produced 19 zero-price entries, including the `openrouter/free` router. That means the output contained 18 model entries plus one router entry. This was an initial observation, not a committed full catalog snapshot; rerun the script to produce the complete metadata artifact and current comparison results.
+A public catalog request returned HTTP 200 and 471 catalog entries. The displayed filter produced 19 zero-price entries, including the `openrouter/free` router. That means the output contained 18 model entries plus one router entry. This was an initial observation, not a full catalog snapshot. Its 18 model entries and separate router entry are preserved in `artifacts/research/openrouter_free_model_catalog_initial_observation.json`; the full API response was not preserved. Rerun the script to produce a complete metadata artifact and current comparison results.
