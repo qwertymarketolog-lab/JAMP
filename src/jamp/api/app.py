@@ -11,6 +11,7 @@ from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -54,6 +55,7 @@ def create_app(
     evidence_path: str | Path = DEFAULT_EVIDENCE,
     executor: Callable[[str, dict[str, Any]], Any] | None = None,
     audit_storage_path: str | Path | None = None,
+    telegram_update_db_path: str | Path | None = None,
 ):
     try:
         from fastapi import FastAPI
@@ -81,6 +83,10 @@ def create_app(
     selector = ModelSelector()
     provenance = ProvenanceTracker()
     persistence = AuditPersistence(audit_storage_path)
+    configured_update_db_path = telegram_update_db_path
+    if configured_update_db_path is None:
+        configured_update_db_path = os.environ.get("JAMP_TELEGRAM_UPDATE_DB")
+    telegram_update_store = TelegramUpdateStore(configured_update_db_path)
     configured_executor = (
         executor
         if executor is not None
@@ -249,6 +255,33 @@ def create_app(
             )
 
         request_id = payload.get("update_id")
+        if isinstance(request_id, bool) or not isinstance(request_id, int):
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "REFUSE",
+                    "reason": "TELEGRAM_UPDATE_ID_REQUIRED",
+                },
+            )
+        try:
+            claimed = telegram_update_store.claim(request_id)
+        except TelegramUpdateStoreError:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "REFUSE",
+                    "reason": "TELEGRAM_IDEMPOTENCY_UNAVAILABLE",
+                },
+            )
+        if not claimed:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "DUPLICATE",
+                    "reason": "TELEGRAM_UPDATE_ALREADY_CLAIMED",
+                },
+            )
+
         result = execute(
             {
                 **profile,
