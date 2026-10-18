@@ -150,7 +150,9 @@ def test_api_fails_closed_if_matrix_changes_after_startup(tmp_path, monkeypatch)
     app = create_app(
         executor=lambda model, payload: calls.append((model, payload)) or {"content": "no"}
     )
-    matrix_path = Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    matrix_path = (
+        Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    )
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
     matrix["matrix"][0]["capabilities"]["C01"] = "VERIFIED"
     tampered_path = tmp_path / "tampered-matrix.json"
