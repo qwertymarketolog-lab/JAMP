@@ -230,9 +230,9 @@ def test_probe_model_distinguishes_missing_content_from_empty_text(monkeypatch):
             message = {}
             if self.content_marker is not None:
                 message["content"] = self.content_marker
-            return json.dumps(
-                {"choices": [{"finish_reason": "stop", "message": message}]}
-            ).encode("utf-8")
+            return json.dumps({"choices": [{"finish_reason": "stop", "message": message}]}).encode(
+                "utf-8"
+            )
 
     for content_marker, expected_shape, expected_status in (
         (None, "content_missing", "NO_TEXT_COMPLETION"),
@@ -279,14 +279,21 @@ def test_probe_artifact_records_actual_max_tokens_and_no_generated_text(monkeypa
         },
     )
 
-    assert probe.main(
-        [
-            "--catalog", str(catalog_path),
-            "--output", str(output_path),
-            "--limit", "1",
-            "--delay", "0",
-        ]
-    ) == 0
+    assert (
+        probe.main(
+            [
+                "--catalog",
+                str(catalog_path),
+                "--output",
+                str(output_path),
+                "--limit",
+                "1",
+                "--delay",
+                "0",
+            ]
+        )
+        == 0
+    )
 
     artifact = json.loads(output_path.read_text(encoding="utf-8"))
     assert artifact["selection"]["max_tokens"] == probe.PROBE_MAX_TOKENS
