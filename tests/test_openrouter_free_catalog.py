@@ -45,6 +45,12 @@ def test_snapshot_filters_free_models_and_keeps_router_separate():
     assert snapshot["source"]["zero_price_model_count"] == 1
     assert snapshot["source"]["free_router_entry_count"] == 1
     assert snapshot["source"]["endpoint"] == "https://example.test/models"
+    assert [row["id"] for row in snapshot["all_models"]] == [
+        "openrouter/free",
+        "provider/free-model:free",
+        "provider/missing-price",
+        "provider/paid-model",
+    ]
     assert snapshot["free_router"]["present"] is True
     assert [row["id"] for row in snapshot["models"]] == ["provider/free-model:free"]
     assert snapshot["qualification"]["jamp_execution_approved"] is False
