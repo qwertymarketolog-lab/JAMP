@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Create a repeatable, keyless snapshot of the public OpenRouter model catalog, select entries whose catalog metadata explicitly reports zero prompt and completion price, and compare them with the existing JAMP 87-model crosswalk.
+Create a repeatable, keyless snapshot of the public OpenRouter model catalog and select entries whose catalog metadata explicitly reports zero prompt and completion price.
 
-This is an additive research harness. It does not change Matrix v2, router policy, model qualification, provider execution, or Frozen Core `src/jamp/run.py`.
+This is an additive research harness. It does not change Matrix v2, router policy, model qualification, provider execution, or Frozen Core `src/jamp/run.py`. It is independent of the AnyModel catalog and crosswalk.
 
 ## Run from the repository root
 
@@ -22,17 +22,16 @@ Optional arguments:
 
 ```bash
 python scripts/research/openrouter_free_catalog.py --timeout 30
-python scripts/research/openrouter_free_catalog.py --crosswalk artifacts/research/jamp_87_to_36_to_17_crosswalk.csv --output /tmp/openrouter-free-catalog.json
+python scripts/research/openrouter_free_catalog.py --output /tmp/openrouter-free-catalog.json
 ```
 
-## Comparison semantics
+## Catalog semantics
 
-- **Exact ID match:** the OpenRouter catalog ID is identical to a model ID in the existing crosswalk. This is a literal string comparison.
-- **Name-stem candidate:** provider prefixes and a trailing `:free` suffix are removed for a search lead only. A candidate is explicitly marked `NAME_STEM_CANDIDATE_NOT_IDENTITY_PROOF`.
-- Neither comparison proves that two providers expose the same model weights, revision, behavior, or service.
-- The crosswalk is considered structurally valid only when it contains exactly 87 unique, non-empty `model_id` values. A different count is recorded as inconclusive rather than silently accepted.
+- Entries are included only when both prompt and completion prices are explicitly numeric/string zero.
 - `openrouter/free` is recorded separately as a router entry, not counted as a specific model.
-- Other entries are filtered only on explicit zero input and output prices. The catalog can include non-chat or multimodal offerings; this filter does not claim chat-completions compatibility.
+- Concrete free model IDs are preserved exactly as OpenRouter returns them.
+- The catalog may contain non-chat or multimodal offerings; zero pricing does not establish chat-completions compatibility.
+- This script does not compare OpenRouter models to AnyModel, infer identity across providers, or alter JAMP model selection.
 
 ## Evidence boundary
 
@@ -42,4 +41,4 @@ A model may proceed to a controlled provider-call test only after its exact Open
 
 ## Initial observation supplied during the 2026-10-18 audit
 
-A public catalog request returned HTTP 200 and 471 catalog entries. The displayed filter produced 19 zero-price entries, including the `openrouter/free` router. That means the output contained 18 model entries plus one router entry. This was an initial observation, not a full catalog snapshot. Its 18 model entries and separate router entry are preserved in `artifacts/research/openrouter_free_model_catalog_initial_observation.json`; the full API response was not preserved. Rerun the script to produce a complete metadata artifact and current comparison results.
+A public catalog request returned HTTP 200 and 471 catalog entries. The displayed filter produced 19 zero-price entries, including the `openrouter/free` router. That means the output contained 18 concrete model entries plus one router entry. This was an initial observation, not a full catalog snapshot. The 18 model entries and separate router entry are preserved in `artifacts/research/openrouter_free_model_catalog_initial_observation.json`; the full API response was not preserved. Rerun the script to produce a complete metadata artifact and current results.
