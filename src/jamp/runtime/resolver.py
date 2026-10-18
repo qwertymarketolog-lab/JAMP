@@ -118,7 +118,9 @@ def _validate_matrix(matrix: dict[str, Any]) -> None:
             if all(row["capabilities"].get(capability) == "VERIFIED" for capability in required)
         ]
         if profile_doc.get("eligible_models") != expected_ids:
-            raise ValueError("Capability matrix eligible pool disagrees with canonical raw statuses")
+            raise ValueError(
+                "Capability matrix eligible pool disagrees with canonical raw statuses"
+            )
         if profile_doc.get("eligible_model_count") != len(expected_ids):
             raise ValueError("Capability matrix eligible pool count is inconsistent")
 
@@ -177,10 +179,14 @@ class CapabilityResolver:
         canonical_rows = matrix["matrix"]
         if not isinstance(projected_rows, list) or len(projected_rows) != 17:
             raise ValueError("Runtime evidence projection must contain exactly 17 models")
-        projected_ids = [row.get("model_id") if isinstance(row, dict) else None for row in projected_rows]
+        projected_ids = [
+            row.get("model_id") if isinstance(row, dict) else None for row in projected_rows
+        ]
         canonical_ids = [row["model_id"] for row in canonical_rows]
         if projected_ids != canonical_ids:
-            raise ValueError("Runtime evidence projection provider IDs disagree with canonical matrix")
+            raise ValueError(
+                "Runtime evidence projection provider IDs disagree with canonical matrix"
+            )
 
         for projected, canonical in zip(projected_rows, canonical_rows, strict=True):
             checks = projected.get("checks")
@@ -188,8 +194,13 @@ class CapabilityResolver:
                 raise ValueError("Runtime evidence projection does not contain exactly 170 checks")
             for capability in CAPABILITY_IDS:
                 check = checks[capability]
-                if not isinstance(check, dict) or check.get("raw_status") != canonical["capabilities"][capability]:
-                    raise ValueError("Runtime evidence projection status disagrees with canonical matrix")
+                if (
+                    not isinstance(check, dict)
+                    or check.get("raw_status") != canonical["capabilities"][capability]
+                ):
+                    raise ValueError(
+                        "Runtime evidence projection status disagrees with canonical matrix"
+                    )
 
     def get_eligible_models(self, task_profile: str) -> tuple[str, ...]:
         self.get_required_capabilities(task_profile)
