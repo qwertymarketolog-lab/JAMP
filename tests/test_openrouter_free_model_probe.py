@@ -291,5 +291,6 @@ def test_probe_artifact_records_actual_max_tokens_and_no_generated_text(monkeypa
     artifact = json.loads(output_path.read_text(encoding="utf-8"))
     assert artifact["selection"]["max_tokens"] == probe.PROBE_MAX_TOKENS
     assert "test-secret" not in output_path.read_text(encoding="utf-8")
-    assert "Reply with the single word" not in output_path.read_text(encoding="utf-8")
+    assert "content" not in artifact["results"][0]
+    assert "generated_text" not in artifact["results"][0]
 
