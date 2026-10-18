@@ -139,6 +139,73 @@ def test_probe_model_keeps_generic_category_when_error_body_is_unstructured(monk
     assert "test-secret" not in repr(result)
 
 
+def test_probe_model_classifies_empty_length_limited_response_without_text(monkeypatch):
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(
+                {"choices": [{"finish_reason": "length", "message": {}}]}
+            ).encode("utf-8")
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda request, timeout: Response())
+    result = probe.probe_model("test-secret", "provider/model:free", 4)
+
+    assert result["status"] == "TRUNCATED_OR_LIMITED"
+    assert result["finish_reason"] == "length"
+    assert result["content_shape"] == "missing"
+    assert result["response_shape"] == "content_missing"
+    assert "test-secret" not in repr(result)
+
+
+def test_probe_model_distinguishes_missing_message_without_text(monkeypatch):
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({"choices": [{"finish_reason": "stop"}]}).encode("utf-8")
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda request, timeout: Response())
+    result = probe.probe_model("test-secret", "provider/model:free", 4)
+
+    assert result["status"] == "NO_TEXT_COMPLETION"
+    assert result["response_shape"] == "message_missing"
+    assert "test-secret" not in repr(result)
+
+
+def test_probe_model_distinguishes_missing_choices_without_text(monkeypatch):
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({"id": "response-no-choices"}).encode("utf-8")
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda request, timeout: Response())
+    result = probe.probe_model("test-secret", "provider/model:free", 4)
+
+    assert result["status"] == "NO_TEXT_COMPLETION"
+    assert result["response_shape"] == "choices_missing"
+    assert "test-secret" not in repr(result)
+
+
 def test_text_output_requires_explicit_text_modality():
     assert probe.is_text_output({"architecture": {"output_modalities": ["text"]}})
     assert probe.is_text_output({"architecture": {"output_modalities": ["text", "audio"]}})
