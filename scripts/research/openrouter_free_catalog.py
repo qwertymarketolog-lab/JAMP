@@ -205,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
-    print(f"HTTP: 200")
+    print("HTTP: 200")
     print(f"CATALOG_MODELS: {snapshot['source']['catalog_model_count']}")
     print(f"ZERO_PRICE_ENTRIES: {snapshot['source']['zero_price_entry_count']}")
     print(f"ZERO_PRICE_MODELS: {snapshot['source']['zero_price_model_count']}")
