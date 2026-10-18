@@ -212,3 +212,84 @@ def test_text_output_requires_explicit_text_modality():
     assert probe.is_text_output({"architecture": {"output_modalities": ["text", "audio"]}})
     assert not probe.is_text_output({"architecture": {"output_modalities": ["audio"]}})
     assert not probe.is_text_output({"architecture": {}})
+
+def test_probe_model_distinguishes_missing_content_from_empty_text(monkeypatch):
+    class Response:
+        status = 200
+
+        def __init__(self, content_marker):
+            self.content_marker = content_marker
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            message = {}
+            if self.content_marker is not None:
+                message["content"] = self.content_marker
+            return json.dumps(
+                {"choices": [{"finish_reason": "stop", "message": message}]}
+            ).encode("utf-8")
+
+    for content_marker, expected_shape, expected_status in (
+        (None, "content_missing", "NO_TEXT_COMPLETION"),
+        ("   ", "content_string", "NO_TEXT_COMPLETION"),
+    ):
+        monkeypatch.setattr(
+            probe.urllib.request,
+            "urlopen",
+            lambda request, timeout, marker=content_marker: Response(marker),
+        )
+        result = probe.probe_model("test-secret", "provider/model:free", 4)
+        assert result["status"] == expected_status
+        assert result["response_shape"] == expected_shape
+        assert result["content_shape"] == ("missing" if content_marker is None else "string")
+        assert "test-secret" not in repr(result)
+        assert "Reply with the single word" not in repr(result)
+
+
+def test_probe_artifact_records_actual_max_tokens_and_no_generated_text(monkeypatch, tmp_path):
+    catalog_path = tmp_path / "catalog.json"
+    output_path = tmp_path / "probe.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "provider/model:free",
+                        "pricing": {"prompt": "0", "completion": "0"},
+                        "architecture": {"output_modalities": ["text"]},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setattr(
+        probe,
+        "probe_model",
+        lambda api_key, model_id, timeout: {
+            "model_id": model_id,
+            "status": "CHAT_COMPLETION_OK",
+            "content_nonempty": True,
+        },
+    )
+
+    assert probe.main(
+        [
+            "--catalog", str(catalog_path),
+            "--output", str(output_path),
+            "--limit", "1",
+            "--delay", "0",
+        ]
+    ) == 0
+
+    artifact = json.loads(output_path.read_text(encoding="utf-8"))
+    assert artifact["selection"]["max_tokens"] == probe.PROBE_MAX_TOKENS
+    assert "test-secret" not in output_path.read_text(encoding="utf-8")
+    assert "Reply with the single word" not in output_path.read_text(encoding="utf-8")
+
