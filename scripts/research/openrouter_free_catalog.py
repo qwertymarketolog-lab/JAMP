@@ -95,9 +95,7 @@ def build_snapshot(
 ) -> dict[str, Any]:
     rows = payload["data"]
     if any(
-        not isinstance(row, dict)
-        or not isinstance(row.get("id"), str)
-        or not row["id"]
+        not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"]
         for row in rows
     ):
         raise RuntimeError("OpenRouter catalog contains a malformed model row")
@@ -106,7 +104,8 @@ def build_snapshot(
         raise RuntimeError("OpenRouter catalog contains duplicate model IDs")
 
     zero_price_rows = [
-        row for row in rows
+        row
+        for row in rows
         if isinstance(row.get("pricing"), dict)
         and zero_price(row["pricing"].get("prompt"))
         and zero_price(row["pricing"].get("completion"))
@@ -123,11 +122,13 @@ def build_snapshot(
     for model_id in crosswalk_ids:
         candidates = free_by_stem.get(model_stem(model_id), [])
         if candidates and model_id not in candidates:
-            stem_candidates.append({
-                "anymodel_model_id": model_id,
-                "openrouter_model_ids": sorted(candidates),
-                "status": "NAME_STEM_CANDIDATE_NOT_IDENTITY_PROOF",
-            })
+            stem_candidates.append(
+                {
+                    "anymodel_model_id": model_id,
+                    "openrouter_model_ids": sorted(candidates),
+                    "status": "NAME_STEM_CANDIDATE_NOT_IDENTITY_PROOF",
+                }
+            )
 
     try:
         crosswalk_display_path = str(crosswalk_path.resolve().relative_to(ROOT.resolve()))
