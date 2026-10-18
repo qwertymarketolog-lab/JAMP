@@ -360,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
             "limit": args.limit,
             "request_per_model": 1,
             "prompt": "Reply with the single word: OK",
-            "max_tokens": 8,
+            "max_tokens": PROBE_MAX_TOKENS,
         },
         "results": results,
         "summary": {
