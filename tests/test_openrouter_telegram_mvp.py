@@ -1,5 +1,5 @@
-import json
 from concurrent.futures import ThreadPoolExecutor
+import json
 
 from fastapi.testclient import TestClient
 
