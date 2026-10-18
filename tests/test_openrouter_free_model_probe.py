@@ -213,6 +213,7 @@ def test_text_output_requires_explicit_text_modality():
     assert not probe.is_text_output({"architecture": {"output_modalities": ["audio"]}})
     assert not probe.is_text_output({"architecture": {}})
 
+
 def test_probe_model_distinguishes_missing_content_from_empty_text(monkeypatch):
     class Response:
         status = 200
@@ -230,9 +231,9 @@ def test_probe_model_distinguishes_missing_content_from_empty_text(monkeypatch):
             message = {}
             if self.content_marker is not None:
                 message["content"] = self.content_marker
-            return json.dumps({"choices": [{"finish_reason": "stop", "message": message}]}).encode(
-                "utf-8"
-            )
+            return json.dumps(
+                {"choices": [{"finish_reason": "stop", "message": message}]}
+            ).encode("utf-8")
 
     for content_marker, expected_shape, expected_status in (
         (None, "content_missing", "NO_TEXT_COMPLETION"),
