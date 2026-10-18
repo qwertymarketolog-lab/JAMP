@@ -94,18 +94,25 @@ def build_snapshot(
     crosswalk_path: pathlib.Path = DEFAULT_CROSSWALK,
 ) -> dict[str, Any]:
     rows = payload["data"]
-    if any(not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"] for row in rows):
+    if any(
+        not isinstance(row, dict)
+        or not isinstance(row.get("id"), str)
+        or not row["id"]
+        for row in rows
+    ):
         raise RuntimeError("OpenRouter catalog contains a malformed model row")
     ids = [row["id"] for row in rows]
     if len(ids) != len(set(ids)):
         raise RuntimeError("OpenRouter catalog contains duplicate model IDs")
 
-    free_models = [
+    zero_price_rows = [
         row for row in rows
         if isinstance(row.get("pricing"), dict)
         and zero_price(row["pricing"].get("prompt"))
         and zero_price(row["pricing"].get("completion"))
     ]
+    free_router_rows = [row for row in zero_price_rows if row["id"] == "openrouter/free"]
+    free_models = [row for row in zero_price_rows if row["id"] != "openrouter/free"]
     free_ids = {row["id"] for row in free_models}
     exact_matches = sorted(set(crosswalk_ids) & free_ids)
 
@@ -135,7 +142,9 @@ def build_snapshot(
             "endpoint": DEFAULT_URL,
             "http_status": 200,
             "catalog_model_count": len(rows),
-            "zero_input_and_output_price_count": len(free_models),
+            "zero_price_entry_count": len(zero_price_rows),
+            "zero_price_model_count": len(free_models),
+            "free_router_entry_count": len(free_router_rows),
         },
         "comparison": {
             "crosswalk_path": crosswalk_display_path,
@@ -149,6 +158,11 @@ def build_snapshot(
                 "A matching name stem is only a search lead. It does not establish "
                 "provider equivalence, model identity, availability, or qualification."
             ),
+        },
+        "free_router": {
+            "present": bool(free_router_rows),
+            "entries": free_router_rows,
+            "note": "The free router is a routing endpoint, not a specific model.",
         },
         "qualification": {
             "jamp_execution_approved": False,
@@ -193,7 +207,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"HTTP: 200")
     print(f"CATALOG_MODELS: {snapshot['source']['catalog_model_count']}")
-    print(f"ZERO_PRICE_MODELS: {snapshot['source']['zero_input_and_output_price_count']}")
+    print(f"ZERO_PRICE_ENTRIES: {snapshot['source']['zero_price_entry_count']}")
+    print(f"ZERO_PRICE_MODELS: {snapshot['source']['zero_price_model_count']}")
+    print(f"FREE_ROUTER_PRESENT: {snapshot['free_router']['present']}")
     print(f"CROSSWALK_STATUS: {snapshot['comparison']['crosswalk_status']}")
     print(f"EXACT_ID_MATCHES: {snapshot['comparison']['exact_model_id_match_count']}")
     print(f"NAME_STEM_CANDIDATES: {snapshot['comparison']['name_stem_candidate_count']}")
