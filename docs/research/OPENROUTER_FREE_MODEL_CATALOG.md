@@ -42,3 +42,15 @@ A model may proceed to a controlled provider-call test only after its exact Open
 ## Initial observation supplied during the 2026-10-18 audit
 
 A public catalog request returned HTTP 200 and 471 catalog entries. The displayed filter produced 19 zero-price entries, including the `openrouter/free` router. That means the output contained 18 concrete model entries plus one router entry. This was an initial observation, not a full catalog snapshot. The 18 model entries and separate router entry are preserved in `artifacts/research/openrouter_free_model_catalog_initial_observation.json`; the full API response was not preserved. Rerun the script to produce a complete metadata artifact and current results.
+
+
+## Controlled live chat-completion probes
+
+After generating the complete catalog, a controlled probe can send one short text request to each selected zero-price text-output model. The default is limited to five models per run:
+
+```bash
+export OPENROUTER_API_KEY='...'
+python scripts/research/openrouter_probe_free_models.py
+```
+
+Review the output artifact at `artifacts/research/openrouter_free_model_probe.json`. To probe every eligible model, pass `--limit 0`; this deliberately requires an explicit opt-in because provider rate limits and temporary availability can vary. The probe records HTTP status, latency, response ID, reported model and usage where available. It never records the API key, prompt response text, or raw provider error body. A `CHAT_COMPLETION_OK` is a single-time connectivity result only, not a JAMP qualification or permission to route tasks to the model.
