@@ -79,7 +79,8 @@ def create_app(
         else (OpenRouterChatExecutor.from_env() or AnyModelChatExecutor.from_env())
     )
 
-    app = FastAPI(title="JAMP API", version="v1", openapi_version="3.0.3")
+    app = FastAPI(title="JAMP API", version="v1")
+    app.openapi_version = "3.0.3"
 
     @app.post("/v1/classify")
     def classify(payload: dict[str, Any]):
