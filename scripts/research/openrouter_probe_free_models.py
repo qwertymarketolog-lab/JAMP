@@ -147,6 +147,33 @@ def _content_shape(content: Any) -> str:
     return "other"
 
 
+def _response_shape(
+    decoded: dict[str, Any],
+    choices: Any,
+    choice: Any,
+    message: Any,
+    content: Any,
+) -> str:
+    """Describe response structure without retaining provider-generated text."""
+    if "choices" not in decoded:
+        return "choices_missing"
+    if not isinstance(choices, list):
+        return "choices_invalid"
+    if not choices:
+        return "choices_empty"
+    if not isinstance(choice, dict):
+        return "choice_invalid"
+    if "message" not in choice:
+        return "message_missing"
+    if not isinstance(message, dict):
+        return "message_invalid"
+    if "content" not in message:
+        return "content_missing"
+    if content is None:
+        return "content_null"
+    return f"content_{_content_shape(content)}"
+
+
 def _safe_finish_reason(value: Any) -> str | None:
     if (
         isinstance(value, str)
@@ -218,11 +245,17 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
                 decoded.get("id") if isinstance(decoded.get("id"), str) else None
             ),
             "content_shape": _content_shape(content),
+            "response_shape": _response_shape(decoded, choices, choice, message, content),
             "finish_reason": finish_reason,
             "refusal_present": isinstance(refusal, str) and bool(refusal.strip()),
         }
         if not _has_text_content(content):
-            return {**common_response, "status": "NO_TEXT_COMPLETION"}
+            status = (
+                "TRUNCATED_OR_LIMITED"
+                if finish_reason == "length"
+                else "NO_TEXT_COMPLETION"
+            )
+            return {**common_response, "status": status}
         usage = decoded.get("usage")
         return {
             **common_response,
@@ -337,6 +370,9 @@ def main(argv: list[str] | None = None) -> int:
             "chat_completion_ok": sum(item["status"] == "CHAT_COMPLETION_OK" for item in results),
             "http_error": sum(item["status"] == "HTTP_ERROR" for item in results),
             "no_text_completion": sum(item["status"] == "NO_TEXT_COMPLETION" for item in results),
+            "truncated_or_limited": sum(
+                item["status"] == "TRUNCATED_OR_LIMITED" for item in results
+            ),
             "transport_error": sum(item["status"] == "TRANSPORT_ERROR" for item in results),
             "invalid_response": sum(item["status"] == "INVALID_RESPONSE" for item in results),
         },
