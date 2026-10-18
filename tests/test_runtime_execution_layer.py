@@ -119,7 +119,7 @@ def test_projection_provider_id_substitution_is_rejected(tmp_path):
 
 @pytest.mark.parametrize("mutation", ["status", "provider_id", "eligible_pool"])
 def test_derived_matrix_content_tampering_is_rejected(tmp_path, monkeypatch, mutation):
-    import jamp.runtime.resolver as resolver_module
+    import src.jamp.runtime.resolver as resolver_module
 
     matrix_path = Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
