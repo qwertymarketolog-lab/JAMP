@@ -11,13 +11,13 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
-from decimal import Decimal, InvalidOperation
 import os
 import pathlib
 import sys
 import time
 import urllib.error
 import urllib.request
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -48,6 +48,110 @@ def is_text_output(model: dict[str, Any]) -> bool:
     return isinstance(outputs, list) and "text" in outputs
 
 
+def _safe_provider_label(value: Any) -> str | int | None:
+    """Keep only short, structured provider labels; never persist arbitrary text."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if 0 <= value <= 999999 else None
+    if (
+        isinstance(value, str)
+        and 0 < len(value) <= 80
+        and all(char.isalnum() or char in "._:-" for char in value)
+    ):
+        return value
+    return None
+
+
+def _provider_error_diagnostics(http_status: int, raw: bytes) -> dict[str, Any]:
+    """Classify provider failures without persisting their free-form message/body."""
+    decoded: Any = None
+    try:
+        decoded = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    error = decoded.get("error") if isinstance(decoded, dict) else None
+    if not isinstance(error, dict):
+        error = {}
+    message = error.get("message")
+    normalized = message.lower() if isinstance(message, str) else ""
+
+    if ("insufficient" in normalized and any(word in normalized for word in ("credit", "balance", "quota"))) or (
+        "out of credits" in normalized
+    ):
+        category = "insufficient_credits"
+    elif any(term in normalized for term in ("rate limit", "too many requests", "throttl")):
+        category = "rate_limited"
+    elif "no available provider" in normalized or "no provider available" in normalized:
+        category = "no_provider_available"
+    elif "model not found" in normalized or "unknown model" in normalized:
+        category = "model_not_found"
+    elif "unsupported parameter" in normalized or "parameter is not supported" in normalized:
+        category = "unsupported_parameter"
+    elif "invalid api key" in normalized or "unauthorized" in normalized:
+        category = "authentication"
+    elif "forbidden" in normalized or "permission denied" in normalized:
+        category = "permission_denied"
+    else:
+        category = {
+            400: "invalid_request",
+            401: "authentication",
+            402: "payment_or_credit_required",
+            403: "permission_denied",
+            404: "model_or_endpoint_not_found",
+            408: "request_timeout",
+            413: "request_too_large",
+            429: "rate_limit_or_provider_capacity",
+        }.get(http_status, "provider_server_error" if http_status >= 500 else "provider_http_error")
+
+    diagnostics: dict[str, Any] = {"provider_error_category": category}
+    code = _safe_provider_label(error.get("code"))
+    error_type = _safe_provider_label(error.get("type"))
+    if code is not None:
+        diagnostics["provider_error_code"] = code
+    if error_type is not None:
+        diagnostics["provider_error_type"] = error_type
+    return diagnostics
+
+
+def _has_text_content(content: Any) -> bool:
+    if isinstance(content, str):
+        return bool(content.strip())
+    if isinstance(content, list):
+        for part in content:
+            if isinstance(part, str) and part.strip():
+                return True
+            if (
+                isinstance(part, dict)
+                and part.get("type") in {"text", "output_text"}
+                and isinstance(part.get("text"), str)
+                and part["text"].strip()
+            ):
+                return True
+    return False
+
+
+def _content_shape(content: Any) -> str:
+    if content is None:
+        return "missing"
+    if isinstance(content, str):
+        return "string"
+    if isinstance(content, list):
+        return "list"
+    return "other"
+
+
+def _safe_finish_reason(value: Any) -> str | None:
+    if (
+        isinstance(value, str)
+        and 0 < len(value) <= 40
+        and all(char.isalnum() or char in "._:-" for char in value)
+    ):
+        return value
+    return None
+
+
 def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
     payload = {
         "model": model_id,
@@ -75,37 +179,51 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
         elapsed_ms = round((time.monotonic() - started) * 1000)
         decoded = json.loads(raw.decode("utf-8"))
         if status != 200:
-            return {**base, "status": "HTTP_ERROR", "http_status": status, "elapsed_ms": elapsed_ms}
+            return {
+                **base,
+                "status": "HTTP_ERROR",
+                "http_status": status,
+                "elapsed_ms": elapsed_ms,
+                **_provider_error_diagnostics(status, raw),
+            }
         if not isinstance(decoded, dict):
             return {**base, "status": "INVALID_RESPONSE", "http_status": status, "elapsed_ms": elapsed_ms}
         choices = decoded.get("choices")
-        message = choices[0].get("message") if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        message = choice.get("message") if isinstance(choice, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, str) or not content.strip():
-            return {
-                **base,
-                "status": "NO_TEXT_COMPLETION",
-                "http_status": status,
-                "elapsed_ms": elapsed_ms,
-                "provider_response_id": decoded.get("id") if isinstance(decoded.get("id"), str) else None,
-            }
-        usage = decoded.get("usage")
-        return {
+        finish_reason = _safe_finish_reason(choice.get("finish_reason")) if isinstance(choice, dict) else None
+        refusal = message.get("refusal") if isinstance(message, dict) else None
+        common_response = {
             **base,
-            "status": "CHAT_COMPLETION_OK",
             "http_status": status,
             "elapsed_ms": elapsed_ms,
             "provider_response_id": decoded.get("id") if isinstance(decoded.get("id"), str) else None,
+            "content_shape": _content_shape(content),
+            "finish_reason": finish_reason,
+            "refusal_present": isinstance(refusal, str) and bool(refusal.strip()),
+        }
+        if not _has_text_content(content):
+            return {**common_response, "status": "NO_TEXT_COMPLETION"}
+        usage = decoded.get("usage")
+        return {
+            **common_response,
+            "status": "CHAT_COMPLETION_OK",
             "response_model": decoded.get("model") if isinstance(decoded.get("model"), str) else None,
             "usage": usage if isinstance(usage, dict) else None,
             "content_nonempty": True,
         }
     except urllib.error.HTTPError as exc:
+        try:
+            error_body = exc.read(16384)
+        except OSError:
+            error_body = b""
         return {
             **base,
             "status": "HTTP_ERROR",
             "http_status": exc.code,
             "elapsed_ms": round((time.monotonic() - started) * 1000),
+            **_provider_error_diagnostics(exc.code, error_body),
         }
     except (urllib.error.URLError, TimeoutError, OSError):
         return {
