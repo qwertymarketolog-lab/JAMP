@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
 
@@ -83,7 +84,7 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
     assert calls == []
 
 
-def test_telegram_webhook_executes_and_returns_trace(monkeypatch):
+def test_telegram_webhook_executes_and_returns_trace(monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
@@ -96,7 +97,12 @@ def test_telegram_webhook_executes_and_returns_trace(monkeypatch):
         calls.append(payload)
         return {"content": "hello from model"}
 
-    client = TestClient(create_app(executor=executor))
+    client = TestClient(
+        create_app(
+            executor=executor,
+            telegram_update_db_path=tmp_path / "telegram-updates.sqlite3",
+        )
+    )
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
@@ -131,4 +137,110 @@ def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
     assert response.status_code == 422
     assert response.json()["status"] == "REFUSE"
     assert response.json()["reason"] == "TELEGRAM_TASK_PROFILE_REQUIRED"
+    assert calls == []
+
+
+
+def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypatch, tmp_path):
+    import jamp.api.app as app_module
+
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
+    database_path = tmp_path / "telegram-updates.sqlite3"
+    calls = []
+
+    def executor(model, payload):
+        calls.append(payload)
+        return {"content": "hello from model"}
+
+    headers = {"X-Telegram-Bot-Api-Secret-Token": "configured-secret"}
+    update = {
+        "update_id": 800,
+        "message": {"chat": {"id": 42}, "text": "/search hello"},
+    }
+
+    first_client = TestClient(
+        create_app(executor=executor, telegram_update_db_path=database_path)
+    )
+    first = first_client.post("/v1/telegram/webhook", headers=headers, json=update)
+    first_client.close()
+
+    restarted_client = TestClient(
+        create_app(executor=executor, telegram_update_db_path=database_path)
+    )
+    duplicate = restarted_client.post("/v1/telegram/webhook", headers=headers, json=update)
+
+    assert first.status_code == 200
+    assert first.json()["status"] == "EXECUTE"
+    assert duplicate.status_code == 200
+    assert duplicate.json() == {
+        "status": "DUPLICATE",
+        "reason": "TELEGRAM_UPDATE_ALREADY_CLAIMED",
+    }
+    assert len(calls) == 1
+
+
+def test_telegram_update_store_claim_is_atomic_under_concurrency(tmp_path):
+    from jamp.transport.telegram_updates import TelegramUpdateStore
+
+    store = TelegramUpdateStore(tmp_path / "telegram-updates.sqlite3")
+
+    def claim(_: int) -> bool:
+        return store.claim(900)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(claim, range(16)))
+
+    assert sum(results) == 1
+    assert TelegramUpdateStore(tmp_path / "telegram-updates.sqlite3").claim(900) is False
+
+
+def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    calls = []
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"},
+            telegram_update_db_path=tmp_path,
+        )
+    )
+
+    response = client.post(
+        "/v1/telegram/webhook",
+        headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
+        json={"update_id": 901, "message": {"chat": {"id": 42}, "text": "/search hello"}},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "REFUSE"
+    assert response.json()["reason"] == "TELEGRAM_IDEMPOTENCY_UNAVAILABLE"
+    assert calls == []
+
+
+def test_telegram_webhook_refuses_missing_update_id_before_execution(monkeypatch, tmp_path):
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    calls = []
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"},
+            telegram_update_db_path=tmp_path / "telegram-updates.sqlite3",
+        )
+    )
+
+    response = client.post(
+        "/v1/telegram/webhook",
+        headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
+        json={"message": {"chat": {"id": 42}, "text": "/search hello"}},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["reason"] == "TELEGRAM_UPDATE_ID_REQUIRED"
     assert calls == []
