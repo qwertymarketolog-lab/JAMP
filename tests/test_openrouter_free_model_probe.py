@@ -301,4 +301,3 @@ def test_probe_artifact_records_actual_max_tokens_and_no_generated_text(monkeypa
     assert "test-secret" not in output_path.read_text(encoding="utf-8")
     assert "content" not in artifact["results"][0]
     assert "generated_text" not in artifact["results"][0]
-
