@@ -91,6 +91,7 @@ def build_snapshot(
     crosswalk_ids: list[str],
     crosswalk_status: str,
     retrieved_at: str | None = None,
+    crosswalk_path: pathlib.Path = DEFAULT_CROSSWALK,
 ) -> dict[str, Any]:
     rows = payload["data"]
     if any(not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"] for row in rows):
@@ -121,6 +122,11 @@ def build_snapshot(
                 "status": "NAME_STEM_CANDIDATE_NOT_IDENTITY_PROOF",
             })
 
+    try:
+        crosswalk_display_path = str(crosswalk_path.resolve().relative_to(ROOT.resolve()))
+    except ValueError:
+        crosswalk_display_path = str(crosswalk_path)
+
     return {
         "artifact_version": "openrouter-free-model-catalog-v1",
         "evidence_class": "PUBLIC_CATALOG_OBSERVATION_ONLY",
@@ -132,7 +138,7 @@ def build_snapshot(
             "zero_input_and_output_price_count": len(free_models),
         },
         "comparison": {
-            "crosswalk_path": str(DEFAULT_CROSSWALK.relative_to(ROOT)),
+            "crosswalk_path": crosswalk_display_path,
             "crosswalk_status": crosswalk_status,
             "crosswalk_model_count": len(crosswalk_ids),
             "exact_model_id_matches": exact_matches,
@@ -171,7 +177,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         payload = fetch_payload(args.url, args.timeout)
         crosswalk_ids, crosswalk_status = read_crosswalk(args.crosswalk)
-        snapshot = build_snapshot(payload, crosswalk_ids, crosswalk_status)
+        snapshot = build_snapshot(
+            payload, crosswalk_ids, crosswalk_status, crosswalk_path=args.crosswalk
+        )
         snapshot["source"]["endpoint"] = args.url
         output = args.output
         output.parent.mkdir(parents=True, exist_ok=True)
