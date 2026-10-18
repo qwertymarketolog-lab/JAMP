@@ -11,7 +11,6 @@ from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
-from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -20,6 +19,7 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
+from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
 def _send_telegram_message(bot_token: str, chat_id: int, text: str) -> None:
