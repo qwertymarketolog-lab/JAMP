@@ -207,9 +207,7 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
         message = choice.get("message") if isinstance(choice, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
         finish_reason = (
-            _safe_finish_reason(choice.get("finish_reason"))
-            if isinstance(choice, dict)
-            else None
+            _safe_finish_reason(choice.get("finish_reason")) if isinstance(choice, dict) else None
         )
         refusal = message.get("refusal") if isinstance(message, dict) else None
         common_response = {
@@ -296,7 +294,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     eligible = [
-        row for row in models
+        row
+        for row in models
         if isinstance(row, dict)
         and isinstance(row.get("id"), str)
         and isinstance(row.get("pricing"), dict)
@@ -305,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         and is_text_output(row)
     ]
     eligible.sort(key=lambda row: row["id"])
-    selected = eligible if args.limit == 0 else eligible[:args.limit]
+    selected = eligible if args.limit == 0 else eligible[: args.limit]
     if not selected:
         print(
             "ERROR: no zero-price text-output models found; no requests were sent",
