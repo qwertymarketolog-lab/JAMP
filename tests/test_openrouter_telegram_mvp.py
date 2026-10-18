@@ -342,3 +342,30 @@ def test_openrouter_executor_generation_settings_from_env(monkeypatch):
     assert executor is not None
     assert executor._max_tokens == 384
     assert executor._reasoning_effort == "medium"
+
+
+
+def test_provenance_records_requested_and_provider_model_ids_separately():
+    from jamp.runtime.provenance import ProvenanceTracker
+
+    trace = ProvenanceTracker().create_trace(
+        task_profile="search_and_extraction",
+        required_caps=("C01", "C06"),
+        action="EXECUTE",
+        selected_model="canonical/requested-id",
+        eligible_count=1,
+        output={
+            "provider": "openrouter",
+            "requested_model_id": "canonical/requested-id",
+            "provider_model_id": "provider/served-alias",
+            "content": "hello",
+        },
+    )
+
+    details = trace["execution_details"]
+    assert details["selected_model"] == "canonical/requested-id"
+    assert details["requested_model_id"] == "canonical/requested-id"
+    assert details["provider_model_id"] == "provider/served-alias"
+    assert details["provider"] == "openrouter"
+    assert "content" not in details
+    assert details["output_digest"].startswith("sha256:")
