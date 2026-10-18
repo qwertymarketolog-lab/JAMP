@@ -141,6 +141,6 @@
     "jamp_execution_approved": false,
     "model_quality_verified": false,
     "live_chat_completion_tested": false,
-    "note": "The price filter alone does not establish chat-completions compatibility, current access, model identity with AnyModel, rate limits, or permission under Matrix v2."
+    "note": "The price filter alone does not establish chat-completions compatibility, current access, rate limits, or permission under Matrix v2."
   }
 }
