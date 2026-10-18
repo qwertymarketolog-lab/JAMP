@@ -208,4 +208,3 @@ def test_evidence_gate_rejects_malformed_evidence(tmp_path, mutation, error):
 
     with pytest.raises(ValueError, match=error):
         EvidenceGate.from_json_file(path)
-
