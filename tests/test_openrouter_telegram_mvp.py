@@ -1,9 +1,8 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-import pytest
-
 from fastapi.testclient import TestClient
+import pytest
 
 from jamp.api import create_app
 
