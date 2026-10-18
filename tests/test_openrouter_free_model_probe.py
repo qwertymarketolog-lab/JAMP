@@ -53,7 +53,8 @@ def test_probe_model_records_success_without_generated_text_or_secret(monkeypatc
     assert seen["url"] == probe.CHAT_URL
     assert seen["authorization"] == "Bearer test-secret"
     assert seen["payload"]["model"] == "provider/model:free"
-    assert seen["payload"]["max_tokens"] == 8
+    assert probe.PROBE_MAX_TOKENS == 64
+    assert seen["payload"]["max_tokens"] == probe.PROBE_MAX_TOKENS
     assert "test-secret" not in repr(result)
     assert "private generated text" not in repr(result)
 
