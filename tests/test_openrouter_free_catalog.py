@@ -42,6 +42,7 @@ def test_snapshot_filters_free_models_and_marks_stem_match_unverified(tmp_path):
             model("provider/paid-model", "0.1", "0"),
             {"id": "provider/missing-price", "pricing": {"prompt": "0"}},
             model("provider/exact-match:free", 0, 0),
+            model("openrouter/free", "0", "0"),
         ]
     }
     snapshot = catalog.build_snapshot(
@@ -55,8 +56,11 @@ def test_snapshot_filters_free_models_and_marks_stem_match_unverified(tmp_path):
         crosswalk_path=tmp_path / "crosswalk.csv",
     )
 
-    assert snapshot["source"]["catalog_model_count"] == 4
-    assert snapshot["source"]["zero_input_and_output_price_count"] == 2
+    assert snapshot["source"]["catalog_model_count"] == 5
+    assert snapshot["source"]["zero_price_entry_count"] == 3
+    assert snapshot["source"]["zero_price_model_count"] == 2
+    assert snapshot["source"]["free_router_entry_count"] == 1
+    assert snapshot["free_router"]["present"] is True
     assert [row["id"] for row in snapshot["models"]] == [
         "provider/exact-match:free",
         "provider/nemotron-3-super-120b-a12b:free",
