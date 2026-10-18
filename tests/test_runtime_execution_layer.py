@@ -91,7 +91,6 @@ def test_refusal_provenance():
     assert "refusal_details" in trace
 
 
-
 def test_all_170_projection_statuses_match_pinned_canonical_matrix():
     resolver = CapabilityResolver()
     projection_path = Path(__file__).parent / "fixtures/runtime_evidence_projection.json"
