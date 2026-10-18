@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+from decimal import Decimal, InvalidOperation
 import os
 import pathlib
 import sys
@@ -28,6 +29,15 @@ USER_AGENT = "JAMP-openrouter-controlled-probe/1.0"
 
 def utc_now() -> str:
     return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
+
+
+def zero_price(value: Any) -> bool:
+    if isinstance(value, bool) or value is None:
+        return False
+    try:
+        return Decimal(str(value)) == Decimal("0")
+    except (InvalidOperation, ValueError):
+        return False
 
 
 def is_text_output(model: dict[str, Any]) -> bool:
@@ -139,8 +149,8 @@ def main(argv: list[str] | None = None) -> int:
         if isinstance(row, dict)
         and isinstance(row.get("id"), str)
         and isinstance(row.get("pricing"), dict)
-        and str(row["pricing"].get("prompt")) == "0"
-        and str(row["pricing"].get("completion")) == "0"
+        and zero_price(row["pricing"].get("prompt"))
+        and zero_price(row["pricing"].get("completion"))
         and is_text_output(row)
     ]
     eligible.sort(key=lambda row: row["id"])
