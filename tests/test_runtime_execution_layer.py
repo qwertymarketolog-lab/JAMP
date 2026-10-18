@@ -168,6 +168,7 @@ def test_api_fails_closed_if_matrix_changes_after_startup(tmp_path, monkeypatch)
     assert response.json()["reason"] == "EVIDENCE_INTEGRITY_FAILED"
     assert calls == []
 
+
 @pytest.mark.parametrize(
     ("mutation", "error"),
     [
