@@ -9,6 +9,7 @@ qualification and does not alter JAMP routing policy.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import json
 import os
@@ -66,10 +67,8 @@ def _safe_provider_label(value: Any) -> str | int | None:
 def _provider_error_diagnostics(http_status: int, raw: bytes) -> dict[str, Any]:
     """Classify provider failures without persisting their free-form message/body."""
     decoded: Any = None
-    try:
+    with contextlib.suppress(UnicodeDecodeError, json.JSONDecodeError):
         decoded = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        pass
 
     error = decoded.get("error") if isinstance(decoded, dict) else None
     if not isinstance(error, dict):
@@ -82,9 +81,10 @@ def _provider_error_diagnostics(http_status: int, raw: bytes) -> dict[str, Any]:
     )
     normalized = (message.lower() if isinstance(message, str) else "") + " " + structured_labels
 
-    if ("insufficient" in normalized and any(word in normalized for word in ("credit", "balance", "quota"))) or (
-        "out of credits" in normalized
-    ):
+    if (
+        "insufficient" in normalized
+        and any(word in normalized for word in ("credit", "balance", "quota"))
+    ) or "out of credits" in normalized:
         category = "insufficient_credits"
     elif any(term in normalized for term in ("rate limit", "too many requests", "throttl")):
         category = "rate_limited"
@@ -192,18 +192,33 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
                 **_provider_error_diagnostics(status, raw),
             }
         if not isinstance(decoded, dict):
-            return {**base, "status": "INVALID_RESPONSE", "http_status": status, "elapsed_ms": elapsed_ms}
+            return {
+                **base,
+                "status": "INVALID_RESPONSE",
+                "http_status": status,
+                "elapsed_ms": elapsed_ms,
+            }
         choices = decoded.get("choices")
-        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+        choice = (
+            choices[0]
+            if isinstance(choices, list) and choices and isinstance(choices[0], dict)
+            else None
+        )
         message = choice.get("message") if isinstance(choice, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
-        finish_reason = _safe_finish_reason(choice.get("finish_reason")) if isinstance(choice, dict) else None
+        finish_reason = (
+            _safe_finish_reason(choice.get("finish_reason"))
+            if isinstance(choice, dict)
+            else None
+        )
         refusal = message.get("refusal") if isinstance(message, dict) else None
         common_response = {
             **base,
             "http_status": status,
             "elapsed_ms": elapsed_ms,
-            "provider_response_id": decoded.get("id") if isinstance(decoded.get("id"), str) else None,
+            "provider_response_id": (
+                decoded.get("id") if isinstance(decoded.get("id"), str) else None
+            ),
             "content_shape": _content_shape(content),
             "finish_reason": finish_reason,
             "refusal_present": isinstance(refusal, str) and bool(refusal.strip()),
@@ -214,7 +229,9 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
         return {
             **common_response,
             "status": "CHAT_COMPLETION_OK",
-            "response_model": decoded.get("model") if isinstance(decoded.get("model"), str) else None,
+            "response_model": (
+                decoded.get("model") if isinstance(decoded.get("model"), str) else None
+            ),
             "usage": usage if isinstance(usage, dict) else None,
             "content_nonempty": True,
         }
@@ -248,7 +265,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=pathlib.Path, default=DEFAULT_CATALOG)
     parser.add_argument("--output", type=pathlib.Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--limit", type=int, default=5, help="Maximum models to probe; 0 means all eligible models")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum models to probe; 0 means all eligible models",
+    )
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--delay", type=float, default=0.5, help="Seconds between requests")
     args = parser.parse_args(argv)
@@ -261,11 +283,17 @@ def main(argv: list[str] | None = None) -> int:
     try:
         catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        print("ERROR: catalog file is missing or invalid JSON; no requests were sent", file=sys.stderr)
+        print(
+            "ERROR: catalog file is missing or invalid JSON; no requests were sent",
+            file=sys.stderr,
+        )
         return 2
     models = catalog.get("models") if isinstance(catalog, dict) else None
     if not isinstance(models, list):
-        print("ERROR: catalog does not contain a models list; no requests were sent", file=sys.stderr)
+        print(
+            "ERROR: catalog does not contain a models list; no requests were sent",
+            file=sys.stderr,
+        )
         return 2
     eligible = [
         row for row in models
@@ -279,7 +307,10 @@ def main(argv: list[str] | None = None) -> int:
     eligible.sort(key=lambda row: row["id"])
     selected = eligible if args.limit == 0 else eligible[:args.limit]
     if not selected:
-        print("ERROR: no zero-price text-output models found; no requests were sent", file=sys.stderr)
+        print(
+            "ERROR: no zero-price text-output models found; no requests were sent",
+            file=sys.stderr,
+        )
         return 2
 
     results = []
@@ -312,11 +343,17 @@ def main(argv: list[str] | None = None) -> int:
         },
         "qualification": {
             "jamp_execution_approved": False,
-            "note": "A successful probe proves only that one minimal request returned text at tested_at. It does not qualify the model or change routing policy.",
+            "note": (
+                "A successful probe proves only that one minimal request returned text at "
+                "tested_at. It does not qualify the model or change routing policy."
+            ),
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(artifact, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(artifact, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(f"ELIGIBLE_TEXT_MODELS: {len(eligible)}")
     print(f"PROBED: {len(results)}")
     print(f"CHAT_COMPLETION_OK: {artifact['summary']['chat_completion_ok']}")

@@ -22,7 +22,12 @@ def test_probe_model_records_success_without_generated_text_or_secret(monkeypatc
                 {
                     "id": "response-123",
                     "model": "provider/model:free",
-                    "choices": [{"finish_reason": "stop", "message": {"content": "OK, private generated text"}}],
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {"content": "OK, private generated text"},
+                        }
+                    ],
                     "usage": {"prompt_tokens": 5, "completion_tokens": 1},
                 }
             ).encode("utf-8")
