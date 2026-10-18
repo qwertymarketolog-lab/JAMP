@@ -81,7 +81,12 @@ def test_snapshot_filters_free_models_and_marks_stem_match_unverified(tmp_path):
 
 
 def test_snapshot_rejects_duplicate_model_ids():
-    payload = {"data": [model("provider/same", "0", "0"), model("provider/same", "0", "0")]}
+    payload = {
+        "data": [
+            model("provider/same", "0", "0"),
+            model("provider/same", "0", "0"),
+        ]
+    }
     with pytest.raises(RuntimeError, match="duplicate model IDs"):
         catalog.build_snapshot(payload, [], "NOT_FOUND")
 
