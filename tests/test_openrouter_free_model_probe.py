@@ -150,9 +150,9 @@ def test_probe_model_classifies_empty_length_limited_response_without_text(monke
             return False
 
         def read(self):
-            return json.dumps(
-                {"choices": [{"finish_reason": "length", "message": {}}]}
-            ).encode("utf-8")
+            return json.dumps({"choices": [{"finish_reason": "length", "message": {}}]}).encode(
+                "utf-8"
+            )
 
     monkeypatch.setattr(probe.urllib.request, "urlopen", lambda request, timeout: Response())
     result = probe.probe_model("test-secret", "provider/model:free", 4)
