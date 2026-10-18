@@ -55,9 +55,7 @@ def test_snapshot_filters_free_models_and_marks_stem_match_unverified(tmp_path):
         "provider/exact-match:free",
         "provider/nemotron-3-super-120b-a12b:free",
     ]
-    assert snapshot["comparison"]["exact_model_id_matches"] == [
-        "provider/exact-match:free"
-    ]
+    assert snapshot["comparison"]["exact_model_id_matches"] == ["provider/exact-match:free"]
     assert snapshot["comparison"]["name_stem_candidates"] == [
         {
             "anymodel_model_id": "am/nemotron-3-super-120b-a12b",
