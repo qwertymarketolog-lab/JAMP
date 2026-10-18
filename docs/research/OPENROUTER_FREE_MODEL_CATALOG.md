@@ -27,7 +27,7 @@ python scripts/research/openrouter_free_catalog.py --output /tmp/openrouter-free
 
 ## Catalog semantics
 
-- Entries are included only when both prompt and completion prices are explicitly numeric/string zero.
+- Entries are included in the free-model subset only when both prompt and completion prices are explicitly numeric/string zero. Other price fields (for example request, image, audio, or web search) are preserved and may still be non-zero.
 - `openrouter/free` is recorded separately as a router entry, not counted as a specific model.
 - Concrete free model IDs are preserved exactly as OpenRouter returns them.
 - The catalog may contain non-chat or multimodal offerings; zero pricing does not establish chat-completions compatibility.
