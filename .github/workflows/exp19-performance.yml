@@ -32,7 +32,7 @@ jobs:
         id: exp19_diagnostic
         continue-on-error: true
         env:
-          PYTHONPATH: src
+          PYTHONPATH: .:src
         run: |
           set -o pipefail
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
