@@ -29,10 +29,18 @@ jobs:
           pip install pytest pytest-mock
 
       - name: Run EXP-19 scale diagnostic
+        id: exp19_diagnostic
+        continue-on-error: true
         env:
-          PYTHONPATH: src
+          PYTHONPATH: .:src
         run: |
+          set -o pipefail
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
+
+      - name: Report diagnostic failure without blocking CI
+        if: steps.exp19_diagnostic.outcome == 'failure'
+        run: |
+          echo "::warning::EXP-19 performance diagnostic failed; inspect the exp19-performance-diagnostic artifact. This diagnostic is non-blocking."
 
       - name: Upload EXP-19 diagnostic evidence
         uses: actions/upload-artifact@v4
