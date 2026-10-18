@@ -64,9 +64,15 @@ class ProvenanceTracker:
             },
         }
         if action == "EXECUTE":
-            trace["execution_details"] = {"selected_model": selected_model}
+            execution_details = {"selected_model": selected_model}
+            if isinstance(output, dict):
+                for key in ("provider", "requested_model_id", "provider_model_id"):
+                    value = output.get(key)
+                    if isinstance(value, str) and value:
+                        execution_details[key] = value
             if output is not None:
-                trace["execution_details"]["output_digest"] = self.output_digest(output)
+                execution_details["output_digest"] = self.output_digest(output)
+            trace["execution_details"] = execution_details
         else:
             reason = refusal_reason or "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
             trace["refusal_details"] = {
