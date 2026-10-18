@@ -1,18 +1,10 @@
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
 
 import pytest
 
-
-MODULE_PATH = (
-    Path(__file__).resolve().parents[1] / "scripts" / "research" / "openrouter_free_catalog.py"
-)
-SPEC = importlib.util.spec_from_file_location("openrouter_free_catalog", MODULE_PATH)
-assert SPEC is not None and SPEC.loader is not None
-catalog = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(catalog)
+from scripts.research import openrouter_free_catalog as catalog
 
 
 def model(model_id: str, prompt: object, completion: object) -> dict:
