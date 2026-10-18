@@ -27,6 +27,8 @@ class OpenRouterChatExecutor:
         *,
         chat_url: str = "https://openrouter.ai/api/v1/chat/completions",
         timeout: float = 30.0,
+        max_tokens: int = 256,
+        reasoning_effort: str | None = "low",
         opener: Callable[..., Any] | None = None,
     ) -> None:
         if not api_key.strip():
@@ -35,9 +37,15 @@ class OpenRouterChatExecutor:
             raise ValueError("OpenRouter endpoint must use HTTPS")
         if timeout <= 0:
             raise ValueError("timeout must be positive")
+        if type(max_tokens) is not int or max_tokens <= 0:
+            raise ValueError("max_tokens must be a positive integer")
+        if reasoning_effort not in {None, "none", "minimal", "low", "medium", "high", "xhigh"}:
+            raise ValueError("unsupported reasoning_effort")
         self._api_key = api_key
         self._chat_url = chat_url
         self._timeout = timeout
+        self._max_tokens = max_tokens
+        self._reasoning_effort = reasoning_effort
         self._opener = opener or urlopen
 
     @classmethod
@@ -49,7 +57,17 @@ class OpenRouterChatExecutor:
         base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         chat_url = os.environ.get("OPENROUTER_CHAT_URL", f"{base_url.rstrip('/')}/chat/completions")
         timeout = float(os.environ.get("OPENROUTER_TIMEOUT_S", "30"))
-        return cls(api_key, chat_url=chat_url, timeout=timeout)
+        max_tokens = int(os.environ.get("OPENROUTER_MAX_TOKENS", "256"))
+        reasoning_effort = os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
+        if reasoning_effort in {"", "none"}:
+            reasoning_effort = None if reasoning_effort == "" else "none"
+        return cls(
+            api_key,
+            chat_url=chat_url,
+            timeout=timeout,
+            max_tokens=max_tokens,
+            reasoning_effort=reasoning_effort,
+        )
 
     @staticmethod
     def _messages(payload: dict[str, Any]) -> list[dict[str, str]]:
@@ -91,6 +109,12 @@ class OpenRouterChatExecutor:
                 "model": selected_model,
                 "messages": self._messages(payload),
                 "temperature": 0,
+                "max_tokens": self._max_tokens,
+                **(
+                    {"reasoning": {"effort": self._reasoning_effort}}
+                    if self._reasoning_effort is not None
+                    else {}
+                ),
             },
             ensure_ascii=False,
             separators=(",", ":"),
@@ -123,14 +147,17 @@ class OpenRouterChatExecutor:
             raise OpenRouterError("OpenRouter response has no completion choice")
         message = choices[0].get("message")
         content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, str):
+        if not isinstance(content, str) or not content.strip():
             raise OpenRouterError("OpenRouter response has no text content")
 
         result: dict[str, Any] = {
             "provider": "openrouter",
             "model": selected_model,
+            "requested_model_id": selected_model,
             "content": content,
         }
+        if isinstance(decoded.get("model"), str):
+            result["provider_model_id"] = decoded["model"]
         if isinstance(decoded.get("id"), str):
             result["provider_response_id"] = decoded["id"]
         if isinstance(decoded.get("usage"), dict):
