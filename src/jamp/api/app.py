@@ -14,7 +14,6 @@ from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
-    EvidenceGate,
     ModelSelector,
     ProvenanceTracker,
     TaskClassifier,
@@ -47,10 +46,6 @@ def _send_telegram_message(bot_token: str, chat_id: int, text: str) -> None:
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
 
 
-def _load_evidence(path: str | Path) -> dict[str, Any]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
 def create_app(
     evidence_path: str | Path = DEFAULT_EVIDENCE,
     executor: Callable[[str, dict[str, Any]], Any] | None = None,
@@ -64,22 +59,13 @@ def create_app(
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("FastAPI is required for the API serving layer") from exc
 
-    evidence = _load_evidence(evidence_path)
-    source = evidence["source"]
-    gate = EvidenceGate(
-        {
-            "contract_version": "jamp-17-capability-v1",
-            "canonical_manifest_sha256": source["manifest_sha256"],
-            "frozen_core_blob": evidence["frozen_core_blob"],
-            "expected_models": 17,
-            "executed_models": 17,
-            "expected_checks": 170,
-            "executed_checks": 170,
-            "models": evidence["models"],
-        }
-    )
     classifier = TaskClassifier()
     resolver = CapabilityResolver()
+    try:
+        resolver.validate_projection(evidence_path)
+    except (OSError, TypeError, ValueError):
+        # Invalid, stale, or inconsistent evidence must prevent the API from serving.
+        raise RuntimeError("Canonical capability evidence failed integrity validation") from None
     selector = ModelSelector()
     provenance = ProvenanceTracker()
     persistence = AuditPersistence(audit_storage_path)
@@ -107,8 +93,6 @@ def create_app(
         try:
             task_profile = classifier.classify(payload)
             required = resolver.get_required_capabilities(task_profile)
-            eligible = gate.get_eligible_models(required)
-            action, selected = selector.select_model(eligible, task_profile)
         except ValueError as exc:
             trace = provenance.create_trace(
                 "unknown",
@@ -127,6 +111,26 @@ def create_app(
                     "reason": "UNKNOWN_OR_UNSUPPORTED_TASK",
                     "trace_id": trace["trace_id"],
                 },
+            )
+
+        try:
+            eligible = resolver.get_eligible_models(task_profile)
+            action, selected = selector.select_model(eligible, task_profile)
+        except (OSError, TypeError, ValueError):
+            reason = "EVIDENCE_INTEGRITY_FAILED"
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                "REFUSE",
+                reason,
+                0,
+                request_id=request_id,
+                refusal_reason=reason,
+            )
+            persistence.write_trace(trace)
+            return JSONResponse(
+                status_code=503,
+                content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
             )
 
         if action == "REFUSE":
