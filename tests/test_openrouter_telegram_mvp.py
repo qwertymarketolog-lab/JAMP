@@ -1,4 +1,6 @@
 import json
+
+import pytest
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
@@ -265,9 +267,6 @@ def test_openrouter_executor_records_provider_model_separately_from_requested_mo
     assert result["requested_model_id"] == "canonical/requested-id"
     assert result["model"] == "canonical/requested-id"
     assert result["provider_model_id"] == "provider/served-alias"
-
-
-import pytest
 
 
 @pytest.mark.parametrize(
