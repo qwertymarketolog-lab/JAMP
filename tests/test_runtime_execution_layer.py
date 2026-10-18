@@ -167,3 +167,45 @@ def test_api_fails_closed_if_matrix_changes_after_startup(tmp_path, monkeypatch)
     assert response.json()["status"] == "REFUSE"
     assert response.json()["reason"] == "EVIDENCE_INTEGRITY_FAILED"
     assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error"),
+    [
+        ("manifest_hash", "Canonical manifest hash mismatch"),
+        ("duplicate_model_id", "Duplicate canonical model ID"),
+        ("ordinal", "Canonical model ordinals are invalid"),
+        ("missing_capability", "Canonical model checks must be exactly C01-C10"),
+        ("invalid_status", "Invalid raw status: C01"),
+    ],
+)
+def test_evidence_gate_rejects_malformed_evidence(tmp_path, mutation, error):
+    data = fixture()
+    evidence = {
+        "contract_version": "jamp-17-capability-v1",
+        "canonical_manifest_sha256": data["source"]["manifest_sha256"],
+        "frozen_core_blob": CORE,
+        "expected_models": 17,
+        "executed_models": 17,
+        "expected_checks": 170,
+        "executed_checks": 170,
+        "models": data["models"],
+    }
+
+    if mutation == "manifest_hash":
+        evidence["canonical_manifest_sha256"] = "0" * 64
+    elif mutation == "duplicate_model_id":
+        evidence["models"][1]["model_id"] = evidence["models"][0]["model_id"]
+    elif mutation == "ordinal":
+        evidence["models"][0]["ordinal"] = 2
+    elif mutation == "missing_capability":
+        evidence["models"][0]["checks"].pop("C01")
+    elif mutation == "invalid_status":
+        evidence["models"][0]["checks"]["C01"]["raw_status"] = "PASS"
+
+    path = tmp_path / "malformed-evidence.json"
+    path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=error):
+        EvidenceGate.from_json_file(path)
+
