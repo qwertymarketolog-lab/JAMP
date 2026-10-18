@@ -75,7 +75,12 @@ def _provider_error_diagnostics(http_status: int, raw: bytes) -> dict[str, Any]:
     if not isinstance(error, dict):
         error = {}
     message = error.get("message")
-    normalized = message.lower() if isinstance(message, str) else ""
+    structured_labels = " ".join(
+        value.lower().replace("_", " ").replace("-", " ")
+        for value in (error.get("code"), error.get("type"))
+        if isinstance(value, str)
+    )
+    normalized = (message.lower() if isinstance(message, str) else "") + " " + structured_labels
 
     if ("insufficient" in normalized and any(word in normalized for word in ("credit", "balance", "quota"))) or (
         "out of credits" in normalized
