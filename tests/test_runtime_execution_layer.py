@@ -94,7 +94,8 @@ def test_refusal_provenance():
 
 def test_all_170_projection_statuses_match_pinned_canonical_matrix():
     resolver = CapabilityResolver()
-    resolver.validate_projection(Path(__file__).parent / "fixtures/runtime_evidence_projection.json")
+    projection_path = Path(__file__).parent / "fixtures/runtime_evidence_projection.json"
+    resolver.validate_projection(projection_path)
 
 
 def test_projection_status_tampering_is_rejected(tmp_path):
@@ -121,7 +122,9 @@ def test_projection_provider_id_substitution_is_rejected(tmp_path):
 def test_derived_matrix_content_tampering_is_rejected(tmp_path, monkeypatch, mutation):
     import src.jamp.runtime.resolver as resolver_module
 
-    matrix_path = Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    matrix_path = (
+        Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    )
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
     if mutation == "status":
         matrix["matrix"][0]["capabilities"]["C01"] = "VERIFIED"
@@ -144,7 +147,9 @@ def test_api_fails_closed_if_matrix_changes_after_startup(tmp_path, monkeypatch)
     from jamp.api import create_app
 
     calls = []
-    app = create_app(executor=lambda model, payload: calls.append((model, payload)) or {"content": "no"})
+    app = create_app(
+        executor=lambda model, payload: calls.append((model, payload)) or {"content": "no"}
+    )
     matrix_path = Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
     matrix["matrix"][0]["capabilities"]["C01"] = "VERIFIED"
