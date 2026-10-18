@@ -4,6 +4,7 @@
 This is discovery evidence only. A zero catalog price does not prove that a model
 is callable, capable, reliable, or qualified by JAMP. No provider API key is used.
 """
+
 from __future__ import annotations
 
 import argparse
