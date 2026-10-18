@@ -112,6 +112,7 @@ def build_snapshot(
                 "gates must be evaluated separately."
             ),
         },
+        "all_models": sorted(rows, key=lambda row: row["id"]),
         "models": sorted(free_models, key=lambda row: row["id"]),
     }
 
