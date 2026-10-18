@@ -36,9 +36,13 @@ def test_openrouter_executor_uses_selected_model_and_does_not_expose_key():
     assert seen["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert seen["auth"] == "Bearer test-secret"
     assert seen["body"]["model"] == "provider/approved-model"
+    assert seen["body"]["max_tokens"] == 256
+    assert seen["body"]["reasoning"] == {"effort": "low"}
+    assert result["requested_model_id"] == "provider/approved-model"
     assert result["provider"] == "openrouter"
     assert result["provider_response_id"] == "or-test"
     assert result["content"] == "hello"
+    assert "provider_model_id" not in result
     assert "test-secret" not in repr(result)
 
 
@@ -239,3 +243,103 @@ def test_telegram_webhook_refuses_missing_update_id_before_execution(monkeypatch
     assert response.status_code == 422
     assert response.json()["reason"] == "TELEGRAM_UPDATE_ID_REQUIRED"
     assert calls == []
+
+
+
+def test_openrouter_executor_records_provider_model_separately_from_requested_model():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"model":"provider/served-alias","choices":[{"message":{"content":"hello"}}]}'
+
+    executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())
+    result = executor("canonical/requested-id", {"prompt": "hello"})
+
+    assert result["requested_model_id"] == "canonical/requested-id"
+    assert result["model"] == "canonical/requested-id"
+    assert result["provider_model_id"] == "provider/served-alias"
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "response_body",
+    [
+        b'{"choices":[{"message":{"content":""}}]}',
+        b'{"choices":[{"message":{"content":"   "}}]}',
+        b'{"choices":[{"message":{"content":null}}]}',
+        b'{"choices":[{"message":{}}]}',
+        b'{"choices":[{"message":{"content":""},"finish_reason":"length"}]}',
+    ],
+)
+def test_openrouter_executor_fails_closed_when_response_has_no_text(response_body):
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return response_body
+
+    executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())
+    with pytest.raises(OpenRouterError, match="no text content"):
+        executor("provider/approved-model", {"prompt": "hello"})
+
+
+def test_openrouter_executor_can_disable_reasoning():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"hello"}}]}'
+
+    def fake_open(request, timeout):
+        seen["body"] = json.loads(request.data.decode("utf-8"))
+        return Response()
+
+    OpenRouterChatExecutor("test-secret", reasoning_effort=None, opener=fake_open)(
+        "provider/approved-model", {"prompt": "hello"}
+    )
+    assert seen["body"]["max_tokens"] == 256
+    assert "reasoning" not in seen["body"]
+
+
+def test_openrouter_executor_validates_generation_settings():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    with pytest.raises(ValueError, match="max_tokens"):
+        OpenRouterChatExecutor("test-secret", max_tokens=0)
+    with pytest.raises(ValueError, match="reasoning_effort"):
+        OpenRouterChatExecutor("test-secret", reasoning_effort="unlimited")
+
+
+def test_openrouter_executor_generation_settings_from_env(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("OPENROUTER_MAX_TOKENS", "384")
+    monkeypatch.setenv("OPENROUTER_REASONING_EFFORT", "medium")
+    executor = OpenRouterChatExecutor.from_env()
+    assert executor is not None
+    assert executor._max_tokens == 384
+    assert executor._reasoning_effort == "medium"
