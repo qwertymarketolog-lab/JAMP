@@ -250,11 +250,7 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
             "refusal_present": isinstance(refusal, str) and bool(refusal.strip()),
         }
         if not _has_text_content(content):
-            status = (
-                "TRUNCATED_OR_LIMITED"
-                if finish_reason == "length"
-                else "NO_TEXT_COMPLETION"
-            )
+            status = "TRUNCATED_OR_LIMITED" if finish_reason == "length" else "NO_TEXT_COMPLETION"
             return {**common_response, "status": status}
         usage = decoded.get("usage")
         return {
