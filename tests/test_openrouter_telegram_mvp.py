@@ -140,7 +140,6 @@ def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
     assert calls == []
 
 
-
 def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
@@ -161,9 +160,7 @@ def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypa
         "message": {"chat": {"id": 42}, "text": "/search hello"},
     }
 
-    first_client = TestClient(
-        create_app(executor=executor, telegram_update_db_path=database_path)
-    )
+    first_client = TestClient(create_app(executor=executor, telegram_update_db_path=database_path))
     first = first_client.post("/v1/telegram/webhook", headers=headers, json=update)
     first_client.close()
 
@@ -197,9 +194,7 @@ def test_telegram_update_store_claim_is_atomic_under_concurrency(tmp_path):
     assert TelegramUpdateStore(tmp_path / "telegram-updates.sqlite3").claim(900) is False
 
 
-def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(
-    monkeypatch, tmp_path
-):
+def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(monkeypatch, tmp_path):
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
