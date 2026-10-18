@@ -53,9 +53,7 @@ class TelegramUpdateStore:
             if connection is not None:
                 with suppress(sqlite3.Error):
                     connection.rollback()
-            raise TelegramUpdateStoreError(
-                "Unable to persist Telegram update claim"
-            ) from None
+            raise TelegramUpdateStoreError("Unable to persist Telegram update claim") from None
         finally:
             if connection is not None:
                 try:
