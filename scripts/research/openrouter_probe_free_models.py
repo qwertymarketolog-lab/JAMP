@@ -26,6 +26,7 @@ DEFAULT_CATALOG = ROOT / "artifacts/research/openrouter_free_model_catalog.json"
 DEFAULT_OUTPUT = ROOT / "artifacts/research/openrouter_free_model_probe.json"
 CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 USER_AGENT = "JAMP-openrouter-controlled-probe/1.0"
+PROBE_MAX_TOKENS = 64
 
 
 def utc_now() -> str:
@@ -189,7 +190,7 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
         "model": model_id,
         "messages": [{"role": "user", "content": "Reply with the single word: OK"}],
         "temperature": 0,
-        "max_tokens": 8,
+        "max_tokens": PROBE_MAX_TOKENS,
     }
     request = urllib.request.Request(
         CHAT_URL,
