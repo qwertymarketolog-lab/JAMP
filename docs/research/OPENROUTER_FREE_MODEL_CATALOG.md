@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Create a repeatable, keyless snapshot of the public OpenRouter model catalog and select entries whose catalog metadata explicitly reports zero prompt and completion price.
+Create a repeatable, keyless snapshot of the complete public OpenRouter model catalog, preserve all returned model metadata, and separately select entries whose catalog metadata explicitly reports zero prompt and completion price.
 
 This is an additive research harness. It does not change Matrix v2, router policy, model qualification, provider execution, or Frozen Core `src/jamp/run.py`. It is independent of the AnyModel catalog and crosswalk.
 
@@ -35,7 +35,7 @@ python scripts/research/openrouter_free_catalog.py --output /tmp/openrouter-free
 
 ## Evidence boundary
 
-The generated artifact labels itself `PUBLIC_CATALOG_OBSERVATION_ONLY`. It explicitly records that JAMP execution approval, model-quality verification, and a live chat-completion test are false. Discovery must not change the existing evidence gate.
+The generated artifact stores the complete returned catalog in `all_models`, the filtered zero-price concrete model list in `models`, and the router separately. The generated artifact labels itself `PUBLIC_CATALOG_OBSERVATION_ONLY`. It explicitly records that JAMP execution approval, model-quality verification, and a live chat-completion test are false. Discovery must not change the existing evidence gate.
 
 A model may proceed to a controlled provider-call test only after its exact OpenRouter ID, supported modality/endpoint, current access limits, and intended JAMP task profile have been checked. Live provider-call success is still not model qualification.
 
