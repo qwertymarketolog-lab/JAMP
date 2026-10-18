@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import suppress
 from pathlib import Path
 
 
@@ -50,10 +51,8 @@ class TelegramUpdateStore:
             return cursor.rowcount == 1
         except (OSError, sqlite3.Error):
             if connection is not None:
-                try:
+                with suppress(sqlite3.Error):
                     connection.rollback()
-                except sqlite3.Error:
-                    pass
             raise TelegramUpdateStoreError(
                 "Unable to persist Telegram update claim"
             ) from None
