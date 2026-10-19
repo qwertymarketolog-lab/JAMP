@@ -19,6 +19,7 @@ def test_rejects_non_allowlisted_host(monkeypatch):
     with pytest.raises(ToolError):
         executor({"url": "https://evil.com/"})
 
+
 def test_rejects_http_scheme():
     executor = HTTPGetExecutor()
     with patch("jamp.agent.http_get.socket.create_connection") as mock_conn:
