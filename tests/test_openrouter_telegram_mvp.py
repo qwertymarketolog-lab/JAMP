@@ -107,6 +107,7 @@ def test_openrouter_executor_loads_model_id_map_from_env(monkeypatch):
     assert executor._model_id_map == {
         "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
     }
+    assert executor._is_test_override is True
 
 
 def test_openrouter_executor_rejects_invalid_model_id_map_from_env(monkeypatch):
@@ -527,6 +528,8 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
             "provider_model_id": "provider/served-alias",
             "crosswalk_digest": "sha256:local-test-override",
             "content": "hello",
+            "test_override": True,
+            "qualification": "NOT_GRANTED",
         },
     )
 
@@ -537,8 +540,27 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
     assert details["provider_model_id"] == "provider/served-alias"
     assert details["crosswalk_digest"] == "sha256:local-test-override"
     assert details["provider"] == "openrouter"
+    assert details["test_override"] is True
+    assert details["qualification"] == "NOT_GRANTED"
     assert "content" not in details
     assert details["output_digest"].startswith("sha256:")
+
+
+def test_provenance_marks_legacy_executor_qualification_unknown():
+    from jamp.runtime.provenance import ProvenanceTracker
+
+    trace = ProvenanceTracker().create_trace(
+        task_profile="search_and_extraction",
+        required_caps=("C01", "C06"),
+        action="EXECUTE",
+        selected_model="legacy/model",
+        eligible_count=1,
+        output={"provider": "legacy", "content": "hello"},
+    )
+
+    details = trace["execution_details"]
+    assert details["test_override"] == "UNKNOWN"
+    assert details["qualification"] == "UNKNOWN"
 
 
 def test_openrouter_executor_refuses_unmapped_jamp_internal_model():
@@ -619,6 +641,42 @@ def test_openrouter_executor_refuses_environment_crosswalk_override_in_productio
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
     monkeypatch.setenv("JAMP_ENVIRONMENT", "production")
-    monkeypatch.setenv("OPENROUTER_MODEL_ID_MAP", "{}")
+    monkeypatch.setenv(
+        "OPENROUTER_MODEL_ID_MAP",
+        '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}',
+    )
     with pytest.raises(OpenRouterError, match="LOCAL_OVERRIDE_ONLY"):
         OpenRouterChatExecutor.from_env()
+
+
+def test_openrouter_executor_marks_env_override_as_not_qualified(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"test response"}}]}'
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("JAMP_ENVIRONMENT", "local")
+    monkeypatch.setenv(
+        "OPENROUTER_MODEL_ID_MAP",
+        '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}',
+    )
+    executor = OpenRouterChatExecutor.from_env()
+    assert executor is not None
+    # Replace only the transport after environment configuration; no live call.
+    executor._opener = lambda request, timeout: Response()
+
+    result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
+
+    assert result["test_override"] is True
+    assert result["qualification"] == "NOT_GRANTED"
+    assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
+    assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert result["crosswalk_digest"] == "sha256:local-test-override"

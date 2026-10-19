@@ -79,6 +79,7 @@ class OpenRouterChatExecutor:
         reasoning_effort: str | None = "low",
         model_id_map: dict[str, str] | None = None,
         opener: Callable[..., Any] | None = None,
+        is_test_override: bool = False,
     ) -> None:
         if not api_key.strip():
             raise ValueError("OpenRouter API key is required")
@@ -101,8 +102,11 @@ class OpenRouterChatExecutor:
             )
         ):
             raise ValueError("model_id_map must map non-empty strings to non-empty strings")
+        if type(is_test_override) is not bool:
+            raise ValueError("is_test_override must be a boolean")
         self._api_key = api_key
         self._model_id_map = dict(model_id_map or {})
+        self._is_test_override = is_test_override
         self._crosswalk_digest = "sha256:local-test-override" if model_id_map is not None else None
         self._chat_url = chat_url
         self._timeout = timeout
@@ -124,6 +128,7 @@ class OpenRouterChatExecutor:
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
         model_id_map, crosswalk_digest = _load_crosswalk()
+        is_test_override = False
         raw_model_id_map = os.environ.get("OPENROUTER_MODEL_ID_MAP", "").strip()
         if raw_model_id_map:
             environment = os.environ.get("JAMP_ENVIRONMENT", "production").strip().lower()
@@ -144,6 +149,7 @@ class OpenRouterChatExecutor:
                     "OPENROUTER_MODEL_ID_MAP must map non-empty strings to non-empty strings"
                 )
             model_id_map = decoded_model_id_map
+            is_test_override = bool(decoded_model_id_map)
             crosswalk_digest = "sha256:local-test-override"
         executor = cls(
             api_key,
@@ -152,6 +158,7 @@ class OpenRouterChatExecutor:
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
             model_id_map=model_id_map,
+            is_test_override=is_test_override,
         )
         executor._crosswalk_digest = crosswalk_digest
         return executor
@@ -262,6 +269,9 @@ class OpenRouterChatExecutor:
             "provider_requested_model_id": provider_requested_model,
             "crosswalk_digest": self._crosswalk_digest,
             "content": content,
+            "test_override": self._is_test_override,
+            # Provider call success is not model qualification evidence.
+            "qualification": "NOT_GRANTED" if self._is_test_override else "UNKNOWN",
         }
         if provider_requested_model.endswith(":free"):
             result["test_only"] = True

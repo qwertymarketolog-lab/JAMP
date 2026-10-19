@@ -77,6 +77,14 @@ class ProvenanceTracker:
                     value = output.get(key)
                     if isinstance(value, str) and value:
                         execution_details[key] = value
+                test_override = output.get("test_override")
+                execution_details["test_override"] = (
+                    test_override if isinstance(test_override, bool) else "UNKNOWN"
+                )
+                qualification = output.get("qualification")
+                execution_details["qualification"] = (
+                    qualification if isinstance(qualification, str) and qualification else "UNKNOWN"
+                )
             if isinstance(output, dict) and output.get("test_only") is True:
                 execution_details["test_only"] = True
             if output is not None:
