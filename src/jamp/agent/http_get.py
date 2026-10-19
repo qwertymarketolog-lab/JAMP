@@ -142,7 +142,7 @@ class HTTPGetExecutor:
                 return {"status": response.status, "body": body.decode("utf-8", errors="replace")}
             except ToolError:
                 raise
-            except (socket.timeout, TimeoutError) as exc:
+            except TimeoutError as exc:
                 raise ToolError("TIMEOUT", "HTTP GET timed out") from exc
             except OSError as exc:
                 last_error = exc
@@ -151,7 +151,10 @@ class HTTPGetExecutor:
                     tls_socket.close()
                 elif raw_socket is not None:
                     raw_socket.close()
-        raise ToolError("CONNECTION_FAILED", "could not connect to a resolved address") from last_error
+        raise ToolError(
+            "CONNECTION_FAILED",
+            "could not connect to a resolved address",
+        ) from last_error
 
     def _resolve(self, host: str) -> list[str]:
         """Resolve once; connections use only the returned IP addresses."""
