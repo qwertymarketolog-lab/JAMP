@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from jamp.api import create_app
 
+
 def test_openrouter_executor_uses_selected_model_and_does_not_expose_key():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
