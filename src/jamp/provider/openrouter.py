@@ -42,7 +42,19 @@ class OpenRouterChatExecutor:
             raise ValueError("max_tokens must be a positive integer")
         if reasoning_effort not in {None, "none", "minimal", "low", "medium", "high", "xhigh"}:
             raise ValueError("unsupported reasoning_effort")
+        if model_id_map is not None and (
+            not isinstance(model_id_map, dict)
+            or any(
+                not isinstance(source, str)
+                or not source.strip()
+                or not isinstance(target, str)
+                or not target.strip()
+                for source, target in model_id_map.items()
+            )
+        ):
+            raise ValueError("model_id_map must map non-empty strings to non-empty strings")
         self._api_key = api_key
+        self._model_id_map = dict(model_id_map or {})
         self._chat_url = chat_url
         self._timeout = timeout
         self._max_tokens = max_tokens
@@ -62,12 +74,31 @@ class OpenRouterChatExecutor:
         reasoning_effort = os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
+        raw_model_id_map = os.environ.get("OPENROUTER_MODEL_ID_MAP", "").strip()
+        model_id_map: dict[str, str] = {}
+        if raw_model_id_map:
+            try:
+                decoded_model_id_map = json.loads(raw_model_id_map)
+            except json.JSONDecodeError:
+                raise ValueError("OPENROUTER_MODEL_ID_MAP must be a JSON object") from None
+            if not isinstance(decoded_model_id_map, dict) or any(
+                not isinstance(source, str)
+                or not source.strip()
+                or not isinstance(target, str)
+                or not target.strip()
+                for source, target in decoded_model_id_map.items()
+            ):
+                raise ValueError(
+                    "OPENROUTER_MODEL_ID_MAP must map non-empty strings to non-empty strings"
+                )
+            model_id_map = decoded_model_id_map
         return cls(
             api_key,
             chat_url=chat_url,
             timeout=timeout,
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
+            model_id_map=model_id_map,
         )
 
     @staticmethod
@@ -105,9 +136,10 @@ class OpenRouterChatExecutor:
         """Call the selected model and return a compact, auditable result."""
         if not isinstance(selected_model, str) or not selected_model:
             raise OpenRouterError("JAMP must select exactly one model for this executor")
+        provider_requested_model = self._model_id_map.get(selected_model, selected_model)
         body = json.dumps(
             {
-                "model": selected_model,
+                "model": provider_requested_model,
                 "messages": self._messages(payload),
                 "temperature": 0,
                 "max_tokens": self._max_tokens,
@@ -155,6 +187,7 @@ class OpenRouterChatExecutor:
             "provider": "openrouter",
             "model": selected_model,
             "requested_model_id": selected_model,
+            "provider_requested_model_id": provider_requested_model,
             "content": content,
         }
         if isinstance(decoded.get("model"), str):

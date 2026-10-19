@@ -417,6 +417,7 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
         output={
             "provider": "openrouter",
             "requested_model_id": "canonical/requested-id",
+            "provider_requested_model_id": "provider/requested-id",
             "provider_model_id": "provider/served-alias",
             "content": "hello",
         },
@@ -425,6 +426,7 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
     details = trace["execution_details"]
     assert details["selected_model"] == "canonical/requested-id"
     assert details["requested_model_id"] == "canonical/requested-id"
+    assert details["provider_requested_model_id"] == "provider/requested-id"
     assert details["provider_model_id"] == "provider/served-alias"
     assert details["provider"] == "openrouter"
     assert "content" not in details
