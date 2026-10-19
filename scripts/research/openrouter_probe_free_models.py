@@ -204,7 +204,11 @@ def probe_model(api_key: str, model_id: str, timeout: float) -> dict[str, Any]:
         method="POST",
     )
     started = time.monotonic()
-    base: dict[str, Any] = {"model_id": model_id, "endpoint": CHAT_URL}
+    base: dict[str, Any] = {
+        "model_id": model_id,
+        "endpoint": CHAT_URL,
+        "test_only": True,
+    }
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             status = getattr(response, "status", 200)
@@ -375,9 +379,11 @@ def main(argv: list[str] | None = None) -> int:
         },
         "qualification": {
             "jamp_execution_approved": False,
+            "test_only": True,
             "note": (
-                "A successful probe proves only that one minimal request returned text at "
-                "tested_at. It does not qualify the model or change routing policy."
+                "Free-catalog probing is test-only. A successful probe proves only that one "
+                "minimal request returned text at tested_at; it does not qualify the model "
+                "or change routing policy."
             ),
         },
     }
