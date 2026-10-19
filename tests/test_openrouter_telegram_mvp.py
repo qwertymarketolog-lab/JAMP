@@ -361,6 +361,109 @@ def test_openrouter_executor_fails_closed_when_response_has_no_text(response_bod
         executor("provider/approved-model", {"prompt": "hello"})
 
 
+def test_openrouter_empty_content_error_captures_safe_provider_diagnostics():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    reasoning = "internal reasoning must not be persisted"
+    response_body = json.dumps(
+        {
+            "model": "nvidia/nemotron-3-super-120b-a12b",
+            "choices": [
+                {
+                    "finish_reason": "length",
+                    "message": {"content": None, "reasoning": reasoning},
+                }
+            ],
+            "usage": {"completion_tokens": 20},
+        }
+    ).encode()
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return response_body
+
+    executor = OpenRouterChatExecutor(
+        "test-secret",
+        max_tokens=20,
+        opener=lambda request, timeout: Response(),
+    )
+    with pytest.raises(OpenRouterError, match="no text content") as caught:
+        executor("nvidia/nemotron-3-super-120b-a12b", {"prompt": "Reply HELLO"})
+
+    assert caught.value.diagnostics == {
+        "finish_reason": "length",
+        "usage": {"completion_tokens": 20},
+        "content_len": 0,
+        "reasoning_len": len(reasoning),
+        "requested_max_tokens": 20,
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+    }
+    assert reasoning not in repr(caught.value.diagnostics)
+    assert "test-secret" not in repr(caught.value.diagnostics)
+
+
+def test_execute_persists_provider_diagnostics_on_empty_content_refusal(monkeypatch):
+    import jamp.api.app as app_module
+    from jamp.provider.openrouter import OpenRouterError
+
+    selected_model = "am/nemotron-3-super-120b-a12b"
+    diagnostics = {
+        "finish_reason": "length",
+        "usage": {"completion_tokens": 20},
+        "content_len": 0,
+        "reasoning_len": 41,
+        "requested_max_tokens": 20,
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+    }
+    captured_traces = []
+    original_create_trace = app_module.ProvenanceTracker.create_trace
+
+    def capture_trace(self, *args, **kwargs):
+        trace = original_create_trace(self, *args, **kwargs)
+        captured_traces.append(trace)
+        return trace
+
+    monkeypatch.setattr(app_module.ProvenanceTracker, "create_trace", capture_trace)
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", selected_model),
+    )
+
+    def executor(model, payload):
+        assert model == selected_model
+        raise OpenRouterError("OpenRouter response has no text content", diagnostics=diagnostics)
+
+    client = TestClient(create_app(executor=executor))
+    response = client.post(
+        "/v1/execute",
+        json={
+            "intent": "search_and_extraction",
+            "prompt": "hello",
+            "request_id": "empty-content-diagnostic-test",
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["reason"] == "PROVIDER_EXECUTION_FAILED"
+    assert captured_traces
+    trace = captured_traces[-1]
+    assert trace["request_id"] == "empty-content-diagnostic-test"
+    assert trace["refusal_details"]["reason"] == "PROVIDER_EXECUTION_FAILED"
+    assert trace["refusal_details"]["provider_diagnostics"] == {
+        **diagnostics,
+        "selected_model": selected_model,
+    }
+    assert "internal reasoning" not in repr(trace)
+    assert "content" not in trace["refusal_details"]["provider_diagnostics"]
+
+
 def test_openrouter_executor_can_disable_reasoning():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
