@@ -37,6 +37,7 @@ class ProvenanceTracker:
         output: Any = None,
         request_id: str | None = None,
         refusal_reason: str | None = None,
+        failure_diagnostics: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         trace = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
@@ -91,5 +92,22 @@ class ProvenanceTracker:
                     else f"Execution blocked: no model satisfies {list(required_caps)}."
                 ),
             }
+            if isinstance(failure_diagnostics, dict):
+                diagnostics: dict[str, Any] = {}
+                for key in ("finish_reason", "model", "selected_model"):
+                    value = failure_diagnostics.get(key)
+                    if isinstance(value, str) and value:
+                        diagnostics[key] = value
+                    elif key == "finish_reason" and key in failure_diagnostics and value is None:
+                        diagnostics[key] = None
+                usage = failure_diagnostics.get("usage")
+                if isinstance(usage, dict):
+                    diagnostics["usage"] = usage
+                for key in ("content_len", "reasoning_len", "requested_max_tokens"):
+                    value = failure_diagnostics.get(key)
+                    if type(value) is int and value >= 0:
+                        diagnostics[key] = value
+                if diagnostics:
+                    trace["refusal_details"]["provider_diagnostics"] = diagnostics
         validate_audit_trace(trace)
         return trace
