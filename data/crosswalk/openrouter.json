@@ -6,14 +6,22 @@
       "provider": "openrouter",
       "provider_id": "nvidia/nemotron-3-super-120b-a12b",
       "verified_against_catalog": false,
+      "routing_approved": false,
+      "qualification": "NOT_GRANTED",
       "catalog_check": {
-        "source": "openrouter /models",
-        "count": 470,
+        "source": "https://openrouter.ai/api/v1/models",
+        "observed_at": "2026-10-19T11:14:52Z",
+        "http_status": 200,
+        "catalog_count": 468,
+        "exact_provider_id_present": true,
+        "exact_provider_name": "NVIDIA: Nemotron 3 Super",
         "exact_jamp_id_present": false,
-        "candidate_matched_by_name": "nvidia/nemotron-3-super-120b-a12b",
-        "verification_basis": "name similarity, not identity"
+        "evidence_class": "USER_REPORTED_TERMINAL_OBSERVATION",
+        "raw_full_response_preserved": false,
+        "verification_basis": "Exact provider_id matched a catalog id; this does not establish the JAMP-internal to provider crosswalk or JAMP qualification."
       },
-      "notes": "Unverified candidate correspondence only. The JAMP-internal ID is not present as an exact catalog ID in the recorded observation. This entry does not establish provider identity, callability, or JAMP qualification."
+      "probe_observation_ref": "artifacts/research/openrouter_nemotron_live_probe_observation.json",
+      "notes": "Provider catalog identity and one direct Chat Completions response have been observed. This remains a candidate correspondence only; it does not establish crosswalk equivalence, routing approval, or C01-C10 qualification."
     }
   },
   "test_only_probes": [

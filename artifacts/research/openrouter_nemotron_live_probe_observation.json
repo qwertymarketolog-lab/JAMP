@@ -1,0 +1,80 @@
+{
+  "artifact_version": "openrouter-nemotron-live-probe-observation-v1",
+  "evidence_class": "USER_REPORTED_TERMINAL_OBSERVATION",
+  "observed_at": "2026-10-19T11:18:17Z",
+  "source": {
+    "provider": "OpenRouter",
+    "catalog_endpoint": "https://openrouter.ai/api/v1/models",
+    "chat_completions_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+    "raw_http_response_preserved": false,
+    "note": "Structured record of terminal output reported by the operator. This is not a captured raw provider response or a terminal JAMP Run/Job artifact."
+  },
+  "model": {
+    "requested_provider_model_id": "nvidia/nemotron-3-super-120b-a12b",
+    "returned_provider_model_id": "nvidia/nemotron-3-super-120b-a12b",
+    "jamp_internal_model_id": "am/nemotron-3-super-120b-a12b",
+    "crosswalk_equivalence_confirmed": false
+  },
+  "attempts": [
+    {
+      "observed_at": "2026-10-19T11:15:36Z",
+      "http_status": 200,
+      "finish_reason": "length",
+      "content_present": false,
+      "result": "HOLD",
+      "note": "First direct call returned no message content; do not count as a successful text completion."
+    },
+    {
+      "observed_at": "2026-10-19T11:18:17Z",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "http_status": 200,
+      "request": {
+        "prompt": "Reply with exactly JAMP_OK",
+        "max_tokens": 128,
+        "temperature": 0,
+        "reasoning_effort": "low"
+      },
+      "response": {
+        "finish_reason": "stop",
+        "content_present": true,
+        "content": "JAMP_OK",
+        "reasoning_present": true,
+        "reasoning_details_present": true,
+        "usage": {
+          "prompt_tokens": 22,
+          "completion_tokens": 33,
+          "total_tokens": 55,
+          "cost": 0.00001661,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.00001661,
+            "upstream_inference_prompt_cost": 0.00000176,
+            "upstream_inference_completions_cost": 0.00001485
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 27,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        }
+      },
+      "result": "DIRECT_TEXT_RESPONSE_OBSERVED"
+    }
+  ],
+  "qualification": {
+    "direct_provider_callability_observed": true,
+    "catalog_identity_observed": true,
+    "jamp_crosswalk_verified": false,
+    "jamp_runtime_execution_verified": false,
+    "telegram_end_to_end_verified": false,
+    "c01_c10_qualification": "HOLD",
+    "jamp_execution_approved": false,
+    "note": "A direct provider response establishes only that this request returned text at the observed time. It does not authorize routing or establish JAMP qualification. Keep reasoning text out of provenance and logs."
+  }
+}
