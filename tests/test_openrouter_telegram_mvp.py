@@ -447,7 +447,11 @@ def test_openrouter_executor_refuses_unmapped_jamp_internal_model():
 
 
 def test_unverified_crosswalk_candidate_is_not_loaded_for_routing(tmp_path):
-    from jamp.provider.openrouter import _load_crosswalk
+    from jamp.provider.openrouter import (
+        OpenRouterChatExecutor,
+        OpenRouterError,
+        _load_crosswalk,
+    )
 
     path = tmp_path / "openrouter.json"
     path.write_text(
