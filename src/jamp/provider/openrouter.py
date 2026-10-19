@@ -23,9 +23,11 @@ class OpenRouterError(RuntimeError):
         self,
         message: str,
         *,
+        code: str | None = None,
         diagnostics: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
+        self.code = code
         self.diagnostics = dict(diagnostics or {})
 
 
@@ -127,13 +129,19 @@ class OpenRouterChatExecutor:
         reasoning_effort = os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
-        model_id_map, crosswalk_digest = _load_crosswalk()
-        is_test_override = False
         raw_model_id_map = os.environ.get("OPENROUTER_MODEL_ID_MAP", "").strip()
         if raw_model_id_map:
             environment = os.environ.get("JAMP_ENVIRONMENT", "production").strip().lower()
             if environment not in {"test", "local", "development"}:
-                raise OpenRouterError("OPENROUTER_MODEL_ID_MAP_LOCAL_OVERRIDE_ONLY")
+                raise OpenRouterError(
+                    "OPENROUTER_MODEL_ID_MAP_LOCAL_OVERRIDE_ONLY",
+                    code="OPENROUTER_MODEL_ID_MAP_LOCAL_OVERRIDE_ONLY",
+                )
+        # Reject a production override before loading crosswalk data. A broken
+        # crosswalk must not mask this security guard or its stable error code.
+        model_id_map, crosswalk_digest = _load_crosswalk()
+        is_test_override = False
+        if raw_model_id_map:
             try:
                 decoded_model_id_map = json.loads(raw_model_id_map)
             except json.JSONDecodeError:
@@ -203,7 +211,14 @@ class OpenRouterChatExecutor:
             selected_model.startswith(INTERNAL_MODEL_PREFIXES)
             and selected_model not in self._model_id_map
         ):
-            raise OpenRouterError("MODEL_NOT_MAPPED")
+            raise OpenRouterError(
+                "MODEL_NOT_MAPPED",
+                code="MODEL_NOT_MAPPED",
+                diagnostics={
+                    "requested_model_id": selected_model,
+                    "crosswalk_digest": self._crosswalk_digest,
+                },
+            )
         body = json.dumps(
             {
                 "model": provider_requested_model,

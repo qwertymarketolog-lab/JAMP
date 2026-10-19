@@ -102,7 +102,14 @@ class ProvenanceTracker:
             }
             if isinstance(failure_diagnostics, dict):
                 diagnostics: dict[str, Any] = {}
-                for key in ("finish_reason", "model", "selected_model"):
+                for key in (
+                    "code",
+                    "finish_reason",
+                    "model",
+                    "selected_model",
+                    "requested_model_id",
+                    "crosswalk_digest",
+                ):
                     value = failure_diagnostics.get(key)
                     if isinstance(value, str) and value:
                         diagnostics[key] = value

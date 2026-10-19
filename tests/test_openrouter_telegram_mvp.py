@@ -563,6 +563,67 @@ def test_provenance_marks_legacy_executor_qualification_unknown():
     assert details["qualification"] == "UNKNOWN"
 
 
+def test_execute_persists_unmapped_model_code_and_safe_provenance(monkeypatch):
+    import jamp.api.app as app_module
+    from jamp.provider.openrouter import OpenRouterError
+
+    selected_model = "am/nemotron-3-super-120b-a12b"
+    crosswalk_digest = "sha256:test-crosswalk-digest"
+    captured_traces = []
+    original_create_trace = app_module.ProvenanceTracker.create_trace
+
+    def capture_trace(self, *args, **kwargs):
+        trace = original_create_trace(self, *args, **kwargs)
+        captured_traces.append(trace)
+        return trace
+
+    monkeypatch.setattr(app_module.ProvenanceTracker, "create_trace", capture_trace)
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", selected_model),
+    )
+
+    def executor(model, payload):
+        assert model == selected_model
+        raise OpenRouterError(
+            "MODEL_NOT_MAPPED",
+            code="MODEL_NOT_MAPPED",
+            diagnostics={
+                "requested_model_id": selected_model,
+                "crosswalk_digest": crosswalk_digest,
+                "api_key": "must-not-be-persisted",
+            },
+        )
+
+    client = TestClient(create_app(executor=executor))
+    response = client.post(
+        "/v1/execute",
+        json={
+            "intent": "search_and_extraction",
+            "prompt": "hello",
+            "request_id": "unmapped-model-provenance-test",
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["status"] == "REFUSE"
+    assert response.json()["reason"] == "PROVIDER_EXECUTION_FAILED"
+    assert captured_traces
+
+    trace = captured_traces[-1]
+    assert trace["request_id"] == "unmapped-model-provenance-test"
+    assert trace["refusal_details"]["reason"] == "PROVIDER_EXECUTION_FAILED"
+    assert trace["refusal_details"]["provider_diagnostics"] == {
+        "code": "MODEL_NOT_MAPPED",
+        "selected_model": selected_model,
+        "requested_model_id": selected_model,
+        "crosswalk_digest": crosswalk_digest,
+    }
+    assert "must-not-be-persisted" not in repr(trace)
+    assert "api_key" not in repr(trace)
+
+
 def test_openrouter_executor_refuses_unmapped_jamp_internal_model():
     from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 
@@ -637,6 +698,7 @@ def test_openrouter_executor_marks_free_route_as_test_only():
 
 
 def test_openrouter_executor_refuses_environment_crosswalk_override_in_production(monkeypatch):
+    import jamp.provider.openrouter as provider_module
     from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
@@ -645,8 +707,14 @@ def test_openrouter_executor_refuses_environment_crosswalk_override_in_productio
         "OPENROUTER_MODEL_ID_MAP",
         '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}',
     )
-    with pytest.raises(OpenRouterError, match="LOCAL_OVERRIDE_ONLY"):
+    monkeypatch.setattr(
+        provider_module,
+        "_load_crosswalk",
+        lambda: pytest.fail("production override guard must run before crosswalk loading"),
+    )
+    with pytest.raises(OpenRouterError, match="LOCAL_OVERRIDE_ONLY") as caught:
         OpenRouterChatExecutor.from_env()
+    assert caught.value.code == "OPENROUTER_MODEL_ID_MAP_LOCAL_OVERRIDE_ONLY"
 
 
 def test_openrouter_executor_marks_env_override_as_not_qualified(monkeypatch):

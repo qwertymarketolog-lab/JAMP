@@ -176,11 +176,13 @@ def create_app(
             else:
                 reason = "EXECUTOR_ERROR"
             failure_diagnostics = None
-            if isinstance(exc, OpenRouterError) and exc.diagnostics:
+            if isinstance(exc, OpenRouterError) and (exc.diagnostics or exc.code):
                 failure_diagnostics = {
                     **exc.diagnostics,
                     "selected_model": selected,
                 }
+                if exc.code:
+                    failure_diagnostics["code"] = exc.code
             trace = provenance.create_trace(
                 task_profile,
                 required,
