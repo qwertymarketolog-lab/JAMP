@@ -71,10 +71,13 @@ class ProvenanceTracker:
                     "requested_model_id",
                     "provider_requested_model_id",
                     "provider_model_id",
+                    "crosswalk_digest",
                 ):
                     value = output.get(key)
                     if isinstance(value, str) and value:
                         execution_details[key] = value
+            if isinstance(output, dict) and output.get("test_only") is True:
+                execution_details["test_only"] = True
             if output is not None:
                 execution_details["output_digest"] = self.output_digest(output)
             trace["execution_details"] = execution_details

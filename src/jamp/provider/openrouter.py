@@ -6,8 +6,10 @@ override JAMP's evidence gate; callers must pass the model selected by JAMP.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+from pathlib import Path
 from collections.abc import Callable
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -16,6 +18,39 @@ from urllib.request import Request, urlopen
 
 class OpenRouterError(RuntimeError):
     """Provider request or response failed the execution contract."""
+
+
+CROSSWALK_PATH = Path(__file__).resolve().parents[3] / "data/crosswalk/openrouter.json"
+INTERNAL_MODEL_PREFIXES = ("am/", "ag/", "cx/")
+
+
+def _load_crosswalk(path: Path = CROSSWALK_PATH) -> tuple[dict[str, str], str]:
+    """Load the versioned production crosswalk and return mappings plus file digest."""
+    try:
+        raw = path.read_bytes()
+        decoded = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise OpenRouterError("OPENROUTER_CROSSWALK_UNAVAILABLE_OR_INVALID") from None
+    if not isinstance(decoded, dict) or decoded.get("version") != 1:
+        raise OpenRouterError("OPENROUTER_CROSSWALK_SCHEMA_INVALID")
+    mappings = decoded.get("mappings")
+    if not isinstance(mappings, dict):
+        raise OpenRouterError("OPENROUTER_CROSSWALK_SCHEMA_INVALID")
+    normalized: dict[str, str] = {}
+    for source, entry in mappings.items():
+        if not isinstance(source, str) or not source.strip() or not isinstance(entry, dict):
+            raise OpenRouterError("OPENROUTER_CROSSWALK_SCHEMA_INVALID")
+        provider_id = entry.get("provider_id")
+        if (
+            entry.get("provider") != "openrouter"
+            or not isinstance(provider_id, str)
+            or not provider_id.strip()
+            or provider_id.endswith(":free")
+            or entry.get("verified_against_catalog") is not True
+        ):
+            raise OpenRouterError("OPENROUTER_CROSSWALK_ENTRY_INVALID")
+        normalized[source] = provider_id
+    return normalized, "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
 class OpenRouterChatExecutor:
@@ -55,6 +90,7 @@ class OpenRouterChatExecutor:
             raise ValueError("model_id_map must map non-empty strings to non-empty strings")
         self._api_key = api_key
         self._model_id_map = dict(model_id_map or {})
+        self._crosswalk_digest = "sha256:local-test-override" if model_id_map is not None else None
         self._chat_url = chat_url
         self._timeout = timeout
         self._max_tokens = max_tokens
@@ -74,9 +110,12 @@ class OpenRouterChatExecutor:
         reasoning_effort = os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
+        model_id_map, crosswalk_digest = _load_crosswalk()
         raw_model_id_map = os.environ.get("OPENROUTER_MODEL_ID_MAP", "").strip()
-        model_id_map: dict[str, str] = {}
         if raw_model_id_map:
+            environment = os.environ.get("JAMP_ENVIRONMENT", "production").strip().lower()
+            if environment not in {"test", "local", "development"}:
+                raise OpenRouterError("OPENROUTER_MODEL_ID_MAP_LOCAL_OVERRIDE_ONLY")
             try:
                 decoded_model_id_map = json.loads(raw_model_id_map)
             except json.JSONDecodeError:
@@ -92,7 +131,8 @@ class OpenRouterChatExecutor:
                     "OPENROUTER_MODEL_ID_MAP must map non-empty strings to non-empty strings"
                 )
             model_id_map = decoded_model_id_map
-        return cls(
+            crosswalk_digest = "sha256:local-test-override"
+        executor = cls(
             api_key,
             chat_url=chat_url,
             timeout=timeout,
@@ -100,6 +140,8 @@ class OpenRouterChatExecutor:
             reasoning_effort=reasoning_effort,
             model_id_map=model_id_map,
         )
+        executor._crosswalk_digest = crosswalk_digest
+        return executor
 
     @staticmethod
     def _messages(payload: dict[str, Any]) -> list[dict[str, str]]:
@@ -137,6 +179,8 @@ class OpenRouterChatExecutor:
         if not isinstance(selected_model, str) or not selected_model:
             raise OpenRouterError("JAMP must select exactly one model for this executor")
         provider_requested_model = self._model_id_map.get(selected_model, selected_model)
+        if selected_model.startswith(INTERNAL_MODEL_PREFIXES) and selected_model not in self._model_id_map:
+            raise OpenRouterError("MODEL_NOT_MAPPED")
         body = json.dumps(
             {
                 "model": provider_requested_model,
@@ -188,8 +232,11 @@ class OpenRouterChatExecutor:
             "model": selected_model,
             "requested_model_id": selected_model,
             "provider_requested_model_id": provider_requested_model,
+            "crosswalk_digest": self._crosswalk_digest,
             "content": content,
         }
+        if provider_requested_model.endswith(":free"):
+            result["test_only"] = True
         if isinstance(decoded.get("model"), str):
             result["provider_model_id"] = decoded["model"]
         if isinstance(decoded.get("id"), str):

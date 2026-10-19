@@ -80,16 +80,17 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
     executor = OpenRouterChatExecutor(
         "test-secret",
         model_id_map={
-            "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b:free"
+            "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
         },
         opener=fake_open,
     )
     result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "Reply with OK"})
 
-    assert seen["body"]["model"] == "nvidia/nemotron-3-super-120b-a12b:free"
+    assert seen["body"]["model"] == "nvidia/nemotron-3-super-120b-a12b"
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
-    assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b:free"
-    assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b:free"
+    assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert result["test_only"] is not True
     assert result["content"] == "OK"
 
 
@@ -97,16 +98,17 @@ def test_openrouter_executor_loads_model_id_map_from_env(monkeypatch):
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("JAMP_ENVIRONMENT", "test")
     monkeypatch.setenv(
         "OPENROUTER_MODEL_ID_MAP",
-        '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b:free"}',
+        '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}',
     )
 
     executor = OpenRouterChatExecutor.from_env()
 
     assert executor is not None
     assert executor._model_id_map == {
-        "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b:free"
+        "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
     }
 
 
@@ -114,6 +116,7 @@ def test_openrouter_executor_rejects_invalid_model_id_map_from_env(monkeypatch):
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("JAMP_ENVIRONMENT", "test")
     monkeypatch.setenv("OPENROUTER_MODEL_ID_MAP", "not-json")
 
     with pytest.raises(ValueError, match="OPENROUTER_MODEL_ID_MAP"):
@@ -431,6 +434,47 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
     assert details["requested_model_id"] == "canonical/requested-id"
     assert details["provider_requested_model_id"] == "provider/requested-id"
     assert details["provider_model_id"] == "provider/served-alias"
+    assert details["crosswalk_digest"] == "sha256:local-test-override"
     assert details["provider"] == "openrouter"
     assert "content" not in details
     assert details["output_digest"].startswith("sha256:")
+
+
+def test_openrouter_executor_refuses_unmapped_jamp_internal_model():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: None)
+    with pytest.raises(OpenRouterError, match="MODEL_NOT_MAPPED"):
+        executor("am/model-without-crosswalk", {"prompt": "hello"})
+
+
+def test_openrouter_executor_marks_free_route_as_test_only():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"test only"}}]}'
+
+    executor = OpenRouterChatExecutor(
+        "test-secret",
+        model_id_map={"am/test-model": "provider/test-model:free"},
+        opener=lambda request, timeout: Response(),
+    )
+    result = executor("am/test-model", {"prompt": "hello"})
+    assert result["test_only"] is True
+
+
+def test_openrouter_executor_refuses_environment_crosswalk_override_in_production(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("JAMP_ENVIRONMENT", "production")
+    monkeypatch.setenv("OPENROUTER_MODEL_ID_MAP", "{}")
+    with pytest.raises(OpenRouterError, match="LOCAL_OVERRIDE_ONLY"):
+        OpenRouterChatExecutor.from_env()

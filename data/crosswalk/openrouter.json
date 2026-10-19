@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "verified_at": "2026-10-19",
+  "mappings": {
+    "am/nemotron-3-super-120b-a12b": {
+      "provider": "openrouter",
+      "provider_id": "nvidia/nemotron-3-super-120b-a12b",
+      "verified_against_catalog": true,
+      "notes": "am/ prefix is JAMP-internal; nvidia/ is provider ID. Catalog identity observation is not execution qualification."
+    }
+  },
+  "test_only_probes": [
+    {
+      "jamp_model_id": "am/nemotron-3-super-120b-a12b",
+      "provider_id": "nvidia/nemotron-3-super-120b-a12b:free",
+      "test_only": true,
+      "qualification": "NOT_GRANTED",
+      "notes": "Separate free-tier diagnostic only; never a production mapping or evidence of qualification."
+    }
+  ]
+}
