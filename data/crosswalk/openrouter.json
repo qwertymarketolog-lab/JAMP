@@ -1,12 +1,19 @@
 {
   "version": 1,
-  "verified_at": "2026-10-19",
+  "observed_at": "2026-10-19",
   "mappings": {
     "am/nemotron-3-super-120b-a12b": {
       "provider": "openrouter",
       "provider_id": "nvidia/nemotron-3-super-120b-a12b",
-      "verified_against_catalog": true,
-      "notes": "am/ prefix is JAMP-internal; nvidia/ is provider ID. Catalog identity observation is not execution qualification."
+      "verified_against_catalog": false,
+      "catalog_check": {
+        "source": "openrouter /models",
+        "count": 470,
+        "exact_jamp_id_present": false,
+        "candidate_matched_by_name": "nvidia/nemotron-3-super-120b-a12b",
+        "verification_basis": "name similarity, not identity"
+      },
+      "notes": "Unverified candidate correspondence only. The JAMP-internal ID is not present as an exact catalog ID in the recorded observation. This entry does not establish provider identity, callability, or JAMP qualification."
     }
   },
   "test_only_probes": [
