@@ -68,7 +68,10 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
             return False
 
         def read(self):
-            return b'{"model":"nvidia/nemotron-3-super-120b-a12b:free","choices":[{"message":{"content":"OK"}}]}'
+            return (
+                b'{"model":"nvidia/nemotron-3-super-120b-a12b:free",'
+                b'"choices":[{"message":{"content":"OK"}}]}'
+            )
 
     def fake_open(request, timeout):
         seen["body"] = json.loads(request.data.decode("utf-8"))
