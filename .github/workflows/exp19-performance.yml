@@ -28,6 +28,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-mock
 
+      - name: Record Python runtime
+        run: python -c "import sys; print(sys.version)"
+
       - name: Run EXP-19 scale diagnostic
         env:
           PYTHONPATH: .:src
@@ -35,9 +38,18 @@ jobs:
           set -o pipefail
           pytest -q tests/research/exp19/test_performance_diagnostic.py -s 2>&1 | tee exp19-performance.txt
 
-      - name: Upload EXP-19 diagnostic evidence
+      - name: Run EXP-19 contractual performance test
+        env:
+          PYTHONPATH: .:src
+        run: |
+          set -o pipefail
+          python -m pytest -q -m exp19_perf tests/research/exp19/test_adjacency_graph.py 2>&1 | tee exp19-contract.txt
+
+      - name: Upload EXP-19 diagnostic and contract evidence
         uses: actions/upload-artifact@v4
         with:
-          name: exp19-performance-diagnostic
-          path: exp19-performance.txt
+          name: exp19-performance-evidence
+          path: |
+            exp19-performance.txt
+            exp19-contract.txt
           if-no-files-found: error
