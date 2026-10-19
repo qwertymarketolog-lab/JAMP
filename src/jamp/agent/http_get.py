@@ -159,10 +159,7 @@ class HTTPGetExecutor:
         """Resolve once; connections use only the returned IP addresses."""
         return list(
             dict.fromkeys(
-                result[4][0]
-                for result in socket.getaddrinfo(
-                    host, 443, type=socket.SOCK_STREAM
-                )
+                result[4][0] for result in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
             )
         )
 
