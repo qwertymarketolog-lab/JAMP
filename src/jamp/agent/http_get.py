@@ -14,6 +14,37 @@ TIMEOUT_SECONDS = 5.0
 MAX_RESPONSE_BYTES = 1_048_576
 USER_AGENT = "JAMP/1.0"
 
+_BLOCKED_NETS = (
+    ipaddress.ip_network("169.254.0.0/16"),  # cloud metadata and link-local IPv4
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+)
+
+
+def _is_blocked(ip: str) -> bool:
+    """Return True for malformed, non-public, or explicitly blocked IP addresses."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return True
+    if addr.version == 6 and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped
+    if (
+        not addr.is_global
+        or addr.is_private
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_reserved
+    ):
+        return True
+    return any(addr in net for net in _BLOCKED_NETS if net.version == addr.version)
+
 
 class ToolError(Exception):
     """A fail-closed tool execution error with a stable machine-readable code."""
@@ -71,10 +102,10 @@ class HTTPGetExecutor:
             raise ToolError("DNS_FAILED", "hostname did not resolve")
         for address in addresses:
             try:
-                ip = ipaddress.ip_address(address)
+                ipaddress.ip_address(address)
             except ValueError as exc:
                 raise ToolError("DNS_FAILED", "resolver returned an invalid IP") from exc
-            if not ip.is_global or ip.is_multicast or ip.is_reserved:
+            if _is_blocked(address):
                 raise ToolError("PRIVATE_IP", "hostname resolved to a non-public IP")
 
         last_error: OSError | None = None
