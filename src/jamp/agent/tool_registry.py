@@ -61,7 +61,6 @@ HTTP_GET_TOOL = ToolDefinition(
         "properties": {
             "url": {
                 "type": "string",
-                "format": "uri",
                 "description": "The HTTPS URL to fetch from an explicitly allowed host.",
             }
         },
