@@ -58,9 +58,7 @@ class OpenRouterChatExecutor:
         chat_url = os.environ.get("OPENROUTER_CHAT_URL", f"{base_url.rstrip('/')}/chat/completions")
         timeout = float(os.environ.get("OPENROUTER_TIMEOUT_S", "30"))
         max_tokens = int(os.environ.get("OPENROUTER_MAX_TOKENS", "256"))
-        reasoning_effort = os.environ.get(
-            "OPENROUTER_REASONING_EFFORT", "low"
-        ).strip().lower()
+        reasoning_effort = os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
         return cls(
