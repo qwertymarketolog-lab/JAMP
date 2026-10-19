@@ -25,7 +25,7 @@ INTERNAL_MODEL_PREFIXES = ("am/", "ag/", "cx/")
 
 
 def _load_crosswalk(path: Path = CROSSWALK_PATH) -> tuple[dict[str, str], str]:
-    """Load the versioned production crosswalk and return mappings plus file digest."""
+    """Load verified production mappings; preserve unverified entries as non-routable."""
     try:
         raw = path.read_bytes()
         decoded = json.loads(raw.decode("utf-8"))
@@ -41,14 +41,18 @@ def _load_crosswalk(path: Path = CROSSWALK_PATH) -> tuple[dict[str, str], str]:
         if not isinstance(source, str) or not source.strip() or not isinstance(entry, dict):
             raise OpenRouterError("OPENROUTER_CROSSWALK_SCHEMA_INVALID")
         provider_id = entry.get("provider_id")
+        verified = entry.get("verified_against_catalog")
         if (
             entry.get("provider") != "openrouter"
             or not isinstance(provider_id, str)
             or not provider_id.strip()
             or provider_id.endswith(":free")
-            or entry.get("verified_against_catalog") is not True
+            or type(verified) is not bool
         ):
             raise OpenRouterError("OPENROUTER_CROSSWALK_ENTRY_INVALID")
+        if not verified:
+            # Documented candidate only: do not expose it to production routing.
+            continue
         normalized[source] = provider_id
     return normalized, "sha256:" + hashlib.sha256(raw).hexdigest()
 
