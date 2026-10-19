@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 
 import pytest
+from unittest.mock import patch
 
 from jamp.agent.http_get import ALLOWED_HOSTS, HTTPGetExecutor, ToolError
 
@@ -17,3 +18,11 @@ def test_rejects_non_allowlisted_host(monkeypatch):
     assert "example.com" in ALLOWED_HOSTS
     with pytest.raises(ToolError):
         executor({"url": "https://evil.com/"})
+
+def test_rejects_http_scheme():
+    executor = HTTPGetExecutor()
+    with patch("jamp.agent.http_get.socket.create_connection") as mock_conn:
+        with pytest.raises(ToolError) as exc:
+            executor.execute({"url": "http://example.com/"})
+    assert exc.value.code == "INSECURE_SCHEME"
+    mock_conn.assert_not_called()
