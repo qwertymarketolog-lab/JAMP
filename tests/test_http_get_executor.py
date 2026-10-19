@@ -22,8 +22,10 @@ def test_rejects_non_allowlisted_host(monkeypatch):
 
 def test_rejects_http_scheme():
     executor = HTTPGetExecutor()
-    with patch("jamp.agent.http_get.socket.create_connection") as mock_conn:
-        with pytest.raises(ToolError) as exc:
-            executor.execute({"url": "http://example.com/"})
+    with (
+        patch("jamp.agent.http_get.socket.create_connection") as mock_conn,
+        pytest.raises(ToolError) as exc,
+    ):
+        executor.execute({"url": "http://example.com/"})
     assert exc.value.code == "INSECURE_SCHEME"
     mock_conn.assert_not_called()
