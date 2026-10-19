@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import socket
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from jamp.agent.http_get import ALLOWED_HOSTS, HTTPGetExecutor, ToolError
 
