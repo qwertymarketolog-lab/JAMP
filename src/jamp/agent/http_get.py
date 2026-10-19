@@ -8,7 +8,6 @@ import socket
 import ssl
 from urllib.parse import urlsplit
 
-
 ALLOWED_HOSTS: frozenset[str] = frozenset({"api.github.com", "example.com"})
 TIMEOUT_SECONDS = 5.0
 MAX_RESPONSE_BYTES = 1_048_576
