@@ -175,6 +175,12 @@ def create_app(
                 reason = "PROVIDER_EXECUTION_FAILED"
             else:
                 reason = "EXECUTOR_ERROR"
+            failure_diagnostics = None
+            if isinstance(exc, OpenRouterError) and exc.diagnostics:
+                failure_diagnostics = {
+                    **exc.diagnostics,
+                    "selected_model": selected,
+                }
             trace = provenance.create_trace(
                 task_profile,
                 required,
@@ -183,6 +189,7 @@ def create_app(
                 len(eligible),
                 request_id=request_id,
                 refusal_reason=reason,
+                failure_diagnostics=failure_diagnostics,
             )
             persistence.write_trace(trace)
             return JSONResponse(
