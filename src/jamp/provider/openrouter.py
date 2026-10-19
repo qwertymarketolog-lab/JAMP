@@ -19,6 +19,15 @@ from urllib.request import Request, urlopen
 class OpenRouterError(RuntimeError):
     """Provider request or response failed the execution contract."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostics: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.diagnostics = dict(diagnostics or {})
+
 
 CROSSWALK_PATH = Path(__file__).resolve().parents[3] / "data/crosswalk/openrouter.json"
 INTERNAL_MODEL_PREFIXES = ("am/", "ag/", "cx/")
@@ -232,7 +241,19 @@ class OpenRouterChatExecutor:
         message = choices[0].get("message")
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str) or not content.strip():
-            raise OpenRouterError("OpenRouter response has no text content")
+            reasoning = message.get("reasoning") if isinstance(message, dict) else None
+            diagnostics = {
+                "finish_reason": choices[0].get("finish_reason"),
+                "usage": decoded.get("usage") if isinstance(decoded.get("usage"), dict) else None,
+                "content_len": len(content) if isinstance(content, str) else 0,
+                "reasoning_len": len(reasoning) if isinstance(reasoning, str) else 0,
+                "requested_max_tokens": self._max_tokens,
+                "model": provider_requested_model,
+            }
+            raise OpenRouterError(
+                "OpenRouter response has no text content",
+                diagnostics=diagnostics,
+            )
 
         result: dict[str, Any] = {
             "provider": "openrouter",
