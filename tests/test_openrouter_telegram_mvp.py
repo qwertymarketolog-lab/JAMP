@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from jamp.api import create_app
 
 
-
 def test_openrouter_executor_uses_selected_model_and_does_not_expose_key():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
@@ -79,9 +78,7 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
 
     executor = OpenRouterChatExecutor(
         "test-secret",
-        model_id_map={
-            "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
-        },
+        model_id_map={"am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"},
         opener=fake_open,
     )
     result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "Reply with OK"})
