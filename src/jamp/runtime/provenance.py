@@ -66,7 +66,12 @@ class ProvenanceTracker:
         if action == "EXECUTE":
             execution_details = {"selected_model": selected_model}
             if isinstance(output, dict):
-                for key in ("provider", "requested_model_id", "provider_model_id"):
+                for key in (
+                    "provider",
+                    "requested_model_id",
+                    "provider_requested_model_id",
+                    "provider_model_id",
+                ):
                     value = output.get(key)
                     if isinstance(value, str) and value:
                         execution_details[key] = value

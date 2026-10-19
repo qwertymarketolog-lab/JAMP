@@ -29,6 +29,7 @@ class OpenRouterChatExecutor:
         timeout: float = 30.0,
         max_tokens: int = 256,
         reasoning_effort: str | None = "low",
+        model_id_map: dict[str, str] | None = None,
         opener: Callable[..., Any] | None = None,
     ) -> None:
         if not api_key.strip():

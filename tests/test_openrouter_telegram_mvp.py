@@ -55,6 +55,68 @@ def test_openrouter_executor_from_env_requires_key(monkeypatch):
     assert OpenRouterChatExecutor.from_env() is None
 
 
+def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"model":"nvidia/nemotron-3-super-120b-a12b:free","choices":[{"message":{"content":"OK"}}]}'
+
+    def fake_open(request, timeout):
+        seen["body"] = json.loads(request.data.decode("utf-8"))
+        return Response()
+
+    executor = OpenRouterChatExecutor(
+        "test-secret",
+        model_id_map={
+            "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b:free"
+        },
+        opener=fake_open,
+    )
+    result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "Reply with OK"})
+
+    assert seen["body"]["model"] == "nvidia/nemotron-3-super-120b-a12b:free"
+    assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
+    assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b:free"
+    assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b:free"
+    assert result["content"] == "OK"
+
+
+def test_openrouter_executor_loads_model_id_map_from_env(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv(
+        "OPENROUTER_MODEL_ID_MAP",
+        '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b:free"}',
+    )
+
+    executor = OpenRouterChatExecutor.from_env()
+
+    assert executor is not None
+    assert executor._model_id_map == {
+        "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b:free"
+    }
+
+
+def test_openrouter_executor_rejects_invalid_model_id_map_from_env(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("OPENROUTER_MODEL_ID_MAP", "not-json")
+
+    with pytest.raises(ValueError, match="OPENROUTER_MODEL_ID_MAP"):
+        OpenRouterChatExecutor.from_env()
+
+
 def test_telegram_webhook_refuses_when_not_configured(monkeypatch):
     for key in ("TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
         monkeypatch.delenv(key, raising=False)
