@@ -446,6 +446,45 @@ def test_openrouter_executor_refuses_unmapped_jamp_internal_model():
         executor("am/model-without-crosswalk", {"prompt": "hello"})
 
 
+def test_unverified_crosswalk_candidate_is_not_loaded_for_routing(tmp_path):
+    from jamp.provider.openrouter import _load_crosswalk
+
+    path = tmp_path / "openrouter.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "mappings": {
+                    "am/nemotron-3-super-120b-a12b": {
+                        "provider": "openrouter",
+                        "provider_id": "nvidia/nemotron-3-super-120b-a12b",
+                        "verified_against_catalog": False,
+                        "catalog_check": {
+                            "count": 470,
+                            "exact_jamp_id_present": False,
+                            "verification_basis": "name similarity, not identity",
+                        },
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    mappings, digest = _load_crosswalk(path)
+
+    assert mappings == {}
+    assert digest.startswith("sha256:")
+
+    executor = OpenRouterChatExecutor(
+        "test-secret",
+        model_id_map=mappings,
+        opener=lambda request, timeout: None,
+    )
+    with pytest.raises(OpenRouterError, match="MODEL_NOT_MAPPED"):
+        executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
+
+
 def test_openrouter_executor_marks_free_route_as_test_only():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
