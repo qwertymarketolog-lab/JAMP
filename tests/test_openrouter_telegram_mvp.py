@@ -90,7 +90,7 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
     assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
-    assert result["test_only"] is not True
+    assert result.get("test_only") is not True
     assert result["content"] == "OK"
 
 
