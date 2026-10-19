@@ -69,7 +69,7 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
 
         def read(self):
             return (
-                b'{"model":"nvidia/nemotron-3-super-120b-a12b:free",'
+                b'{"model":"nvidia/nemotron-3-super-120b-a12b",'
                 b'"choices":[{"message":{"content":"OK"}}]}'
             )
 
@@ -425,6 +425,7 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
             "requested_model_id": "canonical/requested-id",
             "provider_requested_model_id": "provider/requested-id",
             "provider_model_id": "provider/served-alias",
+            "crosswalk_digest": "sha256:local-test-override",
             "content": "hello",
         },
     )
