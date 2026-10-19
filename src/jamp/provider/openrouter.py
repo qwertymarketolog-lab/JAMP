@@ -9,8 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -29,7 +29,7 @@ def _load_crosswalk(path: Path = CROSSWALK_PATH) -> tuple[dict[str, str], str]:
     try:
         raw = path.read_bytes()
         decoded = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         raise OpenRouterError("OPENROUTER_CROSSWALK_UNAVAILABLE_OR_INVALID") from None
     if not isinstance(decoded, dict) or decoded.get("version") != 1:
         raise OpenRouterError("OPENROUTER_CROSSWALK_SCHEMA_INVALID")
@@ -179,7 +179,10 @@ class OpenRouterChatExecutor:
         if not isinstance(selected_model, str) or not selected_model:
             raise OpenRouterError("JAMP must select exactly one model for this executor")
         provider_requested_model = self._model_id_map.get(selected_model, selected_model)
-        if selected_model.startswith(INTERNAL_MODEL_PREFIXES) and selected_model not in self._model_id_map:
+        if (
+            selected_model.startswith(INTERNAL_MODEL_PREFIXES)
+            and selected_model not in self._model_id_map
+        ):
             raise OpenRouterError("MODEL_NOT_MAPPED")
         body = json.dumps(
             {
