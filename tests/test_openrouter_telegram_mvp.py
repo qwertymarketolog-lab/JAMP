@@ -151,7 +151,7 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
         json={"message": {"chat": {"id": 99}, "text": "hello"}},
     )
-    assert bad_secret.status_code == 403
+    assert bad_secret.status_code == 401
     assert bad_chat.status_code == 403
     assert calls == []
 
@@ -187,29 +187,110 @@ def test_telegram_webhook_executes_and_returns_trace(monkeypatch, tmp_path):
     assert calls[0]["prompt"] == "hello"
 
 
-def test_telegram_webhook_refuses_undeclared_task_profile(monkeypatch):
+@pytest.mark.parametrize("command", ["/search", "/tools"])
+def test_telegram_webhook_sends_hint_for_command_without_prompt(
+    monkeypatch, tmp_path, command
+):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
-    monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
-    calls = []
-
-    def executor(model, payload):
-        calls.append(payload)
-        return {"content": "unexpected"}
-
-    client = TestClient(create_app(executor=executor))
+    sent = []
+    monkeypatch.setattr(
+        app_module,
+        "_send_telegram_message",
+        lambda token, chat_id, text: sent.append((token, chat_id, text)),
+    )
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: pytest.fail("promptless command must not execute"),
+            telegram_update_db_path=tmp_path / "telegram-updates.sqlite3",
+        )
+    )
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
-        json={"update_id": 9, "message": {"chat": {"id": 42}, "text": "hello without a command"}},
+        json={"update_id": 900, "message": {"chat": {"id": 42}, "text": command}},
     )
-    assert response.status_code == 422
-    assert response.json()["status"] == "REFUSE"
-    assert response.json()["reason"] == "TELEGRAM_TASK_PROFILE_REQUIRED"
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "HINT_SENT"}
+    assert len(sent) == 1
+    assert sent[0][0:2] == ("bot-token", 42)
+    assert "Формат: /search <вопрос>" in sent[0][2]
+    assert "Или: /tools <задача>" in sent[0][2]
+
+
+def test_telegram_webhook_promptless_duplicate_does_not_resend_hint(monkeypatch, tmp_path):
+    import jamp.api.app as app_module
+
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    sent = []
+    calls = []
+    monkeypatch.setattr(
+        app_module,
+        "_send_telegram_message",
+        lambda token, chat_id, text: sent.append(text),
+    )
+    database_path = tmp_path / "telegram-updates.sqlite3"
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"},
+            telegram_update_db_path=database_path,
+        )
+    )
+    headers = {"X-Telegram-Bot-Api-Secret-Token": "configured-secret"}
+    update = {
+        "update_id": 910,
+        "message": {"chat": {"id": 42}, "text": "/search"},
+    }
+
+    first = client.post("/v1/telegram/webhook", headers=headers, json=update)
+    second = client.post("/v1/telegram/webhook", headers=headers, json=update)
+
+    assert first.status_code == 200
+    assert first.json() == {"status": "HINT_SENT"}
+    assert second.status_code == 200
+    assert second.json()["status"] == "DUPLICATE"
+    assert len(sent) == 1
     assert calls == []
+
+
+def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
+    import jamp.api.app as app_module
+
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    sent = []
+    calls = []
+    monkeypatch.setattr(
+        app_module,
+        "_send_telegram_message",
+        lambda token, chat_id, text: sent.append(text),
+    )
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: calls.append(payload) or {"content": "unexpected"},
+            telegram_update_db_path=tmp_path / "telegram-updates.sqlite3",
+        )
+    )
+    response = client.post(
+        "/v1/telegram/webhook",
+        headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
+        json={
+            "update_id": 920,
+            "message": {"chat": {"id": 42}, "text": "hello without a command"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "IGNORED", "reason": "UNKNOWN_COMMAND"}
+    assert calls == []
+    assert sent == []
 
 
 def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypatch, tmp_path):

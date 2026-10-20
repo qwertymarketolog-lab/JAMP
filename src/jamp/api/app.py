@@ -231,7 +231,7 @@ def create_app(
             )
         if not hmac.compare_digest(supplied_secret, webhook_secret):
             return JSONResponse(
-                status_code=403,
+                status_code=401,
                 content={"status": "REFUSE", "reason": "TELEGRAM_WEBHOOK_UNAUTHORIZED"},
             )
         message = payload.get("message")
@@ -247,27 +247,8 @@ def create_app(
                 status_code=403,
                 content={"status": "REFUSE", "reason": "TELEGRAM_CHAT_NOT_ALLOWED"},
             )
-        if not isinstance(text_value, str) or not text_value.strip():
-            return {"status": "IGNORED"}
-
-        # Telegram messages must declare a supported task profile explicitly.
-        # Plain text is never silently assigned a profile.
-        command, _, prompt = text_value.strip().partition(" ")
-        task_profiles = {
-            "/search": {"intent": "search_and_extraction"},
-            "/tools": {"intent": "tool_execution_agent"},
-        }
-        profile = task_profiles.get(command)
-        if profile is None or not prompt.strip():
-            return JSONResponse(
-                status_code=422,
-                content={
-                    "status": "REFUSE",
-                    "reason": "TELEGRAM_TASK_PROFILE_REQUIRED",
-                    "supported_commands": ["/search", "/tools"],
-                },
-            )
-
+        # Reserve the authenticated, allowlisted update before parsing its text.
+        # This makes even malformed commands idempotent across Telegram retries.
         request_id = payload.get("update_id")
         if isinstance(request_id, bool) or not isinstance(request_id, int):
             return JSONResponse(
@@ -295,6 +276,31 @@ def create_app(
                     "reason": "TELEGRAM_UPDATE_ALREADY_CLAIMED",
                 },
             )
+
+        if not isinstance(text_value, str) or not text_value.strip():
+            return {"status": "IGNORED"}
+
+        # Telegram messages must declare a supported task profile explicitly.
+        command, _, prompt = text_value.strip().partition(" ")
+        task_profiles = {
+            "/search": {"intent": "search_and_extraction"},
+            "/tools": {"intent": "tool_execution_agent"},
+        }
+        profile = task_profiles.get(command)
+        if profile is None:
+            return {"status": "IGNORED", "reason": "UNKNOWN_COMMAND"}
+        if not prompt.strip():
+            hint = (
+                "Формат: /search <вопрос>\n"
+                "Например: /search какие модели топ сегодня\n"
+                "Или: /tools <задача>"
+            )
+            try:
+                _send_telegram_message(bot_token, chat_id, hint)
+            except Exception:
+                # A hint is best-effort; acknowledge the update to stop retry loops.
+                pass
+            return {"status": "HINT_SENT"}
 
         result = execute(
             {
