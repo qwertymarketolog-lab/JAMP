@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import hmac
-from contextlib import suppress
 import json
 import os
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 from urllib.request import Request as UrlRequest
