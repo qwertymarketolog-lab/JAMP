@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+from contextlib import suppress
 import json
 import os
 from collections.abc import Callable
@@ -295,11 +296,9 @@ def create_app(
                 "Например: /search какие модели топ сегодня\n"
                 "Или: /tools <задача>"
             )
-            try:
-                _send_telegram_message(bot_token, chat_id, hint)
-            except Exception:
+            with suppress(Exception):
                 # A hint is best-effort; acknowledge the update to stop retry loops.
-                pass
+                _send_telegram_message(bot_token, chat_id, hint)
             return {"status": "HINT_SENT"}
 
         result = execute(
