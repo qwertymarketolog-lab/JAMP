@@ -188,9 +188,7 @@ def test_telegram_webhook_executes_and_returns_trace(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("command", ["/search", "/tools"])
-def test_telegram_webhook_sends_hint_for_command_without_prompt(
-    monkeypatch, tmp_path, command
-):
+def test_telegram_webhook_sends_hint_for_command_without_prompt(monkeypatch, tmp_path, command):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
