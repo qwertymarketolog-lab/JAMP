@@ -1,5 +1,12 @@
 # Telegram → Runtime → OpenRouter E2E evidence (2026-10-20)
 
+## Document class
+
+This is an **integration E2E record**, not an `EXP-XX` research experiment.
+Filed under `docs/research/` alongside EXP evidence for discoverability,
+but it does not belong to the EXP series and must not be renamed to
+`EXP-08-EVIDENCE.md` without a separate decision to formalize it as an experiment.
+
 ## Claim
 
 A controlled **synthetic Telegram Update** traversed the JAMP webhook and Runtime, invoked the real OpenRouter API using the configured free-model override, and caused a Telegram Bot API reply to be delivered. The run returned a trace whose provenance retained the test-only override and did not grant model qualification.
