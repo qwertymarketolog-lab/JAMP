@@ -132,3 +132,44 @@ Supersedes commit a733ecd / e33c029 for the summary implementation:
   e33c029 — escaping bug, superseded
   a733ecd — first summary, criterion 7 miscalibrated
   d6d978c — current: 11 fields, log_has_startup, log_bytes
+
+## CI anomaly: import-historical.yml (2026-10-21)
+
+OBSERVED
+  Workflow:    import-historical.yml
+  Run:         39652647763
+  SHA:         bc41e034d99dff49b671a05c4cce6b4cd4a8d9ee
+  Event:       push
+  Branch:      feat/openrouter-telegram-mvp
+  Conclusion:  failure
+  Jobs:        []
+
+OBSERVED
+  on.push.branches on this SHA:
+    - 'import/jamp-from-visual-merchant-hub'
+    - '!main'
+  Positive pattern does not match feat/openrouter-telegram-mvp.
+
+EVIDENCE
+  GitHub Community Discussion #210766 and actions/runner Issue #4001
+  describe the same symptom: runs created for branches excluded by
+  push filters, failing before any job is created.
+
+INFERENCE
+  Probable GitHub Actions platform defect. Causal link to this
+  specific run is not independently proven.
+
+REQUIRED CHECKS
+  import-historical is not among the required contexts for main
+  branch protection (required: Research Loop v0 Gate, G1 Trusted Lineage).
+
+ACTION
+  Documented. Workflow not modified. Not blocking PR #371.
+  Not the cause of HOLD status.
+
+Gate state on bc41e034:
+  Required CI checks     PASS (18/18 check runs completed/success)
+  import-historical      failure, non-blocking
+  qualification          NOT_GRANTED
+  PR #371                OPEN / DRAFT — HOLD
+
