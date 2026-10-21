@@ -217,6 +217,52 @@ jobs:
             exit 1
           fi
 
+      - name: Build allowlisted Uvicorn summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          log_path = Path("/tmp/uvicorn.log")
+          response_path = Path("/tmp/response.json")
+          lines = log_path.read_text(errors="replace").splitlines() if log_path.exists() else []
+
+          trace_id = "UNAVAILABLE"
+          if response_path.exists():
+              try:
+                  value = json.loads(response_path.read_text()).get("trace_id")
+                  if isinstance(value, str) and re.fullmatch(r"trace_[A-Za-z0-9]+", value):
+                      trace_id = value
+              except (json.JSONDecodeError, OSError):
+                  pass
+
+          lower_lines = [line.lower() for line in lines]
+          counts = {
+              "log_lines_scanned": len(lines),
+              "error_line_count": sum("error" in line for line in lower_lines),
+              "critical_line_count": sum("critical" in line for line in lower_lines),
+              "traceback_count": sum("traceback" in line for line in lower_lines),
+              "model_not_mapped_count": sum("model_not_mapped" in line for line in lower_lines),
+              "telegram_delivery_failed_count": sum("telegram_delivery_failed" in line for line in lower_lines),
+          }
+
+          # Emit only fixed field names, integer counts, and a strictly validated trace ID.
+          # No original log line, URL, request header, token, or arbitrary field is copied.
+          out = Path("/tmp/uvicorn.summary.log")
+          with out.open("w", encoding="utf-8") as f:
+              f.write(f"trace_id={trace_id}\\n")
+              for key, value in counts.items():
+                  f.write(f"{key}={value}\\n")
+              f.write("raw_log_content_included=false\\n")
+              f.write("secret_values_emitted=false\\n")
+          print("UVICORN_SUMMARY_CREATED=true")
+          print(f"UVICORN_SUMMARY_TRACE_PRESENT={trace_id != 'UNAVAILABLE'}")
+          PY
+
       - name: Upload E2E artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -228,3 +274,4 @@ jobs:
             /tmp/response.json
             /tmp/response.code
             /tmp/provenance.json
+            /tmp/uvicorn.summary.log
