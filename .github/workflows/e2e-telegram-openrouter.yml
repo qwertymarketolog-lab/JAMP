@@ -73,7 +73,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
-          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"openrouter/free"}'
+          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"minimax/minimax-m3.1-flash:free"}'
           PYTHONPATH: "src:."
         run: |
           set -euo pipefail
@@ -195,8 +195,8 @@ jobs:
               print(f"::error::qualification={ed.get('qualification')!r}")
               sys.exit(1)
           pmid=ed.get("provider_requested_model_id", "")
-          if pmid != "openrouter/free":
-              print("::error::provider_requested_model_id is not the free-only OpenRouter router")
+          if pmid != "minimax/minimax-m3.1-flash:free":
+              print(f"::error::provider_requested_model_id expected minimax/minimax-m3.1-flash:free, got {pmid!r}")
               sys.exit(1)
           actual_model=ed.get("provider_model_id", "")
           if not isinstance(actual_model, str) or not actual_model.strip():
