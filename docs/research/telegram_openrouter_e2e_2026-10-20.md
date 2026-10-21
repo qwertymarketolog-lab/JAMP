@@ -98,3 +98,37 @@ evidence for the same transport path.
 
 Frozen Core: 0fee0e1c..., delta=0.
 qualification: NOT_GRANTED (test_override=true, unchanged).
+
+
+## Summary diagnostics verification (2026-10-21)
+
+Run 39561370652, commit d6d978c, trace_78d81146.
+
+Criterion 7 (log identity, replacing earlier miscalibrated `>100 lines`):
+
+  field_count                 11         PASS (exact allowlist)
+  log_has_startup             true       PASS (Uvicorn startup marker found)
+  log_bytes                   415        PASS (non-empty)
+  log_lines_scanned           7          FACT (single-E2E log size, not a threshold)
+  raw_log_content_included    false      PASS (script declaration)
+  secret_values_emitted       false      PASS (script declaration)
+  has_bot_pattern             false      PASS (grep)
+  has_url_or_token            false      PASS (grep)
+
+Artifact: e2e-39561370652, ID 12328245109, 1644 bytes, 5 files.
+ngrok.log absent (sanitization requirement).
+
+Verified: summary reads the correct Uvicorn log file and applies
+the 11-field allowlist.
+
+NOT verified: independent leak evidence. The original
+`/tmp/uvicorn.log` is not retained in artifacts, so
+`raw_log_content_included=false` and `secret_values_emitted=false`
+are script declarations, not independently confirmed facts.
+Verification here is structural (allowlist, identity, grep patterns),
+not forensic.
+
+Supersedes commit a733ecd / e33c029 for the summary implementation:
+  e33c029 — escaping bug, superseded
+  a733ecd — first summary, criterion 7 miscalibrated
+  d6d978c — current: 11 fields, log_has_startup, log_bytes
