@@ -224,7 +224,6 @@ jobs:
           name: e2e-${{ github.run_id }}
           if-no-files-found: warn
           path: |
-            /tmp/uvicorn.log
             /tmp/update.json
             /tmp/response.json
             /tmp/response.code
