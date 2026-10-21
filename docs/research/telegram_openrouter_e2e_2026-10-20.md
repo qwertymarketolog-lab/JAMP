@@ -85,3 +85,16 @@ Artifact `e2e-39411112869` contains six files:
 **PR #371 merge decision: NOT DECIDED by this evidence record.**
 
 Do not infer broader claims from this single run. Keep the run and artifact as the primary evidence anchors; this document is a durable index and scope statement, not a replacement for the raw evidence.
+
+
+## Superseding run (2026-10-21)
+
+Run 39534414865, commit 8c88eaf, trace_e82644ca supersedes the
+transport evidence above with one addition: provider_model_id was
+verified equal to provider_requested_model_id
+(minimax/minimax-m3.1-flash:free). Prior run 39411112869 did not
+record provider_model_id; its trace_97ace1c4 remains as precursor
+evidence for the same transport path.
+
+Frozen Core: 0fee0e1c..., delta=0.
+qualification: NOT_GRANTED (test_override=true, unchanged).
