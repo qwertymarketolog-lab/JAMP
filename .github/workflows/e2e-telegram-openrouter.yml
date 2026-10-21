@@ -73,7 +73,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
-          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"minimax/minimax-m3.1-flash:free"}'
+          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}'
           PYTHONPATH: "src:."
         run: |
           set -euo pipefail
@@ -195,8 +195,9 @@ jobs:
               print(f"::error::qualification={ed.get('qualification')!r}")
               sys.exit(1)
           pmid=ed.get("provider_requested_model_id", "")
-          if not isinstance(pmid, str) or ":free" not in pmid:
-              print("::error::provider_requested_model_id does not contain :free")
+          expected_model="nvidia/nemotron-3-super-120b-a12b"
+          if pmid != expected_model:
+              print("::error::provider_requested_model_id does not match the exact Nemotron model")
               sys.exit(1)
 
           print(f"E2E_PASS trace_id={trace}")
