@@ -254,11 +254,11 @@ jobs:
           # No original log line, URL, request header, token, or arbitrary field is copied.
           out = Path("/tmp/uvicorn.summary.log")
           with out.open("w", encoding="utf-8") as f:
-              f.write(f"trace_id={trace_id}\\n")
+              f.write(f"trace_id={trace_id}\n")
               for key, value in counts.items():
-                  f.write(f"{key}={value}\\n")
-              f.write("raw_log_content_included=false\\n")
-              f.write("secret_values_emitted=false\\n")
+                  f.write(f"{key}={value}\n")
+              f.write("raw_log_content_included=false\n")
+              f.write("secret_values_emitted=false\n")
           print("UVICORN_SUMMARY_CREATED=true")
           print(f"UVICORN_SUMMARY_TRACE_PRESENT={trace_id != 'UNAVAILABLE'}")
           PY
