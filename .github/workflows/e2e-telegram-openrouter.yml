@@ -241,8 +241,11 @@ jobs:
                   pass
 
           lower_lines = [line.lower() for line in lines]
+          log_bytes = log_path.stat().st_size if log_path.exists() else 0
+          log_has_startup = any("Started server process" in line for line in lines)
           counts = {
               "log_lines_scanned": len(lines),
+              "log_bytes": log_bytes,
               "error_line_count": sum("error" in line for line in lower_lines),
               "critical_line_count": sum("critical" in line for line in lower_lines),
               "traceback_count": sum("traceback" in line for line in lower_lines),
@@ -250,15 +253,17 @@ jobs:
               "telegram_delivery_failed_count": sum("telegram_delivery_failed" in line for line in lower_lines),
           }
 
-          # Emit only fixed field names, integer counts, and a strictly validated trace ID.
+          # Exact summary allowlist: 11 fields; fixed names, integer counts,
+          # a boolean startup marker, and a strictly validated trace ID only.
           # No original log line, URL, request header, token, or arbitrary field is copied.
           out = Path("/tmp/uvicorn.summary.log")
           with out.open("w", encoding="utf-8") as f:
-              f.write(f"trace_id={trace_id}\n")
+              f.write(f"trace_id={trace_id}\\n")
               for key, value in counts.items():
-                  f.write(f"{key}={value}\n")
-              f.write("raw_log_content_included=false\n")
-              f.write("secret_values_emitted=false\n")
+                  f.write(f"{key}={value}\\n")
+              f.write(f"log_has_startup={str(log_has_startup).lower()}\\n")
+              f.write("raw_log_content_included=false\\n")
+              f.write("secret_values_emitted=false\\n")
           print("UVICORN_SUMMARY_CREATED=true")
           print(f"UVICORN_SUMMARY_TRACE_PRESENT={trace_id != 'UNAVAILABLE'}")
           PY
