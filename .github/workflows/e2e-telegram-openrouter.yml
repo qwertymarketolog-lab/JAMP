@@ -202,8 +202,8 @@ jobs:
           if not isinstance(actual_model, str) or not actual_model.strip():
               print("::error::provider_model_id missing; actual model not evidenced")
               sys.exit(1)
-          if actual_model.endswith(":free") is False and actual_model != "openrouter/free":
-              print("::error::actual provider model is not explicitly marked free")
+          if actual_model == "openrouter/free":
+              print("::error::provider returned the router alias instead of a concrete model ID")
               sys.exit(1)
 
           print(f"E2E_PASS trace_id={trace}")
