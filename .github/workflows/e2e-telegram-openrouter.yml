@@ -73,7 +73,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
-          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3-super-120b-a12b"}'
+          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"openrouter/free"}'
           PYTHONPATH: "src:."
         run: |
           set -euo pipefail
@@ -195,13 +195,20 @@ jobs:
               print(f"::error::qualification={ed.get('qualification')!r}")
               sys.exit(1)
           pmid=ed.get("provider_requested_model_id", "")
-          expected_model="nvidia/nemotron-3-super-120b-a12b"
-          if pmid != expected_model:
-              print("::error::provider_requested_model_id does not match the exact Nemotron model")
+          if pmid != "openrouter/free":
+              print("::error::provider_requested_model_id is not the free-only OpenRouter router")
+              sys.exit(1)
+          actual_model=ed.get("provider_model_id", "")
+          if not isinstance(actual_model, str) or not actual_model.strip():
+              print("::error::provider_model_id missing; actual model not evidenced")
+              sys.exit(1)
+          if actual_model.endswith(":free") is False and actual_model != "openrouter/free":
+              print("::error::actual provider model is not explicitly marked free")
               sys.exit(1)
 
           print(f"E2E_PASS trace_id={trace}")
           print(f"PROVIDER_REQUESTED_MODEL_ID={pmid}")
+          print(f"PROVIDER_ACTUAL_MODEL_ID={actual_model}")
           print("TEST_OVERRIDE=true")
           print("QUALIFICATION=NOT_GRANTED")
           PY
@@ -218,7 +225,6 @@ jobs:
           if-no-files-found: warn
           path: |
             /tmp/uvicorn.log
-            /tmp/ngrok.log
             /tmp/update.json
             /tmp/response.json
             /tmp/response.code
