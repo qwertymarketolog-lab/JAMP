@@ -173,3 +173,69 @@ Gate state on bc41e034:
   qualification          NOT_GRANTED
   PR #371                OPEN / DRAFT — HOLD
 
+## Live Telegram ingress PASS (2026-10-22)
+
+**Evidence class: operator-reported live observation.** The trace fields and
+Telegram delivery below were reported from the operator's local runtime.
+Raw provenance JSON and Telegram/ngrok/Uvicorn logs are not attached to this
+repository commit; this section is a durable record of the reported evidence,
+not a substitute for those raw records or for terminal GitHub CI evidence.
+
+Three real Telegram updates were reported as delivered by Telegram DC
+(`91.108.5.163`) via ngrok
+`version-motocross-thermos.ngrok-free.dev` to Uvicorn at
+`127.0.0.1:8000`. They were not synthetic workflow-injected updates.
+
+| trace | request_id | status | observed response |
+|---|---|---|---|
+| `trace_3c65adbe` | `telegram:471204615` | `EXECUTE` | `JAMP_LIVE_OK` |
+| `trace_b2bc19fd` | `telegram:471204624` | `EXECUTE` | `JAMP_LIVE_OK` |
+| `trace_5a2021b5` | `telegram:471204625` | `EXECUTE` | Causal inference answer, 3 sentences |
+
+Reported common provenance for all three traces:
+
+```text
+provider_model_id == provider_requested_model_id
+  minimax/minimax-m3.1-flash:free
+test_override: true
+qualification: NOT_GRANTED
+crosswalk_digest: sha256:local-test-override
+frozen_core.blob: 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a
+frozen_core.delta: 0
+```
+
+Reported output digest for `trace_5a2021b5`:
+
+```text
+sha256:c50e3a629d423562e93ebf62c5d7567be55d6130f73c889989d8426b0f64d856
+```
+
+The operator reports that the authentic Telegram ingress path accepted the
+Telegram-sent `X-Telegram-Bot-Api-Secret-Token` header, matched the configured
+chat ID, reserved the `update_id` before execution, and returned the result
+to Telegram. This observation addresses the synthetic-update limitation of
+the CI E2E path for these three live requests; it does not retroactively turn
+the synthetic workflow run into a real-ingress test.
+
+### Scope and non-claims
+
+- **Observed/reported:** three real Telegram updates returned `EXECUTE` with
+  the trace/request IDs and provenance fields listed above.
+- **Not independently re-verified by this commit:** the raw local provenance
+  responses, Telegram delivery logs, ngrok logs, and source IP. No raw live
+  evidence artifact is included here.
+- **Model qualification:** `NOT_GRANTED`; `test_override=true` remains
+  explicit. Successful execution is not qualification evidence.
+- **Persistent hosting:** not established; Uvicorn and ngrok were foreground
+  processes on the operator's local environment.
+- **Search MVP:** not established; no Tavily key was configured, so
+  `/search` used the model response rather than verified web search.
+- **Real tool execution:** not established; the tool executor loop is not wired.
+- **CI:** this live operator observation is separate from PR CI and post-merge
+  CI. Check terminal Run → Job → artifact evidence independently.
+
+**Live ingress status:** OPERATOR-REPORTED PASS for the three listed traces;
+raw-evidence attachment and independent audit remain outstanding.  
+**Model qualification:** NOT GRANTED.  
+**PR #371:** OPEN / DRAFT — HOLD until all required terminal CI and review gates
+are verified.
