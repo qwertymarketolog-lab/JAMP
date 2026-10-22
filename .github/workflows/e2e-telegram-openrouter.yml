@@ -99,7 +99,7 @@ jobs:
           ngrok config add-authtoken "$NGROK_AUTHTOKEN" >/dev/null
           nohup ngrok http 8000 --log stdout > /tmp/ngrok.log 2>&1 &
           echo "$!" > /tmp/ngrok.pid
-          printf 'started_at_utc=%s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ngrok.launch.meta
+          printf 'started_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ngrok.launch.meta
           for i in $(seq 1 25); do
             URL="$(curl -fsS http://127.0.0.1:4040/api/tunnels | python -c 'import json,sys; d=json.load(sys.stdin); print(next((t["public_url"] for t in d.get("tunnels",[]) if t.get("proto")=="https"), ""))' 2>/dev/null || true)"
             if [[ "$URL" == https://* ]]; then
