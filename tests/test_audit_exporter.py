@@ -301,3 +301,25 @@ def test_repeated_export_of_blank_only_file_is_idempotent(tmp_path):
     assert second["status"] == "UP_TO_DATE"
     assert first["end_offset"] == second["end_offset"]
     adapter.upload.assert_not_called()
+
+
+def test_export_preserves_provider_response_id(tmp_path):
+    audit = tmp_path / "provenance_traces.jsonl"
+    trace = {
+        "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
+        "trace_id": "tr_generation_id",
+        "execution_details": {
+            "provider": "openrouter",
+            "provider_response_id": "gen_export_123",
+        },
+    }
+    payload = (json.dumps(trace, sort_keys=True) + "\\n").encode()
+    audit.write_bytes(payload)
+    adapter = MagicMock(spec=S3StorageAdapter)
+    adapter.upload.return_value = UploadResult(True, 200)
+
+    result = make_exporter(tmp_path, adapter).export_pending()
+
+    assert result["status"] == "SUCCESS"
+    uploaded = adapter.upload.call_args.args[1]
+    assert json.loads(uploaded.decode().strip())["execution_details"]["provider_response_id"] == "gen_export_123"
