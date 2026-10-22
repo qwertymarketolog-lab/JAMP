@@ -72,6 +72,7 @@ class ProvenanceTracker:
                     "requested_model_id",
                     "provider_requested_model_id",
                     "provider_model_id",
+                    "provider_response_id",
                     "crosswalk_digest",
                 ):
                     value = output.get(key)
