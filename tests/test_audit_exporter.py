@@ -313,7 +313,7 @@ def test_export_preserves_provider_response_id(tmp_path):
             "provider_response_id": "gen_export_123",
         },
     }
-    payload = (json.dumps(trace, sort_keys=True) + "\\n").encode()
+    payload = (json.dumps(trace, sort_keys=True) + "\n").encode()
     audit.write_bytes(payload)
     adapter = MagicMock(spec=S3StorageAdapter)
     adapter.upload.return_value = UploadResult(True, 200)
