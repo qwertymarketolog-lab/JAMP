@@ -98,6 +98,8 @@ jobs:
           curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | sudo tar -xz -C /usr/local/bin
           ngrok config add-authtoken "$NGROK_AUTHTOKEN" >/dev/null
           nohup ngrok http 8000 --log stdout > /tmp/ngrok.log 2>&1 &
+          echo "$!" > /tmp/ngrok.pid
+          printf 'started_at_utc=%s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ngrok.launch.meta
           for i in $(seq 1 25); do
             URL="$(curl -fsS http://127.0.0.1:4040/api/tunnels | python -c 'import json,sys; d=json.load(sys.stdin); print(next((t["public_url"] for t in d.get("tunnels",[]) if t.get("proto")=="https"), ""))' 2>/dev/null || true)"
             if [[ "$URL" == https://* ]]; then
@@ -217,6 +219,55 @@ jobs:
             exit 1
           fi
 
+      - name: Capture ngrok diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          OUT=/tmp/ngrok.diagnostics.log
+          {
+            echo "captured_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if [[ -f /tmp/ngrok.pid ]]; then
+              PID="$(cat /tmp/ngrok.pid)"
+              echo "ngrok_pid=$PID"
+              if kill -0 "$PID" 2>/dev/null; then echo "ngrok_process_alive=true"; else echo "ngrok_process_alive=false"; fi
+              ps -p "$PID" -o pid=,stat=,etime=,comm= 2>/dev/null || true
+            else
+              echo "ngrok_pid=UNAVAILABLE"
+              echo "ngrok_process_alive=UNKNOWN"
+            fi
+            if [[ -f /tmp/ngrok.launch.meta ]]; then cat /tmp/ngrok.launch.meta; fi
+            TUNNEL_HTTP="$(curl -sS --max-time 5 -o /tmp/ngrok.tunnels.json -w '%{http_code}' http://127.0.0.1:4040/api/tunnels 2>/dev/null)"
+            echo "local_tunnel_api_http=${TUNNEL_HTTP:-000}"
+            if [[ -f /tmp/ngrok.tunnels.json ]]; then
+              python - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              d=json.loads(Path("/tmp/ngrok.tunnels.json").read_text())
+              tunnels=d.get("tunnels", [])
+              print(f"local_tunnel_count={len(tunnels)}")
+              for t in tunnels:
+                  proto=t.get("proto", "UNKNOWN")
+                  print(f"local_tunnel_proto={proto}")
+          except Exception:
+              print("local_tunnel_json_valid=false")
+          PY
+            else
+              echo "local_tunnel_json_available=false"
+            fi
+            if [[ "${NGROK_URL:-}" == https://* ]]; then
+              PUBLIC_HTTP="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' "${NGROK_URL}/openapi.json" 2>/dev/null)"
+              echo "public_probe_path=/openapi.json"
+              echo "public_probe_http=${PUBLIC_HTTP:-000}"
+            else
+              echo "public_probe_http=SKIPPED_NO_NGROK_URL"
+            fi
+            echo "ngrok_log_present=$([[ -f /tmp/ngrok.log ]] && echo true || echo false)"
+            if [[ -f /tmp/ngrok.log ]]; then echo "ngrok_log_bytes=$(wc -c < /tmp/ngrok.log)"; fi
+          } > "$OUT" 2>&1
+          echo "NGROK_DIAGNOSTICS_CREATED=$([[ -f "$OUT" ]] && echo true || echo false)"
+
       - name: Build allowlisted Uvicorn summary
         if: always()
         shell: bash
@@ -280,3 +331,7 @@ jobs:
             /tmp/response.code
             /tmp/provenance.json
             /tmp/uvicorn.summary.log
+            /tmp/ngrok.log
+            /tmp/ngrok.pid
+            /tmp/ngrok.launch.meta
+            /tmp/ngrok.diagnostics.log
