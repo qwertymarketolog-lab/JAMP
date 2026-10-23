@@ -111,7 +111,6 @@ def test_e2_verifier_fails_closed_on_missing_or_invalid_evidence(
     }
 
 
-
 def test_e2_verifier_accepts_observed_openrouter_date_suffix(tmp_path):
     details = _persisted_execution_details(
         tmp_path,
@@ -144,6 +143,7 @@ def test_e2_verifier_rejects_arbitrary_model_prefix_extension(tmp_path):
         "status": "CONTRADICTED",
         "reason": "PROVIDER_MODEL_ID_MISMATCH",
     }
+
 
 def test_exact_model_identity_is_required_not_prefix_similarity(tmp_path):
     details = _persisted_execution_details(tmp_path)
