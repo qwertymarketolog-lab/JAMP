@@ -111,6 +111,40 @@ def test_e2_verifier_fails_closed_on_missing_or_invalid_evidence(
     }
 
 
+
+def test_e2_verifier_accepts_observed_openrouter_date_suffix(tmp_path):
+    details = _persisted_execution_details(
+        tmp_path,
+        {"provider_model_id": "z-ai/glm-5.3-flash"},
+    )
+    generation = {
+        "data": {
+            "id": "gen-e2-test-123",
+            "model": "z-ai/glm-5.3-flash-20260826",
+        }
+    }
+
+    assert verify_generation_provenance(details, generation) == {
+        "status": "VERIFIED",
+        "reason": "MODEL_DATE_SUFFIX_MATCH",
+    }
+
+
+def test_e2_verifier_rejects_arbitrary_model_prefix_extension(tmp_path):
+    details = _persisted_execution_details(
+        tmp_path,
+        {"provider_model_id": "z-ai/glm-5.3-flash"},
+    )
+    generation = {
+        "id": "gen-e2-test-123",
+        "model": "z-ai/glm-5.3-flash-unexpected",
+    }
+
+    assert verify_generation_provenance(details, generation) == {
+        "status": "CONTRADICTED",
+        "reason": "PROVIDER_MODEL_ID_MISMATCH",
+    }
+
 def test_exact_model_identity_is_required_not_prefix_similarity(tmp_path):
     details = _persisted_execution_details(tmp_path)
     generation = {
