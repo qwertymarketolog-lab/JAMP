@@ -161,6 +161,7 @@ def test_e2_verifier_rejects_invalid_date_suffix(tmp_path):
         "reason": "PROVIDER_MODEL_ID_MISMATCH",
     }
 
+
 def test_exact_model_identity_is_required_not_prefix_similarity(tmp_path):
     details = _persisted_execution_details(tmp_path)
     generation = {
