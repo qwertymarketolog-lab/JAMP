@@ -72,16 +72,25 @@ def test_e2_verifier_contradicts_mismatched_metadata(tmp_path, generation, reaso
 
 
 @pytest.mark.parametrize(
-    ("details", "generation"),
+    ("details", "generation", "reason"),
     [
-        (None, {"id": "gen-e2-test-123", "model": "z-ai/glm-5.3-flash-20260826"}),
-        ({}, {"id": "gen-e2-test-123", "model": "z-ai/glm-5.3-flash-20260826"}),
+        (
+            None,
+            {"id": "gen-e2-test-123", "model": "z-ai/glm-5.3-flash-20260826"},
+            "EXECUTION_DETAILS_INVALID",
+        ),
+        (
+            {},
+            {"id": "gen-e2-test-123", "model": "z-ai/glm-5.3-flash-20260826"},
+            "REQUIRED_PROVENANCE_MISSING",
+        ),
         (
             {
                 "provider_response_id": "gen-e2-test-123",
                 "provider_model_id": "z-ai/glm-5.3-flash-20260826",
             },
             {"data": None},
+            "GENERATION_METADATA_INVALID",
         ),
         (
             {
@@ -89,19 +98,16 @@ def test_e2_verifier_contradicts_mismatched_metadata(tmp_path, generation, reaso
                 "provider_model_id": "z-ai/glm-5.3-flash-20260826",
             },
             {"id": "gen-e2-test-123"},
+            "REQUIRED_PROVENANCE_MISSING",
         ),
     ],
 )
-def test_e2_verifier_fails_closed_on_missing_or_invalid_evidence(details, generation):
+def test_e2_verifier_fails_closed_on_missing_or_invalid_evidence(
+    details, generation, reason
+):
     assert verify_generation_provenance(details, generation) == {
         "status": "INCONCLUSIVE",
-        "reason": (
-            "EXECUTION_DETAILS_INVALID"
-            if details is None
-            else "GENERATION_METADATA_INVALID"
-            if isinstance(generation, dict) and "data" in generation and generation["data"] is None
-            else "REQUIRED_PROVENANCE_MISSING"
-        ),
+        "reason": reason,
     }
 
 
