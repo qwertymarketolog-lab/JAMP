@@ -7,6 +7,7 @@ checks whether provider metadata matches identifiers recorded by JAMP.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 
@@ -53,10 +54,15 @@ def verify_generation_provenance(
     # JAMP's base model ID. Accept only this explicit suffix shape, not an
     # arbitrary startswith/prefix match.
     versioned_model = re.fullmatch(
-        re.escape(expected_model) + r"-[0-9]{8}",
+        re.escape(expected_model) + r"-([0-9]{8})",
         observed_model,
     )
     if versioned_model:
-        return {"status": "VERIFIED", "reason": "MODEL_DATE_SUFFIX_MATCH"}
+        try:
+            datetime.strptime(versioned_model.group(1), "%Y%m%d")
+        except ValueError:
+            pass
+        else:
+            return {"status": "VERIFIED", "reason": "MODEL_DATE_SUFFIX_MATCH"}
 
     return {"status": "CONTRADICTED", "reason": "PROVIDER_MODEL_ID_MISMATCH"}
