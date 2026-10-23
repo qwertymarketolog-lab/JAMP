@@ -145,7 +145,6 @@ def test_e2_verifier_rejects_arbitrary_model_prefix_extension(tmp_path):
     }
 
 
-
 def test_e2_verifier_rejects_invalid_date_suffix(tmp_path):
     details = _persisted_execution_details(
         tmp_path,
