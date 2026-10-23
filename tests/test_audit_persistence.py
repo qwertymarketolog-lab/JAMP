@@ -15,6 +15,10 @@ def test_audit_persistence_write_and_read(tmp_path):
             "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
             "delta": 0,
         },
+        "execution_details": {
+            "provider": "openrouter",
+            "provider_response_id": "gen_test_123",
+        },
     }
 
     assert store.write_trace(trace) == "trace_test_001"
@@ -23,6 +27,7 @@ def test_audit_persistence_write_and_read(tmp_path):
     assert len(lines) == 1
     assert json.loads(lines[0]) == trace
     assert store.read_trace_by_id("trace_test_001") == trace
+    assert json.loads(lines[0])["execution_details"]["provider_response_id"] == "gen_test_123"
 
 
 def test_audit_persistence_requires_trace_id(tmp_path):
