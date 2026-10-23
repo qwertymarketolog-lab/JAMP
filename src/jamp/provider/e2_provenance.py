@@ -6,6 +6,7 @@ checks whether provider metadata matches identifiers recorded by JAMP.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -15,10 +16,11 @@ def verify_generation_provenance(
 ) -> dict[str, str]:
     """Compare persisted JAMP provenance with a generation-metadata response.
 
-    The provider response ID and served model ID must both be present and match
-    exactly. Missing or malformed evidence is INCONCLUSIVE; mismatches are
-    CONTRADICTED. A VERIFIED result is limited to this metadata comparison and
-    is not model qualification.
+    Provider response IDs must match exactly. Model IDs must either match
+    exactly or the observed provider model may add a date suffix (YYYYMMDD) to
+    the recorded base model ID. Missing or malformed evidence is INCONCLUSIVE;
+    other mismatches are CONTRADICTED. VERIFIED is limited to metadata
+    correspondence and is not model qualification.
     """
     if not isinstance(execution_details, dict):
         return {"status": "INCONCLUSIVE", "reason": "EXECUTION_DETAILS_INVALID"}
@@ -44,7 +46,17 @@ def verify_generation_provenance(
     if expected_id != observed_id:
         return {"status": "CONTRADICTED", "reason": "PROVIDER_RESPONSE_ID_MISMATCH"}
 
-    if expected_model != observed_model:
-        return {"status": "CONTRADICTED", "reason": "PROVIDER_MODEL_ID_MISMATCH"}
+    if expected_model == observed_model:
+        return {"status": "VERIFIED", "reason": "GENERATION_METADATA_MATCH"}
 
-    return {"status": "VERIFIED", "reason": "GENERATION_METADATA_MATCH"}
+    # OpenRouter was observed returning a date-stamped served model ID for
+    # JAMP's base model ID. Accept only this explicit suffix shape, not an
+    # arbitrary startswith/prefix match.
+    versioned_model = re.fullmatch(
+        re.escape(expected_model) + r"-[0-9]{8}",
+        observed_model,
+    )
+    if versioned_model:
+        return {"status": "VERIFIED", "reason": "MODEL_DATE_SUFFIX_MATCH"}
+
+    return {"status": "CONTRADICTED", "reason": "PROVIDER_MODEL_ID_MISMATCH"}
