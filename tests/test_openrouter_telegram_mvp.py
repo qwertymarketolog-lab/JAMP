@@ -87,7 +87,6 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
     assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
-    assert result.get("test_only") is not True
     assert result["content"] == "OK"
 
 
@@ -107,7 +106,7 @@ def test_openrouter_executor_loads_model_id_map_from_env(monkeypatch):
     assert executor._model_id_map == {
         "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
     }
-    assert executor._is_test_override is True
+    assert executor._crosswalk_digest == "sha256:local-model-id-map"
 
 
 def test_openrouter_executor_rejects_invalid_model_id_map_from_env(monkeypatch):
@@ -605,10 +604,9 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
             "requested_model_id": "canonical/requested-id",
             "provider_requested_model_id": "provider/requested-id",
             "provider_model_id": "provider/served-alias",
-            "crosswalk_digest": "sha256:local-test-override",
+            "crosswalk_digest": "sha256:local-model-id-map",
             "content": "hello",
-            "test_override": True,
-            "qualification": "NOT_GRANTED",
+            "qualification": "UNKNOWN",
         },
         evidence_status="VERIFIED",
     )
@@ -618,10 +616,11 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
     assert details["requested_model_id"] == "canonical/requested-id"
     assert details["provider_requested_model_id"] == "provider/requested-id"
     assert details["provider_model_id"] == "provider/served-alias"
-    assert details["crosswalk_digest"] == "sha256:local-test-override"
+    assert details["crosswalk_digest"] == "sha256:local-model-id-map"
     assert details["provider"] == "openrouter"
-    assert details["test_override"] is True
-    assert details["qualification"] == "NOT_GRANTED"
+    assert details["qualification"] == "UNKNOWN"
+    assert "test_override" not in details
+    assert "test_only" not in details
     assert "content" not in details
     assert details["output_digest"].startswith("sha256:")
 
@@ -639,7 +638,8 @@ def test_provenance_marks_legacy_executor_qualification_unknown():
     )
 
     details = trace["execution_details"]
-    assert details["test_override"] == "UNKNOWN"
+    assert "test_override" not in details
+    assert "test_only" not in details
     assert details["qualification"] == "UNKNOWN"
 
 
@@ -755,7 +755,7 @@ def test_unverified_crosswalk_candidate_is_not_loaded_for_routing(tmp_path):
         executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
 
 
-def test_openrouter_executor_marks_free_route_as_test_only():
+def test_openrouter_executor_does_not_emit_test_only_marker_for_free_route():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
     class Response:
@@ -774,7 +774,9 @@ def test_openrouter_executor_marks_free_route_as_test_only():
         opener=lambda request, timeout: Response(),
     )
     result = executor("am/test-model", {"prompt": "hello"})
-    assert result["test_only"] is True
+    assert result["qualification"] == "UNKNOWN"
+    assert "test_only" not in result
+    assert "test_override" not in result
 
 
 def test_openrouter_executor_refuses_environment_crosswalk_override_in_production(monkeypatch):
@@ -823,8 +825,9 @@ def test_openrouter_executor_marks_env_override_as_not_qualified(monkeypatch):
 
     result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
 
-    assert result["test_override"] is True
-    assert result["qualification"] == "NOT_GRANTED"
+    assert result["qualification"] == "UNKNOWN"
+    assert "test_override" not in result
+    assert "test_only" not in result
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
     assert result["crosswalk_digest"] == "sha256:local-test-override"
