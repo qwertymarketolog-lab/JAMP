@@ -952,6 +952,7 @@ def test_execute_persists_verified_e2_details(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["status"] == "EXECUTE"
+    assert response.json()["evidence_status"] == "VERIFIED"
     details = captured_traces[-1]["execution_details"]
     assert details["evidence_status"] == "VERIFIED"
     assert details["evidence_details"] == {
