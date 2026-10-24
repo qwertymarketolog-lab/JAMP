@@ -81,3 +81,26 @@ def test_unknown_task_is_422():
     response = client.post("/v1/execute", json={"intent": "unknown"})
     assert response.status_code == 422
     assert response.json()["status"] == "REFUSE"
+
+def test_provider_http_diagnostics_survive_provenance():
+    from jamp.provider.openrouter import OpenRouterError
+
+    def failing_executor(model, payload):
+        raise OpenRouterError(
+            "provider request failed",
+            code="OPENROUTER_HTTP_429",
+            diagnostics={"provider_http_status": 429},
+        )
+
+    client = TestClient(create_app(executor=failing_executor))
+    response = client.post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "Say hello"},
+    )
+
+    assert response.status_code == 502
+    body = response.json()
+    trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
+    diagnostics = trace["refusal_details"]["provider_diagnostics"]
+    assert diagnostics["code"] == "OPENROUTER_HTTP_429"
+    assert diagnostics["provider_http_status"] == 429
