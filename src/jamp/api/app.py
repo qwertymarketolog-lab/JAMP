@@ -11,8 +11,8 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
-from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.provider.e2_verify import verify_generation
+from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -204,23 +204,41 @@ def create_app(
         evidence_status = "NOT_APPLICABLE"
         evidence_details = None
 
-        if isinstance(output, dict) and output.get("provider") == "openrouter":
-            evidence_status, evidence_details = verify_generation(output)
-            
-            if evidence_status in ("UNVERIFIABLE", "CONTRADICTED", "INCONCLUSIVE"):
+        if isinstance(configured_executor, OpenRouterChatExecutor) or (
+            isinstance(output, dict) and output.get("provider") == "openrouter"
+        ):
+            evidence_status, evidence_details = verify_generation(
+                output if isinstance(output, dict) else {}
+            )
+
+            if evidence_status != "VERIFIED":
                 reason = evidence_details.get("reason", f"E2_{evidence_status}")
                 if evidence_status == "CONTRADICTED":
                     reason = "EVIDENCE_CONTRADICTED"
-                    
+                elif evidence_status == "INCONCLUSIVE":
+                    reason = "E2_VERIFICATION_INCONCLUSIVE"
+
                 trace = provenance.create_trace(
-                    task_profile, required, "REFUSE", reason, len(eligible),
-                    request_id=request_id, refusal_reason=reason,
-                    failure_diagnostics={"evidence_status": evidence_status, **evidence_details},
+                    task_profile,
+                    required,
+                    "REFUSE",
+                    reason,
+                    len(eligible),
+                    request_id=request_id,
+                    refusal_reason=reason,
+                    failure_diagnostics={
+                        "evidence_status": evidence_status,
+                        **evidence_details,
+                    },
                 )
                 persistence.write_trace(trace)
                 return JSONResponse(
                     status_code=502,
-                    content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+                    content={
+                        "status": "REFUSE",
+                        "reason": reason,
+                        "trace_id": trace["trace_id"],
+                    },
                 )
 
         trace = provenance.create_trace(

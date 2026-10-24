@@ -15,10 +15,13 @@ def validate_audit_trace(trace: dict[str, Any]) -> None:
     schema_ver = trace.get("schema_version")
     if schema_ver not in ("jamp-audit-trace-v0.1", "jamp-audit-trace-v0.2"):
         raise ValueError("AuditTrace schema_version contract violation")
-        
+
     if schema_ver == "jamp-audit-trace-v0.2" and trace.get("status") == "EXECUTE":
         details = trace.get("execution_details", {})
-        if details.get("provider") == "openrouter" and details.get("evidence_status") != "VERIFIED":
+        if (
+            details.get("provider") == "openrouter"
+            and details.get("evidence_status") != "VERIFIED"
+        ):
             raise ValueError("OpenRouter EXECUTE requires evidence_status == 'VERIFIED'")
 
 
@@ -76,6 +79,21 @@ class ProvenanceTracker:
             execution_details = {"selected_model": selected_model}
             if evidence_status is not None:
                 execution_details["evidence_status"] = evidence_status
+            if isinstance(evidence_details, dict):
+                safe_evidence_details: dict[str, Any] = {}
+                for key in (
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "provider_name",
+                    "generation_id",
+                    "jamp_model",
+                ):
+                    value = evidence_details.get(key)
+                    if isinstance(value, str) and value:
+                        safe_evidence_details[key] = value
+                if safe_evidence_details:
+                    execution_details["evidence_details"] = safe_evidence_details
             if isinstance(output, dict):
                 for key in (
                     "provider",
@@ -113,7 +131,15 @@ class ProvenanceTracker:
             }
             if isinstance(failure_diagnostics, dict):
                 diagnostics: dict[str, Any] = {}
-                for k in ("evidence_status", "reason", "provider_model", "generation_id", "jamp_model", "provider_name"):
+                for k in (
+                    "evidence_status",
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "generation_id",
+                    "jamp_model",
+                    "provider_name",
+                ):
                     if k in failure_diagnostics:
                         diagnostics[k] = failure_diagnostics[k]
                 for key in (
