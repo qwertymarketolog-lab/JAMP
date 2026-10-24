@@ -169,19 +169,44 @@ jobs:
 
           with open("/tmp/response.json") as f:
               resp=json.load(f)
-          if resp.get("status") != "EXECUTE":
-              print(f"::error::status={resp.get('status')} reason={resp.get('reason')}")
-              sys.exit(1)
           trace=resp.get("trace_id")
+          prov={}
+          if isinstance(trace, str) and trace:
+              try:
+                  req=urllib.request.Request(f"http://127.0.0.1:8000/v1/provenance/{trace}")
+                  with urllib.request.urlopen(req, timeout=10) as r:
+                      prov=json.load(r)
+                  print(f"PROVENANCE_FETCHED=true trace_id={trace}")
+              except Exception as exc:
+                  # Keep only safe metadata; do not emit response bodies or secrets.
+                  prov={
+                      "trace_id": trace,
+                      "provenance_fetch_error_type": type(exc).__name__,
+                      "provenance_fetch_http_status": getattr(exc, "code", None),
+                  }
+                  print(f"::warning::provenance fetch failed type={type(exc).__name__} http_status={getattr(exc, 'code', None)}")
+          else:
+              prov={"provenance_fetch_error_type":"MissingTraceId"}
+              print("::error::no trace_id in response")
+
+          # Always create the artifact file before any status-based exit.
+          with open("/tmp/provenance.json","w", encoding="utf-8") as f:
+              json.dump(prov, f, indent=2, ensure_ascii=False)
+
+          if resp.get("status") != "EXECUTE":
+              reason=prov.get("refusal_reason", prov.get("reason", "UNKNOWN"))
+              print(f"::error::status={resp.get('status')} refusal_reason={reason}")
+              print("::error::provenance_diagnostic=" + json.dumps({
+                  "trace_id": trace if isinstance(trace, str) else None,
+                  "provenance_fetch_error_type": prov.get("provenance_fetch_error_type"),
+                  "provenance_fetch_http_status": prov.get("provenance_fetch_http_status"),
+                  "refusal_reason": prov.get("refusal_reason"),
+                  "failure_diagnostics": prov.get("failure_diagnostics"),
+              }, ensure_ascii=False, sort_keys=True))
+              sys.exit(1)
           if not isinstance(trace, str) or not trace:
               print("::error::no trace_id in response")
               sys.exit(1)
-
-          req=urllib.request.Request(f"http://127.0.0.1:8000/v1/provenance/{trace}")
-          with urllib.request.urlopen(req, timeout=10) as r:
-              prov=json.load(r)
-          with open("/tmp/provenance.json","w") as f:
-              json.dump(prov, f, indent=2, ensure_ascii=False)
 
           if prov.get("status") != "EXECUTE":
               print(f"::error::provenance status={prov.get('status')}")
