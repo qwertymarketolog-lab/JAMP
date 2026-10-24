@@ -1,3 +1,5 @@
+import io
+import urllib.error
 from unittest.mock import MagicMock, patch
 
 from jamp.provider.e2_verify import _model_matches, verify_generation
@@ -40,6 +42,8 @@ def test_verify_verified(mock_urlopen):
     )
     assert status == "VERIFIED"
     assert details["generation_id"] == "gen-1"
+    request = mock_urlopen.call_args.args[0]
+    assert request.get_header("User-agent") == "JAMP-Trust-Layer/1.0"
 
 
 @patch("urllib.request.urlopen")
@@ -56,11 +60,50 @@ def test_verify_contradicted(mock_urlopen):
 
 
 @patch("urllib.request.urlopen")
-def test_verify_inconclusive_on_transport_error(mock_urlopen):
-    mock_urlopen.side_effect = TimeoutError
+def test_verify_http_error_diagnostics(mock_urlopen):
+    mock_urlopen.side_effect = urllib.error.HTTPError(
+        "https://openrouter.ai/api/v1/generation?id=gen-1",
+        403,
+        "Forbidden",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error":"forbidden"}'),
+    )
     status, details = verify_generation(
         {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
         api_key="fake",
     )
     assert status == "INCONCLUSIVE"
-    assert details["reason"] == "API_ERROR"
+    assert details == {
+        "reason": "API_ERROR",
+        "http_status": 403,
+        "error_body": '{"error":"forbidden"}',
+    }
+
+
+@patch("urllib.request.urlopen")
+def test_verify_url_error_diagnostics(mock_urlopen):
+    mock_urlopen.side_effect = urllib.error.URLError("name resolution failed")
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "INCONCLUSIVE"
+    assert details == {
+        "reason": "API_ERROR",
+        "network_error": "name resolution failed",
+    }
+
+
+@patch("urllib.request.urlopen")
+def test_verify_inconclusive_on_transport_error(mock_urlopen):
+    mock_urlopen.side_effect = TimeoutError("generation request timed out")
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "INCONCLUSIVE"
+    assert details == {
+        "reason": "API_ERROR",
+        "exception_type": "TimeoutError",
+        "error_message": "generation request timed out",
+    }
