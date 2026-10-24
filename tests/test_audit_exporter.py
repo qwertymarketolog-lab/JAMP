@@ -322,4 +322,5 @@ def test_export_preserves_provider_response_id(tmp_path):
 
     assert result["status"] == "SUCCESS"
     uploaded = adapter.upload.call_args.args[1]
-    assert json.loads(uploaded.decode().strip())["execution_details"]["provider_response_id"] == "gen_export_123"
+    exported_trace = json.loads(uploaded.decode().strip())
+    assert exported_trace["execution_details"]["provider_response_id"] == "gen_export_123"
