@@ -82,6 +82,7 @@ def test_unknown_task_is_422():
     assert response.status_code == 422
     assert response.json()["status"] == "REFUSE"
 
+
 def test_provider_http_diagnostics_survive_provenance():
     from jamp.provider.openrouter import OpenRouterError
 
