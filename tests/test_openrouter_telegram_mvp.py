@@ -87,7 +87,6 @@ def test_openrouter_executor_maps_jamp_model_id_to_provider_id():
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
     assert result["provider_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
-    assert result.get("test_only") is not True
     assert result["content"] == "OK"
 
 
@@ -107,7 +106,7 @@ def test_openrouter_executor_loads_model_id_map_from_env(monkeypatch):
     assert executor._model_id_map == {
         "am/nemotron-3-super-120b-a12b": "nvidia/nemotron-3-super-120b-a12b"
     }
-    assert executor._is_test_override is True
+    assert executor._crosswalk_digest == "sha256:local-model-id-map"
 
 
 def test_openrouter_executor_rejects_invalid_model_id_map_from_env(monkeypatch):
@@ -605,11 +604,11 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
             "requested_model_id": "canonical/requested-id",
             "provider_requested_model_id": "provider/requested-id",
             "provider_model_id": "provider/served-alias",
-            "crosswalk_digest": "sha256:local-test-override",
+            "crosswalk_digest": "sha256:local-model-id-map",
             "content": "hello",
-            "test_override": True,
-            "qualification": "NOT_GRANTED",
+            "qualification": "UNKNOWN",
         },
+        evidence_status="VERIFIED",
     )
 
     details = trace["execution_details"]
@@ -617,10 +616,11 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
     assert details["requested_model_id"] == "canonical/requested-id"
     assert details["provider_requested_model_id"] == "provider/requested-id"
     assert details["provider_model_id"] == "provider/served-alias"
-    assert details["crosswalk_digest"] == "sha256:local-test-override"
+    assert details["crosswalk_digest"] == "sha256:local-model-id-map"
     assert details["provider"] == "openrouter"
-    assert details["test_override"] is True
-    assert details["qualification"] == "NOT_GRANTED"
+    assert details["qualification"] == "UNKNOWN"
+    assert "test_override" not in details
+    assert "test_only" not in details
     assert "content" not in details
     assert details["output_digest"].startswith("sha256:")
 
@@ -638,7 +638,8 @@ def test_provenance_marks_legacy_executor_qualification_unknown():
     )
 
     details = trace["execution_details"]
-    assert details["test_override"] == "UNKNOWN"
+    assert "test_override" not in details
+    assert "test_only" not in details
     assert details["qualification"] == "UNKNOWN"
 
 
@@ -754,7 +755,7 @@ def test_unverified_crosswalk_candidate_is_not_loaded_for_routing(tmp_path):
         executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
 
 
-def test_openrouter_executor_marks_free_route_as_test_only():
+def test_openrouter_executor_does_not_emit_test_only_marker_for_free_route():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
     class Response:
@@ -773,7 +774,9 @@ def test_openrouter_executor_marks_free_route_as_test_only():
         opener=lambda request, timeout: Response(),
     )
     result = executor("am/test-model", {"prompt": "hello"})
-    assert result["test_only"] is True
+    assert result["qualification"] == "UNKNOWN"
+    assert "test_only" not in result
+    assert "test_override" not in result
 
 
 def test_openrouter_executor_refuses_environment_crosswalk_override_in_production(monkeypatch):
@@ -822,8 +825,137 @@ def test_openrouter_executor_marks_env_override_as_not_qualified(monkeypatch):
 
     result = executor("am/nemotron-3-super-120b-a12b", {"prompt": "hello"})
 
-    assert result["test_override"] is True
-    assert result["qualification"] == "NOT_GRANTED"
+    assert result["qualification"] == "UNKNOWN"
+    assert "test_override" not in result
+    assert "test_only" not in result
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
-    assert result["crosswalk_digest"] == "sha256:local-test-override"
+    assert result["crosswalk_digest"] == "sha256:local-model-id-map"
+
+
+@pytest.mark.parametrize(
+    ("verification_status", "details", "expected_reason"),
+    [
+        (
+            "UNVERIFIABLE",
+            {"reason": "PROVIDER_RESPONSE_ID_MISSING"},
+            "PROVIDER_RESPONSE_ID_MISSING",
+        ),
+        ("CONTRADICTED", {"provider_model": "other/model"}, "EVIDENCE_CONTRADICTED"),
+        (
+            "INCONCLUSIVE",
+            {"reason": "API_ERROR", "error": "TimeoutError"},
+            "E2_VERIFICATION_INCONCLUSIVE",
+        ),
+    ],
+)
+def test_execute_fails_closed_when_e2_is_not_verified(
+    monkeypatch, verification_status, details, expected_reason
+):
+    import jamp.api.app as app_module
+
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", "provider/approved-model"),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "verify_generation",
+        lambda output: (verification_status, details),
+    )
+    client = TestClient(
+        create_app(executor=lambda model, payload: {"provider": "openrouter", "content": "hello"})
+    )
+
+    response = client.post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "hello"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["status"] == "REFUSE"
+    assert response.json()["reason"] == expected_reason
+
+
+def test_execute_verifies_configured_openrouter_even_when_output_provider_is_missing(
+    monkeypatch,
+):
+    import jamp.api.app as app_module
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class MalformedOpenRouterExecutor(OpenRouterChatExecutor):
+        def __call__(self, selected_model, payload):
+            return {"content": "must not pass without provider metadata"}
+
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", "provider/approved-model"),
+    )
+    executor = MalformedOpenRouterExecutor("test-secret")
+    client = TestClient(create_app(executor=executor))
+
+    response = client.post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "hello"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["reason"] == "PROVIDER_RESPONSE_ID_MISSING"
+
+
+def test_execute_persists_verified_e2_details(monkeypatch):
+    import jamp.api.app as app_module
+
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", "provider/approved-model"),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "verify_generation",
+        lambda output: (
+            "VERIFIED",
+            {
+                "provider_model": "provider/approved-model",
+                "provider_name": "provider-node",
+                "generation_id": "gen-verified",
+            },
+        ),
+    )
+    captured_traces = []
+    original_create_trace = app_module.ProvenanceTracker.create_trace
+
+    def capture_trace(self, *args, **kwargs):
+        trace = original_create_trace(self, *args, **kwargs)
+        captured_traces.append(trace)
+        return trace
+
+    monkeypatch.setattr(app_module.ProvenanceTracker, "create_trace", capture_trace)
+    client = TestClient(
+        create_app(
+            executor=lambda model, payload: {
+                "provider": "openrouter",
+                "provider_response_id": "gen-verified",
+                "provider_model_id": "provider/approved-model",
+                "content": "hello",
+            }
+        )
+    )
+
+    response = client.post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "hello"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "EXECUTE"
+    details = captured_traces[-1]["execution_details"]
+    assert details["evidence_status"] == "VERIFIED"
+    assert details["evidence_details"] == {
+        "provider_model": "provider/approved-model",
+        "provider_name": "provider-node",
+        "generation_id": "gen-verified",
+    }

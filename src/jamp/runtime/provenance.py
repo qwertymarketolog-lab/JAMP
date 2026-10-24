@@ -8,12 +8,18 @@ from typing import Any
 
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1"
-AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.1"
+AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.2"
 
 
 def validate_audit_trace(trace: dict[str, Any]) -> None:
-    if trace.get("schema_version") != AUDIT_TRACE_SCHEMA_VERSION:
+    schema_ver = trace.get("schema_version")
+    if schema_ver not in ("jamp-audit-trace-v0.1", "jamp-audit-trace-v0.2"):
         raise ValueError("AuditTrace schema_version contract violation")
+
+    if schema_ver == "jamp-audit-trace-v0.2" and trace.get("status") == "EXECUTE":
+        details = trace.get("execution_details", {})
+        if details.get("provider") == "openrouter" and details.get("evidence_status") != "VERIFIED":
+            raise ValueError("OpenRouter EXECUTE requires evidence_status == 'VERIFIED'")
 
 
 class ProvenanceTracker:
@@ -38,6 +44,8 @@ class ProvenanceTracker:
         request_id: str | None = None,
         refusal_reason: str | None = None,
         failure_diagnostics: dict[str, Any] | None = None,
+        evidence_status: str | None = None,
+        evidence_details: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         trace = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
@@ -66,6 +74,23 @@ class ProvenanceTracker:
         }
         if action == "EXECUTE":
             execution_details = {"selected_model": selected_model}
+            if evidence_status is not None:
+                execution_details["evidence_status"] = evidence_status
+            if isinstance(evidence_details, dict):
+                safe_evidence_details: dict[str, Any] = {}
+                for key in (
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "provider_name",
+                    "generation_id",
+                    "jamp_model",
+                ):
+                    value = evidence_details.get(key)
+                    if isinstance(value, str) and value:
+                        safe_evidence_details[key] = value
+                if safe_evidence_details:
+                    execution_details["evidence_details"] = safe_evidence_details
             if isinstance(output, dict):
                 for key in (
                     "provider",
@@ -78,16 +103,10 @@ class ProvenanceTracker:
                     value = output.get(key)
                     if isinstance(value, str) and value:
                         execution_details[key] = value
-                test_override = output.get("test_override")
-                execution_details["test_override"] = (
-                    test_override if isinstance(test_override, bool) else "UNKNOWN"
-                )
                 qualification = output.get("qualification")
                 execution_details["qualification"] = (
                     qualification if isinstance(qualification, str) and qualification else "UNKNOWN"
                 )
-            if isinstance(output, dict) and output.get("test_only") is True:
-                execution_details["test_only"] = True
             if output is not None:
                 execution_details["output_digest"] = self.output_digest(output)
             trace["execution_details"] = execution_details
@@ -103,6 +122,17 @@ class ProvenanceTracker:
             }
             if isinstance(failure_diagnostics, dict):
                 diagnostics: dict[str, Any] = {}
+                for k in (
+                    "evidence_status",
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "generation_id",
+                    "jamp_model",
+                    "provider_name",
+                ):
+                    if k in failure_diagnostics:
+                        diagnostics[k] = failure_diagnostics[k]
                 for key in (
                     "code",
                     "finish_reason",

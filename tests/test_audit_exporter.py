@@ -90,7 +90,7 @@ def test_trace_schema_version_required():
 
 def test_trace_schema_version_value():
     trace = ProvenanceTracker().create_trace("tool_execution_agent", (), "REFUSE", "", 0)
-    assert trace["schema_version"] == "jamp-audit-trace-v0.1"
+    assert trace["schema_version"] == "jamp-audit-trace-v0.2"
 
 
 def test_trace_schema_version_missing_is_contract_violation():
