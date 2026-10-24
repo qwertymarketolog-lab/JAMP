@@ -242,7 +242,12 @@ class OpenRouterChatExecutor:
                 raw = response.read()
             decoded = json.loads(raw.decode("utf-8"))
         except HTTPError as exc:
-            raise OpenRouterError(f"OpenRouter returned HTTP {exc.code}") from None
+            # Preserve only the upstream status code; never persist provider response bodies.
+            raise OpenRouterError(
+                f"OpenRouter returned HTTP {exc.code}",
+                code=f"OPENROUTER_HTTP_{exc.code}",
+                diagnostics={"provider_http_status": exc.code},
+            ) from None
         except (URLError, TimeoutError, OSError):
             raise OpenRouterError("OpenRouter transport failed") from None
         except (UnicodeDecodeError, json.JSONDecodeError):

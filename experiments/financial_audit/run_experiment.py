@@ -116,6 +116,45 @@ def main() -> int:
     print(f"trace_id: {trace_id}")
 
     if http_status < 200 or http_status >= 300 or not isinstance(payload, dict):
+        # Read the persisted trace and print only an explicit allowlist of non-secret fields.
+        if trace_id != "UNKNOWN":
+            try:
+                trace_request = Request(
+                    f"{base_url}/v1/provenance/{trace_id}",
+                    headers={"Accept": "application/json"},
+                    method="GET",
+                )
+                with urlopen(trace_request, timeout=10) as trace_response:
+                    trace_payload = json.loads(trace_response.read().decode("utf-8"))
+                diagnostics = trace_payload.get("failure_diagnostics", {})
+                if isinstance(diagnostics, dict):
+                    allowed = {
+                        "code",
+                        "provider_http_status",
+                        "selected_model",
+                        "model",
+                        "requested_model_id",
+                        "provider_requested_model_id",
+                        "crosswalk_digest",
+                        "finish_reason",
+                        "content_len",
+                        "reasoning_len",
+                        "requested_max_tokens",
+                        "evidence_status",
+                        "reason",
+                    }
+                    safe_diagnostics = {
+                        key: value
+                        for key, value in diagnostics.items()
+                        if key in allowed and isinstance(value, (str, int, float, bool, type(None)))
+                    }
+                    if safe_diagnostics:
+                        print(
+                            "[PROVIDER DIAGNOSTICS] "
+                            + json.dumps(safe_diagnostics, sort_keys=True, ensure_ascii=False)
+                        )
+            except (HTTPError, URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+                print("[PROVIDER DIAGNOSTICS] UNAVAILABLE — trace could not be read")
         error_status = payload.get("status", "UNKNOWN") if isinstance(payload, dict) else "UNKNOWN"
         error_reason = (
             payload.get("reason", payload.get("error", "UNKNOWN"))

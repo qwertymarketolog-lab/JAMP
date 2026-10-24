@@ -1,5 +1,7 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 from fastapi.testclient import TestClient
@@ -960,3 +962,27 @@ def test_execute_persists_verified_e2_details(monkeypatch):
         "provider_name": "provider-node",
         "generation_id": "gen-verified",
     }
+
+
+def test_openrouter_http_error_preserves_status_without_response_body():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    secret_body = b'{"error":{"message":"sensitive provider response"}}'
+
+    def fake_open(request, timeout):
+        raise HTTPError(
+            request.full_url,
+            429,
+            "Too Many Requests",
+            hdrs=None,
+            fp=BytesIO(secret_body),
+        )
+
+    executor = OpenRouterChatExecutor("test-secret", opener=fake_open)
+    with pytest.raises(OpenRouterError) as raised:
+        executor("provider/approved-model", {"prompt": "hello"})
+
+    assert raised.value.code == "OPENROUTER_HTTP_429"
+    assert raised.value.diagnostics == {"provider_http_status": 429}
+    assert "sensitive provider response" not in repr(raised.value.diagnostics)
+    assert "test-secret" not in repr(raised.value.diagnostics)
