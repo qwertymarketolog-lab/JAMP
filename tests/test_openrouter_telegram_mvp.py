@@ -830,7 +830,7 @@ def test_openrouter_executor_marks_env_override_as_not_qualified(monkeypatch):
     assert "test_only" not in result
     assert result["requested_model_id"] == "am/nemotron-3-super-120b-a12b"
     assert result["provider_requested_model_id"] == "nvidia/nemotron-3-super-120b-a12b"
-    assert result["crosswalk_digest"] == "sha256:local-test-override"
+    assert result["crosswalk_digest"] == "sha256:local-model-id-map"
 
 
 @pytest.mark.parametrize(
