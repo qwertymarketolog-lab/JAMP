@@ -610,6 +610,7 @@ def test_provenance_records_requested_and_provider_model_ids_separately():
             "test_override": True,
             "qualification": "NOT_GRANTED",
         },
+            evidence_status="VERIFIED",
     )
 
     details = trace["execution_details"]

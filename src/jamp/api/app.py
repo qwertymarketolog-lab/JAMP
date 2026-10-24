@@ -12,6 +12,7 @@ from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+from jamp.provider.e2_verify import verify_generation
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -200,6 +201,28 @@ def create_app(
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
             )
 
+        evidence_status = "NOT_APPLICABLE"
+        evidence_details = None
+
+        if isinstance(output, dict) and output.get("provider") == "openrouter":
+            evidence_status, evidence_details = verify_generation(output)
+            
+            if evidence_status in ("UNVERIFIABLE", "CONTRADICTED", "INCONCLUSIVE"):
+                reason = evidence_details.get("reason", f"E2_{evidence_status}")
+                if evidence_status == "CONTRADICTED":
+                    reason = "EVIDENCE_CONTRADICTED"
+                    
+                trace = provenance.create_trace(
+                    task_profile, required, "REFUSE", reason, len(eligible),
+                    request_id=request_id, refusal_reason=reason,
+                    failure_diagnostics={"evidence_status": evidence_status, **evidence_details},
+                )
+                persistence.write_trace(trace)
+                return JSONResponse(
+                    status_code=502,
+                    content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+                )
+
         trace = provenance.create_trace(
             task_profile,
             required,
@@ -208,6 +231,8 @@ def create_app(
             len(eligible),
             output=output,
             request_id=request_id,
+            evidence_status=evidence_status,
+            evidence_details=evidence_details,
         )
         persistence.write_trace(trace)
         response = {
