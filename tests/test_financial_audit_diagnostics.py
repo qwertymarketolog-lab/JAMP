@@ -31,6 +31,5 @@ def test_extracts_safe_diagnostics_from_persisted_refusal_trace() -> None:
 def test_missing_or_malformed_refusal_diagnostics_return_empty_mapping() -> None:
     assert extract_safe_provider_diagnostics({}) == {}
     assert extract_safe_provider_diagnostics({"refusal_details": None}) == {}
-    assert extract_safe_provider_diagnostics(
-        {"refusal_details": {"provider_diagnostics": "not-an-object"}}
-    ) == {}
+    malformed = {"refusal_details": {"provider_diagnostics": "not-an-object"}}
+    assert extract_safe_provider_diagnostics(malformed) == {}
