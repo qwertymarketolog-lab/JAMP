@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 5
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_MAX_TOKENS: "2048"
       JAMP_ENVIRONMENT: local
       OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3.5-super-vl:free"}'
       JAMP_API_URL: http://127.0.0.1:8000
