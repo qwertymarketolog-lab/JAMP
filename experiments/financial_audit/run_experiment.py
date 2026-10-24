@@ -36,7 +36,9 @@ PROVIDER_DIAGNOSTIC_FIELDS = {
 }
 
 
-def extract_safe_provider_diagnostics(trace_payload: Any) -> dict[str, str | int | float | bool | None]:
+def extract_safe_provider_diagnostics(
+    trace_payload: Any,
+) -> dict[str, str | int | float | bool | None]:
     """Extract only approved scalar diagnostics from a persisted refusal trace."""
     if not isinstance(trace_payload, dict):
         return {}
@@ -167,7 +169,10 @@ def main() -> int:
                         + json.dumps(safe_diagnostics, sort_keys=True, ensure_ascii=False)
                     )
                 else:
-                    print("[PROVIDER DIAGNOSTICS] NONE — no approved scalar diagnostics in refusal trace")
+                    print(
+                        "[PROVIDER DIAGNOSTICS] NONE — "
+                        "no approved scalar diagnostics in refusal trace"
+                    )
             except (HTTPError, URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
                 print("[PROVIDER DIAGNOSTICS] UNAVAILABLE — trace could not be read")
         error_status = payload.get("status", "UNKNOWN") if isinstance(payload, dict) else "UNKNOWN"
