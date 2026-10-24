@@ -116,10 +116,16 @@ def main() -> int:
     print(f"trace_id: {trace_id}")
 
     if http_status < 200 or http_status >= 300 or not isinstance(payload, dict):
+        error_status = payload.get("status", "UNKNOWN") if isinstance(payload, dict) else "UNKNOWN"
+        error_reason = (
+            payload.get("reason", payload.get("error", "UNKNOWN"))
+            if isinstance(payload, dict)
+            else "UNKNOWN"
+        )
         print(
             "[DATA MATCH] NOT RUN — "
-            f"HTTP {http_status}; status={payload.get('status', 'UNKNOWN') if isinstance(payload, dict) else 'UNKNOWN'}; "
-            f"reason={payload.get('reason', payload.get('error', 'UNKNOWN')) if isinstance(payload, dict) else 'UNKNOWN'}"
+            f"HTTP {http_status}; status={error_status}; "
+            f"reason={error_reason}"
         )
         return 1
 
