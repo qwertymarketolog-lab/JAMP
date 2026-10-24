@@ -1,0 +1,362 @@
+name: E2E Telegram → Runtime → OpenRouter
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: github.event.label.name == 'run-e2e'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Frozen Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD:src/jamp/run.py)"
+          EXPECTED="0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "::error::Frozen Core mismatch"
+            exit 1
+          fi
+          echo "FROZEN_CORE_DELTA=0"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          set -euo pipefail
+          for v in OPENROUTER_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_WEBHOOK_SECRET NGROK_AUTHTOKEN; do
+            if [[ -z "${!v:-}" ]]; then
+              echo "::error::Missing secret: $v"
+              exit 1
+            fi
+          done
+          if ! [[ "$TELEGRAM_CHAT_ID" =~ ^-?[0-9]+$ ]]; then
+            echo "::error::TELEGRAM_CHAT_ID must be a plain integer without quotes or whitespace"
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[dev]" "uvicorn>=0.30,<1"
+
+      - name: Import check
+        env:
+          PYTHONPATH: "src:."
+        run: python -c "from jamp.api.app import create_app; print('import OK')"
+
+      - name: Start Uvicorn
+        shell: bash
+        env:
+          JAMP_ENVIRONMENT: local
+          JAMP_TELEGRAM_UPDATE_DB: /tmp/jamp-telegram-updates.sqlite
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3.5-super-vl:free"}'
+          PYTHONPATH: "src:."
+        run: |
+          set -euo pipefail
+          nohup python -m uvicorn jamp.api.app:create_app --factory --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/openapi.json -o /dev/null; then
+              echo "API_READY=true"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Uvicorn failed to start"
+          tail -n 100 /tmp/uvicorn.log
+          exit 1
+
+      - name: Start ngrok
+        shell: bash
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | sudo tar -xz -C /usr/local/bin
+          ngrok config add-authtoken "$NGROK_AUTHTOKEN" >/dev/null
+          nohup ngrok http 8000 --log stdout > /tmp/ngrok.log 2>&1 &
+          echo "$!" > /tmp/ngrok.pid
+          printf 'started_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ngrok.launch.meta
+          for i in $(seq 1 25); do
+            URL="$(curl -fsS http://127.0.0.1:4040/api/tunnels | python -c 'import json,sys; d=json.load(sys.stdin); print(next((t["public_url"] for t in d.get("tunnels",[]) if t.get("proto")=="https"), ""))' 2>/dev/null || true)"
+            if [[ "$URL" == https://* ]]; then
+              echo "NGROK_URL=$URL" >> "$GITHUB_ENV"
+              echo "NGROK_READY=true"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::ngrok tunnel not ready"
+          tail -n 100 /tmp/ngrok.log
+          exit 1
+
+      - name: Inject synthetic Telegram Update
+        shell: bash
+        env:
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          NOW="$(date +%s)"
+          python - "$TELEGRAM_CHAT_ID" "${GITHUB_RUN_ID}" "$NOW" > /tmp/update.json <<'PY'
+          import json, sys
+          chat_id, update_id, now = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+          print(json.dumps({
+              "update_id": update_id,
+              "message": {
+                  "message_id": update_id,
+                  "date": now,
+                  "chat": {"id": int(chat_id), "type": "private"},
+                  "from": {"id": int(chat_id), "is_bot": False, "first_name": "e2e"},
+                  "text": "/search Ответь одним словом: JAMP_OK"
+              }
+          }, ensure_ascii=False))
+          PY
+          HTTP_CODE="$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            -X POST "$NGROK_URL/v1/telegram/webhook" \
+            -H "Content-Type: application/json" \
+            -H "X-Telegram-Bot-Api-Secret-Token: $TELEGRAM_WEBHOOK_SECRET" \
+            --data-binary @/tmp/update.json)"
+          printf '%s' "$HTTP_CODE" > /tmp/response.code
+          echo "WEBHOOK_HTTP=$HTTP_CODE"
+          python - <<'PY'
+          import json
+          p="/tmp/response.json"
+          try:
+              d=json.load(open(p))
+              print("WEBHOOK_RESPONSE_STATUS:", d.get("status", "UNKNOWN"))
+              print("TRACE_ID_PRESENT:", bool(d.get("trace_id")))
+          except Exception:
+              print("WEBHOOK_RESPONSE_JSON: INVALID")
+          PY
+          [[ "$HTTP_CODE" == "200" ]] || { echo "::error::Webhook HTTP status was not 200"; exit 1; }
+
+      - name: Verify response and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, sys, urllib.request
+
+          with open("/tmp/response.code") as f:
+              code=f.read().strip()
+          if code != "200":
+              print(f"::error::webhook HTTP {code}")
+              sys.exit(1)
+
+          with open("/tmp/response.json") as f:
+              resp=json.load(f)
+          trace=resp.get("trace_id")
+          prov={}
+          if isinstance(trace, str) and trace:
+              try:
+                  req=urllib.request.Request(f"http://127.0.0.1:8000/v1/provenance/{trace}")
+                  with urllib.request.urlopen(req, timeout=10) as r:
+                      prov=json.load(r)
+                  print(f"PROVENANCE_FETCHED=true trace_id={trace}")
+              except Exception as exc:
+                  # Keep only safe metadata; do not emit response bodies or secrets.
+                  prov={
+                      "trace_id": trace,
+                      "provenance_fetch_error_type": type(exc).__name__,
+                      "provenance_fetch_http_status": getattr(exc, "code", None),
+                  }
+                  print(f"::warning::provenance fetch failed type={type(exc).__name__} http_status={getattr(exc, 'code', None)}")
+          else:
+              prov={"provenance_fetch_error_type":"MissingTraceId"}
+              print("::error::no trace_id in response")
+
+          # Always create the artifact file before any status-based exit.
+          with open("/tmp/provenance.json","w", encoding="utf-8") as f:
+              json.dump(prov, f, indent=2, ensure_ascii=False)
+
+          if resp.get("status") != "EXECUTE":
+              reason=prov.get("refusal_reason", prov.get("reason", "UNKNOWN"))
+              print(f"::error::status={resp.get('status')} refusal_reason={reason}")
+              print("::error::provenance_diagnostic=" + json.dumps({
+                  "trace_id": trace if isinstance(trace, str) else None,
+                  "provenance_fetch_error_type": prov.get("provenance_fetch_error_type"),
+                  "provenance_fetch_http_status": prov.get("provenance_fetch_http_status"),
+                  "refusal_reason": prov.get("refusal_reason"),
+                  "failure_diagnostics": prov.get("failure_diagnostics"),
+              }, ensure_ascii=False, sort_keys=True))
+              sys.exit(1)
+          if not isinstance(trace, str) or not trace:
+              print("::error::no trace_id in response")
+              sys.exit(1)
+
+          if prov.get("status") != "EXECUTE":
+              print(f"::error::provenance status={prov.get('status')}")
+              sys.exit(1)
+          ed=prov.get("execution_details")
+          if not isinstance(ed, dict):
+              print("::error::execution_details missing or invalid")
+              sys.exit(1)
+          if ed.get("test_override") is not True:
+              print(f"::error::test_override={ed.get('test_override')!r}")
+              sys.exit(1)
+          if ed.get("qualification") != "NOT_GRANTED":
+              print(f"::error::qualification={ed.get('qualification')!r}")
+              sys.exit(1)
+          pmid=ed.get("provider_requested_model_id", "")
+          if pmid != "nvidia/nemotron-3.5-super-vl:free":
+              print(f"::error::provider_requested_model_id expected nvidia/nemotron-3.5-super-vl:free, got {pmid!r}")
+              sys.exit(1)
+          actual_model=ed.get("provider_model_id", "")
+          if not isinstance(actual_model, str) or not actual_model.strip():
+              print("::error::provider_model_id missing; actual model not evidenced")
+              sys.exit(1)
+          if actual_model == "openrouter/free":
+              print("::error::provider returned the router alias instead of a concrete model ID")
+              sys.exit(1)
+
+          print(f"E2E_PASS trace_id={trace}")
+          print(f"PROVIDER_REQUESTED_MODEL_ID={pmid}")
+          print(f"PROVIDER_ACTUAL_MODEL_ID={actual_model}")
+          print("TEST_OVERRIDE=true")
+          print("QUALIFICATION=NOT_GRANTED")
+          PY
+          if grep -E 'Traceback|MODEL_NOT_MAPPED|TELEGRAM_DELIVERY_FAILED' /tmp/uvicorn.log; then
+            echo "::error::Unexpected error marker in Uvicorn log"
+            exit 1
+          fi
+
+      - name: Capture ngrok diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          OUT=/tmp/ngrok.diagnostics.log
+          {
+            echo "captured_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if [[ -f /tmp/ngrok.pid ]]; then
+              PID="$(cat /tmp/ngrok.pid)"
+              echo "ngrok_pid=$PID"
+              if kill -0 "$PID" 2>/dev/null; then echo "ngrok_process_alive=true"; else echo "ngrok_process_alive=false"; fi
+              ps -p "$PID" -o pid=,stat=,etime=,comm= 2>/dev/null || true
+            else
+              echo "ngrok_pid=UNAVAILABLE"
+              echo "ngrok_process_alive=UNKNOWN"
+            fi
+            if [[ -f /tmp/ngrok.launch.meta ]]; then cat /tmp/ngrok.launch.meta; fi
+            TUNNEL_HTTP="$(curl -sS --max-time 5 -o /tmp/ngrok.tunnels.json -w '%{http_code}' http://127.0.0.1:4040/api/tunnels 2>/dev/null)"
+            echo "local_tunnel_api_http=${TUNNEL_HTTP:-000}"
+            if [[ -f /tmp/ngrok.tunnels.json ]]; then
+              python - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              d=json.loads(Path("/tmp/ngrok.tunnels.json").read_text())
+              tunnels=d.get("tunnels", [])
+              print(f"local_tunnel_count={len(tunnels)}")
+              for t in tunnels:
+                  proto=t.get("proto", "UNKNOWN")
+                  print(f"local_tunnel_proto={proto}")
+          except Exception:
+              print("local_tunnel_json_valid=false")
+          PY
+            else
+              echo "local_tunnel_json_available=false"
+            fi
+            if [[ "${NGROK_URL:-}" == https://* ]]; then
+              PUBLIC_HTTP="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' "${NGROK_URL}/openapi.json" 2>/dev/null)"
+              echo "public_probe_path=/openapi.json"
+              echo "public_probe_http=${PUBLIC_HTTP:-000}"
+            else
+              echo "public_probe_http=SKIPPED_NO_NGROK_URL"
+            fi
+            echo "ngrok_log_present=$([[ -f /tmp/ngrok.log ]] && echo true || echo false)"
+            if [[ -f /tmp/ngrok.log ]]; then echo "ngrok_log_bytes=$(wc -c < /tmp/ngrok.log)"; fi
+          } > "$OUT" 2>&1
+          echo "NGROK_DIAGNOSTICS_CREATED=$([[ -f "$OUT" ]] && echo true || echo false)"
+
+      - name: Build allowlisted Uvicorn summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          log_path = Path("/tmp/uvicorn.log")
+          response_path = Path("/tmp/response.json")
+          lines = log_path.read_text(errors="replace").splitlines() if log_path.exists() else []
+
+          trace_id = "UNAVAILABLE"
+          if response_path.exists():
+              try:
+                  value = json.loads(response_path.read_text()).get("trace_id")
+                  if isinstance(value, str) and re.fullmatch(r"trace_[A-Za-z0-9]+", value):
+                      trace_id = value
+              except (json.JSONDecodeError, OSError):
+                  pass
+
+          lower_lines = [line.lower() for line in lines]
+          log_bytes = log_path.stat().st_size if log_path.exists() else 0
+          log_has_startup = any("Started server process" in line for line in lines)
+          counts = {
+              "log_lines_scanned": len(lines),
+              "log_bytes": log_bytes,
+              "error_line_count": sum("error" in line for line in lower_lines),
+              "critical_line_count": sum("critical" in line for line in lower_lines),
+              "traceback_count": sum("traceback" in line for line in lower_lines),
+              "model_not_mapped_count": sum("model_not_mapped" in line for line in lower_lines),
+              "telegram_delivery_failed_count": sum("telegram_delivery_failed" in line for line in lower_lines),
+          }
+
+          # Exact summary allowlist: 11 fields; fixed names, integer counts,
+          # a boolean startup marker, and a strictly validated trace ID only.
+          # No original log line, URL, request header, token, or arbitrary field is copied.
+          out = Path("/tmp/uvicorn.summary.log")
+          with out.open("w", encoding="utf-8") as f:
+              f.write(f"trace_id={trace_id}\n")
+              for key, value in counts.items():
+                  f.write(f"{key}={value}\n")
+              f.write(f"log_has_startup={str(log_has_startup).lower()}\n")
+              f.write("raw_log_content_included=false\n")
+              f.write("secret_values_emitted=false\n")
+          print("UVICORN_SUMMARY_CREATED=true")
+          print(f"UVICORN_SUMMARY_TRACE_PRESENT={trace_id != 'UNAVAILABLE'}")
+          PY
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            /tmp/update.json
+            /tmp/response.json
+            /tmp/response.code
+            /tmp/provenance.json
+            /tmp/uvicorn.summary.log
+            /tmp/ngrok.log
+            /tmp/ngrok.pid
+            /tmp/ngrok.launch.meta
+            /tmp/ngrok.diagnostics.log

@@ -37,6 +37,7 @@ class ProvenanceTracker:
         output: Any = None,
         request_id: str | None = None,
         refusal_reason: str | None = None,
+        failure_diagnostics: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         trace = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
@@ -64,9 +65,32 @@ class ProvenanceTracker:
             },
         }
         if action == "EXECUTE":
-            trace["execution_details"] = {"selected_model": selected_model}
+            execution_details = {"selected_model": selected_model}
+            if isinstance(output, dict):
+                for key in (
+                    "provider",
+                    "requested_model_id",
+                    "provider_requested_model_id",
+                    "provider_model_id",
+                    "provider_response_id",
+                    "crosswalk_digest",
+                ):
+                    value = output.get(key)
+                    if isinstance(value, str) and value:
+                        execution_details[key] = value
+                test_override = output.get("test_override")
+                execution_details["test_override"] = (
+                    test_override if isinstance(test_override, bool) else "UNKNOWN"
+                )
+                qualification = output.get("qualification")
+                execution_details["qualification"] = (
+                    qualification if isinstance(qualification, str) and qualification else "UNKNOWN"
+                )
+            if isinstance(output, dict) and output.get("test_only") is True:
+                execution_details["test_only"] = True
             if output is not None:
-                trace["execution_details"]["output_digest"] = self.output_digest(output)
+                execution_details["output_digest"] = self.output_digest(output)
+            trace["execution_details"] = execution_details
         else:
             reason = refusal_reason or "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
             trace["refusal_details"] = {
@@ -77,5 +101,29 @@ class ProvenanceTracker:
                     else f"Execution blocked: no model satisfies {list(required_caps)}."
                 ),
             }
+            if isinstance(failure_diagnostics, dict):
+                diagnostics: dict[str, Any] = {}
+                for key in (
+                    "code",
+                    "finish_reason",
+                    "model",
+                    "selected_model",
+                    "requested_model_id",
+                    "crosswalk_digest",
+                ):
+                    value = failure_diagnostics.get(key)
+                    if isinstance(value, str) and value:
+                        diagnostics[key] = value
+                    elif key == "finish_reason" and key in failure_diagnostics and value is None:
+                        diagnostics[key] = None
+                usage = failure_diagnostics.get("usage")
+                if isinstance(usage, dict):
+                    diagnostics["usage"] = usage
+                for key in ("content_len", "reasoning_len", "requested_max_tokens"):
+                    value = failure_diagnostics.get(key)
+                    if type(value) is int and value >= 0:
+                        diagnostics[key] = value
+                if diagnostics:
+                    trace["refusal_details"]["provider_diagnostics"] = diagnostics
         validate_audit_trace(trace)
         return trace
