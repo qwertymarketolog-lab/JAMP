@@ -21,9 +21,10 @@ def test_verify_missing_fields():
     assert verify_generation({"provider_response_id": "gen-123"})[1]["reason"] == (
         "PROVIDER_MODEL_ID_MISSING"
     )
-    assert verify_generation(
-        {"provider_response_id": "gen-123", "provider_model_id": " "}
-    )[0] == "UNVERIFIABLE"
+    assert (
+        verify_generation({"provider_response_id": "gen-123", "provider_model_id": " "})[0]
+        == "UNVERIFIABLE"
+    )
 
 
 @patch("urllib.request.urlopen")

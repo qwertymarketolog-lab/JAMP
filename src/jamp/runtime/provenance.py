@@ -18,10 +18,7 @@ def validate_audit_trace(trace: dict[str, Any]) -> None:
 
     if schema_ver == "jamp-audit-trace-v0.2" and trace.get("status") == "EXECUTE":
         details = trace.get("execution_details", {})
-        if (
-            details.get("provider") == "openrouter"
-            and details.get("evidence_status") != "VERIFIED"
-        ):
+        if details.get("provider") == "openrouter" and details.get("evidence_status") != "VERIFIED":
             raise ValueError("OpenRouter EXECUTE requires evidence_status == 'VERIFIED'")
 
 

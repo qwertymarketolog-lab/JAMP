@@ -862,9 +862,7 @@ def test_execute_fails_closed_when_e2_is_not_verified(
         lambda output: (verification_status, details),
     )
     client = TestClient(
-        create_app(
-            executor=lambda model, payload: {"provider": "openrouter", "content": "hello"}
-        )
+        create_app(executor=lambda model, payload: {"provider": "openrouter", "content": "hello"})
     )
 
     response = client.post(

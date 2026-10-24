@@ -37,9 +37,7 @@ def verify_generation(
     if not key:
         return "INCONCLUSIVE", {"reason": "API_KEY_MISSING"}
 
-    request = urllib.request.Request(
-        f"{OPENROUTER_GENERATION_URL}?id={urllib.parse.quote(gen_id)}"
-    )
+    request = urllib.request.Request(f"{OPENROUTER_GENERATION_URL}?id={urllib.parse.quote(gen_id)}")
     request.add_header("Authorization", f"Bearer {key}")
 
     try:
