@@ -11,6 +11,11 @@ def test_extracts_safe_diagnostics_from_persisted_refusal_trace() -> None:
             "provider_diagnostics": {
                 "code": "rate_limit",
                 "provider_http_status": 429,
+                "http_status": 403,
+                "error_body": '{"error":"forbidden"}',
+                "network_error": "name resolution failed",
+                "exception_type": "TimeoutError",
+                "error_message": "request timed out",
                 "provider_requested_model_id": "vendor/model",
                 "content_len": 0,
                 "api_key": "must-not-be-logged",
@@ -23,6 +28,11 @@ def test_extracts_safe_diagnostics_from_persisted_refusal_trace() -> None:
     assert extract_safe_provider_diagnostics(trace) == {
         "code": "rate_limit",
         "provider_http_status": 429,
+        "http_status": 403,
+        "error_body": '{"error":"forbidden"}',
+        "network_error": "name resolution failed",
+        "exception_type": "TimeoutError",
+        "error_message": "request timed out",
         "provider_requested_model_id": "vendor/model",
         "content_len": 0,
     }
