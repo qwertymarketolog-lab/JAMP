@@ -26,9 +26,12 @@ The script reads the local report and reference JSON, calls `/v1/execute` with i
 - `[MODEL VERIFIED] YES` is printed only when the API response exposes `evidence_status: VERIFIED`. `CONTRADICTED` is a negative result; missing or inconclusive evidence is `UNKNOWN`, never a pass.
 - `trace_id` links the result to JAMP's audit trace.
 
-## Important API contract limitation
+## API Contract Note
 
-On the current `main` API implementation, successful `/v1/execute` responses include `status`, `selected_model`, `trace_id`, and `output`; they do not expose `evidence_status` at the top level or inside `output`. E2 verification is persisted in the audit trace, but this client deliberately does not infer that status from `selected_model`, provider success, or a trace ID. Therefore, with the current response contract, `[MODEL VERIFIED]` will report `UNKNOWN` until the API exposes the evidence status or a supported read path for the trace is used. Do not interpret that `UNKNOWN` as a failed E2 verification; it means this response does not provide the evidence needed by this script.
+The `/v1/execute` endpoint now successfully returns the `evidence_status` field in its JSON response (introduced in PR #377).
+- `VERIFIED`: The independent OpenRouter Generation API confirmed the model used.
+- `INCONCLUSIVE`: The verifier could not reach the OpenRouter API.
+- `UNVERIFIABLE`/`CONTRADICTED`: The request is refused (HTTP 502) and never reaches the client.
 
 ## Business value and limits
 
