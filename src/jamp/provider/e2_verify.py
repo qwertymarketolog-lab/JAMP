@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -15,7 +16,7 @@ def _model_matches(jamp_model: str, provider_model: str) -> bool:
         return True
     if provider_model.startswith(jamp_model + "-"):
         suffix = provider_model[len(jamp_model) :]
-        return bool(re.fullmatch(r"-\d+(\.\d+)*", suffix))
+        return bool(re.fullmatch(r"-\\d+(\\.\\d+)*", suffix))
     return False
 
 
@@ -39,12 +40,29 @@ def verify_generation(
 
     request = urllib.request.Request(f"{OPENROUTER_GENERATION_URL}?id={urllib.parse.quote(gen_id)}")
     request.add_header("Authorization", f"Bearer {key}")
+    request.add_header("User-Agent", "JAMP-Trust-Layer/1.0")
 
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             parsed = json.load(response)
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")[:500]
+        return "INCONCLUSIVE", {
+            "reason": "API_ERROR",
+            "http_status": exc.code,
+            "error_body": error_body,
+        }
+    except urllib.error.URLError as exc:
+        return "INCONCLUSIVE", {
+            "reason": "API_ERROR",
+            "network_error": str(exc.reason),
+        }
     except Exception as exc:
-        return "INCONCLUSIVE", {"reason": "API_ERROR", "error": type(exc).__name__}
+        return "INCONCLUSIVE", {
+            "reason": "API_ERROR",
+            "exception_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
 
     if not isinstance(parsed, dict):
         return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE"}
