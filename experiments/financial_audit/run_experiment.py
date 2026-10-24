@@ -129,10 +129,19 @@ def main() -> int:
                 diagnostics = trace_payload.get("failure_diagnostics", {})
                 if isinstance(diagnostics, dict):
                     allowed = {
-                        "code", "provider_http_status", "selected_model", "model",
-                        "requested_model_id", "provider_requested_model_id",
-                        "crosswalk_digest", "finish_reason", "content_len",
-                        "reasoning_len", "requested_max_tokens", "evidence_status", "reason",
+                        "code",
+                        "provider_http_status",
+                        "selected_model",
+                        "model",
+                        "requested_model_id",
+                        "provider_requested_model_id",
+                        "crosswalk_digest",
+                        "finish_reason",
+                        "content_len",
+                        "reasoning_len",
+                        "requested_max_tokens",
+                        "evidence_status",
+                        "reason",
                     }
                     safe_diagnostics = {
                         key: value for key, value in diagnostics.items()
