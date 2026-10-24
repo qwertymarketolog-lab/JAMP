@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-
 from jamp.provider.e2_verify import _model_matches, verify_generation
 
 
