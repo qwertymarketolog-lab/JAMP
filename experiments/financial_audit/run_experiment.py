@@ -144,13 +144,15 @@ def main() -> int:
                         "reason",
                     }
                     safe_diagnostics = {
-                        key: value for key, value in diagnostics.items()
+                        key: value
+                        for key, value in diagnostics.items()
                         if key in allowed and isinstance(value, (str, int, float, bool, type(None)))
                     }
                     if safe_diagnostics:
-                        print("[PROVIDER DIAGNOSTICS] " + json.dumps(
-                            safe_diagnostics, sort_keys=True, ensure_ascii=False
-                        ))
+                        print(
+                            "[PROVIDER DIAGNOSTICS] "
+                            + json.dumps(safe_diagnostics, sort_keys=True, ensure_ascii=False)
+                        )
             except (HTTPError, URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
                 print("[PROVIDER DIAGNOSTICS] UNAVAILABLE — trace could not be read")
         error_status = payload.get("status", "UNKNOWN") if isinstance(payload, dict) else "UNKNOWN"
