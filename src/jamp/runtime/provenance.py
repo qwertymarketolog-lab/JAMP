@@ -139,6 +139,7 @@ class ProvenanceTracker:
                     "model",
                     "selected_model",
                     "requested_model_id",
+                    "provider_requested_model_id",
                     "crosswalk_digest",
                 ):
                     value = failure_diagnostics.get(key)
@@ -149,7 +150,12 @@ class ProvenanceTracker:
                 usage = failure_diagnostics.get("usage")
                 if isinstance(usage, dict):
                     diagnostics["usage"] = usage
-                for key in ("content_len", "reasoning_len", "requested_max_tokens"):
+                for key in (
+                    "content_len",
+                    "reasoning_len",
+                    "requested_max_tokens",
+                    "provider_http_status",
+                ):
                     value = failure_diagnostics.get(key)
                     if type(value) is int and value >= 0:
                         diagnostics[key] = value
