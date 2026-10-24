@@ -257,6 +257,7 @@ def create_app(
             "status": "EXECUTE",
             "selected_model": selected,
             "trace_id": trace["trace_id"],
+            "evidence_status": evidence_status,
         }
         if output is not None:
             response["output"] = output
