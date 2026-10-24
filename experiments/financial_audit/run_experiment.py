@@ -19,6 +19,40 @@ PROMPT = (
 )
 NUMERIC_KEYS = ("revenue", "operating_expenses", "net_income", "legal_fees")
 
+PROVIDER_DIAGNOSTIC_FIELDS = {
+    "code",
+    "provider_http_status",
+    "selected_model",
+    "model",
+    "requested_model_id",
+    "provider_requested_model_id",
+    "crosswalk_digest",
+    "finish_reason",
+    "content_len",
+    "reasoning_len",
+    "requested_max_tokens",
+    "evidence_status",
+    "reason",
+}
+
+
+def extract_safe_provider_diagnostics(trace_payload: Any) -> dict[str, str | int | float | bool | None]:
+    """Extract only approved scalar diagnostics from a persisted refusal trace."""
+    if not isinstance(trace_payload, dict):
+        return {}
+    refusal_details = trace_payload.get("refusal_details")
+    if not isinstance(refusal_details, dict):
+        return {}
+    diagnostics = refusal_details.get("provider_diagnostics")
+    if not isinstance(diagnostics, dict):
+        return {}
+    return {
+        key: value
+        for key, value in diagnostics.items()
+        if key in PROVIDER_DIAGNOSTIC_FIELDS
+        and isinstance(value, (str, int, float, bool, type(None)))
+    }
+
 
 def parse_json_object(text: str) -> dict[str, Any]:
     """Parse a JSON object, tolerating surrounding prose only as a diagnostic aid."""
@@ -126,33 +160,14 @@ def main() -> int:
                 )
                 with urlopen(trace_request, timeout=10) as trace_response:
                     trace_payload = json.loads(trace_response.read().decode("utf-8"))
-                diagnostics = trace_payload.get("failure_diagnostics", {})
-                if isinstance(diagnostics, dict):
-                    allowed = {
-                        "code",
-                        "provider_http_status",
-                        "selected_model",
-                        "model",
-                        "requested_model_id",
-                        "provider_requested_model_id",
-                        "crosswalk_digest",
-                        "finish_reason",
-                        "content_len",
-                        "reasoning_len",
-                        "requested_max_tokens",
-                        "evidence_status",
-                        "reason",
-                    }
-                    safe_diagnostics = {
-                        key: value
-                        for key, value in diagnostics.items()
-                        if key in allowed and isinstance(value, (str, int, float, bool, type(None)))
-                    }
-                    if safe_diagnostics:
-                        print(
-                            "[PROVIDER DIAGNOSTICS] "
-                            + json.dumps(safe_diagnostics, sort_keys=True, ensure_ascii=False)
-                        )
+                safe_diagnostics = extract_safe_provider_diagnostics(trace_payload)
+                if safe_diagnostics:
+                    print(
+                        "[PROVIDER DIAGNOSTICS] "
+                        + json.dumps(safe_diagnostics, sort_keys=True, ensure_ascii=False)
+                    )
+                else:
+                    print("[PROVIDER DIAGNOSTICS] NONE — no approved scalar diagnostics in refusal trace")
             except (HTTPError, URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
                 print("[PROVIDER DIAGNOSTICS] UNAVAILABLE — trace could not be read")
         error_status = payload.get("status", "UNKNOWN") if isinstance(payload, dict) else "UNKNOWN"
