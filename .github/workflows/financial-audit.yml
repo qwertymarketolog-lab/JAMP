@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install fastapi httpx httpx2 uvicorn
+          pip install fastapi httpx 'httpx2>=2.11.0,<3' uvicorn
 
       - name: Start JAMP API
         run: |
