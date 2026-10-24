@@ -22,6 +22,11 @@ NUMERIC_KEYS = ("revenue", "operating_expenses", "net_income", "legal_fees")
 PROVIDER_DIAGNOSTIC_FIELDS = {
     "code",
     "provider_http_status",
+    "http_status",
+    "error_body",
+    "network_error",
+    "exception_type",
+    "error_message",
     "selected_model",
     "model",
     "requested_model_id",
