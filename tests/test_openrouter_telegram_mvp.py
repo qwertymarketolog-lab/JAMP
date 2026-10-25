@@ -298,6 +298,7 @@ def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
 @patch("jamp.api.app.verify_generation")
 def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(mock_verify, monkeypatch, tmp_path):
     import jamp.api.app as app_module
+    mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
