@@ -333,7 +333,7 @@ def main() -> int:
 
     print("\n[DEBUG] RAW EXTRACTED JSON FROM AI:")
     print(json.dumps(extracted, indent=2, ensure_ascii=False, sort_keys=True))
-    print("--------------------------------------------------\\n")
+    print("--------------------------------------------------\n")
 
     matched, mismatches = values_match(extracted, expected)
     print(f"[DATA MATCH] {'YES' if matched else 'NO'}")
