@@ -245,6 +245,7 @@ def create_app(
                     failure_diagnostics={
                         "evidence_status": evidence_status,
                         **evidence_details,
+                        "fallback_history": output.get("fallback_history", []),
                     },
                 )
                 persistence.write_trace(trace)
