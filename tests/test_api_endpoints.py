@@ -51,6 +51,7 @@ def test_execute_without_provider_fails_closed(monkeypatch):
     assert body["status"] == "REFUSE"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
     assert trace["status"] == "REFUSE"
+    assert trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"] == 402
     assert trace["refusal_details"]["reason"] == "PROVIDER_NOT_CONFIGURED"
 
 
@@ -136,8 +137,9 @@ def test_e2_verifier_error_diagnostics_survive_provenance():
 
 
 def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
-    from jamp.api import app as app_module
+    import importlib
 
+    app_module = importlib.import_module("jamp.api.app")
     monkeypatch.setattr(
         app_module,
         "verify_generation",
