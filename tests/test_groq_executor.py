@@ -59,8 +59,7 @@ def test_groq_executor_maps_selected_model():
     def fake_open(request, timeout):
         seen["model"] = json.loads(request.data.decode("utf-8"))["model"]
         return Response(
-            b'{"id":"id-1","model":"llama-3.1-8b-instant",'
-            b'"choices":[{"message":{"content":"OK"}}]}'
+            b'{"id":"id-1","model":"llama-3.1-8b-instant","choices":[{"message":{"content":"OK"}}]}'
         )
 
     executor = GroqChatExecutor(
