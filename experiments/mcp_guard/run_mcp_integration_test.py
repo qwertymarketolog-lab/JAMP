@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
-from pathlib import Path
 from typing import Any
 
 from jamp.provider.mcp_proxy import MCPProxyClient, SecurityViolation
@@ -86,7 +86,10 @@ def run_integration_test() -> None:
             print("PASS: safe tool reached the HTTP server without confirmation.")
 
             print("\nRESULT: MCP INTEGRATION TEST PASSED")
-            print("SCOPE: real local HTTP/JSON-RPC transport; test server only, no production MCP server.")
+            print(
+                "SCOPE: real local HTTP/JSON-RPC transport; test server only, "
+                "no production MCP server."
+            )
         finally:
             server.terminate()
             try:
