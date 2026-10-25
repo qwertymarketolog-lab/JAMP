@@ -986,3 +986,80 @@ def test_openrouter_http_error_preserves_status_without_response_body():
     assert raised.value.diagnostics == {"provider_http_status": 429}
     assert "sensitive provider response" not in repr(raised.value.diagnostics)
     assert "test-secret" not in repr(raised.value.diagnostics)
+
+
+
+def test_openrouter_executor_falls_back_after_http_502():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    attempted_models = []
+
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self.body
+
+    def fake_open(request, timeout):
+        model = json.loads(request.data.decode("utf-8"))["model"]
+        attempted_models.append(model)
+        if model == "primary/model":
+            raise HTTPError(request.full_url, 502, "Bad Gateway", hdrs=None, fp=BytesIO(b"upstream error"))
+        return Response(
+            b'{"id":"or-fallback","model":"z-ai/glm-5.3-flash",'
+            b'"choices":[{"message":{"content":"fallback worked"}}]}'
+        )
+
+    executor = OpenRouterChatExecutor(
+        "test-secret",
+        fallback_models=["z-ai/glm-5.3-flash", "google/gemini-2.0-flash-lite-preview-02-05:free"],
+        opener=fake_open,
+    )
+    result = executor("primary/model", {"prompt": "hello"})
+
+    assert attempted_models == ["primary/model", "z-ai/glm-5.3-flash"]
+    assert result["content"] == "fallback worked"
+    assert result["provider_requested_model_id"] == "z-ai/glm-5.3-flash"
+    assert result["provider_model_id"] == "z-ai/glm-5.3-flash"
+    assert result["requested_model_id"] == "primary/model"
+
+
+def test_openrouter_executor_does_not_fallback_after_http_4xx():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    attempted_models = []
+
+    def fake_open(request, timeout):
+        attempted_models.append(json.loads(request.data.decode("utf-8"))["model"])
+        raise HTTPError(request.full_url, 404, "Not Found", hdrs=None, fp=BytesIO(b"missing model"))
+
+    executor = OpenRouterChatExecutor(
+        "test-secret", fallback_models=["fallback/model"], opener=fake_open
+    )
+    with pytest.raises(OpenRouterError) as exc_info:
+        executor("primary/model", {"prompt": "hello"})
+
+    assert exc_info.value.code == "OPENROUTER_HTTP_404"
+    assert attempted_models == ["primary/model"]
+
+
+def test_openrouter_executor_loads_fallback_models_from_env(monkeypatch):
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
+    monkeypatch.setenv("OPENROUTER_FALLBACK_MODELS", " z-ai/glm-5.3-flash, ,google/gemini-2.0-flash-lite-preview-02-05:free ")
+
+    executor = OpenRouterChatExecutor.from_env()
+
+    assert executor is not None
+    assert executor._fallback_models == [
+        "z-ai/glm-5.3-flash",
+        "google/gemini-2.0-flash-lite-preview-02-05:free",
+    ]
