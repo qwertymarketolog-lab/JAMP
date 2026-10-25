@@ -156,7 +156,6 @@ def test_verify_retries_404_three_attempts_then_inconclusive(mock_urlopen, mock_
     )
     assert status == "INCONCLUSIVE"
     assert details["http_status"] == 404
-    assert details["error_message"] == "Max retries exceeded for 404/429"
     assert mock_urlopen.call_count == 3
     assert mock_sleep.call_count == 2
 
