@@ -14,8 +14,6 @@ from unittest.mock import patch
 from jamp.api import create_app
 from jamp.runtime.verdict import JampVerdict
 
-
-
 PROMPT = "Извлеки данные: Выручка $1,000,000, Расходы $200,000."
 
 
