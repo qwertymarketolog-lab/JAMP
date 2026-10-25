@@ -120,7 +120,10 @@ def test_groq_executor_rejects_missing_prompt_and_bad_response():
 
 
 def test_groq_executor_refuses_unmapped_internal_model():
-    executor = GroqChatExecutor("test-secret", opener=lambda request, timeout: pytest.fail("must not call provider"))
+    executor = GroqChatExecutor(
+        "test-secret",
+        opener=lambda request, timeout: pytest.fail("must not call provider"),
+    )
     with pytest.raises(GroqError, match="MODEL_NOT_MAPPED") as caught:
         executor("am/unmapped-model", {"prompt": "hello"})
     assert caught.value.code == "MODEL_NOT_MAPPED"
