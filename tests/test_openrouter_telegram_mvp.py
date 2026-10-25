@@ -1011,7 +1011,13 @@ def test_openrouter_executor_falls_back_after_http_502():
         model = json.loads(request.data.decode("utf-8"))["model"]
         attempted_models.append(model)
         if model == "primary/model":
-            raise HTTPError(request.full_url, 502, "Bad Gateway", hdrs=None, fp=BytesIO(b"upstream error"))
+            raise HTTPError(
+                request.full_url,
+                502,
+                "Bad Gateway",
+                hdrs=None,
+                fp=BytesIO(b"upstream error"),
+            )
         return Response(
             b'{"id":"or-fallback","model":"z-ai/glm-5.3-flash",'
             b'"choices":[{"message":{"content":"fallback worked"}}]}'
@@ -1054,7 +1060,10 @@ def test_openrouter_executor_loads_fallback_models_from_env(monkeypatch):
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
-    monkeypatch.setenv("OPENROUTER_FALLBACK_MODELS", " z-ai/glm-5.3-flash, ,google/gemini-2.0-flash-lite-preview-02-05:free ")
+    monkeypatch.setenv(
+        "OPENROUTER_FALLBACK_MODELS",
+        " z-ai/glm-5.3-flash, ,google/gemini-2.0-flash-lite-preview-02-05:free ",
+    )
 
     executor = OpenRouterChatExecutor.from_env()
 
