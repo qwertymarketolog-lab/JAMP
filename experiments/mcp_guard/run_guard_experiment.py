@@ -2,6 +2,7 @@
 
 No MCP server is contacted and no real database operation is performed.
 """
+
 from unittest.mock import call, patch
 
 from jamp.provider.mcp_proxy import MCPProxyClient, SecurityViolation
