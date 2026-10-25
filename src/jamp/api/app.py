@@ -11,6 +11,7 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
@@ -78,7 +79,7 @@ def create_app(
     configured_executor = (
         executor
         if executor is not None
-        else (OpenRouterChatExecutor.from_env() or AnyModelChatExecutor.from_env())
+        else (OpenRouterChatExecutor.from_env() or GroqChatExecutor.from_env() or AnyModelChatExecutor.from_env())
     )
 
     app = FastAPI(title="JAMP API", version="v1")
@@ -173,12 +174,12 @@ def create_app(
         try:
             output = configured_executor(selected, payload)
         except Exception as exc:
-            if isinstance(exc, (AnyModelError, OpenRouterError)):
+            if isinstance(exc, (AnyModelError, OpenRouterError, GroqError)):
                 reason = "PROVIDER_EXECUTION_FAILED"
             else:
                 reason = "EXECUTOR_ERROR"
             failure_diagnostics = None
-            if isinstance(exc, OpenRouterError) and (exc.diagnostics or exc.code):
+            if isinstance(exc, (OpenRouterError, GroqError)) and (exc.diagnostics or exc.code):
                 failure_diagnostics = {
                     **exc.diagnostics,
                     "selected_model": selected,
