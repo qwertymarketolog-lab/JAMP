@@ -45,13 +45,17 @@ def verify_generation(
 
     parsed = None
     last_exc = None
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 parsed = json.load(response)
             break
         except urllib.error.HTTPError as exc:
-            if exc.code in (404, 429) and attempt < 2:
+            if exc.code == 404 and attempt < 4:
+                last_exc = exc
+                time.sleep(5)
+                continue
+            if exc.code == 429 and attempt < 2:
                 last_exc = exc
                 time.sleep(2)
                 continue
