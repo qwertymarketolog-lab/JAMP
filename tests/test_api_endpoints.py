@@ -15,7 +15,7 @@ def test_classify_search():
 
 def test_execute_returns_execute_and_provenance():
     client = TestClient(
-        create_app(executor=lambda model, payload: {"model": model, "content": "test result"})
+        create_app(executor=lambda model, payload: {"provider": "anymodel", "model": model, "content": "test result"})
     )
     response = client.post(
         "/v1/execute",
