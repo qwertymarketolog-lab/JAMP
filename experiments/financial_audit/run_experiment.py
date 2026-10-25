@@ -13,9 +13,12 @@ HERE = Path(__file__).resolve().parent
 REPORT_PATH = HERE / "sample_report.txt"
 EXPECTED_PATH = HERE / "expected_data.json"
 PROMPT = (
-    "Извлеки из текста: квартал, выручку (revenue), операционные расходы "
-    "(operating_expenses), чистую прибыль (net_income) и судебные издержки "
-    "(legal_fees). Верни ТОЛЬКО валидный JSON без лишних слов, используя эти ключи.\n\n"
+    "Извлеки из текста следующие данные: квартал (quarter), выручку (revenue), "
+    "операционные расходы (operating_expenses), чистую прибыль (net_income) и "
+    "судебные издержки (legal_fees).\n"
+    "Верни ответ СТРОГО в формате JSON без markdown-разметки (без ```json).\n"
+    "Используй ИМЕННО ЭТИ ключи на английском языке: 'quarter', 'revenue', "
+    "'operating_expenses', 'net_income', 'legal_fees'.\n\n"
 )
 NUMERIC_KEYS = ("revenue", "operating_expenses", "net_income", "legal_fees")
 
