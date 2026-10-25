@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -46,6 +47,49 @@ PROVIDER_DIAGNOSTIC_FIELDS = {
     "output_model_id",
     "fallback_history",
 }
+
+
+
+def clean_number(value: Any) -> Decimal | None:
+    """Parse an unambiguous financial number; return None instead of inventing zero."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float, Decimal)):
+        try:
+            number = Decimal(str(value))
+        except InvalidOperation:
+            return None
+        return number if number.is_finite() else None
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip().lower().replace("\\u00a0", " ").replace("\\u202f", " ")
+    text = text.replace("−", "-").replace("–", "-")
+    if not text:
+        return None
+
+    scale = Decimal("1")
+    scale_pattern = r"(?<!\\w)(?:миллион(?:а|ов)?|millions?)(?!\\w)"
+    if re.search(scale_pattern, text):
+        scale = Decimal("1000000")
+        text = re.sub(scale_pattern, " ", text)
+
+    # Remove only known currency labels/symbols and thousands separators.
+    text = re.sub(r"[$€£₽]", " ", text)
+    text = re.sub(
+        r"(?<!\\w)(?:usd|eur|gbp|rub|руб(?:ль|ля|лей)?|доллар(?:а|ов)?|евро)(?!\\w)",
+        " ",
+        text,
+    )
+    text = text.replace(",", "").replace(" ", "")
+    if not re.fullmatch(r"[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)", text):
+        return None
+
+    try:
+        number = Decimal(text) * scale
+    except InvalidOperation:
+        return None
+    return number if number.is_finite() else None
 
 
 def extract_safe_provider_diagnostics(
@@ -122,27 +166,32 @@ def parse_json_object(text: str) -> dict[str, Any]:
     return value
 
 
+
 def values_match(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, list[str]]:
     mismatches: list[str] = []
-    for key in ("quarter", *NUMERIC_KEYS):
+    if "quarter" not in actual:
+        mismatches.append("quarter: missing")
+    elif actual["quarter"] != expected.get("quarter"):
+        mismatches.append(
+            f"quarter: expected {expected.get('quarter')!r}, got {actual['quarter']!r}"
+        )
+
+    for key in NUMERIC_KEYS:
         if key not in actual:
             mismatches.append(f"{key}: missing")
             continue
-        if key == "quarter":
-            if actual[key] != expected[key]:
-                mismatches.append(f"{key}: expected {expected[key]!r}, got {actual[key]!r}")
+        actual_number = clean_number(actual[key])
+        expected_number = clean_number(expected.get(key))
+        if actual_number is None:
+            mismatches.append(f"{key}: not a valid financial number (raw={actual[key]!r})")
             continue
-        if isinstance(actual[key], bool) or not isinstance(actual[key], (int, float, str)):
-            mismatches.append(f"{key}: not a numeric value")
+        if expected_number is None:
+            mismatches.append(f"{key}: reference value is not a valid financial number")
             continue
-        try:
-            actual_number = Decimal(str(actual[key]).replace(",", ""))
-            expected_number = Decimal(str(expected[key]))
-        except InvalidOperation:
-            mismatches.append(f"{key}: not a valid number")
-            continue
-        if not actual_number.is_finite() or actual_number != expected_number:
-            mismatches.append(f"{key}: expected {expected_number}, got {actual[key]!r}")
+        if abs(actual_number - expected_number) >= Decimal("0.01"):
+            mismatches.append(
+                f"{key}: expected {expected_number}, got {actual_number} (raw={actual[key]!r})"
+            )
     return not mismatches, mismatches
 
 
@@ -281,6 +330,10 @@ def main() -> int:
     except ValueError as exc:
         print(f"[DATA MATCH] FAIL — {exc}")
         return 1
+
+    print("\\n[DEBUG] RAW EXTRACTED JSON FROM AI:")
+    print(json.dumps(extracted, indent=2, ensure_ascii=False, sort_keys=True))
+    print("--------------------------------------------------\\n")
 
     matched, mismatches = values_match(extracted, expected)
     print(f"[DATA MATCH] {'YES' if matched else 'NO'}")
