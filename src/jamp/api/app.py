@@ -187,7 +187,10 @@ def create_app(
         try:
             output = configured_executor(selected, payload)
         except Exception as exc:
-            if isinstance(exc, (AnyModelError, OpenRouterError, GroqError)) or str(exc) == "All fallback providers failed.":
+            if (
+                isinstance(exc, (AnyModelError, OpenRouterError, GroqError))
+                or str(exc) == "All fallback providers failed."
+            ):
                 reason = "PROVIDER_EXECUTION_FAILED"
             else:
                 reason = "EXECUTOR_ERROR"
@@ -210,7 +213,11 @@ def create_app(
                 refusal_reason=reason,
                 failure_diagnostics={
                     **(failure_diagnostics or {}),
-                    **({"fallback_history": fallback_history} if isinstance(fallback_history, list) else {}),
+                    **(
+                        {"fallback_history": fallback_history}
+                        if isinstance(fallback_history, list)
+                        else {}
+                    ),
                 } or None,
             )
             persistence.write_trace(trace)

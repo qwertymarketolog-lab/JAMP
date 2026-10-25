@@ -1,6 +1,6 @@
 import json
-from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from io import BytesIO
 from urllib.error import HTTPError
 
@@ -171,7 +171,12 @@ def test_telegram_webhook_executes_and_returns_trace(mock_verify, monkeypatch, t
 
     def executor(model, payload):
         calls.append(payload)
-        return {"provider": "openrouter", "provider_response_id": "gen-test-123", "provider_model_id": "test-model", "content": "hello from model"}
+        return {
+            "provider": "openrouter",
+            "provider_response_id": "gen-test-123",
+            "provider_model_id": "test-model",
+            "content": "hello from model",
+        }
 
     client = TestClient(
         create_app(
@@ -296,7 +301,9 @@ def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
 
 
 @patch("jamp.api.app.verify_generation")
-def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(mock_verify, monkeypatch, tmp_path):
+def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(
+    mock_verify, monkeypatch, tmp_path
+):
     import jamp.api.app as app_module
     mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
 

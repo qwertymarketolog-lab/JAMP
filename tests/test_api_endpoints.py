@@ -15,7 +15,13 @@ def test_classify_search():
 
 def test_execute_returns_execute_and_provenance():
     client = TestClient(
-        create_app(executor=lambda model, payload: {"provider": "anymodel", "model": model, "content": "test result"})
+        create_app(
+            executor=lambda model, payload: {
+                "provider": "anymodel",
+                "model": model,
+                "content": "test result",
+            }
+        )
     )
     response = client.post(
         "/v1/execute",
@@ -172,4 +178,7 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
     assert body["reason"] == "E2_VERIFICATION_INCONCLUSIVE"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
     assert trace["status"] == "REFUSE"
-    assert trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"] == 402
+    assert (
+        trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"]
+        == 402
+    )

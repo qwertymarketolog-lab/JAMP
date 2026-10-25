@@ -51,7 +51,11 @@ class FallbackChainExecutor:
     def _safe_error(exc: Exception) -> str:
         message = str(exc)
         message = re.sub(r"(?i)(bearer\s+)[^\s,;]+", r"\1[REDACTED]", message)
-        message = re.sub(r"(?i)(api[_ -]?key|token|secret)(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", message)
+        message = re.sub(
+            r"(?i)(api[_ -]?key|token|secret)(\s*[:=]\s*)[^\s,;]+",
+            r"\1\2[REDACTED]",
+            message,
+        )
         return message[:150]
 
     def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
