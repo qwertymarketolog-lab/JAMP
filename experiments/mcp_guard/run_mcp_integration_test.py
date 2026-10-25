@@ -58,9 +58,9 @@ def run_integration_test() -> None:
             print("PASS: SecurityViolation raised; server_calls.log remains empty.")
 
             print("\n--- TEST 2: dangerous tool WITH explicit confirmation ---")
-            result = MCPProxyClient(
-                SERVER_URL, "dangerous_tool", timeout=5
-            ).execute_tool({"record_id": "test-2", "confirm": True})
+            result = MCPProxyClient(SERVER_URL, "dangerous_tool", timeout=5).execute_tool(
+                {"record_id": "test-2", "confirm": True}
+            )
             assert result["content"][0]["text"] == "success"
             calls = read_calls(log_path)
             assert len(calls) == 1, f"Expected one recorded call, got {len(calls)}"
