@@ -1,0 +1,58 @@
+name: Stock Audit Experiment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-stock-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_MAX_TOKENS: "2048"
+      JAMP_ENVIRONMENT: local
+      OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
+      GROQ_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"openai/gpt-oss-120b"}'
+      JAMP_API_URL: http://127.0.0.1:8000
+      JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install fastapi httpx 'httpx2>=2.11.0,<3' uvicorn
+
+      - name: Start JAMP API
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "$GROQ_API_KEY" ]; then
+            echo "::error::At least one provider secret (OPENROUTER_API_KEY or GROQ_API_KEY) must be configured."
+            exit 1
+          fi
+          nohup python -m uvicorn jamp.api.app:create_app --factory --host 127.0.0.1 --port 8000 > /tmp/jamp-api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/openapi.json >/dev/null; then
+              echo "JAMP API is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::JAMP API did not become ready."
+          cat /tmp/jamp-api.log
+          exit 1
+
+      - name: Run Stock Audit
+        run: |
+          python experiments/stock_audit/run_stock_experiment.py
