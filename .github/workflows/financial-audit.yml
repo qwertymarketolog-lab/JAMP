@@ -15,6 +15,7 @@ jobs:
       OPENROUTER_MAX_TOKENS: "2048"
       JAMP_ENVIRONMENT: local
       OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3.5-super-vl:free"}'
+      OPENROUTER_FALLBACK_MODELS: "z-ai/glm-5.3-flash,google/gemini-2.0-flash-lite-preview-02-05:free"
       JAMP_API_URL: http://127.0.0.1:8000
       JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
     steps:
