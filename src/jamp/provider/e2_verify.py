@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -42,26 +43,43 @@ def verify_generation(
     request.add_header("Authorization", f"Bearer {key}")
     request.add_header("User-Agent", "JAMP-Trust-Layer/1.0")
 
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            parsed = json.load(response)
-    except urllib.error.HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")[:500]
+    parsed = None
+    last_exc = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                parsed = json.load(response)
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code in (404, 429) and attempt < 2:
+                last_exc = exc
+                time.sleep(2)
+                continue
+            error_body = exc.read().decode("utf-8", errors="replace")[:500]
+            return "INCONCLUSIVE", {
+                "reason": "API_ERROR",
+                "http_status": exc.code,
+                "error_body": error_body,
+            }
+        except urllib.error.URLError as exc:
+            return "INCONCLUSIVE", {
+                "reason": "API_ERROR",
+                "network_error": str(exc.reason),
+            }
+        except Exception as exc:
+            return "INCONCLUSIVE", {
+                "reason": "API_ERROR",
+                "exception_type": type(exc).__name__,
+                "error_message": str(exc),
+            }
+
+    if parsed is None:
+        error_body = last_exc.read().decode("utf-8", errors="replace")[:500] if last_exc else ""
         return "INCONCLUSIVE", {
             "reason": "API_ERROR",
-            "http_status": exc.code,
+            "http_status": getattr(last_exc, "code", 500),
             "error_body": error_body,
-        }
-    except urllib.error.URLError as exc:
-        return "INCONCLUSIVE", {
-            "reason": "API_ERROR",
-            "network_error": str(exc.reason),
-        }
-    except Exception as exc:
-        return "INCONCLUSIVE", {
-            "reason": "API_ERROR",
-            "exception_type": type(exc).__name__,
-            "error_message": str(exc),
+            "error_message": "Max retries exceeded for 404/429",
         }
 
     if not isinstance(parsed, dict):
