@@ -185,6 +185,10 @@ def main() -> int:
             TASK_TYPE: {
                 "score": score,
                 "threshold": THRESHOLD,
+                "model_id": TARGET_MODEL,
+                "task_type": TASK_TYPE,
+                "total_cases": len(cases),
+                "dataset_sha256": hashlib.sha256(raw_data).hexdigest(),
                 "status": "QUALIFIED" if qualified_candidate else "UNKNOWN",
                 "measurement_status": "MEASURED",
                 "timestamp": datetime.now(UTC).isoformat(),

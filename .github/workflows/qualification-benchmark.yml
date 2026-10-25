@@ -4,14 +4,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   run-qualification-benchmark:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
@@ -53,3 +55,18 @@ jobs:
           path: src/jamp/runtime/measured_benchmarks.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Create Pull Request with measured benchmark
+        if: success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(benchmark): update measured qualifications"
+          title: "Auto-update: Qualification Benchmark Results"
+          body: |
+            Автоматический PR с результатами последнего live-бенчмарка.
+            Проверьте score, model identity, E2 evidence и dataset digest перед merge.
+            Мердж PR — отдельное человеческое решение; workflow не изменяет main напрямую.
+          branch: auto-benchmark-update
+          base: main
+          add-paths: src/jamp/runtime/measured_benchmarks.json
