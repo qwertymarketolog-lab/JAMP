@@ -133,12 +133,12 @@ def test_verify_retries_404_then_succeeds(mock_urlopen, mock_sleep):
     assert status == "VERIFIED"
     assert details["generation_id"] == "gen-1"
     assert mock_urlopen.call_count == 2
-    mock_sleep.assert_called_once_with(2)
+    mock_sleep.assert_called_once_with(5)
 
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
-def test_verify_retries_404_three_attempts_then_inconclusive(mock_urlopen, mock_sleep):
+def test_verify_retries_404_five_attempts_then_inconclusive(mock_urlopen, mock_sleep):
     errors = [
         urllib.error.HTTPError(
             "https://openrouter.ai/api/v1/generation?id=gen-1",
@@ -147,7 +147,7 @@ def test_verify_retries_404_three_attempts_then_inconclusive(mock_urlopen, mock_
             hdrs=None,
             fp=io.BytesIO(b'{"error":"generation not found"}'),
         )
-        for _ in range(3)
+        for _ in range(5)
     ]
     mock_urlopen.side_effect = errors
     status, details = verify_generation(
@@ -156,8 +156,8 @@ def test_verify_retries_404_three_attempts_then_inconclusive(mock_urlopen, mock_
     )
     assert status == "INCONCLUSIVE"
     assert details["http_status"] == 404
-    assert mock_urlopen.call_count == 3
-    assert mock_sleep.call_count == 2
+    assert mock_urlopen.call_count == 5
+    assert [call.args[0] for call in mock_sleep.call_args_list] == [5, 5, 5, 5]
 
 
 @patch("jamp.provider.e2_verify.time.sleep")
