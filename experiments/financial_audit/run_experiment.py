@@ -49,7 +49,6 @@ PROVIDER_DIAGNOSTIC_FIELDS = {
 }
 
 
-
 def clean_number(value: Any) -> Decimal | None:
     """Parse an unambiguous financial number; return None instead of inventing zero."""
     if isinstance(value, bool) or value is None:
