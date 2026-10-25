@@ -10,7 +10,12 @@ from typing import Any
 class FallbackChainExecutor:
     """Try configured executors in order and retain sanitized failure history."""
 
-    def __init__(self, executors: list[Callable[[str, dict[str, Any]], Any]], *, max_attempts: int = 5):
+    def __init__(
+        self,
+        executors: list[Callable[[str, dict[str, Any]], Any]],
+        *,
+        max_attempts: int = 5,
+    ):
         if not isinstance(executors, list):
             raise TypeError("executors must be a list")
         if type(max_attempts) is not int or max_attempts < 1:
@@ -29,7 +34,11 @@ class FallbackChainExecutor:
             getattr(exc, "code", None),
         )
         for candidate in candidates:
-            if isinstance(candidate, int) and not isinstance(candidate, bool) and 100 <= candidate <= 599:
+            if (
+                isinstance(candidate, int)
+                and not isinstance(candidate, bool)
+                and 100 <= candidate <= 599
+            ):
                 return candidate
             if isinstance(candidate, str):
                 match = re.search(r"(?:HTTP[_ ]?)?(\d{3})$", candidate)
