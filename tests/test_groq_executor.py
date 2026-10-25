@@ -35,7 +35,7 @@ def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
         )
 
     executor = GroqChatExecutor("test-secret", opener=fake_open)
-    result = executor("am/unknown-model", {"prompt": "hello"})
+    result = executor("groq/default", {"prompt": "hello"})
 
     assert seen["url"] == "https://api.groq.com/openai/v1/chat/completions"
     assert seen["auth"] == "Bearer test-secret"
@@ -44,7 +44,7 @@ def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
     assert seen["body"]["max_tokens"] == 256
     assert seen["timeout"] == 30.0
     assert result["provider"] == "groq"
-    assert result["requested_model_id"] == "am/unknown-model"
+    assert result["requested_model_id"] == "groq/default"
     assert result["provider_requested_model_id"] == DEFAULT_GROQ_MODEL
     assert result["provider_model_id"] == "llama-3.3-70b-versatile"
     assert result["provider_response_id"] == "chatcmpl-test"
@@ -116,3 +116,12 @@ def test_groq_executor_rejects_missing_prompt_and_bad_response():
         executor("llama-3.3-70b-versatile", {})
     with pytest.raises(GroqError, match="no completion choice"):
         executor("llama-3.3-70b-versatile", {"prompt": "hello"})
+
+
+
+def test_groq_executor_refuses_unmapped_internal_model():
+    executor = GroqChatExecutor("test-secret", opener=lambda request, timeout: pytest.fail("must not call provider"))
+    with pytest.raises(GroqError, match="MODEL_NOT_MAPPED") as caught:
+        executor("am/unmapped-model", {"prompt": "hello"})
+    assert caught.value.code == "MODEL_NOT_MAPPED"
+    assert caught.value.diagnostics == {"requested_model_id": "am/unmapped-model"}
