@@ -97,7 +97,10 @@ class MCPProxyClient:
             raise MCPProxyError("MCP response must be a JSON object")
         if decoded.get("error") is not None:
             error = decoded["error"]
-            message = error.get("message", "unknown MCP error") if isinstance(error, dict) else str(error)
+            if isinstance(error, dict):
+                message = error.get("message", "unknown MCP error")
+            else:
+                message = str(error)
             raise MCPProxyError(f"MCP JSON-RPC error: {message}")
         return decoded
 
