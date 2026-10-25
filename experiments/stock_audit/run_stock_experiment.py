@@ -4,11 +4,11 @@ import json
 import os
 import re
 import sys
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from typing import Any
 
 MOEX_URL = (
     "https://iss.moex.com/iss/engines/stock/markets/shares/"
@@ -84,7 +84,8 @@ def fetch_moex_reference() -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError(f"MOEX company name is missing: {company!r}")
     if numeric_price is None or numeric_price <= 0:
         raise ValueError(
-            f"MOEX has no valid positive LAST/MARKETPRICE value (field={price_field}, value={price!r})"
+            "MOEX has no valid positive LAST/MARKETPRICE value "
+            f"(field={price_field}, value={price!r})"
         )
 
     expected = {
@@ -95,7 +96,7 @@ def fetch_moex_reference() -> tuple[dict[str, Any], dict[str, Any]]:
     source_evidence = {
         "source": "MOEX ISS",
         "url": MOEX_URL,
-        "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
+        "fetched_at_utc": datetime.now(UTC).isoformat(),
         "price_field": price_field,
         "raw_price": price,
     }
@@ -138,7 +139,13 @@ def main() -> int:
         return 2
 
     print("[MOEX SOURCE] OBSERVED")
-    print(json.dumps({"reference": expected, **source["source_evidence"]}, ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            {"reference": expected, **source["source_evidence"]},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
 
     prompt = (
         "Извлеки из следующего JSON Московской Биржи данные акции. "
@@ -183,7 +190,12 @@ def main() -> int:
     print(f"trace_id: {trace_id}")
     print(f"evidence_status: {evidence_status or 'UNKNOWN'}")
 
-    if http_status < 200 or http_status >= 300 or not isinstance(payload, dict) or payload.get("status") != "EXECUTE":
+    if (
+        http_status < 200
+        or http_status >= 300
+        or not isinstance(payload, dict)
+        or payload.get("status") != "EXECUTE"
+    ):
         print("[MODEL VERIFIED] UNKNOWN — JAMP did not return an executable response")
         print("[DATA MATCH] NOT RUN")
         print("[DEBUG] JAMP response:")
@@ -212,17 +224,29 @@ def main() -> int:
     print(json.dumps(extracted, ensure_ascii=False, indent=2, sort_keys=True))
 
     mismatches: list[str] = []
-    if not isinstance(extracted.get("ticker"), str) or extracted["ticker"].strip().upper() != expected["ticker"]:
-        mismatches.append(f"ticker expected {expected['ticker']!r}, got {extracted.get('ticker')!r}")
+    if (
+        not isinstance(extracted.get("ticker"), str)
+        or extracted["ticker"].strip().upper() != expected["ticker"]
+    ):
+        mismatches.append(
+            f"ticker expected {expected['ticker']!r}, "
+            f"got {extracted.get('ticker')!r}"
+        )
     if (
         not isinstance(extracted.get("company"), str)
         or extracted["company"].strip().casefold() != expected["company"].casefold()
     ):
-        mismatches.append(f"company expected {expected['company']!r}, got {extracted.get('company')!r}")
+        mismatches.append(
+            f"company expected {expected['company']!r}, "
+            f"got {extracted.get('company')!r}"
+        )
     actual_price = clean_number(extracted.get("price"))
     expected_price = clean_number(expected["price"])
     if actual_price is None or expected_price is None:
-        mismatches.append(f"price is not a valid number (expected={expected['price']!r}, got={extracted.get('price')!r})")
+        mismatches.append(
+            "price is not a valid number "
+            f"(expected={expected['price']!r}, got={extracted.get('price')!r})"
+        )
     elif abs(actual_price - expected_price) > PRICE_TOLERANCE:
         mismatches.append(f"price expected {expected_price}, got {actual_price}")
 
