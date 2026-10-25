@@ -83,11 +83,10 @@ class MCPProxyClient:
         try:
             text = raw.decode("utf-8")
             if text.lstrip().startswith("data:"):
-                data_lines = [
-                    line[5:].strip()
-                    for line in text.splitlines()
-                    if line.startswith("data:")
-                ]
+                data_lines = []
+                for line in text.splitlines():
+                    if line.startswith("data:"):
+                        data_lines.append(line[5:].strip())
                 text = "\n".join(data_lines)
             decoded = json.loads(text)
         except (UnicodeDecodeError, json.JSONDecodeError):
