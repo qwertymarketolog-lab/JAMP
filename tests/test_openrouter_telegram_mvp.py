@@ -1,7 +1,7 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import patch
 from io import BytesIO
+from unittest.mock import patch
 from urllib.error import HTTPError
 
 import pytest
