@@ -32,6 +32,15 @@ jobs:
           pip install -e ".[dev]"
           pip install httpx
 
+      - name: Validate signing secret configuration
+        env:
+          JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
+        run: |
+          if [ -z "$JAMP_SIGNING_KEY" ]; then
+            echo "::error::JAMP_SIGNING_KEY repository secret is not configured."
+            exit 1
+          fi
+
       - name: Run live benchmark
         id: benchmark
         run: python experiments/qualification_benchmark/run_benchmark.py
