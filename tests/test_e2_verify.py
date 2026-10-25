@@ -107,3 +107,79 @@ def test_verify_inconclusive_on_transport_error(mock_urlopen):
         "exception_type": "TimeoutError",
         "error_message": "generation request timed out",
     }
+
+
+@patch("jamp.provider.e2_verify.time.sleep")
+@patch("urllib.request.urlopen")
+def test_verify_retries_404_then_succeeds(mock_urlopen, mock_sleep):
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = (
+        b'{"data": {"model": "z-ai/glm-5.3", "provider_name": "CoreWeave"}}'
+    )
+    mock_urlopen.side_effect = [
+        urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/generation?id=gen-1",
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"generation not found"}'),
+        ),
+        MagicMock(__enter__=MagicMock(return_value=mock_resp)),
+    ]
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "VERIFIED"
+    assert details["generation_id"] == "gen-1"
+    assert mock_urlopen.call_count == 2
+    mock_sleep.assert_called_once_with(2)
+
+
+@patch("jamp.provider.e2_verify.time.sleep")
+@patch("urllib.request.urlopen")
+def test_verify_retries_404_three_attempts_then_inconclusive(mock_urlopen, mock_sleep):
+    errors = [
+        urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/generation?id=gen-1",
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"generation not found"}'),
+        )
+        for _ in range(3)
+    ]
+    mock_urlopen.side_effect = errors
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "INCONCLUSIVE"
+    assert details["http_status"] == 404
+    assert details["error_message"] == "Max retries exceeded for 404/429"
+    assert mock_urlopen.call_count == 3
+    assert mock_sleep.call_count == 2
+
+
+@patch("jamp.provider.e2_verify.time.sleep")
+@patch("urllib.request.urlopen")
+def test_verify_retries_429(mock_urlopen, mock_sleep):
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = b'{"data": {"model": "z-ai/glm-5.3"}}'
+    mock_urlopen.side_effect = [
+        urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/generation?id=gen-1",
+            429,
+            "Too Many Requests",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"rate limited"}'),
+        ),
+        MagicMock(__enter__=MagicMock(return_value=mock_resp)),
+    ]
+    status, _ = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "VERIFIED"
+    assert mock_urlopen.call_count == 2
+    mock_sleep.assert_called_once_with(2)
