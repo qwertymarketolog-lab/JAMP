@@ -193,6 +193,35 @@ def values_match(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool
     return not mismatches, mismatches
 
 
+def save_provenance_evidence(base_url: str, trace_id: Any, filename: str) -> bool:
+    """Persist the API trace for a downloadable Actions evidence artifact."""
+    if not isinstance(trace_id, str) or not re.fullmatch(r"trace_[A-Za-z0-9_-]{1,100}", trace_id):
+        print("[PROVENANCE EXPORT] HOLD — missing or invalid trace_id")
+        return False
+    request = Request(
+        f"{base_url}/v1/provenance/{trace_id}",
+        headers={"Accept": "application/json"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                print(f"[PROVENANCE EXPORT] HOLD — HTTP {response.status}")
+                return False
+            provenance_payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(provenance_payload, dict) or provenance_payload.get("trace_id") != trace_id:
+            print("[PROVENANCE EXPORT] HOLD — response trace_id mismatch")
+            return False
+        with open(filename, "w", encoding="utf-8") as evidence_file:
+            json.dump(provenance_payload, evidence_file, indent=2, ensure_ascii=False, sort_keys=True)
+            evidence_file.write("\n")
+        print(f"[PROVENANCE EXPORT] SAVED — {filename} for {trace_id}")
+        return True
+    except (HTTPError, URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        print(f"[PROVENANCE EXPORT] HOLD — {type(exc).__name__}: {exc}")
+        return False
+
+
 def main() -> int:
     report = REPORT_PATH.read_text(encoding="utf-8")
     expected = json.loads(EXPECTED_PATH.read_text(encoding="utf-8"))
@@ -254,6 +283,7 @@ def main() -> int:
 
     print(f"[MODEL VERIFIED] {model_line}")
     print(f"trace_id: {trace_id}")
+    save_provenance_evidence(base_url, trace_id, "financial_provenance_evidence.json")
 
     if http_status < 200 or http_status >= 300 or not isinstance(payload, dict):
         # Read the persisted trace and print only an explicit allowlist of non-secret fields.
