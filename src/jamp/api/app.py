@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import time
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
@@ -15,6 +16,7 @@ from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+from jamp.runtime.verdict import JampVerdict
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -45,6 +47,17 @@ def _send_telegram_message(bot_token: str, chat_id: int, text: str) -> None:
         raise RuntimeError("Telegram delivery failed") from None
     if not isinstance(result, dict) or result.get("ok") is not True:
         raise RuntimeError("Telegram delivery failed")
+
+
+
+def _verdict_signing_key() -> str | None:
+    """Use a configured key; dev-secret is only a non-production fallback."""
+    key = os.environ.get("JAMP_SIGNING_KEY")
+    if key:
+        return key
+    if os.environ.get("JAMP_ENV", "development").lower() in {"production", "prod"}:
+        return None
+    return "dev-secret"
 
 
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
@@ -282,6 +295,25 @@ def create_app(
                     },
                 )
 
+        signing_key = _verdict_signing_key() if evidence_status == "VERIFIED" else None
+        if evidence_status == "VERIFIED" and signing_key is None:
+            reason = "SIGNING_KEY_NOT_CONFIGURED"
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                "REFUSE",
+                reason,
+                len(eligible),
+                request_id=request_id,
+                refusal_reason=reason,
+                failure_diagnostics={"evidence_status": evidence_status},
+            )
+            persistence.write_trace(trace)
+            return JSONResponse(
+                status_code=503,
+                content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+            )
+
         trace = provenance.create_trace(
             task_profile,
             required,
@@ -313,6 +345,25 @@ def create_app(
         }
         if output is not None:
             response["output"] = output
+        if evidence_status == "VERIFIED":
+            assert signing_key is not None
+            output_digest = trace.get("execution_details", {}).get("output_digest")
+            if not isinstance(output_digest, str) or not output_digest:
+                reason = "VERDICT_EVIDENCE_HASH_MISSING"
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
+                )
+            verdict = JampVerdict(
+                trace_id=trace["trace_id"],
+                status="VERIFIED",
+                provider_model_id=(
+                    output.get("provider_model_id") if isinstance(output, dict) else None
+                ),
+                evidence_hash=output_digest,
+                timestamp=time.time(),
+            ).sign(signing_key)
+            response["verdict"] = verdict.to_dict()
         return response
 
     def telegram_webhook(payload: dict[str, Any], request: FastAPIRequest):
@@ -441,6 +492,19 @@ def create_app(
     # resolve the locally imported Request class before route registration.
     telegram_webhook.__annotations__["request"] = FastAPIRequest
     app.post("/v1/telegram/webhook")(telegram_webhook)
+
+    @app.post("/v1/verify-verdict")
+    def verify_verdict(payload: dict[str, Any]):
+        """Verify a verdict signature; malformed or unverifiable payloads fail closed."""
+        signing_key = _verdict_signing_key()
+        if signing_key is None:
+            return {"valid": False}
+        try:
+            verdict = JampVerdict.from_dict(payload)
+            valid = verdict.verify(signing_key)
+        except (TypeError, ValueError, OverflowError):
+            valid = False
+        return {"valid": valid}
 
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(trace_id: str):
