@@ -11,11 +11,10 @@ import importlib
 import os
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
-
-
 from jamp.api import create_app
 from jamp.runtime.verdict import JampVerdict
+
+from fastapi.testclient import TestClient
 
 
 PROMPT = "Извлеки данные: Выручка $1,000,000, Расходы $200,000."
