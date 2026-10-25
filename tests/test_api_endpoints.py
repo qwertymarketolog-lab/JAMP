@@ -51,7 +51,6 @@ def test_execute_without_provider_fails_closed(monkeypatch):
     assert body["status"] == "REFUSE"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
     assert trace["status"] == "REFUSE"
-    assert trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"] == 402
     assert trace["refusal_details"]["reason"] == "PROVIDER_NOT_CONFIGURED"
 
 
@@ -145,21 +144,23 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
         "verify_generation",
         lambda output: ("INCONCLUSIVE", {"reason": "API_KEY_MISSING"}),
     )
-    executor = lambda model, payload: {
-        "provider": "openrouter",
-        "model": model,
-        "provider_response_id": "generation-1",
-        "provider_model_id": "provider/model-a",
-        "content": "must not be returned as EXECUTE",
-        "fallback_history": [
-            {
-                "provider": "FirstExecutor",
-                "requested_model": model,
-                "http_status": 402,
-                "error": "payment required",
-            }
-        ],
-    }
+    def executor(model, payload):
+        return {
+            "provider": "openrouter",
+            "model": model,
+            "provider_response_id": "generation-1",
+            "provider_model_id": "provider/model-a",
+            "content": "must not be returned as EXECUTE",
+            "fallback_history": [
+                {
+                    "provider": "FirstExecutor",
+                    "requested_model": model,
+                    "http_status": 402,
+                    "error": "payment required",
+                }
+            ],
+        }
+
     client = TestClient(create_app(executor=executor))
     response = client.post(
         "/v1/execute",
@@ -171,3 +172,4 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
     assert body["reason"] == "E2_VERIFICATION_INCONCLUSIVE"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
     assert trace["status"] == "REFUSE"
+    assert trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"] == 402
