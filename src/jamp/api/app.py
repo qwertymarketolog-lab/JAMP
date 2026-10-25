@@ -24,6 +24,7 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.verdict import JampVerdict
+from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
@@ -313,6 +314,17 @@ def create_app(
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
             )
 
+        successful_model = (
+            (
+                output.get("provider_model_id")
+                or output.get("provider_requested_model_id")
+                or output.get("model")
+                or selected
+            )
+            if isinstance(output, dict)
+            else selected
+        )
+        qualification = evaluate_model_qualification(successful_model, task_profile)
         trace = provenance.create_trace(
             task_profile,
             required,
@@ -325,22 +337,15 @@ def create_app(
             evidence_details=evidence_details,
             fallback_history=output.get("fallback_history", []) if isinstance(output, dict) else [],
         )
+        if isinstance(trace.get("execution_details"), dict):
+            trace["execution_details"]["qualification"] = qualification
         persistence.write_trace(trace)
-        successful_model = (
-            (
-                output.get("provider_model_id")
-                or output.get("provider_requested_model_id")
-                or output.get("model")
-                or selected
-            )
-            if isinstance(output, dict)
-            else selected
-        )
         response = {
             "status": "EXECUTE",
             "selected_model": successful_model,
             "trace_id": trace["trace_id"],
             "evidence_status": evidence_status,
+            "qualification": qualification,
         }
         if output is not None:
             response["output"] = output
