@@ -132,4 +132,3 @@ def test_e2_verifier_error_diagnostics_survive_provenance():
     diagnostics = trace["refusal_details"]["provider_diagnostics"]
     for key, value in failure_diagnostics.items():
         assert diagnostics[key] == value
-
