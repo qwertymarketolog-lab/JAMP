@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-
 from collections.abc import Callable
 from typing import Any
 from urllib.error import HTTPError, URLError
