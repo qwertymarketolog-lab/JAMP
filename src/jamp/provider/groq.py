@@ -149,11 +149,13 @@ class GroqChatExecutor:
             raise GroqError("JAMP must select exactly one model for this executor")
         provider_model = self._model_id_map.get(selected_model)
         if provider_model is None:
-            provider_model = (
-                self._default_model
-                if selected_model.startswith(INTERNAL_MODEL_PREFIXES)
-                else selected_model
-            )
+            if selected_model.startswith(INTERNAL_MODEL_PREFIXES):
+                raise GroqError(
+                    "MODEL_NOT_MAPPED",
+                    code="MODEL_NOT_MAPPED",
+                    diagnostics={"requested_model_id": selected_model},
+                )
+            provider_model = self._default_model if selected_model == "groq/default" else selected_model
         body = json.dumps(
             {
                 "model": provider_model,
