@@ -25,11 +25,11 @@ def clean_quarter(value: Any) -> str | None:
         return None
     text = str(value).strip().lower()
     match = re.fullmatch(
-        r"(?:q\\s*)?([1-4])(?:\\s*(?:quarter|квартал))?(?:\\s+(\\d{4}))?",
+        r"(?:q\s*)?([1-4])(?:\s*(?:quarter|квартал))?(?:\s+(\d{4}))?",
         text,
     )
     if match is None:
-        match = re.fullmatch(r"(?:квартал\\s*)?([1-4])(?:\\s+(\\d{4}))?", text)
+        match = re.fullmatch(r"(?:квартал\s*)?([1-4])(?:\s+(\d{4}))?", text)
     if match is None:
         return None
     quarter, year = match.groups()
