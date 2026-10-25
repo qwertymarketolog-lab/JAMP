@@ -28,13 +28,7 @@ def clean_number(value: Any) -> int | float | None:
     if not isinstance(value, str):
         return None
 
-    cleaned = (
-        value.strip()
-        .replace(",", "")
-        .replace("$", "")
-        .replace("€", "")
-        .replace("£", "")
-    )
+    cleaned = value.strip().replace(",", "").replace("$", "").replace("€", "").replace("£", "")
     cleaned = re.sub(r"(?i)\s*(?:руб(?:лей|ля|ль)?|руб\.?|usd|eur)\s*$", "", cleaned)
     multiplier = 1
     if cleaned.upper().endswith("M"):
@@ -156,9 +150,8 @@ def main() -> int:
             print(f"{case['id']}: {'PASS' if matched else 'FAIL'}")
 
     score = passed / len(cases)
-    exact_model = (
-        len(observed_model_ids) == len(cases)
-        and all(model_id == TARGET_MODEL for model_id in observed_model_ids)
+    exact_model = len(observed_model_ids) == len(cases) and all(
+        model_id == TARGET_MODEL for model_id in observed_model_ids
     )
     all_e2_verified = all(record["evidence_status"] == "VERIFIED" for record in records)
     qualified_candidate = (
