@@ -6,13 +6,12 @@ override JAMP's evidence gate; callers must preserve the selected model identity
 
 from __future__ import annotations
 
+import json
+import os
 from collections.abc import Callable
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-
-import json
-import os
 
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -160,7 +159,11 @@ class GroqChatExecutor:
                         "requested_model_id": selected_model,
                     },
                 )
-            provider_model = self._default_model if selected_model == "groq/default" else selected_model
+            provider_model = (
+                self._default_model
+                if selected_model == "groq/default"
+                else selected_model
+            )
         body = json.dumps(
             {
                 "model": provider_model,
