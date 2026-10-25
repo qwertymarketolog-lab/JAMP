@@ -46,6 +46,7 @@ class ProvenanceTracker:
         failure_diagnostics: dict[str, Any] | None = None,
         evidence_status: str | None = None,
         evidence_details: dict[str, Any] | None = None,
+        fallback_history: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         trace = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
@@ -107,6 +108,33 @@ class ProvenanceTracker:
                 execution_details["qualification"] = (
                     qualification if isinstance(qualification, str) and qualification else "UNKNOWN"
                 )
+            history_source = fallback_history
+            if history_source is None and isinstance(output, dict):
+                candidate_history = output.get("fallback_history")
+                history_source = candidate_history if isinstance(candidate_history, list) else None
+            if isinstance(history_source, list):
+                safe_history = []
+                for attempt in history_source[:5]:
+                    if not isinstance(attempt, dict):
+                        continue
+                    provider = attempt.get("provider")
+                    requested_model = attempt.get("requested_model")
+                    http_status = attempt.get("http_status")
+                    error = attempt.get("error")
+                    if (
+                        isinstance(provider, str)
+                        and isinstance(requested_model, str)
+                        and type(http_status) is int
+                        and 100 <= http_status <= 599
+                        and isinstance(error, str)
+                    ):
+                        safe_history.append({
+                            "provider": provider[:80],
+                            "requested_model": requested_model[:160],
+                            "http_status": http_status,
+                            "error": error[:150],
+                        })
+                execution_details["fallback_history"] = safe_history
             if output is not None:
                 execution_details["output_digest"] = self.output_digest(output)
             trace["execution_details"] = execution_details
@@ -135,6 +163,7 @@ class ProvenanceTracker:
                     "exception_type",
                     "error_message",
                     "error_body",
+                    "fallback_history",
                 ):
                     if k in failure_diagnostics:
                         diagnostics[k] = failure_diagnostics[k]
