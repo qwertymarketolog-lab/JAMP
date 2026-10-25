@@ -262,19 +262,13 @@ def create_app(
                             output.get("provider") if isinstance(output, dict) else None
                         ),
                         "output_response_id": (
-                            output.get("provider_response_id")
-                            if isinstance(output, dict)
-                            else None
+                            output.get("provider_response_id") if isinstance(output, dict) else None
                         ),
                         "output_model_id": (
-                            output.get("provider_model_id")
-                            if isinstance(output, dict)
-                            else None
+                            output.get("provider_model_id") if isinstance(output, dict) else None
                         ),
                         "fallback_history": (
-                            output.get("fallback_history", [])
-                            if isinstance(output, dict)
-                            else []
+                            output.get("fallback_history", []) if isinstance(output, dict) else []
                         ),
                     },
                 )
