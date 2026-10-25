@@ -124,6 +124,35 @@ def parse_json_object(text: str) -> dict[str, Any]:
     return value
 
 
+def save_provenance_evidence(base_url: str, trace_id: Any, filename: str) -> bool:
+    """Persist the API trace for a downloadable Actions evidence artifact."""
+    if not isinstance(trace_id, str) or not re.fullmatch(r"trace_[A-Za-z0-9_-]{1,100}", trace_id):
+        print("[PROVENANCE EXPORT] HOLD — missing or invalid trace_id")
+        return False
+    request = Request(
+        f"{base_url}/v1/provenance/{trace_id}",
+        headers={"Accept": "application/json"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                print(f"[PROVENANCE EXPORT] HOLD — HTTP {response.status}")
+                return False
+            provenance_payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(provenance_payload, dict) or provenance_payload.get("trace_id") != trace_id:
+            print("[PROVENANCE EXPORT] HOLD — response trace_id mismatch")
+            return False
+        with open(filename, "w", encoding="utf-8") as evidence_file:
+            json.dump(provenance_payload, evidence_file, indent=2, ensure_ascii=False, sort_keys=True)
+            evidence_file.write("\n")
+        print(f"[PROVENANCE EXPORT] SAVED — {filename} for {trace_id}")
+        return True
+    except (HTTPError, URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        print(f"[PROVENANCE EXPORT] HOLD — {type(exc).__name__}: {exc}")
+        return False
+
+
 def main() -> int:
     print("=== JAMP STOCK AUDIT EXPERIMENT (MOEX ISS) ===")
     try:
@@ -186,6 +215,7 @@ def main() -> int:
         evidence_status = output.get("evidence_status")
     print(f"trace_id: {trace_id}")
     print(f"evidence_status: {evidence_status or 'UNKNOWN'}")
+    save_provenance_evidence(base_url, trace_id, "stock_provenance_evidence.json")
 
     if (
         http_status < 200
