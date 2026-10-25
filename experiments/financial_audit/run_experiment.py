@@ -38,6 +38,9 @@ PROVIDER_DIAGNOSTIC_FIELDS = {
     "requested_max_tokens",
     "evidence_status",
     "reason",
+    "output_provider",
+    "output_response_id",
+    "output_model_id",
     "fallback_history",
 }
 
@@ -214,6 +217,26 @@ def main() -> int:
                 with urlopen(trace_request, timeout=10) as trace_response:
                     trace_payload = json.loads(trace_response.read().decode("utf-8"))
                 safe_diagnostics = extract_safe_provider_diagnostics(trace_payload)
+                refusal = trace_payload.get("refusal_details", {})
+                if not isinstance(refusal, dict):
+                    refusal = {}
+                diag = safe_diagnostics
+                try:
+                    safe_fallback_history = json.loads(diag.get("fallback_history", "[]"))
+                except (TypeError, json.JSONDecodeError):
+                    safe_fallback_history = []
+                safe_diag = {
+                    "provider": diag.get("output_provider"),
+                    "provider_model_id": diag.get("output_model_id"),
+                    "provider_response_id": diag.get("output_response_id"),
+                    "fallback_history": safe_fallback_history,
+                    "refusal_reason": refusal.get("reason"),
+                    "provider_diagnostics": diag,
+                }
+                print(
+                    "[SAFE PROVIDER DIAGNOSTICS] "
+                    + json.dumps(safe_diag, sort_keys=True, ensure_ascii=False)
+                )
                 if safe_diagnostics:
                     print(
                         "[PROVIDER DIAGNOSTICS] "
