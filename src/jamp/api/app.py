@@ -23,8 +23,8 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
-from jamp.runtime.verdict import JampVerdict
 from jamp.runtime.qualification import evaluate_model_qualification
+from jamp.runtime.verdict import JampVerdict
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
