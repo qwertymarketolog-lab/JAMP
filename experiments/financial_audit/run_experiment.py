@@ -177,6 +177,19 @@ def main() -> int:
     if not isinstance(evidence_status, str) and isinstance(output, dict):
         evidence_status = output.get("evidence_status")
 
+    # Dump the complete API payload only when the experiment cannot establish a clean result.
+    # This is diagnostic evidence; it does not change any gate or qualification decision.
+    if (
+        http_status < 200
+        or http_status >= 300
+        or not isinstance(payload, dict)
+        or payload.get("status") != "EXECUTE"
+        or evidence_status != "VERIFIED"
+    ):
+        print("\\n[DEBUG] FULL JAMP RESPONSE:")
+        print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+        print("--------------------------------------------------\\n")
+
     if evidence_status == "VERIFIED":
         model_line = "YES — evidence_status=VERIFIED"
     elif evidence_status == "CONTRADICTED":
