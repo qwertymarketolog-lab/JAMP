@@ -27,6 +27,7 @@ def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
     def fake_open(request, timeout):
         seen["url"] = request.full_url
         seen["auth"] = request.get_header("Authorization")
+        seen["user_agent"] = request.get_header("User-agent")
         seen["body"] = json.loads(request.data.decode("utf-8"))
         seen["timeout"] = timeout
         return Response(
@@ -39,6 +40,7 @@ def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
 
     assert seen["url"] == "https://api.groq.com/openai/v1/chat/completions"
     assert seen["auth"] == "Bearer test-secret"
+    assert seen["user_agent"] == "JAMP-Trust-Layer/1.0"
     assert seen["body"]["model"] == DEFAULT_GROQ_MODEL
     assert seen["body"]["messages"] == [{"role": "user", "content": "hello"}]
     assert seen["body"]["max_tokens"] == 256
