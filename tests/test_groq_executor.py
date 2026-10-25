@@ -20,6 +20,7 @@ class Response:
     def read(self):
         return self.body
 
+
 def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
     seen = {}
 
@@ -51,6 +52,7 @@ def test_groq_executor_posts_openai_compatible_request_and_preserves_identity():
     assert result["qualification"] == "UNKNOWN"
     assert "test-secret" not in repr(result)
 
+
 def test_groq_executor_maps_selected_model():
     seen = {}
 
@@ -70,9 +72,11 @@ def test_groq_executor_maps_selected_model():
     assert seen["model"] == "llama-3.1-8b-instant"
     assert result["provider_requested_model_id"] == "llama-3.1-8b-instant"
 
+
 def test_groq_executor_from_env_requires_key(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
     assert GroqChatExecutor.from_env() is None
+
 
 def test_groq_executor_from_env_loads_model_map(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "test-secret")
@@ -83,11 +87,13 @@ def test_groq_executor_from_env_loads_model_map(monkeypatch):
     assert executor is not None
     assert executor._model_id_map == {"am/model-a": "llama-3.1-8b-instant"}
 
+
 def test_groq_executor_rejects_invalid_model_map(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "test-secret")
     monkeypatch.setenv("GROQ_MODEL_ID_MAP", "not-json")
     with pytest.raises(ValueError, match="GROQ_MODEL_ID_MAP"):
         GroqChatExecutor.from_env()
+
 
 def test_groq_executor_fails_closed_on_http_error():
     def fake_open(request, timeout):
@@ -105,12 +111,14 @@ def test_groq_executor_fails_closed_on_http_error():
     assert caught.value.code == "GROQ_HTTP_401"
     assert caught.value.diagnostics == {"provider_http_status": 401}
 
+
 def test_groq_executor_rejects_missing_prompt_and_bad_response():
     executor = GroqChatExecutor("test-secret", opener=lambda request, timeout: Response(b"{}"))
     with pytest.raises(GroqError, match="prompt or messages"):
         executor("llama-3.3-70b-versatile", {})
     with pytest.raises(GroqError, match="no completion choice"):
         executor("llama-3.3-70b-versatile", {"prompt": "hello"})
+
 
 def test_groq_executor_refuses_unmapped_internal_model():
     executor = GroqChatExecutor(
