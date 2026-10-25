@@ -5,7 +5,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -143,7 +143,9 @@ def main() -> int:
                     "case_id": case["id"],
                     "http_status": response.status_code,
                     "execution_status": body.get("status") if isinstance(body, dict) else None,
-                    "evidence_status": body.get("evidence_status") if isinstance(body, dict) else None,
+                    "evidence_status": (
+                        body.get("evidence_status") if isinstance(body, dict) else None
+                    ),
                     "provider_model_id": actual_model,
                     "expected": case["expected"],
                     "observed": parsed,
@@ -169,7 +171,7 @@ def main() -> int:
                 "threshold": THRESHOLD,
                 "status": "QUALIFIED" if qualified_candidate else "UNKNOWN",
                 "measurement_status": "MEASURED",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "benchmark_id": "synthetic_financial_extraction_v1",
                 "benchmark_data_sha256": hashlib.sha256(raw_data).hexdigest(),
                 "case_count": len(cases),
