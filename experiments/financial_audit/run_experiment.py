@@ -209,15 +209,31 @@ def save_provenance_evidence(base_url: str, trace_id: Any, filename: str) -> boo
                 print(f"[PROVENANCE EXPORT] HOLD — HTTP {response.status}")
                 return False
             provenance_payload = json.loads(response.read().decode("utf-8"))
-        if not isinstance(provenance_payload, dict) or provenance_payload.get("trace_id") != trace_id:
+        if (
+            not isinstance(provenance_payload, dict)
+            or provenance_payload.get("trace_id") != trace_id
+        ):
             print("[PROVENANCE EXPORT] HOLD — response trace_id mismatch")
             return False
         with open(filename, "w", encoding="utf-8") as evidence_file:
-            json.dump(provenance_payload, evidence_file, indent=2, ensure_ascii=False, sort_keys=True)
+            json.dump(
+                provenance_payload,
+                evidence_file,
+                indent=2,
+                ensure_ascii=False,
+                sort_keys=True,
+            )
             evidence_file.write("\n")
         print(f"[PROVENANCE EXPORT] SAVED — {filename} for {trace_id}")
         return True
-    except (HTTPError, URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (
+        HTTPError,
+        URLError,
+        TimeoutError,
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"[PROVENANCE EXPORT] HOLD — {type(exc).__name__}: {exc}")
         return False
 
