@@ -178,6 +178,7 @@ class GroqChatExecutor:
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                "User-Agent": "JAMP-Trust-Layer/1.0",
             },
             method="POST",
         )
