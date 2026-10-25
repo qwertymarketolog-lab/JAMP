@@ -163,7 +163,6 @@ class ProvenanceTracker:
                     "exception_type",
                     "error_message",
                     "error_body",
-                    "fallback_history",
                 ):
                     if k in failure_diagnostics:
                         diagnostics[k] = failure_diagnostics[k]
@@ -184,6 +183,30 @@ class ProvenanceTracker:
                 usage = failure_diagnostics.get("usage")
                 if isinstance(usage, dict):
                     diagnostics["usage"] = usage
+                history_source = failure_diagnostics.get("fallback_history")
+                if isinstance(history_source, list):
+                    safe_history = []
+                    for attempt in history_source[:5]:
+                        if not isinstance(attempt, dict):
+                            continue
+                        provider = attempt.get("provider")
+                        requested_model = attempt.get("requested_model")
+                        http_status = attempt.get("http_status")
+                        error = attempt.get("error")
+                        if (
+                            isinstance(provider, str)
+                            and isinstance(requested_model, str)
+                            and type(http_status) is int
+                            and 100 <= http_status <= 599
+                            and isinstance(error, str)
+                        ):
+                            safe_history.append({
+                                "provider": provider[:80],
+                                "requested_model": requested_model[:160],
+                                "http_status": http_status,
+                                "error": error[:150],
+                            })
+                    diagnostics["fallback_history"] = safe_history
                 for key in (
                     "content_len",
                     "reasoning_len",
