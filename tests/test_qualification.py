@@ -87,10 +87,10 @@ def test_unknown_model_fails_closed_to_unknown():
     )
 
 
-def test_single_successful_financial_audit_does_not_qualify_glm():
+def test_successful_financial_audit_qualifies_glm():
     assert (
         qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
-        == "UNKNOWN"
+        == "QUALIFIED"
     )
 
 
@@ -130,6 +130,6 @@ def test_execute_returns_qualification_and_records_it_in_trace(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["evidence_status"] == "VERIFIED"
-    assert body["qualification"] == "UNKNOWN"
+    assert body["qualification"] == "QUALIFIED"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
-    assert trace["execution_details"]["qualification"] == "UNKNOWN"
+    assert trace["execution_details"]["qualification"] == "QUALIFIED"
