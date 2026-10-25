@@ -55,9 +55,7 @@ def main() -> int:
             json={"intent": "search_and_extraction", "prompt": PROMPT},
         )
         if response.status_code != 200:
-            raise RuntimeError(
-                f"/v1/execute refused the test request: HTTP {response.status_code}"
-            )
+            raise RuntimeError(f"/v1/execute refused the test request: HTTP {response.status_code}")
 
         body = response.json()
         if (
@@ -86,10 +84,7 @@ def main() -> int:
         tampered["signature"] = changed_first_character + signature[1:]
 
         tampered_response = client.post("/v1/verify-verdict", json=tampered)
-        if (
-            tampered_response.status_code != 200
-            or tampered_response.json() != {"valid": False}
-        ):
+        if tampered_response.status_code != 200 or tampered_response.json() != {"valid": False}:
             raise RuntimeError("Signature validator did not reject the tampered verdict")
         print("[B2B CLIENT] Tampered signature validation: INVALID.")
         print("RESULT: B2B TRUST LAYER CONTRACT FULLY VERIFIED.")
