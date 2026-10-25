@@ -80,9 +80,12 @@ def extract_safe_provider_diagnostics(
                 safe_item["provider"] = provider[:80]
             if isinstance(requested_model, str):
                 safe_item["requested_model"] = requested_model[:160]
-            if isinstance(http_status, int) and not isinstance(http_status, bool):
-                if 100 <= http_status <= 599:
-                    safe_item["http_status"] = http_status
+            if (
+                isinstance(http_status, int)
+                and not isinstance(http_status, bool)
+                and 100 <= http_status <= 599
+            ):
+                safe_item["http_status"] = http_status
             if isinstance(error, str):
                 safe_item["error"] = error[:150]
             if safe_item:
