@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 # Entries may be promoted to QUALIFIED only when backed by an independently
 # reviewed benchmark record. A successful execution/E2 verification is not a
 # model-quality benchmark and must not promote qualification by itself.
