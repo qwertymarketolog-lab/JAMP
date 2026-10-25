@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+
 from jamp.api import create_app
 from jamp.runtime.verdict import JampVerdict
 
