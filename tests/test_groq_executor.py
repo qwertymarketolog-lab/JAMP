@@ -6,6 +6,7 @@ import pytest
 
 from jamp.provider.groq import DEFAULT_GROQ_MODEL, GroqChatExecutor, GroqError
 
+
 class Response:
     def __init__(self, body: bytes):
         self.body = body
