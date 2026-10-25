@@ -15,7 +15,7 @@ jobs:
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
-      JAMP_ENV: local
+      JAMP_ENVIRONMENT: local
       JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
     steps:
       - name: Checkout repository
