@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from jamp.runtime import qualification
 
 
@@ -15,6 +17,66 @@ def test_registered_benchmark_qualification_is_returned(monkeypatch):
             "fixture/model-qualified", "search_and_extraction"
         )
         == "QUALIFIED"
+    )
+
+
+def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "status": "QUALIFIED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
+        == "QUALIFIED"
+    )
+
+
+def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknown(
+    tmp_path, monkeypatch
+):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "status": "QUALIFIED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["some-other-model"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
+        == "UNKNOWN"
     )
 
 

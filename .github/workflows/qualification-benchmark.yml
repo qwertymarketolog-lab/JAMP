@@ -1,0 +1,46 @@
+name: Qualification Benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-qualification-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
+      JAMP_ENV: local
+      JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install httpx
+
+      - name: Run live benchmark
+        id: benchmark
+        run: python experiments/qualification_benchmark/run_benchmark.py
+
+      - name: Upload measured benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qualification-benchmark-evidence
+          path: src/jamp/runtime/measured_benchmarks.json
+          if-no-files-found: error
+          retention-days: 30
