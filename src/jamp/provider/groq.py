@@ -13,7 +13,6 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 INTERNAL_MODEL_PREFIXES = ("am/", "ag/", "cx/")
 
