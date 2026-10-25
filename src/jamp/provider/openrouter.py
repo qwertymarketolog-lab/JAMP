@@ -80,6 +80,7 @@ class OpenRouterChatExecutor:
         max_tokens: int = 256,
         reasoning_effort: str | None = "low",
         model_id_map: dict[str, str] | None = None,
+        fallback_models: list[str] | None = None,
         opener: Callable[..., Any] | None = None,
     ) -> None:
         if not api_key.strip():
@@ -104,7 +105,13 @@ class OpenRouterChatExecutor:
         ):
             raise ValueError("model_id_map must map non-empty strings to non-empty strings")
         self._api_key = api_key
+        if fallback_models is not None and (
+            not isinstance(fallback_models, list)
+            or any(not isinstance(model, str) or not model.strip() for model in fallback_models)
+        ):
+            raise ValueError("fallback_models must be a list of non-empty strings")
         self._model_id_map = dict(model_id_map or {})
+        self._fallback_models = list(fallback_models or [])
         self._crosswalk_digest = "sha256:local-model-id-map" if model_id_map is not None else None
         self._chat_url = chat_url
         self._timeout = timeout
@@ -126,6 +133,11 @@ class OpenRouterChatExecutor:
         if reasoning_effort in {"", "none"}:
             reasoning_effort = None if reasoning_effort == "" else "none"
         raw_model_id_map = os.environ.get("OPENROUTER_MODEL_ID_MAP", "").strip()
+        fallback_models = [
+            model.strip()
+            for model in os.environ.get("OPENROUTER_FALLBACK_MODELS", "").split(",")
+            if model.strip()
+        ]
         if raw_model_id_map:
             environment = os.environ.get("JAMP_ENVIRONMENT", "production").strip().lower()
             if environment not in {"test", "local", "development"}:
@@ -160,6 +172,7 @@ class OpenRouterChatExecutor:
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
             model_id_map=model_id_map,
+            fallback_models=fallback_models,
         )
         executor._crosswalk_digest = crosswalk_digest
         return executor
@@ -212,46 +225,82 @@ class OpenRouterChatExecutor:
                     "crosswalk_digest": self._crosswalk_digest,
                 },
             )
-        body = json.dumps(
-            {
-                "model": provider_requested_model,
-                "messages": self._messages(payload),
-                "temperature": 0,
-                "max_tokens": self._max_tokens,
-                **(
-                    {"reasoning": {"effort": self._reasoning_effort}}
-                    if self._reasoning_effort is not None
-                    else {}
-                ),
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        request = Request(
-            self._chat_url,
-            data=body,
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            method="POST",
-        )
-        try:
-            with self._opener(request, timeout=self._timeout) as response:
-                raw = response.read()
-            decoded = json.loads(raw.decode("utf-8"))
-        except HTTPError as exc:
-            # Preserve only the upstream status code; never persist provider response bodies.
+        messages = self._messages(payload)
+        models_to_try = [provider_requested_model, *self._fallback_models]
+        decoded: dict[str, Any] | None = None
+        used_model: str | None = None
+        last_error: Exception | None = None
+
+        for model in models_to_try:
+            body = json.dumps(
+                {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0,
+                    "max_tokens": self._max_tokens,
+                    **(
+                        {"reasoning": {"effort": self._reasoning_effort}}
+                        if self._reasoning_effort is not None
+                        else {}
+                    ),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            request = Request(
+                self._chat_url,
+                data=body,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with self._opener(request, timeout=self._timeout) as response:
+                    raw = response.read()
+            except HTTPError as exc:
+                if exc.code >= 500:
+                    last_error = exc
+                    continue
+                # 4xx is a hard failure; do not hide configuration/model errors.
+                raise OpenRouterError(
+                    f"OpenRouter returned HTTP {exc.code}",
+                    code=f"OPENROUTER_HTTP_{exc.code}",
+                    diagnostics={"provider_http_status": exc.code},
+                ) from None
+            except (URLError, TimeoutError, OSError) as exc:
+                last_error = exc
+                continue
+
+            try:
+                parsed = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                raise OpenRouterError("OpenRouter returned invalid JSON") from None
+            if not isinstance(parsed, dict):
+                raise OpenRouterError("OpenRouter response must be a JSON object")
+            decoded = parsed
+            used_model = model
+            break
+
+        if decoded is None or used_model is None:
+            if isinstance(last_error, HTTPError):
+                raise OpenRouterError(
+                    f"All OpenRouter models failed; last HTTP status {last_error.code}",
+                    code=f"OPENROUTER_HTTP_{last_error.code}",
+                    diagnostics={"provider_http_status": last_error.code},
+                ) from None
             raise OpenRouterError(
-                f"OpenRouter returned HTTP {exc.code}",
-                code=f"OPENROUTER_HTTP_{exc.code}",
-                diagnostics={"provider_http_status": exc.code},
+                "All OpenRouter models failed; last error: "
+                + (type(last_error).__name__ if last_error is not None else "unknown"),
+                code="OPENROUTER_ALL_MODELS_FAILED",
+                diagnostics={
+                    "last_error_type": type(last_error).__name__ if last_error is not None else None
+                },
             ) from None
-        except (URLError, TimeoutError, OSError):
-            raise OpenRouterError("OpenRouter transport failed") from None
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            raise OpenRouterError("OpenRouter returned invalid JSON") from None
+
+        provider_requested_model = used_model
 
         if not isinstance(decoded, dict):
             raise OpenRouterError("OpenRouter response must be a JSON object")
