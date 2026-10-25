@@ -19,6 +19,23 @@ TASK_TYPE = "search_and_extraction"
 THRESHOLD = 0.9
 
 
+def clean_quarter(value: Any) -> str | None:
+    """Normalize quarter labels while preserving an optional year."""
+    if isinstance(value, bool) or value is None:
+        return None
+    text = str(value).strip().lower()
+    match = re.fullmatch(
+        r"(?:q\\s*)?([1-4])(?:\\s*(?:quarter|квартал))?(?:\\s+(\\d{4}))?",
+        text,
+    )
+    if match is None:
+        match = re.fullmatch(r"(?:квартал\\s*)?([1-4])(?:\\s+(\\d{4}))?", text)
+    if match is None:
+        return None
+    quarter, year = match.groups()
+    return f"{quarter}:{year}" if year else quarter
+
+
 def clean_number(value: Any) -> int | float | None:
     """Normalize a number or currency-like string without guessing missing values."""
     if isinstance(value, bool):
@@ -64,7 +81,14 @@ def values_match(expected: dict[str, Any], observed: dict[str, Any] | None) -> b
     for key, expected_value in expected.items():
         if key not in observed:
             return False
-        if isinstance(expected_value, (int, float)) and not isinstance(expected_value, bool):
+        if key == "quarter":
+            expected_quarter = clean_quarter(expected_value)
+            observed_quarter = clean_quarter(observed[key])
+            if expected_quarter is None or observed_quarter is None:
+                return False
+            if expected_quarter != observed_quarter:
+                return False
+        elif isinstance(expected_value, (int, float)) and not isinstance(expected_value, bool):
             if clean_number(observed[key]) != expected_value:
                 return False
         elif observed[key] != expected_value:
@@ -89,7 +113,6 @@ def main() -> int:
         json.dumps({"am/nemotron-3-super-120b-a12b": TARGET_MODEL}),
     )
     os.environ.setdefault("JAMP_ENV", "local")
-    os.environ.setdefault("JAMP_SIGNING_KEY", "benchmark-local-signing-key")
     from jamp.api.app import create_app
 
     records: list[dict[str, Any]] = []
