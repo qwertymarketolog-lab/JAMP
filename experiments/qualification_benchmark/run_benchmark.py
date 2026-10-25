@@ -20,14 +20,21 @@ THRESHOLD = 0.9
 
 
 def clean_number(value: Any) -> int | float | None:
-    """Normalize a number or a currency-like string without guessing missing values."""
+    """Normalize a number or currency-like string without guessing missing values."""
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
         return value
     if not isinstance(value, str):
         return None
-    cleaned = value.strip().replace(",", "").replace("$", "").replace("€", "").replace("£", "")
+
+    cleaned = (
+        value.strip()
+        .replace(",", "")
+        .replace("$", "")
+        .replace("€", "")
+        .replace("£", "")
+    )
     cleaned = re.sub(r"(?i)\s*(?:руб(?:лей|ля|ль)?|руб\.?|usd|eur)\s*$", "", cleaned)
     multiplier = 1
     if cleaned.upper().endswith("M"):
@@ -48,8 +55,8 @@ def parse_model_json(content: Any) -> dict[str, Any] | None:
         return None
     text = content.strip()
     if text.startswith("```"):
-        text = re.sub(r"^\`\`\`(?:json)?\s*", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s*\`\`\`$", "", text)
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
     try:
         value = json.loads(text)
     except json.JSONDecodeError:
@@ -83,7 +90,10 @@ def main() -> int:
         print("HOLD: benchmark dataset must contain exactly five cases.", file=sys.stderr)
         return 2
 
-    os.environ.setdefault("OPENROUTER_MODEL_ID_MAP", json.dumps({ "am/nemotron-3-super-120b-a12b": TARGET_MODEL }))
+    os.environ.setdefault(
+        "OPENROUTER_MODEL_ID_MAP",
+        json.dumps({"am/nemotron-3-super-120b-a12b": TARGET_MODEL}),
+    )
     os.environ.setdefault("JAMP_ENV", "local")
     os.environ.setdefault("JAMP_SIGNING_KEY", "benchmark-local-signing-key")
     from jamp.api.app import create_app
@@ -104,35 +114,54 @@ def main() -> int:
             )
             response = client.post(
                 "/v1/execute",
-                json={"intent": TASK_TYPE, "prompt": prompt, "request_id": f"qualification-benchmark:{case['id']}"},
+                json={
+                    "intent": TASK_TYPE,
+                    "prompt": prompt,
+                    "request_id": f"qualification-benchmark:{case['id']}",
+                },
             )
-            body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+            body = (
+                response.json()
+                if response.headers.get("content-type", "").startswith("application/json")
+                else {}
+            )
             output = body.get("output") if isinstance(body, dict) else None
             content = output.get("content") if isinstance(output, dict) else None
             actual_model = output.get("provider_model_id") if isinstance(output, dict) else None
             if isinstance(actual_model, str):
                 observed_model_ids.append(actual_model)
             parsed = parse_model_json(content)
-            matched = response.status_code == 200 and body.get("status") == "EXECUTE" and values_match(case["expected"], parsed)
+            matched = (
+                response.status_code == 200
+                and body.get("status") == "EXECUTE"
+                and values_match(case["expected"], parsed)
+            )
             if matched:
                 passed += 1
-            records.append({
-                "case_id": case["id"],
-                "http_status": response.status_code,
-                "execution_status": body.get("status") if isinstance(body, dict) else None,
-                "evidence_status": body.get("evidence_status") if isinstance(body, dict) else None,
-                "provider_model_id": actual_model,
-                "expected": case["expected"],
-                "observed": parsed,
-                "matched": matched,
-                "trace_id": body.get("trace_id") if isinstance(body, dict) else None,
-            })
+            records.append(
+                {
+                    "case_id": case["id"],
+                    "http_status": response.status_code,
+                    "execution_status": body.get("status") if isinstance(body, dict) else None,
+                    "evidence_status": body.get("evidence_status") if isinstance(body, dict) else None,
+                    "provider_model_id": actual_model,
+                    "expected": case["expected"],
+                    "observed": parsed,
+                    "matched": matched,
+                    "trace_id": body.get("trace_id") if isinstance(body, dict) else None,
+                }
+            )
             print(f"{case['id']}: {'PASS' if matched else 'FAIL'}")
 
     score = passed / len(cases)
-    exact_model = bool(observed_model_ids) and all(model_id == TARGET_MODEL for model_id in observed_model_ids) and len(observed_model_ids) == len(cases)
+    exact_model = (
+        len(observed_model_ids) == len(cases)
+        and all(model_id == TARGET_MODEL for model_id in observed_model_ids)
+    )
     all_e2_verified = all(record["evidence_status"] == "VERIFIED" for record in records)
-    qualified_candidate = score >= THRESHOLD and passed == len(cases) and exact_model and all_e2_verified
+    qualified_candidate = (
+        score >= THRESHOLD and passed == len(cases) and exact_model and all_e2_verified
+    )
     result = {
         TARGET_MODEL: {
             TASK_TYPE: {
@@ -147,21 +176,32 @@ def main() -> int:
                 "passed_cases": passed,
                 "actual_provider_model_ids": observed_model_ids,
                 "all_e2_verified": all_e2_verified,
-                "qualification_basis": "five live API executions; exact model identity; all cases and E2 checks must pass",
+                "qualification_basis": (
+                    "five live API executions; exact model identity; "
+                    "all cases and E2 checks must pass"
+                ),
                 "cases": records,
             }
         }
     }
-    OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({
-        "score": score,
-        "passed_cases": passed,
-        "case_count": len(cases),
-        "actual_model_identity_match": exact_model,
-        "all_e2_verified": all_e2_verified,
-        "candidate_status": result[TARGET_MODEL][TASK_TYPE]["status"],
-        "output_path": str(OUTPUT_PATH.relative_to(ROOT)),
-    }, ensure_ascii=False))
+    OUTPUT_PATH.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "score": score,
+                "passed_cases": passed,
+                "case_count": len(cases),
+                "actual_model_identity_match": exact_model,
+                "all_e2_verified": all_e2_verified,
+                "candidate_status": result[TARGET_MODEL][TASK_TYPE]["status"],
+                "output_path": str(OUTPUT_PATH.relative_to(ROOT)),
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0 if qualified_candidate else 1
 
 
