@@ -39,7 +39,11 @@ def run_guard_test() -> None:
             proxy.execute_tool(payload={"table": "users"})
         except SecurityViolation as exc:
             assert str(exc) == "Destructive operation requires confirmation."
-            assert call("tools/call", {"name": "delete_database", "arguments": {"table": "users"}}) not in mock_rpc.call_args_list
+            blocked_call = call(
+                "tools/call",
+                {"name": "delete_database", "arguments": {"table": "users"}},
+            )
+            assert blocked_call not in mock_rpc.call_args_list
             print(f"PASS: blocked before tools/call. Reason: {exc}")
         else:
             raise AssertionError("Guard allowed destructive operation without confirmation")
