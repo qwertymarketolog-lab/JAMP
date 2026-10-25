@@ -1,1 +1,125 @@
-{}
+{
+  "z-ai/glm-5.3-flash": {
+    "search_and_extraction": {
+      "score": 1.0,
+      "threshold": 0.9,
+      "model_id": "z-ai/glm-5.3-flash",
+      "task_type": "search_and_extraction",
+      "total_cases": 5,
+      "dataset_sha256": "e10ed9992b45f9d2fb8b10977831a741bb90f92a98c66b20469251e87ea2b103",
+      "status": "QUALIFIED",
+      "measurement_status": "MEASURED",
+      "timestamp": "2026-10-25T19:05:06.481492+00:00",
+      "benchmark_id": "synthetic_financial_extraction_v1",
+      "benchmark_data_sha256": "e10ed9992b45f9d2fb8b10977831a741bb90f92a98c66b20469251e87ea2b103",
+      "case_count": 5,
+      "passed_cases": 5,
+      "actual_provider_model_ids": [
+        "z-ai/glm-5.3-flash",
+        "z-ai/glm-5.3-flash",
+        "z-ai/glm-5.3-flash",
+        "z-ai/glm-5.3-flash",
+        "z-ai/glm-5.3-flash"
+      ],
+      "all_e2_verified": true,
+      "qualification_basis": "five live API executions; exact model identity; all cases and E2 checks must pass",
+      "cases": [
+        {
+          "case_id": "fin_01",
+          "http_status": 200,
+          "execution_status": "EXECUTE",
+          "evidence_status": "VERIFIED",
+          "provider_model_id": "z-ai/glm-5.3-flash",
+          "expected": {
+            "quarter": "Q1",
+            "revenue": 1500000,
+            "net_income": 300000
+          },
+          "observed": {
+            "quarter": "Q1",
+            "revenue": 1500000,
+            "net_income": 300000
+          },
+          "matched": true,
+          "trace_id": "trace_965d1323"
+        },
+        {
+          "case_id": "fin_02",
+          "http_status": 200,
+          "execution_status": "EXECUTE",
+          "evidence_status": "VERIFIED",
+          "provider_model_id": "z-ai/glm-5.3-flash",
+          "expected": {
+            "quarter": "Q2",
+            "operating_expenses": 2000000,
+            "revenue": 5000000
+          },
+          "observed": {
+            "quarter": "Q2",
+            "revenue": 5000000,
+            "operating_expenses": 2000000
+          },
+          "matched": true,
+          "trace_id": "trace_c354520a"
+        },
+        {
+          "case_id": "fin_03",
+          "http_status": 200,
+          "execution_status": "EXECUTE",
+          "evidence_status": "VERIFIED",
+          "provider_model_id": "z-ai/glm-5.3-flash",
+          "expected": {
+            "quarter": "Q3",
+            "revenue": 10000,
+            "operating_expenses": 4000
+          },
+          "observed": {
+            "quarter": 3,
+            "revenue": 10000,
+            "operating_expenses": 4000
+          },
+          "matched": true,
+          "trace_id": "trace_9637ae23"
+        },
+        {
+          "case_id": "fin_04",
+          "http_status": 200,
+          "execution_status": "EXECUTE",
+          "evidence_status": "VERIFIED",
+          "provider_model_id": "z-ai/glm-5.3-flash",
+          "expected": {
+            "quarter": "Q4 2026",
+            "revenue": 8500000,
+            "net_income": 1200000
+          },
+          "observed": {
+            "quarter": "Q4 2026",
+            "revenue": 8500000,
+            "net_income": 1200000
+          },
+          "matched": true,
+          "trace_id": "trace_c8fa3589"
+        },
+        {
+          "case_id": "fin_05",
+          "http_status": 200,
+          "execution_status": "EXECUTE",
+          "evidence_status": "VERIFIED",
+          "provider_model_id": "z-ai/glm-5.3-flash",
+          "expected": {
+            "quarter": "Q1",
+            "revenue": 500,
+            "operating_expenses": 200
+          },
+          "observed": {
+            "quarter": 1,
+            "revenue": 500,
+            "operating_expenses": 200
+          },
+          "matched": true,
+          "trace_id": "trace_35b97b10"
+        }
+      ]
+    }
+  }
+}
