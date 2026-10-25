@@ -105,3 +105,31 @@ def test_provider_http_diagnostics_survive_provenance():
     diagnostics = trace["refusal_details"]["provider_diagnostics"]
     assert diagnostics["code"] == "OPENROUTER_HTTP_429"
     assert diagnostics["provider_http_status"] == 429
+
+
+def test_e2_verifier_error_diagnostics_survive_provenance():
+    from jamp.runtime.provenance import ProvenanceTracker
+
+    failure_diagnostics = {
+        "evidence_status": "INCONCLUSIVE",
+        "reason": "API_ERROR",
+        "http_status": 403,
+        "network_error": "connection reset",
+        "exception_type": "TimeoutError",
+        "error_message": "generation request timed out",
+        "error_body": '{"error":"forbidden"}',
+    }
+    trace = ProvenanceTracker().create_trace(
+        task_profile="search_and_extraction",
+        required_caps=("C01", "C06"),
+        action="REFUSE",
+        selected_model="z-ai/glm-5.3-flash",
+        eligible_count=1,
+        refusal_reason="E2_VERIFICATION_INCONCLUSIVE",
+        failure_diagnostics=failure_diagnostics,
+    )
+
+    diagnostics = trace["refusal_details"]["provider_diagnostics"]
+    for key, value in failure_diagnostics.items():
+        assert diagnostics[key] == value
+
