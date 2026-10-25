@@ -128,12 +128,14 @@ class ProvenanceTracker:
                         and 100 <= http_status <= 599
                         and isinstance(error, str)
                     ):
-                        safe_history.append({
-                            "provider": provider[:80],
-                            "requested_model": requested_model[:160],
-                            "http_status": http_status,
-                            "error": error[:150],
-                        })
+                        safe_history.append(
+                            {
+                                "provider": provider[:80],
+                                "requested_model": requested_model[:160],
+                                "http_status": http_status,
+                                "error": error[:150],
+                            }
+                        )
                 execution_details["fallback_history"] = safe_history
             if output is not None:
                 execution_details["output_digest"] = self.output_digest(output)
@@ -200,12 +202,14 @@ class ProvenanceTracker:
                             and 100 <= http_status <= 599
                             and isinstance(error, str)
                         ):
-                            safe_history.append({
-                                "provider": provider[:80],
-                                "requested_model": requested_model[:160],
-                                "http_status": http_status,
-                                "error": error[:150],
-                            })
+                            safe_history.append(
+                                {
+                                    "provider": provider[:80],
+                                    "requested_model": requested_model[:160],
+                                    "http_status": http_status,
+                                    "error": error[:150],
+                                }
+                            )
                     diagnostics["fallback_history"] = safe_history
                 for key in (
                     "content_len",

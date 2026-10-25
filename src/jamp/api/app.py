@@ -218,7 +218,8 @@ def create_app(
                         if isinstance(fallback_history, list)
                         else {}
                     ),
-                } or None,
+                }
+                or None,
             )
             persistence.write_trace(trace)
             return JSONResponse(
@@ -284,11 +285,15 @@ def create_app(
         )
         persistence.write_trace(trace)
         successful_model = (
-            output.get("provider_model_id")
-            or output.get("provider_requested_model_id")
-            or output.get("model")
-            or selected
-        ) if isinstance(output, dict) else selected
+            (
+                output.get("provider_model_id")
+                or output.get("provider_requested_model_id")
+                or output.get("model")
+                or selected
+            )
+            if isinstance(output, dict)
+            else selected
+        )
         response = {
             "status": "EXECUTE",
             "selected_model": successful_model,

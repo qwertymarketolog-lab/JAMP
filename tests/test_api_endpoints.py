@@ -140,7 +140,6 @@ def test_e2_verifier_error_diagnostics_survive_provenance():
         assert diagnostics[key] == value
 
 
-
 def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
     import importlib
 
@@ -150,6 +149,7 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
         "verify_generation",
         lambda output: ("INCONCLUSIVE", {"reason": "API_KEY_MISSING"}),
     )
+
     def executor(model, payload):
         return {
             "provider": "openrouter",
