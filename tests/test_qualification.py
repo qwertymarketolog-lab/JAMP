@@ -44,9 +44,7 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
     monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
 
     assert (
-        qualification.evaluate_model_qualification(
-            "z-ai/glm-5.3-flash", "search_and_extraction"
-        )
+        qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
         == "QUALIFIED"
     )
 
