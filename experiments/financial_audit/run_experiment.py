@@ -243,7 +243,7 @@ def main() -> int:
     ):
         print("\\n[DEBUG] FULL JAMP RESPONSE:")
         print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
-        print("--------------------------------------------------\\n")
+        print("--------------------------------------------------\n")
 
     if evidence_status == "VERIFIED":
         model_line = "YES — evidence_status=VERIFIED"
@@ -331,7 +331,7 @@ def main() -> int:
         print(f"[DATA MATCH] FAIL — {exc}")
         return 1
 
-    print("\\n[DEBUG] RAW EXTRACTED JSON FROM AI:")
+    print("\n[DEBUG] RAW EXTRACTED JSON FROM AI:")
     print(json.dumps(extracted, indent=2, ensure_ascii=False, sort_keys=True))
     print("--------------------------------------------------\\n")
 
