@@ -63,13 +63,13 @@ def clean_number(value: Any) -> Decimal | None:
     if not isinstance(value, str):
         return None
 
-    text = value.strip().lower().replace("\\u00a0", " ").replace("\\u202f", " ")
+    text = value.strip().lower().replace("\u00a0", " ").replace("\u202f", " ")
     text = text.replace("−", "-").replace("–", "-")
     if not text:
         return None
 
     scale = Decimal("1")
-    scale_pattern = r"(?<!\\w)(?:миллион(?:а|ов)?|millions?)(?!\\w)"
+    scale_pattern = r"(?<!\w)(?:миллион(?:а|ов)?|millions?)(?!\w)"
     if re.search(scale_pattern, text):
         scale = Decimal("1000000")
         text = re.sub(scale_pattern, " ", text)
@@ -77,12 +77,12 @@ def clean_number(value: Any) -> Decimal | None:
     # Remove only known currency labels/symbols and thousands separators.
     text = re.sub(r"[$€£₽]", " ", text)
     text = re.sub(
-        r"(?<!\\w)(?:usd|eur|gbp|rub|руб(?:ль|ля|лей)?|доллар(?:а|ов)?|евро)(?!\\w)",
+        r"(?<!\w)(?:usd|eur|gbp|rub|руб(?:ль|ля|лей)?|доллар(?:а|ов)?|евро)(?!\w)",
         " ",
         text,
     )
     text = text.replace(",", "").replace(" ", "")
-    if not re.fullmatch(r"[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)", text):
+    if not re.fullmatch(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)", text):
         return None
 
     try:
