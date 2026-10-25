@@ -14,13 +14,14 @@ from unittest.mock import patch
 from jamp.api import create_app
 from jamp.runtime.verdict import JampVerdict
 
-from fastapi.testclient import TestClient
 
 
 PROMPT = "Извлеки данные: Выручка $1,000,000, Расходы $200,000."
 
 
 def main() -> int:
+    from fastapi.testclient import TestClient
+
     app_module = importlib.import_module("jamp.api.app")
 
     def deterministic_executor(model: str, payload: dict[str, object]) -> dict[str, str]:
