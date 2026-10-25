@@ -42,9 +42,9 @@ def test_invalid_model_or_task_fails_closed():
 
 
 def test_execute_returns_qualification_and_records_it_in_trace(monkeypatch):
-    from fastapi.testclient import TestClient
-
     import importlib
+
+    from fastapi.testclient import TestClient
 
     app_module = importlib.import_module("jamp.api.app")
     monkeypatch.setenv("JAMP_SIGNING_KEY", "qualification-test-key")
