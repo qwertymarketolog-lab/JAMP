@@ -15,7 +15,13 @@ def test_classify_search():
 
 def test_execute_returns_execute_and_provenance():
     client = TestClient(
-        create_app(executor=lambda model, payload: {"model": model, "content": "test result"})
+        create_app(
+            executor=lambda model, payload: {
+                "provider": "anymodel",
+                "model": model,
+                "content": "test result",
+            }
+        )
     )
     response = client.post(
         "/v1/execute",
@@ -132,3 +138,47 @@ def test_e2_verifier_error_diagnostics_survive_provenance():
     diagnostics = trace["refusal_details"]["provider_diagnostics"]
     for key, value in failure_diagnostics.items():
         assert diagnostics[key] == value
+
+
+def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
+    import importlib
+
+    app_module = importlib.import_module("jamp.api.app")
+    monkeypatch.setattr(
+        app_module,
+        "verify_generation",
+        lambda output: ("INCONCLUSIVE", {"reason": "API_KEY_MISSING"}),
+    )
+
+    def executor(model, payload):
+        return {
+            "provider": "openrouter",
+            "model": model,
+            "provider_response_id": "generation-1",
+            "provider_model_id": "provider/model-a",
+            "content": "must not be returned as EXECUTE",
+            "fallback_history": [
+                {
+                    "provider": "FirstExecutor",
+                    "requested_model": model,
+                    "http_status": 402,
+                    "error": "payment required",
+                }
+            ],
+        }
+
+    client = TestClient(create_app(executor=executor))
+    response = client.post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "Say hello"},
+    )
+    assert response.status_code == 502
+    body = response.json()
+    assert body["status"] == "REFUSE"
+    assert body["reason"] == "E2_VERIFICATION_INCONCLUSIVE"
+    trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
+    assert trace["status"] == "REFUSE"
+    assert (
+        trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"]
+        == 402
+    )

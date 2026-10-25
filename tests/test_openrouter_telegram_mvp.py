@@ -1,6 +1,7 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from unittest.mock import patch
 from urllib.error import HTTPError
 
 import pytest
@@ -157,18 +158,25 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
     assert calls == []
 
 
-def test_telegram_webhook_executes_and_returns_trace(monkeypatch, tmp_path):
+@patch("jamp.api.app.verify_generation")
+def test_telegram_webhook_executes_and_returns_trace(mock_verify, monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
     monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
     calls = []
 
     def executor(model, payload):
         calls.append(payload)
-        return {"content": "hello from model"}
+        return {
+            "provider": "openrouter",
+            "provider_response_id": "gen-test-123",
+            "provider_model_id": "test-model",
+            "content": "hello from model",
+        }
 
     client = TestClient(
         create_app(
@@ -292,8 +300,13 @@ def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
     assert sent == []
 
 
-def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypatch, tmp_path):
+@patch("jamp.api.app.verify_generation")
+def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(
+    mock_verify, monkeypatch, tmp_path
+):
     import jamp.api.app as app_module
+
+    mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
