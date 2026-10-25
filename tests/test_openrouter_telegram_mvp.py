@@ -159,7 +159,7 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
 
 
 @patch("jamp.api.app.verify_generation")
-def test_telegram_webhook_executes_and_returns_trace(monkeypatch, tmp_path, mock_verify):
+def test_telegram_webhook_executes_and_returns_trace(mock_verify, monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
@@ -296,7 +296,7 @@ def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
 
 
 @patch("jamp.api.app.verify_generation")
-def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(monkeypatch, tmp_path, mock_verify):
+def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(mock_verify, monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
