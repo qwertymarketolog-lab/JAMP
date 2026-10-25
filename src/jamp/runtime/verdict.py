@@ -36,9 +36,7 @@ class JampVerdict:
         payload_bytes = json.dumps(
             self._payload(), sort_keys=True, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
-        signature = hmac.new(
-            secret.encode("utf-8"), payload_bytes, hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
         return JampVerdict(**{**asdict(self), "signature": signature})
 
     def verify(self, secret: str) -> bool:
