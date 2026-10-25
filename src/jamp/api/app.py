@@ -49,7 +49,6 @@ def _send_telegram_message(bot_token: str, chat_id: int, text: str) -> None:
         raise RuntimeError("Telegram delivery failed")
 
 
-
 def _verdict_signing_key() -> str | None:
     """Use a configured key; dev-secret is only a non-production fallback."""
     key = os.environ.get("JAMP_SIGNING_KEY")
