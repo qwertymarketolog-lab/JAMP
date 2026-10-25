@@ -130,6 +130,11 @@ class ProvenanceTracker:
                     "generation_id",
                     "jamp_model",
                     "provider_name",
+                    "http_status",
+                    "network_error",
+                    "exception_type",
+                    "error_message",
+                    "error_body",
                 ):
                     if k in failure_diagnostics:
                         diagnostics[k] = failure_diagnostics[k]
