@@ -16,7 +16,6 @@ from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
-from jamp.runtime.verdict import JampVerdict
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
@@ -24,6 +23,7 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
+from jamp.runtime.verdict import JampVerdict
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
