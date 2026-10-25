@@ -14,7 +14,7 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENROUTER_MAX_TOKENS: "2048"
       JAMP_ENVIRONMENT: local
-      OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"nvidia/nemotron-3.5-super-vl:free"}'
+      OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
       JAMP_API_URL: http://127.0.0.1:8000
       JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
     steps:
