@@ -256,9 +256,12 @@ def create_app(
                     request_id=request_id,
                     refusal_reason=reason,
                     failure_diagnostics={
+                        **(evidence_details if isinstance(evidence_details, dict) else {}),
                         "evidence_status": evidence_status,
-                        **evidence_details,
-                        "fallback_history": output.get("fallback_history", []),
+                        "output_provider": output.get("provider") if isinstance(output, dict) else None,
+                        "output_response_id": output.get("provider_response_id") if isinstance(output, dict) else None,
+                        "output_model_id": output.get("provider_model_id") if isinstance(output, dict) else None,
+                        "fallback_history": output.get("fallback_history", []) if isinstance(output, dict) else [],
                     },
                 )
                 persistence.write_trace(trace)
