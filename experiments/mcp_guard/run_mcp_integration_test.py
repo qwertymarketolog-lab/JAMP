@@ -13,7 +13,6 @@ from typing import Any
 
 from jamp.provider.mcp_proxy import MCPProxyClient, SecurityViolation
 
-
 SERVER_URL = "http://127.0.0.1:8765"
 
 
