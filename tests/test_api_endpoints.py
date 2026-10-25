@@ -178,7 +178,9 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
     assert body["reason"] == "E2_VERIFICATION_INCONCLUSIVE"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
     assert trace["status"] == "REFUSE"
-    assert (
-        trace["refusal_details"]["provider_diagnostics"]["fallback_history"][0]["http_status"]
-        == 402
-    )
+    diagnostics = trace["refusal_details"]["provider_diagnostics"]
+    assert diagnostics["output_provider"] == "openrouter"
+    assert diagnostics["output_response_id"] == "generation-1"
+    assert diagnostics["output_model_id"] == "provider/model-a"
+    assert diagnostics["fallback_history"][0]["provider"] == "FirstExecutor"
+    assert diagnostics["fallback_history"][0]["http_status"] == 402
