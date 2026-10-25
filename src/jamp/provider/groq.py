@@ -6,12 +6,13 @@ override JAMP's evidence gate; callers must preserve the selected model identity
 
 from __future__ import annotations
 
-import json
-import os
 from collections.abc import Callable
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+import json
+import os
 
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -100,7 +101,9 @@ class GroqChatExecutor:
                 or not target.strip()
                 for source, target in model_id_map.items()
             ):
-                raise ValueError("GROQ_MODEL_ID_MAP must map non-empty strings to non-empty strings")
+                raise ValueError(
+                    "GROQ_MODEL_ID_MAP must map non-empty strings to non-empty strings"
+                )
         else:
             model_id_map = {}
         return cls(
@@ -153,7 +156,9 @@ class GroqChatExecutor:
                 raise GroqError(
                     "MODEL_NOT_MAPPED",
                     code="MODEL_NOT_MAPPED",
-                    diagnostics={"requested_model_id": selected_model},
+                    diagnostics={
+                        "requested_model_id": selected_model,
+                    },
                 )
             provider_model = self._default_model if selected_model == "groq/default" else selected_model
         body = json.dumps(
