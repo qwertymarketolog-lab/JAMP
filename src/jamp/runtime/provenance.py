@@ -176,6 +176,9 @@ class ProvenanceTracker:
                     "requested_model_id",
                     "provider_requested_model_id",
                     "crosswalk_digest",
+                    "output_provider",
+                    "output_response_id",
+                    "output_model_id",
                 ):
                     value = failure_diagnostics.get(key)
                     if isinstance(value, str) and value:
