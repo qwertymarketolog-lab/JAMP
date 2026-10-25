@@ -159,9 +159,7 @@ class GroqChatExecutor:
                     },
                 )
             provider_model = (
-                self._default_model
-                if selected_model == "groq/default"
-                else selected_model
+                self._default_model if selected_model == "groq/default" else selected_model
             )
         body = json.dumps(
             {
