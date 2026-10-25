@@ -988,7 +988,6 @@ def test_openrouter_http_error_preserves_status_without_response_body():
     assert "test-secret" not in repr(raised.value.diagnostics)
 
 
-
 def test_openrouter_executor_falls_back_after_http_502():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
@@ -1025,7 +1024,10 @@ def test_openrouter_executor_falls_back_after_http_502():
 
     executor = OpenRouterChatExecutor(
         "test-secret",
-        fallback_models=["z-ai/glm-5.3-flash", "google/gemini-2.0-flash-lite-preview-02-05:free"],
+        fallback_models=[
+            "z-ai/glm-5.3-flash",
+            "google/gemini-2.0-flash-lite-preview-02-05:free",
+        ],
         opener=fake_open,
     )
     result = executor("primary/model", {"prompt": "hello"})
