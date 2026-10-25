@@ -165,7 +165,6 @@ def parse_json_object(text: str) -> dict[str, Any]:
     return value
 
 
-
 def values_match(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, list[str]]:
     mismatches: list[str] = []
     if "quarter" not in actual:
