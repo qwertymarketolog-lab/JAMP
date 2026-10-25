@@ -11,8 +11,8 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
-from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.e2_verify import verify_generation
+from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
@@ -79,7 +79,11 @@ def create_app(
     configured_executor = (
         executor
         if executor is not None
-        else (OpenRouterChatExecutor.from_env() or GroqChatExecutor.from_env() or AnyModelChatExecutor.from_env())
+        else (
+            OpenRouterChatExecutor.from_env()
+            or GroqChatExecutor.from_env()
+            or AnyModelChatExecutor.from_env()
+        )
     )
 
     app = FastAPI(title="JAMP API", version="v1")
