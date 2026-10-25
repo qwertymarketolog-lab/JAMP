@@ -222,7 +222,12 @@ def create_app(
         evidence_status = "NOT_APPLICABLE"
         evidence_details = None
 
-        if isinstance(output, dict) and output.get("provider") == "openrouter":
+        # Providers with no supported E2 Generation API are explicitly exempt.
+        non_e2_providers = ("groq", "anymodel")
+        output_provider = output.get("provider") if isinstance(output, dict) else None
+
+        # Fail closed for OpenRouter and unknown/missing provider metadata.
+        if output_provider not in non_e2_providers:
             evidence_status, evidence_details = verify_generation(
                 output if isinstance(output, dict) else {}
             )
