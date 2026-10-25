@@ -11,9 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_MAX_TOKENS: "2048"
-      GROQ_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"llama-3.3-70b-versatile"}'
       JAMP_ENVIRONMENT: local
       JAMP_API_URL: http://127.0.0.1:8000
       JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
@@ -34,8 +35,8 @@ jobs:
 
       - name: Start JAMP API
         run: |
-          if [ -z "$GROQ_API_KEY" ]; then
-            echo "::error::Repository secret GROQ_API_KEY is not configured."
+          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "$GROQ_API_KEY" ]; then
+            echo "::error::At least one provider secret (OPENROUTER_API_KEY or GROQ_API_KEY) must be configured."
             exit 1
           fi
           nohup python -m uvicorn jamp.api.app:create_app --factory --host 127.0.0.1 --port 8000 > /tmp/jamp-api.log 2>&1 &
