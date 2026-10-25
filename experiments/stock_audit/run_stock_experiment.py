@@ -233,7 +233,7 @@ def main() -> int:
         or extracted["company"].strip().casefold() != expected["company"].casefold()
     ):
         mismatches.append(
-            f"company expected {expected['company']!r}, got {extracted.get('company')!r}
+            f"company expected {expected['company']!r}, got {extracted.get('company')!r}"
         )
     actual_price = clean_number(extracted.get("price"))
     expected_price = clean_number(expected["price"])
