@@ -56,3 +56,16 @@ jobs:
       - name: Run Stock Audit
         run: |
           python experiments/stock_audit/run_stock_experiment.py
+
+      - name: Verify Provenance Evidence Exists
+        if: always()
+        run: test -s stock_provenance_evidence.json
+
+      - name: Upload Provenance Evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stock-provenance-evidence
+          path: stock_provenance_evidence.json
+          if-no-files-found: error
+          retention-days: 7
