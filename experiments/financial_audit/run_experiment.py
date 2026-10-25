@@ -38,13 +38,14 @@ PROVIDER_DIAGNOSTIC_FIELDS = {
     "requested_max_tokens",
     "evidence_status",
     "reason",
+    "fallback_history",
 }
 
 
 def extract_safe_provider_diagnostics(
     trace_payload: Any,
 ) -> dict[str, str | int | float | bool | None]:
-    """Extract only approved scalar diagnostics from a persisted refusal trace."""
+    """Extract allowlisted scalar diagnostics and sanitized fallback history."""
     if not isinstance(trace_payload, dict):
         return {}
     refusal_details = trace_payload.get("refusal_details")
@@ -53,12 +54,44 @@ def extract_safe_provider_diagnostics(
     diagnostics = refusal_details.get("provider_diagnostics")
     if not isinstance(diagnostics, dict):
         return {}
-    return {
-        key: value
-        for key, value in diagnostics.items()
-        if key in PROVIDER_DIAGNOSTIC_FIELDS
-        and isinstance(value, (str, int, float, bool, type(None)))
-    }
+
+    safe: dict[str, str | int | float | bool | None] = {}
+    for key, value in diagnostics.items():
+        if key not in PROVIDER_DIAGNOSTIC_FIELDS:
+            continue
+        if isinstance(value, (str, int, float, bool, type(None))):
+            safe[key] = value
+            continue
+        if key != "fallback_history" or not isinstance(value, list):
+            continue
+
+        # Do not dump arbitrary nested provider data; keep only the fields
+        # persisted by FallbackChainExecutor and sanitize them again here.
+        history: list[dict[str, str | int]] = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            provider = item.get("provider")
+            requested_model = item.get("requested_model")
+            http_status = item.get("http_status")
+            error = item.get("error")
+            safe_item: dict[str, str | int] = {}
+            if isinstance(provider, str):
+                safe_item["provider"] = provider[:80]
+            if isinstance(requested_model, str):
+                safe_item["requested_model"] = requested_model[:160]
+            if (
+                isinstance(http_status, int)
+                and not isinstance(http_status, bool)
+                and 100 <= http_status <= 599
+            ):
+                safe_item["http_status"] = http_status
+            if isinstance(error, str):
+                safe_item["error"] = error[:150]
+            if safe_item:
+                history.append(safe_item)
+        safe[key] = json.dumps(history, ensure_ascii=False, sort_keys=True)
+    return safe
 
 
 def parse_json_object(text: str) -> dict[str, Any]:
