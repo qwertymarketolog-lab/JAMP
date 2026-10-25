@@ -12,6 +12,7 @@ from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.e2_verify import verify_generation
+from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
@@ -76,15 +77,23 @@ def create_app(
     if configured_update_db_path is None:
         configured_update_db_path = os.environ.get("JAMP_TELEGRAM_UPDATE_DB")
     telegram_update_store = TelegramUpdateStore(configured_update_db_path)
-    configured_executor = (
-        executor
-        if executor is not None
-        else (
-            OpenRouterChatExecutor.from_env()
-            or GroqChatExecutor.from_env()
-            or AnyModelChatExecutor.from_env()
+    if executor is not None:
+        configured_executor = executor
+    else:
+        available_executors = [
+            provider
+            for provider in (
+                OpenRouterChatExecutor.from_env(),
+                GroqChatExecutor.from_env(),
+                AnyModelChatExecutor.from_env(),
+            )
+            if provider is not None
+        ]
+        configured_executor = (
+            FallbackChainExecutor(available_executors, max_attempts=5)
+            if available_executors
+            else None
         )
-    )
 
     app = FastAPI(title="JAMP API", version="v1")
     app.openapi_version = "3.0.3"
@@ -178,11 +187,12 @@ def create_app(
         try:
             output = configured_executor(selected, payload)
         except Exception as exc:
-            if isinstance(exc, (AnyModelError, OpenRouterError, GroqError)):
+            if isinstance(exc, (AnyModelError, OpenRouterError, GroqError)) or str(exc) == "All fallback providers failed.":
                 reason = "PROVIDER_EXECUTION_FAILED"
             else:
                 reason = "EXECUTOR_ERROR"
             failure_diagnostics = None
+            fallback_history = getattr(exc, "fallback_history", None)
             if isinstance(exc, (OpenRouterError, GroqError)) and (exc.diagnostics or exc.code):
                 failure_diagnostics = {
                     **exc.diagnostics,
@@ -198,7 +208,10 @@ def create_app(
                 len(eligible),
                 request_id=request_id,
                 refusal_reason=reason,
-                failure_diagnostics=failure_diagnostics,
+                failure_diagnostics={
+                    **(failure_diagnostics or {}),
+                    **({"fallback_history": fallback_history} if isinstance(fallback_history, list) else {}),
+                } or None,
             )
             persistence.write_trace(trace)
             return JSONResponse(
@@ -209,9 +222,7 @@ def create_app(
         evidence_status = "NOT_APPLICABLE"
         evidence_details = None
 
-        if isinstance(configured_executor, OpenRouterChatExecutor) or (
-            isinstance(output, dict) and output.get("provider") == "openrouter"
-        ):
+        if isinstance(output, dict) and output.get("provider") == "openrouter":
             evidence_status, evidence_details = verify_generation(
                 output if isinstance(output, dict) else {}
             )
@@ -256,11 +267,18 @@ def create_app(
             request_id=request_id,
             evidence_status=evidence_status,
             evidence_details=evidence_details,
+            fallback_history=output.get("fallback_history", []) if isinstance(output, dict) else [],
         )
         persistence.write_trace(trace)
+        successful_model = (
+            output.get("provider_model_id")
+            or output.get("provider_requested_model_id")
+            or output.get("model")
+            or selected
+        ) if isinstance(output, dict) else selected
         response = {
             "status": "EXECUTE",
-            "selected_model": selected,
+            "selected_model": successful_model,
             "trace_id": trace["trace_id"],
             "evidence_status": evidence_status,
         }
