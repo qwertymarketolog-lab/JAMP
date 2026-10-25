@@ -10,10 +10,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-MOEX_URL = (
-    "https://iss.moex.com/iss/engines/stock/markets/shares/"
-    "boards/TQBR/securities/SBER.json"
-)
+MOEX_URL = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json"
 USER_AGENT = "JAMP-Trust-Layer/1.0"
 PRICE_TOLERANCE = Decimal("0.01")
 
@@ -229,16 +226,14 @@ def main() -> int:
         or extracted["ticker"].strip().upper() != expected["ticker"]
     ):
         mismatches.append(
-            f"ticker expected {expected['ticker']!r}, "
-            f"got {extracted.get('ticker')!r}"
+            f"ticker expected {expected['ticker']!r}, got {extracted.get('ticker')!r}"
         )
     if (
         not isinstance(extracted.get("company"), str)
         or extracted["company"].strip().casefold() != expected["company"].casefold()
     ):
         mismatches.append(
-            f"company expected {expected['company']!r}, "
-            f"got {extracted.get('company')!r}"
+            f"company expected {expected['company']!r}, got {extracted.get('company')!r}
         )
     actual_price = clean_number(extracted.get("price"))
     expected_price = clean_number(expected["price"])
