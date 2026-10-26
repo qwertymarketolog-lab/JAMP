@@ -411,7 +411,10 @@ def create_app(
                             "type": "price_movement",
                             "source": None,
                             "status": "INCONCLUSIVE",
-                            "reason": "MOEX verifier does not establish historical percentage movement",
+                            "reason": (
+                                "MOEX verifier does not establish "
+                                "historical percentage movement"
+                            ),
                             "critical": False,
                         }
                     )
@@ -458,7 +461,8 @@ def create_app(
                             "source": None,
                             "status": "INCONCLUSIVE",
                             "reason": (
-                                "Requires financial/news evidence; prediction is not a verified fact"
+                                "Requires financial/news evidence; "
+                                "prediction is not a verified fact"
                             ),
                             "critical": False,
                         }
