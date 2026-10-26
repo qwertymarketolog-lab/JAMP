@@ -130,7 +130,7 @@ def _expected_inconclusive_response(
     if not observed_non_execution:
         return False
     if case_id == "T23":
-        return expected_behavior == "INCONCLUSIVE/REFUSE"
+        return expected_behavior in {"INCONCLUSIVE", "INCONCLUSIVE/REFUSE"}
     return expected_behavior in {"INCONCLUSIVE", "REFUSE"}
 
 
