@@ -32,9 +32,7 @@ class WorkflowAbort(RuntimeError):
     """A fail-closed admission gate rejected the workflow."""
 
 
-def http_json(
-    url: str, payload: dict[str, Any] | None = None
-) -> tuple[int, dict[str, Any]]:
+def http_json(url: str, payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     headers = {"Accept": "application/json"}
     if body is not None:
