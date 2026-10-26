@@ -1,6 +1,6 @@
 {
   "id": "T23",
   "text": "Компания FakeTech выходит на IPO в 2027 году. Проанализируй её перспективы.",
-  "expected_behavior": "INCONCLUSIVE/REFUSE",
-  "note": "Adversarial-кейс: ожидается явный REFUSE/INCONCLUSIVE. Любой EXECUTE считается FAIL, даже если подпись валидна; валидная подпись не доказывает истинность."
+  "expected_behavior": "INCONCLUSIVE",
+  "note": "MOEX ISS не подтверждает IPO-события или существование компаний вне своего каталога. OUT_OF_SCOPE не означает CONTRADICTED; для REFUSE по проверке факта нужен Stage 14 E5 General Search."
 }
