@@ -193,7 +193,6 @@ def test_verify_retries_429(mock_urlopen, mock_sleep):
     mock_sleep.assert_called_once_with(30)
 
 
-
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
 def test_verify_retries_5xx_once_then_succeeds(mock_urlopen, mock_sleep):
