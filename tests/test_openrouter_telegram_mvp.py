@@ -1087,3 +1087,61 @@ def test_openrouter_executor_loads_fallback_models_from_env(monkeypatch):
         "z-ai/glm-5.3-flash",
         "google/gemini-2.0-flash-lite-preview-02-05:free",
     ]
+
+
+def test_openrouter_retries_empty_content_once_then_succeeds():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self.body
+
+    responses = [
+        Response(b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'),
+        Response(b'{"id":"or-good","choices":[{"message":{"content":"recovered"}}]}'),
+    ]
+    calls = []
+
+    def fake_open(request, timeout):
+        calls.append(request)
+        return responses.pop(0)
+
+    executor = OpenRouterChatExecutor("test-secret", opener=fake_open)
+    with patch("jamp.provider.openrouter.time.sleep") as sleep:
+        result = executor("provider/approved-model", {"prompt": "hello"})
+
+    assert result["content"] == "recovered"
+    assert len(calls) == 2
+    sleep.assert_called_once_with(5)
+
+
+def test_openrouter_empty_content_after_retry_is_classified_inconclusive():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'
+
+    executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())
+    with patch("jamp.provider.openrouter.time.sleep") as sleep:
+        with pytest.raises(OpenRouterError) as caught:
+            executor("provider/approved-model", {"prompt": "hello"})
+
+    assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
+    assert caught.value.diagnostics["retry_count"] == 1
+    sleep.assert_called_once_with(5)
