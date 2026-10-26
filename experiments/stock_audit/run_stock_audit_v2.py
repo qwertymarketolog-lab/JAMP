@@ -180,7 +180,10 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             record["reason"] = f"expected EXECUTE, got {record['status']!r}"
             return record
         if record["evidence_status"] != "VERIFIED":
-            record["reason"] = f"expected evidence_status VERIFIED, got {record['evidence_status']!r}"
+            record["reason"] = (
+                "expected evidence_status VERIFIED, "
+                f"got {record['evidence_status']!r}"
+            )
             return record
 
         verdict = response.get("verdict")
@@ -258,7 +261,8 @@ def run() -> int:
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     raise AuditError(
-                        f"Uvicorn exited before readiness (exit={process.returncode}); inspect artifact log"
+                        f"Uvicorn exited before readiness (exit={process.returncode}); "
+                        "inspect artifact log"
                     )
                 try:
                     status, _ = _http_json(f"{base_url}/openapi.json", timeout=2)
@@ -331,7 +335,11 @@ def main() -> int:
             "timestamp_utc": datetime.now(UTC).isoformat(),
         }
         _save_json(ARTIFACT_DIR / "stock_audit_v2_report.json", failure)
-        print(f"[STOCK AUDIT V2] HOLD/FAILED: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+        print(
+            f"[STOCK AUDIT V2] HOLD/FAILED: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
         return 2
 
 
