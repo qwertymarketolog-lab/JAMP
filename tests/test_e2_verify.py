@@ -96,8 +96,9 @@ def test_verify_url_error_diagnostics(mock_urlopen):
     }
 
 
+@patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
-def test_verify_inconclusive_after_timeout_retry(mock_urlopen):
+def test_verify_inconclusive_after_timeout_retry(mock_urlopen, mock_sleep):
     mock_urlopen.side_effect = [
         TimeoutError("generation request timed out"),
         TimeoutError("generation request timed out"),
@@ -114,6 +115,7 @@ def test_verify_inconclusive_after_timeout_retry(mock_urlopen):
         "retry_count": 1,
     }
     assert mock_urlopen.call_count == 2
+    mock_sleep.assert_called_once_with(5)
 
 
 @patch("jamp.provider.e2_verify.time.sleep")
