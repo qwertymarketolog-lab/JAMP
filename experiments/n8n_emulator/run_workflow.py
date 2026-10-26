@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
 import tempfile
 import time
-import shutil
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -145,7 +145,10 @@ def run_workflow() -> None:
                 )
                 verdict = execution.get("verdict")
                 require(isinstance(verdict, dict), "ABORT: signed verdict is missing")
-                require(verdict.get("status") == "VERIFIED", "ABORT: verdict status is not VERIFIED")
+                require(
+                    verdict.get("status") == "VERIFIED",
+                    "ABORT: verdict status is not VERIFIED",
+                )
                 require(
                     verdict.get("trace_id") == execution.get("trace_id"),
                     "ABORT: verdict trace_id mismatch",
@@ -154,12 +157,18 @@ def run_workflow() -> None:
                 output = execution.get("output")
                 require(isinstance(output, dict), "ABORT: provider output is missing")
                 content = output.get("content")
-                require(isinstance(content, str) and content.strip(), "ABORT: output content is empty")
+                require(
+                    isinstance(content, str) and content.strip(),
+                    "ABORT: output content is empty",
+                )
                 try:
                     crm_record = json.loads(content)
                 except json.JSONDecodeError:
                     raise WorkflowAbort("ABORT: extracted content is not valid JSON") from None
-                require(isinstance(crm_record, dict), "ABORT: extracted content must be a JSON object")
+                require(
+                    isinstance(crm_record, dict),
+                    "ABORT: extracted content must be a JSON object",
+                )
 
                 _, verification = http_json(f"{base_url}/v1/verify-verdict", verdict)
                 if verification.get("valid") is not True:
