@@ -12,6 +12,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from jamp.stock_audit_acceptance import evaluate_acceptance_rule
+
 ROOT = Path(__file__).resolve().parents[2]
 CASES_DIR = ROOT / "experiments" / "stock_audit" / "test_cases"
 ARTIFACT_DIR = ROOT / "artifacts" / "stock-audit-v2"
@@ -115,32 +117,6 @@ def _save_provenance(base_url: str, trace_id: Any, output_path: Path) -> str | N
             + "\n"
         )
     return None
-
-
-def _evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tuple[bool, str]:
-    """Evaluate a case's data-driven acceptance rule against the observed record."""
-    rule = case.get("acceptance_rule")
-    if not isinstance(rule, dict):
-        return False, "no_acceptance_rule"
-
-    kind = rule.get("kind")
-    if kind != "explicit_refusal":
-        return False, f"unsupported_acceptance_rule_kind: {kind!r}"
-
-    required_fields = (
-        ("required_status", "status"),
-        ("required_evidence_status", "evidence_status"),
-        ("required_response_reason", "response_reason"),
-    )
-    for rule_key, record_key in required_fields:
-        required = rule.get(rule_key)
-        if not isinstance(required, str) or not required:
-            return False, f"invalid_acceptance_rule_field: {rule_key}"
-        observed = record.get(record_key)
-        if observed != required:
-            return False, (f"{record_key} mismatch: expected {required!r}, got {observed!r}")
-
-    return True, "acceptance_rule explicit_refusal matched all required fields"
 
 
 def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
@@ -336,7 +312,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             return record
 
         if case.get("acceptance_rule"):
-            passed, rule_reason = _evaluate_acceptance_rule(case, record)
+            passed, rule_reason = evaluate_acceptance_rule(case, record)
             record["result"] = "PASSED" if passed else "FAILED"
             record["reason"] = rule_reason
             return record

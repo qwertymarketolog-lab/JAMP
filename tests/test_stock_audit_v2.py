@@ -1,8 +1,9 @@
 from experiments.stock_audit.run_stock_audit_v2 import (
     _build_markdown_report,
-    _evaluate_acceptance_rule,
     _model_response_details,
 )
+from jamp.stock_audit_acceptance import evaluate_acceptance_rule
+
 
 T23_RULE = {
     "kind": "explicit_refusal",
@@ -12,69 +13,172 @@ T23_RULE = {
 }
 
 
-def test_acceptance_rule_explicit_refusal_pass() -> None:
+def test_valid_explicit_refusal_rule_passes() -> None:
     case = {"id": "T23", "acceptance_rule": T23_RULE}
     record = {
         "status": "REFUSE",
         "evidence_status": "VERIFIED",
         "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
     }
-    passed, reason = _evaluate_acceptance_rule(case, record)
+    passed, reason = evaluate_acceptance_rule(case, record)
     assert passed is True
     assert "matched all required fields" in reason
 
 
-def test_acceptance_rule_wrong_status_fails() -> None:
-    case = {"id": "T23", "acceptance_rule": T23_RULE}
+def test_missing_acceptance_rule_fails_closed() -> None:
+    passed, reason = evaluate_acceptance_rule({"id": "T01"}, {"status": "EXECUTE"})
+    assert passed is False
+    assert "no_acceptance_rule" in reason
+
+
+def test_null_acceptance_rule_fails_closed() -> None:
+    passed, reason = evaluate_acceptance_rule(
+        {"id": "T01", "acceptance_rule": None}, {"status": "REFUSE"}
+    )
+    assert passed is False
+    assert "no_acceptance_rule" in reason
+
+
+def test_non_object_acceptance_rule_fails_closed() -> None:
+    passed, reason = evaluate_acceptance_rule(
+        {"id": "T01", "acceptance_rule": ["explicit_refusal"]}, {"status": "REFUSE"}
+    )
+    assert passed is False
+    assert "no_acceptance_rule" in reason
+
+
+def test_unsupported_rule_kind_fails_closed() -> None:
+    passed, reason = evaluate_acceptance_rule(
+        {"acceptance_rule": {"kind": "implicit_success"}}, {}
+    )
+    assert passed is False
+    assert "unsupported_acceptance_rule_kind" in reason
+
+
+def test_missing_rule_kind_fails_closed() -> None:
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": {}}, {})
+    assert passed is False
+    assert "unsupported_acceptance_rule_kind" in reason
+
+
+def test_missing_required_status_fails_closed() -> None:
+    rule = {**T23_RULE}
+    del rule["required_status"]
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_status" in reason
+
+
+def test_missing_required_evidence_status_fails_closed() -> None:
+    rule = {**T23_RULE}
+    del rule["required_evidence_status"]
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_evidence_status" in reason
+
+
+def test_missing_required_response_reason_fails_closed() -> None:
+    rule = {**T23_RULE}
+    del rule["required_response_reason"]
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_response_reason" in reason
+
+
+def test_empty_required_status_fails_closed() -> None:
+    rule = {**T23_RULE, "required_status": ""}
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_status" in reason
+
+
+def test_empty_required_evidence_status_fails_closed() -> None:
+    rule = {**T23_RULE, "required_evidence_status": ""}
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_evidence_status" in reason
+
+
+def test_empty_required_response_reason_fails_closed() -> None:
+    rule = {**T23_RULE, "required_response_reason": ""}
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": rule}, {})
+    assert passed is False
+    assert "required_response_reason" in reason
+
+
+def test_wrong_observed_status_fails() -> None:
     record = {
         "status": "EXECUTE",
         "evidence_status": "VERIFIED",
         "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
     }
-    passed, _ = _evaluate_acceptance_rule(case, record)
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
     assert passed is False
 
 
-def test_acceptance_rule_wrong_evidence_status_fails() -> None:
-    case = {"id": "T23", "acceptance_rule": T23_RULE}
+def test_wrong_observed_evidence_status_fails() -> None:
     record = {
         "status": "REFUSE",
         "evidence_status": "UNKNOWN",
         "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
     }
-    passed, _ = _evaluate_acceptance_rule(case, record)
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
     assert passed is False
 
 
-def test_acceptance_rule_wrong_reason_fails() -> None:
-    case = {"id": "T23", "acceptance_rule": T23_RULE}
+def test_wrong_observed_response_reason_fails() -> None:
     record = {
         "status": "REFUSE",
         "evidence_status": "VERIFIED",
         "response_reason": "OTHER_REASON",
     }
-    passed, _ = _evaluate_acceptance_rule(case, record)
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
     assert passed is False
 
 
-def test_acceptance_rule_missing_returns_false() -> None:
-    case = {"id": "T01"}
-    record = {"status": "EXECUTE"}
-    passed, reason = _evaluate_acceptance_rule(case, record)
+def test_missing_observed_status_fails() -> None:
+    record = {
+        "evidence_status": "VERIFIED",
+        "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
+    }
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
     assert passed is False
-    assert "no_acceptance_rule" in reason
 
 
-def test_acceptance_rule_missing_required_field_fails_closed() -> None:
-    case = {"id": "T23", "acceptance_rule": {"kind": "explicit_refusal"}}
+def test_missing_observed_evidence_status_fails() -> None:
+    record = {"status": "REFUSE", "response_reason": "E4_CANNOT_VERIFY_EXISTENCE"}
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
+    assert passed is False
+
+
+def test_missing_observed_response_reason_fails() -> None:
+    record = {"status": "REFUSE", "evidence_status": "VERIFIED"}
+    passed, _ = evaluate_acceptance_rule({"acceptance_rule": T23_RULE}, record)
+    assert passed is False
+
+
+def test_unrelated_fields_do_not_change_matching_rule() -> None:
+    case = {"id": "T23", "acceptance_rule": {**T23_RULE, "note": "metadata"}}
+    record = {
+        "status": "REFUSE",
+        "evidence_status": "VERIFIED",
+        "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
+        "trace_id": "trace_ignored",
+        "extra": True,
+    }
+    passed, _ = evaluate_acceptance_rule(case, record)
+    assert passed is True
+
+
+def test_rule_evaluation_is_independent_of_case_id() -> None:
+    case = {"id": "T01", "acceptance_rule": T23_RULE}
     record = {
         "status": "REFUSE",
         "evidence_status": "VERIFIED",
         "response_reason": "E4_CANNOT_VERIFY_EXISTENCE",
     }
-    passed, reason = _evaluate_acceptance_rule(case, record)
-    assert passed is False
-    assert "invalid_acceptance_rule_field" in reason
+    passed, _ = evaluate_acceptance_rule(case, record)
+    assert passed is True
 
 
 def test_model_response_details_preserves_full_output_and_provenance_path() -> None:
