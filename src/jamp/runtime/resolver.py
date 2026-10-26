@@ -25,10 +25,7 @@ PILOT_BENCHMARK_VERSION = "v1"
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _MATRIX_PATH = (
-    _REPOSITORY_ROOT
-    / "artifacts"
-    / "research"
-    / "jamp_task_scoped_derived_matrix_v2.json"
+    _REPOSITORY_ROOT / "artifacts" / "research" / "jamp_task_scoped_derived_matrix_v2.json"
 )
 _PILOT_MODELS_PATH = _REPOSITORY_ROOT / "data" / "projections" / "pilot_models.json"
 
