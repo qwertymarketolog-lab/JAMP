@@ -74,7 +74,10 @@ def _request_json(method: str, path: str, payload: dict[str, Any] | None = None)
 
     print(f"[HTTP CLIENT] {method} {path} -> HTTP {status}; Content-Type={content_type}")
     if status != 200:
-        raise RuntimeError(f"{method} {path} returned HTTP {status}: {body.decode('utf-8', errors='replace')}")
+        detail = body.decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"{method} {path} returned HTTP {status}: {detail}"
+        )
     decoded = json.loads(body.decode("utf-8"))
     if not isinstance(decoded, dict):
         raise RuntimeError(f"{method} {path} did not return a JSON object")
@@ -142,7 +145,9 @@ def run_e2e() -> int:
                     f"reason={response.get('reason')!r})"
                 )
             if response.get("status") != "EXECUTE" or response.get("evidence_status") != "VERIFIED":
-                raise RuntimeError("HTTP execution response did not satisfy the explicit E2 fixture contract")
+                raise RuntimeError(
+                    "HTTP execution response did not satisfy the explicit E2 fixture contract"
+                )
             if verdict.get("status") != "VERIFIED":
                 raise RuntimeError("Returned verdict status was not VERIFIED")
             print(f"[B2B CLIENT] Received verdict over HTTP: {verdict['status']}.")
@@ -164,7 +169,10 @@ def run_e2e() -> int:
                 raise RuntimeError("HTTP signature verifier accepted the tampered signature")
             print("[B2B CLIENT] Tampered signature validation: INVALID.")
             print("RESULT: B2B TRUST LAYER REAL HTTP E2 VERIFIED")
-            print("SCOPE: real loopback HTTP + real HMAC verification; E2 evidence is a test fixture.")
+            print(
+                "SCOPE: real loopback HTTP + real HMAC verification; "
+                "E2 evidence is a test fixture."
+            )
             return 0
         finally:
             if proc.poll() is None:
