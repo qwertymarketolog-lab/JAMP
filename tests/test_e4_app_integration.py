@@ -74,7 +74,8 @@ def test_direct_moex_contradiction_refuses_and_preserves_e4_details(monkeypatch)
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "REFUSE"
-    assert body["evidence_status"] == "CONTRADICTED"
-    assert body["e4_details"]["e4_status"] == "E4_CONTRADICTED"
-    assert body["e4_details"]["observed_last"] == 292.32
+    assert body["evidence_status"] == "VERIFIED"
+    assert body["aggregate_status"] == "CONTRADICTED"
+    assert body["claims"][0]["status"] == "CONTRADICTED"
+    assert body["claims"][0]["evidence"]["observed_last"] == 292.32
     assert "verdict" not in body
