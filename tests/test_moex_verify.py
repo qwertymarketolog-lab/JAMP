@@ -19,11 +19,21 @@ def _response(payload):
 
 
 def _securities(*rows):
-    return {"securities": {"columns": ["secid", "shortname", "latinname", "emitent_title"], "data": list(rows)}}
+    return {
+        "securities": {
+            "columns": ["secid", "shortname", "latinname", "emitent_title"],
+            "data": list(rows),
+        }
+    }
 
 
 def _marketdata(*rows):
-    return {"marketdata": {"columns": ["SECID", "LAST", "BOARDID", "TRADEDATE"], "data": list(rows)}}
+    return {
+        "marketdata": {
+            "columns": ["SECID", "LAST", "BOARDID", "TRADEDATE"],
+            "data": list(rows),
+        }
+    }
 
 
 @patch("urllib.request.urlopen")
