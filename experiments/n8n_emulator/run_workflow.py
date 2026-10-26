@@ -151,7 +151,9 @@ def run_workflow() -> None:
                 crm_record["_jamp_trace_id"] = execution["trace_id"]
                 crm_record["_jamp_provider_model_id"] = output.get("provider_model_id")
                 crm_record["_jamp_evidence_status"] = execution["evidence_status"]
-                crm_path = Path(temp_dir) / "crm.json"
+                crm_dir = ROOT / "artifacts" / "n8n-emulator"
+                crm_dir.mkdir(parents=True, exist_ok=True)
+                crm_path = crm_dir / "crm.json"
                 crm_path.write_text(
                     json.dumps(crm_record, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8",
