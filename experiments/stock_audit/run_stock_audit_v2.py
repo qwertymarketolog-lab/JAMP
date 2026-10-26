@@ -117,29 +117,34 @@ def _save_provenance(base_url: str, trace_id: Any, output_path: Path) -> str | N
     return None
 
 
-def _expected_inconclusive_response(
-    case_id: str,
-    expected_behavior: str,
-    status: Any,
-    evidence_status: Any,
-    response_reason: Any = None,
-) -> bool:
-    """Return whether a refusal/inconclusive response matches the case contract."""
-    observed_non_execution = (
-        status in {"REFUSE", "INCONCLUSIVE"} or evidence_status == "INCONCLUSIVE"
+def _evaluate_acceptance_rule(
+    case: dict[str, Any], record: dict[str, Any]
+) -> tuple[bool, str]:
+    """Evaluate a case's data-driven acceptance rule against the observed record."""
+    rule = case.get("acceptance_rule")
+    if not isinstance(rule, dict):
+        return False, "no_acceptance_rule"
+
+    kind = rule.get("kind")
+    if kind != "explicit_refusal":
+        return False, f"unsupported_acceptance_rule_kind: {kind!r}"
+
+    required_fields = (
+        ("required_status", "status"),
+        ("required_evidence_status", "evidence_status"),
+        ("required_response_reason", "response_reason"),
     )
-    if not observed_non_execution:
-        return False
-    if case_id == "T23":
-        return (
-            expected_behavior == "REFUSE"
-            and status == "REFUSE"
-            and evidence_status == "VERIFIED"
-            and response_reason == "E4_CANNOT_VERIFY_EXISTENCE"
-        )
-    if expected_behavior == "REFUSE":
-        return status == "REFUSE"
-    return expected_behavior in {"INCONCLUSIVE", "INCONCLUSIVE/REFUSE"}
+    for rule_key, record_key in required_fields:
+        required = rule.get(rule_key)
+        if not isinstance(required, str) or not required:
+            return False, f"invalid_acceptance_rule_field: {rule_key}"
+        observed = record.get(record_key)
+        if observed != required:
+            return False, (
+                f"{record_key} mismatch: expected {required!r}, got {observed!r}"
+            )
+
+    return True, "acceptance_rule explicit_refusal matched all required fields"
 
 
 def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> dict[str, Any]:
@@ -180,21 +185,16 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             if isinstance(output, dict):
                 record["evidence_status"] = output.get("evidence_status", "UNKNOWN")
 
+        if case.get("acceptance_rule"):
+            passed, rule_reason = _evaluate_acceptance_rule(case, record)
+            record["result"] = "PASSED" if passed else "FAILED"
+            record["reason"] = rule_reason
+            return record
+
         export_error = _save_provenance(base_url, record["trace_id"], provenance_path)
         record["provenance_export"] = "SAVED" if export_error is None else "FAILED"
         if export_error is not None:
             record["reason"] = f"provenance export failed: {export_error}"
-            return record
-
-        if _expected_inconclusive_response(
-            case_id,
-            expected,
-            record["status"],
-            record["evidence_status"],
-            record["response_reason"],
-        ):
-            record["result"] = "PASSED"
-            record["reason"] = "explicit refusal/inconclusive response matches case expectation"
             return record
 
         if expected == "PARTIAL":
@@ -208,18 +208,19 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
                 )
             return record
 
-        if case_id == "T23":
-            record["reason"] = (
-                "adversarial case was not explicitly refused/inconclusive; "
-                f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
+        if expected in {"INCONCLUSIVE", "INCONCLUSIVE/REFUSE"}:
+            observed_non_execution = (
+                record["status"] in {"REFUSE", "INCONCLUSIVE"}
+                or record["evidence_status"] == "INCONCLUSIVE"
             )
-            return record
-
-        if expected in {"INCONCLUSIVE", "REFUSE"}:
-            record["reason"] = (
-                "expected refusal/inconclusive, got "
-                f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
-            )
+            if observed_non_execution:
+                record["result"] = "PASSED"
+                record["reason"] = "explicit refusal/inconclusive response matches case expectation"
+            else:
+                record["reason"] = (
+                    "expected refusal/inconclusive, got "
+                    f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
+                )
             return record
 
         if http_status != 200:
