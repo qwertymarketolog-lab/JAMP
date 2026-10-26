@@ -117,9 +117,7 @@ def _save_provenance(base_url: str, trace_id: Any, output_path: Path) -> str | N
     return None
 
 
-def _evaluate_acceptance_rule(
-    case: dict[str, Any], record: dict[str, Any]
-) -> tuple[bool, str]:
+def _evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tuple[bool, str]:
     """Evaluate a case's data-driven acceptance rule against the observed record."""
     rule = case.get("acceptance_rule")
     if not isinstance(rule, dict):
@@ -140,9 +138,7 @@ def _evaluate_acceptance_rule(
             return False, f"invalid_acceptance_rule_field: {rule_key}"
         observed = record.get(record_key)
         if observed != required:
-            return False, (
-                f"{record_key} mismatch: expected {required!r}, got {observed!r}"
-            )
+            return False, (f"{record_key} mismatch: expected {required!r}, got {observed!r}")
 
     return True, "acceptance_rule explicit_refusal matched all required fields"
 
