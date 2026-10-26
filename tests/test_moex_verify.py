@@ -48,9 +48,7 @@ def test_fake_company_ticker_is_out_of_scope_not_contradicted(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_existing_moex_ticker_is_verified(mock_urlopen):
-    mock_urlopen.return_value = _response(
-        _securities(["SBER", "Сбербанк", "Sberbank", "Сбербанк"])
-    )
+    mock_urlopen.return_value = _response(_securities(["SBER", "Сбербанк", "Sberbank", "Сбербанк"]))
     status, details = verify_claim_with_moex("SBER", "exists", None)
     assert status == E4_VERIFIED
     assert details["security"]["secid"] == "SBER"
