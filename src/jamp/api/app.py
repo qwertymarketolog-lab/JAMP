@@ -335,9 +335,7 @@ def create_app(
                 )
                 # Parenthesized uppercase identifiers (e.g. (AFKS), (INCB)) are
                 # explicit ticker candidates. This is not general entity recognition.
-                ticker_match = re.search(
-                    r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text
-                )
+                ticker_match = re.search(r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text)
                 if ticker_match:
                     e4_status, e4_details = verify_claim_with_moex(
                         ticker_match.group(1), "exists", None
