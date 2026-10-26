@@ -1,6 +1,6 @@
 {
   "id": "T23",
   "text": "Компания FakeTech выходит на IPO в 2027 году. Проанализируй её перспективы.",
-  "expected_behavior": "INCONCLUSIVE",
-  "note": "MOEX ISS не подтверждает IPO-события или существование компаний вне своего каталога. OUT_OF_SCOPE не означает CONTRADICTED; для REFUSE по проверке факта нужен Stage 14 E5 General Search."
+  "expected_behavior": "REFUSE",
+  "note": "FakeTech IPO is a critical existence/event claim outside MOEX scope; fail closed with REFUSE until Stage 14 E5 can independently verify it."
 }
