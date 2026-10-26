@@ -383,7 +383,7 @@ def create_app(
                         "critical": False,
                     })
 
-                movement_pattern = r"(?:упал\w*|упал\w*|упал\w*|подешевел\w*|снизил\w*|fell|dropped|down).{0,45}?\b(\d{1,3}(?:[.,]\d+)?)\s*%"
+                movement_pattern = r"(?:упал\w*|упал\w*|подешевел\w*|снизил\w*|fell|dropped|down).{0,45}?\b(\d{1,3}(?:[.,]\d+)?)\s*%"
                 movement = re.search(movement_pattern, searchable_text, re.IGNORECASE)
                 if movement:
                     claims.append({
@@ -529,6 +529,7 @@ def create_app(
         persistence.write_trace(trace)
         response = {
             "status": "EXECUTE",
+            "execution_status": "EXECUTE",
             "selected_model": successful_model,
             "trace_id": trace["trace_id"],
             "evidence_status": evidence_status,
