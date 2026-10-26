@@ -88,6 +88,31 @@ def validate_execution_response(response: dict[str, Any]) -> tuple[str, dict[str
     return actual_model, verdict
 
 
+def _write_persisted_trace(trace_id: str, audit_path: Path) -> None:
+    """Export the exact persisted trace object for this pilot as a diagnostic JSON file."""
+    if not trace_id:
+        raise PilotError("Execution response has no trace_id; provenance unavailable")
+    if not audit_path.is_file():
+        raise PilotError("Persisted AuditTrace JSONL file is missing")
+    try:
+        with audit_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                if isinstance(record, dict) and record.get("trace_id") == trace_id:
+                    output_path = audit_path.with_name("provenance.json")
+                    output_path.write_text(
+                        json.dumps(record, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    print(f"[PILOT] Persisted AuditTrace exported: {output_path}", flush=True)
+                    return
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PilotError(f"Could not read persisted AuditTrace: {type(exc).__name__}") from None
+    raise PilotError(f"Persisted AuditTrace not found for trace_id={trace_id}")
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -109,6 +134,8 @@ def run_pilot() -> None:
     base_url = f"http://127.0.0.1:{port}"
     log_dir = ROOT / "artifacts" / "real-pilot"
     log_dir.mkdir(parents=True, exist_ok=True)
+    audit_path = log_dir / "provenance_traces.jsonl"
+    os.environ["JAMP_AUDIT_PATH"] = str(audit_path)
     server_log_path = log_dir / "uvicorn.log"
     server_log = server_log_path.open("w", encoding="utf-8")
     process: subprocess.Popen[str] | None = None
@@ -162,6 +189,9 @@ def run_pilot() -> None:
                 "request_id": f"stage9-real-pilot-{int(time.time())}",
             },
         )
+        response_trace_id = response.get("trace_id")
+        if isinstance(response_trace_id, str) and response_trace_id:
+            _write_persisted_trace(response_trace_id, audit_path)
         actual_model, verdict = validate_execution_response(response)
         print(
             "[PILOT] Execution evidence: "
