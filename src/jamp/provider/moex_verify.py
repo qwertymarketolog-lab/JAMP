@@ -152,7 +152,14 @@ def verify_claim_with_moex(
     try:
         market = _get_json(price_url, timeout)
         market_rows = _table_rows(market, "marketdata")
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         return E4_INCONCLUSIVE, {
             "reason": "MOEX_MARKETDATA_UNAVAILABLE_OR_INVALID",
             "error_type": type(exc).__name__,
