@@ -41,8 +41,7 @@ def aggregate_verdict(claims: list[Claim | dict[str, Any]]) -> str:
     if any(status in {"CONTRADICTED", "E4_CONTRADICTED"} for status in statuses):
         return "CONTRADICTED"
     if any(
-        bool(_claim_value(claim, "critical", False))
-        and status not in {"VERIFIED", "E4_VERIFIED"}
+        bool(_claim_value(claim, "critical", False)) and status not in {"VERIFIED", "E4_VERIFIED"}
         for claim, status in zip(claims, statuses, strict=True)
     ):
         return "INCONCLUSIVE"
