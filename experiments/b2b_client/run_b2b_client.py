@@ -75,9 +75,7 @@ def _request_json(method: str, path: str, payload: dict[str, Any] | None = None)
     print(f"[HTTP CLIENT] {method} {path} -> HTTP {status}; Content-Type={content_type}")
     if status != 200:
         detail = body.decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"{method} {path} returned HTTP {status}: {detail}"
-        )
+        raise RuntimeError(f"{method} {path} returned HTTP {status}: {detail}")
     decoded = json.loads(body.decode("utf-8"))
     if not isinstance(decoded, dict):
         raise RuntimeError(f"{method} {path} did not return a JSON object")
@@ -170,8 +168,7 @@ def run_e2e() -> int:
             print("[B2B CLIENT] Tampered signature validation: INVALID.")
             print("RESULT: B2B TRUST LAYER REAL HTTP E2 VERIFIED")
             print(
-                "SCOPE: real loopback HTTP + real HMAC verification; "
-                "E2 evidence is a test fixture."
+                "SCOPE: real loopback HTTP + real HMAC verification; E2 evidence is a test fixture."
             )
             return 0
         finally:
