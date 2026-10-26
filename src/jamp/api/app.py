@@ -16,7 +16,6 @@ from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
-from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.provider.moex_verify import (
     E4_CONTRADICTED,
     E4_INCONCLUSIVE,
@@ -24,6 +23,7 @@ from jamp.provider.moex_verify import (
     E4_VERIFIED,
     verify_claim_with_moex,
 )
+from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
     CapabilityResolver,
