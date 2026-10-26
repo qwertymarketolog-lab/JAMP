@@ -25,7 +25,12 @@ class PilotError(RuntimeError):
     """A required real-pilot condition was not met."""
 
 
-def _http_json(url: str, *, payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+def _http_json(
+    url: str,
+    *,
+    payload: dict[str, Any] | None = None,
+    allow_http_errors: bool = False,
+) -> tuple[int, dict[str, Any]]:
     data = None
     headers = {"Accept": "application/json"}
     method = "GET"
@@ -39,8 +44,11 @@ def _http_json(url: str, *, payload: dict[str, Any] | None = None) -> tuple[int,
             raw = response.read()
             status = response.status
     except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:500]
-        raise PilotError(f"HTTP request failed: status={exc.code}, body={body}") from None
+        raw = exc.read()
+        status = exc.code
+        if not allow_http_errors:
+            body = raw.decode("utf-8", errors="replace")[:500]
+            raise PilotError(f"HTTP request failed: status={status}, body={body}") from None
     except (URLError, TimeoutError, OSError) as exc:
         raise PilotError(f"HTTP request failed: {type(exc).__name__}") from None
     try:
@@ -113,6 +121,60 @@ def _write_persisted_trace(trace_id: str, audit_path: Path) -> None:
     raise PilotError(f"Persisted AuditTrace not found for trace_id={trace_id}")
 
 
+def _write_remote_provenance(base_url: str, trace_id: str, audit_path: Path) -> None:
+    """Fetch the server's persisted trace and save it before reporting execution refusal."""
+    status, trace = _http_json(f"{base_url}/v1/provenance/{trace_id}")
+    if status != 200:
+        raise PilotError(f"Provenance lookup failed: status={status}, trace_id={trace_id}")
+    if trace.get("trace_id") != trace_id:
+        raise PilotError("Provenance lookup returned a mismatched trace_id")
+    output_path = audit_path.with_name("provenance.json")
+    try:
+        output_path.write_text(
+            json.dumps(trace, ensure_ascii=False, sort_keys=True, indent=2) + "\\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise PilotError(f"Could not save provenance.json: {type(exc).__name__}") from None
+    print(f"[PILOT] Persisted AuditTrace exported: {output_path}", flush=True)
+
+
+def _execute_with_provenance(
+    base_url: str, payload: dict[str, Any], audit_path: Path
+) -> dict[str, Any]:
+    """Keep non-200 refusal evidence before failing the pilot."""
+    status, response = _http_json(
+        f"{base_url}/v1/execute",
+        payload=payload,
+        allow_http_errors=True,
+    )
+    if status != 200:
+        reason = response.get("reason", f"HTTP_{status}")
+        trace_id = response.get("trace_id")
+        if isinstance(trace_id, str) and trace_id:
+            try:
+                _write_remote_provenance(base_url, trace_id, audit_path)
+            except PilotError as exc:
+                print(
+                    f"[PILOT] REFUSE: {reason} (trace_id={trace_id}; "
+                    f"provenance_export=FAILED: {exc})",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                raise PilotError(
+                    f"Execution refused: status={status}, reason={reason}; "
+                    "provenance export failed"
+                ) from None
+        print(
+            f"[PILOT] REFUSE: {reason}"
+            + (f" (trace_id={trace_id}; provenance_export=UNAVAILABLE)" if not trace_id else ""),
+            file=sys.stderr,
+            flush=True,
+        )
+        raise PilotError(f"Execution refused: status={status}, reason={reason}")
+    return response
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -181,13 +243,14 @@ def run_pilot() -> None:
             raise PilotError("Uvicorn did not become ready before startup timeout")
 
         print("[PILOT] HTTP server ready; sending real /v1/execute request", flush=True)
-        _, response = _http_json(
-            f"{base_url}/v1/execute",
-            payload={
+        response = _execute_with_provenance(
+            base_url,
+            {
                 "intent": "search_and_extraction",
                 "prompt": PROMPT,
                 "request_id": f"stage9-real-pilot-{int(time.time())}",
             },
+            audit_path,
         )
         response_trace_id = response.get("trace_id")
         if isinstance(response_trace_id, str) and response_trace_id:
