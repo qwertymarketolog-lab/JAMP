@@ -541,9 +541,6 @@ def create_app(
         )
         if isinstance(trace.get("execution_details"), dict):
             trace["execution_details"]["qualification"] = qualification
-            if e4_status == E4_VERIFIED:
-                trace["execution_details"]["e4_status"] = e4_status
-                trace["execution_details"]["e4_details"] = e4_details
         persistence.write_trace(trace)
         response = {
             "status": "EXECUTE",
@@ -559,8 +556,6 @@ def create_app(
         }
         if output is not None:
             response["output"] = output
-        if e4_status == E4_VERIFIED:
-            response["e4_details"] = {**(e4_details or {}), "e4_status": e4_status}
         if evidence_status == "VERIFIED":
             assert signing_key is not None
             output_digest = trace.get("execution_details", {}).get("output_digest")
