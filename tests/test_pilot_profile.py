@@ -15,9 +15,7 @@ def _matrix(search_models=None, tool_models=None):
                 "eligible_models": list(tool_models or [f"matrix/tool-{i}" for i in range(7)])
             },
             "long_context_analysis": {"eligible_models": []},
-            "strict_compliance_safety": {
-                "eligible_models": ["matrix/safety-1", "matrix/safety-2"]
-            },
+            "strict_compliance_safety": {"eligible_models": ["matrix/safety-1", "matrix/safety-2"]},
         }
     }
 
