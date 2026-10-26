@@ -163,15 +163,12 @@ def _execute_with_provenance(
                     flush=True,
                 )
                 raise PilotError(
-                    f"Execution refused: status={status}, reason={reason}; "
-                    "provenance export failed"
+                    f"Execution refused: status={status}, reason={reason}; provenance export failed"
                 ) from None
         print(
             f"[PILOT] REFUSE: {reason}"
             + (
-                f" (trace_id={trace_id}; provenance_export=UNAVAILABLE)"
-                if not has_trace_id
-                else ""
+                f" (trace_id={trace_id}; provenance_export=UNAVAILABLE)" if not has_trace_id else ""
             ),
             file=sys.stderr,
             flush=True,
