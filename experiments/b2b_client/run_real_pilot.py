@@ -67,7 +67,10 @@ def validate_execution_response(response: dict[str, Any]) -> tuple[str, dict[str
         raise PilotError(f"Unexpected actual provider model ID: {actual_model!r}")
     if output.get("provider_requested_model_id") != EXPECTED_MODEL:
         raise PilotError("Requested provider model ID does not match the approved direct model")
-    if not isinstance(output.get("provider_response_id"), str) or not output["provider_response_id"]:
+    if (
+        not isinstance(output.get("provider_response_id"), str)
+        or not output["provider_response_id"]
+    ):
         raise PilotError("Provider response ID is missing; real-generation evidence unavailable")
     verdict = response.get("verdict")
     if not isinstance(verdict, dict):
@@ -128,7 +131,10 @@ def run_pilot() -> None:
         deadline = time.monotonic() + STARTUP_TIMEOUT
         while time.monotonic() < deadline:
             if process.poll() is not None:
-                raise PilotError(f"Uvicorn exited before readiness (exit={process.returncode}); inspect uvicorn.log")
+                raise PilotError(
+                    f"Uvicorn exited before readiness (exit={process.returncode}); "
+                    "inspect uvicorn.log"
+                )
             try:
                 status, _ = _http_json(f"{base_url}/openapi.json")
                 if status == 200:
@@ -155,7 +161,9 @@ def run_pilot() -> None:
                     "trace_id": response["trace_id"],
                     "provider": response["output"]["provider"],
                     "provider_response_id": response["output"]["provider_response_id"],
-                    "provider_requested_model_id": response["output"]["provider_requested_model_id"],
+                    "provider_requested_model_id": response["output"][
+                        "provider_requested_model_id"
+                    ],
                     "provider_model_id": actual_model,
                     "evidence_status": response["evidence_status"],
                     "qualification": response.get("qualification"),
