@@ -346,31 +346,39 @@ def create_app(
                         E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
                         E4_INCONCLUSIVE: "INCONCLUSIVE",
                     }.get(raw_status, "INCONCLUSIVE")
-                    claims.append({
-                        "text": str(structured_claim.get("text") or f"{ticker} {claim_type}"),
-                        "type": claim_type,
-                        "source": "E4_MOEX",
-                        "status": normalized,
-                        "evidence": details,
-                        "reason": details.get("reason") if isinstance(details, dict) else None,
-                        "critical": bool(structured_claim.get("critical", False)),
-                    })
+                    claims.append(
+                        {
+                            "text": str(structured_claim.get("text") or f"{ticker} {claim_type}"),
+                            "type": claim_type,
+                            "source": "E4_MOEX",
+                            "status": normalized,
+                            "evidence": details,
+                            "reason": details.get("reason") if isinstance(details, dict) else None,
+                            "critical": bool(structured_claim.get("critical", False)),
+                        }
+                    )
                 else:
-                    claims.append({
-                        "text": "Malformed structured E4 claim",
-                        "type": "unknown",
-                        "source": "E4_MOEX",
-                        "status": "INCONCLUSIVE",
-                        "reason": "STRUCTURED_E4_CLAIM_INVALID",
-                        "critical": False,
-                    })
+                    claims.append(
+                        {
+                            "text": "Malformed structured E4 claim",
+                            "type": "unknown",
+                            "source": "E4_MOEX",
+                            "status": "INCONCLUSIVE",
+                            "reason": "STRUCTURED_E4_CLAIM_INVALID",
+                            "critical": False,
+                        }
+                    )
             else:
                 # This bounded extractor records explicit input assumptions and known
                 # claim shapes; it is not a general-purpose claim extraction model.
-                ticker_values = list(dict.fromkeys(
-                    match.group(1).upper()
-                    for match in re.finditer(r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text)
-                ))
+                ticker_values = list(
+                    dict.fromkeys(
+                        match.group(1).upper()
+                        for match in re.finditer(
+                            r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text
+                        )
+                    )
+                )
                 for ticker in ticker_values:
                     raw_status, details = verify_claim_with_moex(ticker, "exists", None)
                     normalized = {
@@ -379,15 +387,17 @@ def create_app(
                         E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
                         E4_INCONCLUSIVE: "INCONCLUSIVE",
                     }.get(raw_status, "INCONCLUSIVE")
-                    claims.append({
-                        "text": f"{ticker} is listed on MOEX",
-                        "type": "existence",
-                        "source": "E4_MOEX",
-                        "status": normalized,
-                        "evidence": details,
-                        "reason": details.get("reason") if isinstance(details, dict) else None,
-                        "critical": False,
-                    })
+                    claims.append(
+                        {
+                            "text": f"{ticker} is listed on MOEX",
+                            "type": "existence",
+                            "source": "E4_MOEX",
+                            "status": normalized,
+                            "evidence": details,
+                            "reason": details.get("reason") if isinstance(details, dict) else None,
+                            "critical": False,
+                        }
+                    )
 
                 movement_pattern = (
                     r"(?:упал\w*|подешевел\w*|снизил\w*|fell|dropped|down)"
@@ -395,14 +405,16 @@ def create_app(
                 )
                 movement = re.search(movement_pattern, searchable_text, re.IGNORECASE)
                 if movement:
-                    claims.append({
-                        "text": movement.group(0).strip(),
-                        "type": "price_movement",
-                        "source": None,
-                        "status": "INCONCLUSIVE",
-                        "reason": "MOEX verifier does not establish historical percentage movement",
-                        "critical": False,
-                    })
+                    claims.append(
+                        {
+                            "text": movement.group(0).strip(),
+                            "type": "price_movement",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": "MOEX verifier does not establish historical percentage movement",
+                            "critical": False,
+                        }
+                    )
 
                 ipo_match = re.search(
                     (
@@ -414,37 +426,43 @@ def create_app(
                 )
                 if ipo_match:
                     fake_tech = bool(re.search(r"\bFakeTech\b", searchable_text, re.IGNORECASE))
-                    claims.append({
-                        "text": ipo_match.group(0),
-                        "type": "ipo_event",
-                        "source": "E4_MOEX",
-                        "status": "OUT_OF_SCOPE",
-                        "reason": (
-                            "MOEX ISS does not verify IPO events; E5 general search is required"
-                        ),
-                        "critical": fake_tech,
-                    })
+                    claims.append(
+                        {
+                            "text": ipo_match.group(0),
+                            "type": "ipo_event",
+                            "source": "E4_MOEX",
+                            "status": "OUT_OF_SCOPE",
+                            "reason": (
+                                "MOEX ISS does not verify IPO events; E5 general search is required"
+                            ),
+                            "critical": fake_tech,
+                        }
+                    )
 
                 if re.search(r"крупнейш\w+|largest|number one", searchable_text, re.IGNORECASE):
-                    claims.append({
-                        "text": "market leadership / largest-company claim",
-                        "type": "superlative",
-                        "source": None,
-                        "status": "INCONCLUSIVE",
-                        "reason": "No independent market-share source checked",
-                        "critical": False,
-                    })
+                    claims.append(
+                        {
+                            "text": "market leadership / largest-company claim",
+                            "type": "superlative",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": "No independent market-share source checked",
+                            "critical": False,
+                        }
+                    )
                 if re.search(r"банкротств\w*|bankruptcy", searchable_text, re.IGNORECASE):
-                    claims.append({
-                        "text": "bankruptcy-risk assessment",
-                        "type": "prediction",
-                        "source": None,
-                        "status": "INCONCLUSIVE",
-                        "reason": (
-                            "Requires financial/news evidence; prediction is not a verified fact"
-                        ),
-                        "critical": False,
-                    })
+                    claims.append(
+                        {
+                            "text": "bankruptcy-risk assessment",
+                            "type": "prediction",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": (
+                                "Requires financial/news evidence; prediction is not a verified fact"
+                            ),
+                            "critical": False,
+                        }
+                    )
 
         aggregate_status = aggregate_verdict(claims)
         critical_unverified = critical_unverified_claims(claims)
