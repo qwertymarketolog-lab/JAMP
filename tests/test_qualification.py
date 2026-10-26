@@ -28,6 +28,7 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
                 "z-ai/glm-5.3-flash": {
                     "search_and_extraction": {
                         "score": 1.0,
+                        "benchmark_version": "v1",
                         "status": "QUALIFIED",
                         "case_count": 5,
                         "passed_cases": 5,
@@ -45,6 +46,72 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
 
     assert (
         qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
+        == "QUALIFIED"
+    )
+
+
+def test_measured_benchmark_version_mismatch_fails_closed_to_unknown(tmp_path, monkeypatch):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "benchmark_version": "v1",
+                        "status": "QUALIFIED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification(
+            "z-ai/glm-5.3-flash",
+            "search_and_extraction",
+            required_benchmark_version="v2",
+        )
+        == "UNKNOWN"
+    )
+
+
+def test_measured_benchmark_v1_qualifies_when_v1_is_required(tmp_path, monkeypatch):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "benchmark_version": "v1",
+                        "status": "QUALIFIED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification(
+            "z-ai/glm-5.3-flash", "search_and_extraction"
+        )
         == "QUALIFIED"
     )
 
