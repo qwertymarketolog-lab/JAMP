@@ -513,6 +513,10 @@ def create_app(
             "selected_model": successful_model,
             "trace_id": trace["trace_id"],
             "evidence_status": evidence_status,
+            "model_verification": evidence_status,
+            "aggregate_status": aggregate_status,
+            "claims": claims,
+            "critical_unverified": critical_unverified,
             "qualification": qualification,
         }
         if output is not None:
@@ -530,12 +534,17 @@ def create_app(
                 )
             verdict = JampVerdict(
                 trace_id=trace["trace_id"],
-                status="VERIFIED",
+                status=evidence_status,
                 provider_model_id=(
                     output.get("provider_model_id") if isinstance(output, dict) else None
                 ),
                 evidence_hash=output_digest,
                 timestamp=time.time(),
+                execution_status="EXECUTE",
+                model_verification=evidence_status,
+                claims=claims,
+                aggregate_status=aggregate_status,
+                critical_unverified=critical_unverified,
             ).sign(signing_key)
             response["verdict"] = verdict.to_dict()
         return response
