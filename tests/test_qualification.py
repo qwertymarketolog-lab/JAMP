@@ -126,6 +126,7 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
                 "z-ai/glm-5.3-flash": {
                     "search_and_extraction": {
                         "score": 1.0,
+                        "benchmark_version": "v1",
                         "status": "QUALIFIED",
                         "case_count": 5,
                         "passed_cases": 5,
