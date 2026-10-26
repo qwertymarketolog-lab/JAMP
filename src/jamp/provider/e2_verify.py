@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import socket
 import time
 import urllib.error
 import urllib.parse
@@ -88,7 +87,7 @@ def verify_generation(
                     + int(timeout_retried)
                 ),
             }
-        except (TimeoutError, socket.timeout) as exc:
+        except TimeoutError as exc:
             if not timeout_retried:
                 timeout_retried = True
                 time.sleep(5)
@@ -105,7 +104,7 @@ def verify_generation(
                 ),
             }
         except urllib.error.URLError as exc:
-            if isinstance(exc.reason, (TimeoutError, socket.timeout)) and not timeout_retried:
+            if isinstance(exc.reason, TimeoutError) and not timeout_retried:
                 timeout_retried = True
                 time.sleep(5)
                 continue
