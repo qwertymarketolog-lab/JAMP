@@ -15,7 +15,7 @@ class FallbackChainExecutor:
 
     def __init__(
         self,
-        executors: list[Callable[[str, dict[str, typing.Any]], Any]],
+        executors: list[collections.abc.Callable[[str, dict[str, typing.Any]], typing.Any]],
         *,
         max_attempts: int = 5,
         qualification_checker: QualificationChecker | None = None,
@@ -66,7 +66,7 @@ class FallbackChainExecutor:
         return message[:150]
 
     @staticmethod
-    def _task_profile(payload: dict[str, Any]) -> str | None:
+    def _task_profile(payload: dict[str, typing.Any]) -> str | None:
         candidate = payload.get("task_profile") or payload.get("intent")
         return candidate if candidate in {
             "search_and_extraction",
@@ -88,8 +88,8 @@ class FallbackChainExecutor:
         except Exception:
             return False
 
-    def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
-        history: list[dict[str, Any]] = []
+    def __call__(self, selected_model: str, payload: dict[str, typing.Any]) -> dict[str, typing.Any]:
+        history: list[dict[str, typing.Any]] = []
         for index, executor in enumerate(self.executors[: self.max_attempts]):
             if index > 0 and not self._is_qualified(
                 selected_model, self._task_profile(payload)
