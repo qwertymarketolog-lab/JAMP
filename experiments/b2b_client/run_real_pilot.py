@@ -131,7 +131,7 @@ def _write_remote_provenance(base_url: str, trace_id: str, audit_path: Path) -> 
     output_path = audit_path.with_name("provenance.json")
     try:
         output_path.write_text(
-            json.dumps(trace, ensure_ascii=False, sort_keys=True, indent=2) + "\\n",
+            json.dumps(trace, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
             encoding="utf-8",
         )
     except OSError as exc:
@@ -151,7 +151,8 @@ def _execute_with_provenance(
     if status != 200:
         reason = response.get("reason", f"HTTP_{status}")
         trace_id = response.get("trace_id")
-        if isinstance(trace_id, str) and trace_id:
+        has_trace_id = isinstance(trace_id, str) and bool(trace_id)
+        if has_trace_id:
             try:
                 _write_remote_provenance(base_url, trace_id, audit_path)
             except PilotError as exc:
@@ -167,7 +168,11 @@ def _execute_with_provenance(
                 ) from None
         print(
             f"[PILOT] REFUSE: {reason}"
-            + (f" (trace_id={trace_id}; provenance_export=UNAVAILABLE)" if not trace_id else ""),
+            + (
+                f" (trace_id={trace_id}; provenance_export=UNAVAILABLE)"
+                if not has_trace_id
+                else ""
+            ),
             file=sys.stderr,
             flush=True,
         )
