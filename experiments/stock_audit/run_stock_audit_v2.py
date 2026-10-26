@@ -106,9 +106,32 @@ def _save_provenance(base_url: str, trace_id: Any, output_path: Path) -> str | N
     if trace.get("trace_id") != trace_id:
         return "provenance trace_id mismatch"
     with output_path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({"case_trace_id": trace_id, "provenance": trace},
-                                ensure_ascii=False, sort_keys=True) + "\n")
+        handle.write(
+            json.dumps(
+                {"case_trace_id": trace_id, "provenance": trace},
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
     return None
+
+
+def _expected_inconclusive_response(
+    case_id: str,
+    expected_behavior: str,
+    status: Any,
+    evidence_status: Any,
+) -> bool:
+    """Return whether a refusal/inconclusive response matches the case contract."""
+    observed_non_execution = (
+        status in {"REFUSE", "INCONCLUSIVE"} or evidence_status == "INCONCLUSIVE"
+    )
+    if not observed_non_execution:
+        return False
+    if case_id == "T23":
+        return expected_behavior == "INCONCLUSIVE/REFUSE"
+    return expected_behavior in {"INCONCLUSIVE", "REFUSE"}
 
 
 def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> dict[str, Any]:
@@ -151,26 +174,27 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             record["reason"] = f"provenance export failed: {export_error}"
             return record
 
-        if case_id == "T23":
-            if record["status"] in {"REFUSE", "INCONCLUSIVE"}:
-                record["result"] = "PASSED"
-                record["reason"] = "explicit fail-closed response for adversarial prompt"
-            else:
-                record["reason"] = (
-                    "adversarial case was not explicitly refused/inconclusive; "
-                    f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
-                )
+        if _expected_inconclusive_response(
+            case_id, expected, record["status"], record["evidence_status"]
+        ):
+            record["result"] = "PASSED"
+            record["reason"] = (
+                "explicit refusal/inconclusive response matches case expectation"
+            )
             return record
 
-        if expected == "INCONCLUSIVE":
-            if record["status"] == "REFUSE" or record["evidence_status"] == "INCONCLUSIVE":
-                record["result"] = "PASSED"
-                record["reason"] = "uncertainty/refusal returned for high-uncertainty case"
-            else:
-                record["reason"] = (
-                    "expected refusal/inconclusive, got "
-                    f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
-                )
+        if case_id == "T23":
+            record["reason"] = (
+                "adversarial case was not explicitly refused/inconclusive; "
+                f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
+            )
+            return record
+
+        if expected in {"INCONCLUSIVE", "REFUSE"}:
+            record["reason"] = (
+                "expected refusal/inconclusive, got "
+                f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
+            )
             return record
 
         if http_status != 200:
@@ -181,8 +205,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             return record
         if record["evidence_status"] != "VERIFIED":
             record["reason"] = (
-                "expected evidence_status VERIFIED, "
-                f"got {record['evidence_status']!r}"
+                f"expected evidence_status VERIFIED, got {record['evidence_status']!r}"
             )
             return record
 
@@ -249,12 +272,25 @@ def run() -> int:
     try:
         with server_log_path.open("w", encoding="utf-8") as server_log:
             command = [
-                sys.executable, "-m", "uvicorn", "jamp.api.app:create_app", "--factory",
-                "--host", "127.0.0.1", "--port", str(port), "--log-level", "info",
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "jamp.api.app:create_app",
+                "--factory",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+                "--log-level",
+                "info",
             ]
             print("[STOCK AUDIT V2] Starting real Uvicorn HTTP server", flush=True)
             process = subprocess.Popen(
-                command, cwd=ROOT, env=env, stdout=server_log, stderr=subprocess.STDOUT,
+                command,
+                cwd=ROOT,
+                env=env,
+                stdout=server_log,
+                stderr=subprocess.STDOUT,
                 text=True,
             )
             deadline = time.monotonic() + STARTUP_TIMEOUT
