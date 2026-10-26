@@ -1149,3 +1149,41 @@ def test_openrouter_empty_content_after_retry_is_classified_inconclusive():
     assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
     assert caught.value.diagnostics["retry_count"] == 1
     sleep.assert_called_once_with(5)
+
+
+def test_fallback_chain_empty_content_exhaustion_returns_inconclusive(monkeypatch):
+    import jamp.api.app as app_module
+    from jamp.provider.fallback import FallbackChainExecutor
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'
+
+    selected_model = "provider/approved-model"
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", selected_model),
+    )
+    chain = FallbackChainExecutor(
+        [OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())],
+        max_attempts=1,
+    )
+    client = TestClient(create_app(executor=chain))
+    with patch("jamp.provider.openrouter.time.sleep"):
+        response = client.post(
+            "/v1/execute",
+            json={"intent": "search_and_extraction", "prompt": "hello"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "INCONCLUSIVE"
+    assert response.json()["reason"] == "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED"
+    assert response.json()["evidence_status"] == "INCONCLUSIVE"
