@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from experiments.stock_audit.run_stock_audit_v2 import _evaluate_acceptance_rule
 
 
