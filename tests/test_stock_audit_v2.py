@@ -77,7 +77,6 @@ def test_acceptance_rule_missing_required_field_fails_closed() -> None:
     assert "invalid_acceptance_rule_field" in reason
 
 
-
 def test_model_response_details_preserves_full_output_and_provenance_path() -> None:
     response = {
         "status": "EXECUTE",
@@ -107,6 +106,14 @@ def test_model_response_details_refusal_has_no_generated_response() -> None:
     assert details["model_response"] is None
     assert details["model_response_reason"] == "refused_before_generation"
     assert details["provenance_url"] == "/v1/provenance/trace_refused"
+
+
+def test_model_response_details_inconclusive_has_no_generated_response() -> None:
+    details = _model_response_details(
+        {"status": "INCONCLUSIVE", "trace_id": "trace_inconclusive"}
+    )
+    assert details["model_response"] is None
+    assert details["model_response_reason"] == "refused_before_generation"
 
 
 def test_model_response_details_marks_conflicting_e4_claims_mixed() -> None:
@@ -143,7 +150,10 @@ def test_markdown_report_includes_metadata_table_and_full_failure_reason() -> No
         ],
     }
     markdown = _build_markdown_report(
-        report, run_id="12345", sha="abc123", generated_at_utc="2026-10-26T00:00:00+00:00"
+        report,
+        run_id="12345",
+        sha="abc123",
+        generated_at_utc="2026-10-26T00:00:00+00:00",
     )
     assert "Run ID: 12345" in markdown
     assert "SHA: abc123" in markdown

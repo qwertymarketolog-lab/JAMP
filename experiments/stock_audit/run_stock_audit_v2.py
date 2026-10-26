@@ -173,14 +173,18 @@ def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
 
     if not isinstance(e4_status, str) or not e4_status:
         claims = response.get("claims")
-        claim_statuses = {
-            claim.get("status")
-            for claim in claims
-            if isinstance(claim, dict)
-            and claim.get("source") == "E4_MOEX"
-            and isinstance(claim.get("status"), str)
-            and claim.get("status")
-        } if isinstance(claims, list) else set()
+        claim_statuses = (
+            {
+                claim.get("status")
+                for claim in claims
+                if isinstance(claim, dict)
+                and claim.get("source") == "E4_MOEX"
+                and isinstance(claim.get("status"), str)
+                and claim.get("status")
+            }
+            if isinstance(claims, list)
+            else set()
+        )
         if not claim_statuses:
             e4_status = "NOT_EVALUATED"
         elif len(claim_statuses) == 1:
@@ -199,7 +203,7 @@ def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
 def _markdown_cell(value: Any, *, limit: int | None = None) -> str:
     if value is None:
         return "—"
-    cell = str(value).replace("\\r", " ").replace("\\n", " ").replace("|", "\\|")
+    cell = str(value).replace("\r", " ").replace("\n", " ").replace("|", "\\|")
     if limit is not None and len(cell) > limit:
         cell = cell[: limit - 1] + "…"
     return cell or "—"
@@ -260,7 +264,7 @@ def _build_markdown_report(
             full_reason = str(reason) if reason is not None else "failure reason missing"
             lines.append(f"- **{_markdown_cell(record.get('id'))}**: {full_reason}")
     lines.append("")
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def _git_sha() -> str:
