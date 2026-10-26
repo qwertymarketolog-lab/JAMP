@@ -18,20 +18,23 @@ MINIMUM_SCORE = 0.9
 EXPECTED_CASE_COUNT = 5
 
 
-def _measured_benchmark_qualifies(model_id: str, task_type: str) -> bool:
+def _load_measured_benchmark_result(model_id: str, task_type: str) -> dict[str, Any] | None:
     try:
         document: Any = json.loads(MEASURED_BENCHMARKS_PATH.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return False
+        return None
     if not isinstance(document, dict):
-        return False
+        return None
     model_record = document.get(model_id)
     if not isinstance(model_record, dict):
-        return False
+        return None
     result = model_record.get(task_type)
-    if not isinstance(result, dict):
-        return False
+    return result if isinstance(result, dict) else None
 
+
+def _measured_benchmark_qualifies(
+    result: dict[str, Any], model_id: str, required_benchmark_version: str
+) -> bool:
     score = result.get("score")
     case_count = result.get("case_count")
     passed_cases = result.get("passed_cases")
@@ -40,9 +43,10 @@ def _measured_benchmark_qualifies(model_id: str, task_type: str) -> bool:
     timestamp = result.get("timestamp")
 
     # Do not trust the status label alone. Require a complete, exact-model,
-    # all-cases-passed record with E2 verification and a dataset digest.
+    # version-matched, all-cases-passed record with E2 verification and a dataset digest.
     return (
-        result.get("status") == "QUALIFIED"
+        result.get("benchmark_version") == required_benchmark_version
+        and result.get("status") == "QUALIFIED"
         and isinstance(score, (int, float))
         and not isinstance(score, bool)
         and MINIMUM_SCORE <= score <= 1.0
@@ -59,17 +63,31 @@ def _measured_benchmark_qualifies(model_id: str, task_type: str) -> bool:
     )
 
 
-def evaluate_model_qualification(model_id: str, task_type: str) -> str:
-    """Return qualification only for an exact model/task with measured evidence.
+def evaluate_model_qualification(
+    model_id: str, task_type: str, required_benchmark_version: str = "v1"
+) -> str:
+    """Return qualification only for exact model/task/version measured evidence.
 
-    Missing, malformed, partial, or inconsistent measurement records fail closed
-    to UNKNOWN. A successful single request never qualifies a model.
+    Missing, malformed, partial, version-mismatched, or inconsistent measurement
+    records fail closed to UNKNOWN. A successful single request never qualifies
+    a model. Registry fallback is only used when no measured record exists.
     """
     if not isinstance(model_id, str) or not model_id:
         return "UNKNOWN"
     if not isinstance(task_type, str) or not task_type:
         return "UNKNOWN"
-    if _measured_benchmark_qualifies(model_id, task_type):
-        return "QUALIFIED"
+    if not isinstance(required_benchmark_version, str) or not required_benchmark_version:
+        return "UNKNOWN"
+
+    result = _load_measured_benchmark_result(model_id, task_type)
+    if result is not None:
+        if result.get("benchmark_version") != required_benchmark_version:
+            return "UNKNOWN"
+        return (
+            "QUALIFIED"
+            if _measured_benchmark_qualifies(result, model_id, required_benchmark_version)
+            else "UNKNOWN"
+        )
+
     status = QUALIFICATION_REGISTRY.get((model_id, task_type), "UNKNOWN")
     return status if status in {"QUALIFIED", "UNKNOWN"} else "UNKNOWN"

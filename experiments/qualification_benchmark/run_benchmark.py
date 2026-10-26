@@ -17,6 +17,7 @@ OUTPUT_PATH = ROOT / "src/jamp/runtime/measured_benchmarks.json"
 TARGET_MODEL = "z-ai/glm-5.3-flash"
 TASK_TYPE = "search_and_extraction"
 THRESHOLD = 0.9
+BENCHMARK_VERSION = "v1"
 
 
 def clean_quarter(value: Any) -> str | None:
@@ -193,6 +194,7 @@ def main() -> int:
                 "measurement_status": "MEASURED",
                 "timestamp": datetime.now(UTC).isoformat(),
                 "benchmark_id": "synthetic_financial_extraction_v1",
+                "benchmark_version": BENCHMARK_VERSION,
                 "benchmark_data_sha256": hashlib.sha256(raw_data).hexdigest(),
                 "case_count": len(cases),
                 "passed_cases": passed,
