@@ -35,7 +35,7 @@ _PILOT_MODELS_PATH = _REPOSITORY_ROOT / "data" / "projections" / "pilot_models.j
 
 def _git_blob_sha(data: bytes) -> str:
     """Return Git's content-addressed SHA-1 for a blob, including its header."""
-    header = f"blob {len(data)}\\0".encode("ascii")
+    header = f"blob {len(data)}\0".encode("ascii")
     return hashlib.sha1(header + data).hexdigest()
 
 
