@@ -6,7 +6,6 @@ import collections.abc
 import re
 import typing
 
-
 QualificationChecker = collections.abc.Callable[[str, str], str]
 
 
@@ -88,7 +87,9 @@ class FallbackChainExecutor:
         except Exception:
             return False
 
-    def __call__(self, selected_model: str, payload: dict[str, typing.Any]) -> dict[str, typing.Any]:
+    def __call__(
+        self, selected_model: str, payload: dict[str, typing.Any]
+    ) -> dict[str, typing.Any]:
         history: list[dict[str, typing.Any]] = []
         for index, executor in enumerate(self.executors[: self.max_attempts]):
             if index > 0 and not self._is_qualified(
