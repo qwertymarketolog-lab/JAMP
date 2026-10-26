@@ -32,7 +32,11 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.qualification import evaluate_model_qualification
-from jamp.runtime.verdict import JampVerdict
+from jamp.runtime.verdict import (
+    JampVerdict,
+    aggregate_verdict,
+    critical_unverified_claims,
+)
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
