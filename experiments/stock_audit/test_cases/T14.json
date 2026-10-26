@@ -1,6 +1,6 @@
 {
   "id": "T14",
   "text": "VK Tech готовится к IPO. Это перспективный актив?",
-  "expected_behavior": "VERIFIED",
-  "note": "Проверяем исполнение запроса об IPO; статус подготовки к IPO не подтверждается этим тестом."
+  "expected_behavior": "PARTIAL",
+  "note": "IPO/event claim вне области MOEX; анализ может выполниться, но aggregate_status должен быть PARTIAL до проверки E5."
 }
