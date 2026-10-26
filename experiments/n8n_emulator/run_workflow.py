@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import shutil
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -44,7 +45,24 @@ def http_json(
             raw = response.read()
             status = response.status
     except HTTPError as exc:
-        raise WorkflowAbort(f"HTTP request rejected: status={exc.code}") from None
+        raw_error = exc.read(4096)
+        reason = "UNSPECIFIED"
+        trace_id = None
+        try:
+            error_payload = json.loads(raw_error.decode("utf-8"))
+            if isinstance(error_payload, dict):
+                candidate = error_payload.get("reason")
+                if isinstance(candidate, str) and candidate:
+                    reason = candidate
+                candidate_trace = error_payload.get("trace_id")
+                if isinstance(candidate_trace, str) and candidate_trace:
+                    trace_id = candidate_trace
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+        trace_note = f", trace_id={trace_id}" if trace_id else ""
+        raise WorkflowAbort(
+            f"HTTP request rejected: status={exc.code}, reason={reason}{trace_note}"
+        ) from None
     except (URLError, TimeoutError, OSError) as exc:
         raise WorkflowAbort(f"HTTP transport failed: {type(exc).__name__}") from None
     try:
@@ -189,6 +207,11 @@ def run_workflow() -> None:
                     except subprocess.TimeoutExpired:
                         process.kill()
                         process.wait(timeout=5)
+                # Preserve server-side diagnostics for root-cause analysis, even on ABORT.
+                diagnostics_dir = ROOT / "artifacts" / "n8n-emulator"
+                diagnostics_dir.mkdir(parents=True, exist_ok=True)
+                server_log.flush()
+                shutil.copyfile(log_path, diagnostics_dir / "uvicorn.log")
 
 
 def main() -> int:
