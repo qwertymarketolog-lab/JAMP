@@ -48,7 +48,7 @@ class FallbackChainExecutor:
             ):
                 return candidate
             if isinstance(candidate, str):
-                match = re.search(r"(?:HTTP[_ ]?)(\d{3})$", candidate)
+                match = re.search(r"(?:HTTP[_ ]?)?(\\d{3})$", candidate)
                 if match:
                     return int(match.group(1))
         match = re.search(r"\bHTTP\s+(\d{3})\b", str(exc), re.IGNORECASE)
