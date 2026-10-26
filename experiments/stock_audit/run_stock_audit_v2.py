@@ -187,7 +187,11 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             return record
 
         if _expected_inconclusive_response(
-            case_id, expected, record["status"], record["evidence_status"], record["response_reason"]
+            case_id,
+            expected,
+            record["status"],
+            record["evidence_status"],
+            record["response_reason"],
         ):
             record["result"] = "PASSED"
             record["reason"] = "explicit refusal/inconclusive response matches case expectation"
