@@ -74,13 +74,12 @@ def verify_claim_with_moex(
         return E4_INCONCLUSIVE, {"reason": "INVALID_TIMEOUT", "checked_source": "moex.iss"}
     if not math.isfinite(price_tolerance) or not 0 <= price_tolerance < 1:
         return E4_INCONCLUSIVE, {"reason": "INVALID_PRICE_TOLERANCE", "checked_source": "moex.iss"}
-    if claim_type == "price":
-        if (
-            isinstance(claimed_value, bool)
-            or not isinstance(claimed_value, (int, float))
-            or not math.isfinite(float(claimed_value))
-            or float(claimed_value) <= 0
-        ):
+    if claim_type == "price" and (
+        isinstance(claimed_value, bool)
+        or not isinstance(claimed_value, (int, float))
+        or not math.isfinite(float(claimed_value))
+        or float(claimed_value) <= 0
+    ):
             return E4_INCONCLUSIVE, {
                 "reason": "INVALID_CLAIMED_PRICE",
                 "claim": {"ticker": normalized_ticker, "type": claim_type, "value": claimed_value},
@@ -98,7 +97,14 @@ def verify_claim_with_moex(
     try:
         catalog = _get_json(f"{MOEX_ISS_BASE}/securities.json?{query}", timeout)
         securities = _table_rows(catalog, "securities")
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         return E4_INCONCLUSIVE, {
             "reason": "MOEX_SOURCE_UNAVAILABLE_OR_INVALID",
             "error_type": type(exc).__name__,
