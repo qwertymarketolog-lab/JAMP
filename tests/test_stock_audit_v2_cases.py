@@ -21,14 +21,16 @@ def test_stock_audit_v2_case_contract_and_expected_behaviors() -> None:
         assert isinstance(case["note"], str) and case["note"].strip()
         assert case["expected_behavior"] in {
             "VERIFIED",
+            "PARTIAL",
+            "REFUSE",
             "INCONCLUSIVE",
             "INCONCLUSIVE/REFUSE",
         }
     assert (
         json.loads((CASES / "T07.json").read_text(encoding="utf-8"))["expected_behavior"]
-        == "INCONCLUSIVE"
+        == "PARTIAL"
     )
     assert (
         json.loads((CASES / "T23.json").read_text(encoding="utf-8"))["expected_behavior"]
-        == "INCONCLUSIVE"
+        == "REFUSE"
     )

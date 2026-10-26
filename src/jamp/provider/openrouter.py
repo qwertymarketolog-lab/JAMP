@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -208,7 +209,13 @@ class OpenRouterChatExecutor:
             normalized.append({"role": role, "content": content})
         return normalized
 
-    def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def __call__(
+        self,
+        selected_model: str,
+        payload: dict[str, Any],
+        *,
+        _retry_empty_content: bool = True,
+    ) -> dict[str, Any]:
         """Call the selected model and return a compact, auditable result."""
         if not isinstance(selected_model, str) or not selected_model:
             raise OpenRouterError("JAMP must select exactly one model for this executor")
@@ -319,8 +326,17 @@ class OpenRouterChatExecutor:
                 "requested_max_tokens": self._max_tokens,
                 "model": provider_requested_model,
             }
+            if _retry_empty_content:
+                time.sleep(5)
+                return self(
+                    selected_model,
+                    payload,
+                    _retry_empty_content=False,
+                )
+            diagnostics["retry_count"] = 1
             raise OpenRouterError(
-                "OpenRouter response has no text content",
+                "OpenRouter response has no text content after one retry",
+                code="OPENROUTER_EMPTY_CONTENT",
                 diagnostics=diagnostics,
             )
 

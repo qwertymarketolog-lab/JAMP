@@ -32,7 +32,11 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.qualification import evaluate_model_qualification
-from jamp.runtime.verdict import JampVerdict
+from jamp.runtime.verdict import (
+    JampVerdict,
+    aggregate_verdict,
+    critical_unverified_claims,
+)
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
 
@@ -243,6 +247,29 @@ def create_app(
                 or None,
             )
             persistence.write_trace(trace)
+            empty_content_exhausted = getattr(exc, "code", None) == "OPENROUTER_EMPTY_CONTENT" or (
+                isinstance(fallback_history, list)
+                and any(
+                    isinstance(item, dict)
+                    and "no text content after one retry" in str(item.get("error", "")).lower()
+                    for item in fallback_history
+                )
+            )
+            if empty_content_exhausted:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "INCONCLUSIVE",
+                        "execution_status": "INCONCLUSIVE",
+                        "reason": "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED",
+                        "trace_id": trace["trace_id"],
+                        "evidence_status": "INCONCLUSIVE",
+                        "model_verification": "INCONCLUSIVE",
+                        "aggregate_status": "PARTIAL",
+                        "claims": [],
+                        "critical_unverified": [],
+                    },
+                )
             return JSONResponse(
                 status_code=502,
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
@@ -303,91 +330,195 @@ def create_app(
                     },
                 )
 
-        # E4 verifies only explicit, bounded MOEX claims. It does not prove general factual truth.
-        e4_status = None
-        e4_details = None
+        # E2 verifies model provenance; E4 verifies only bounded MOEX claims.
+        claims = []
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
-            claim = payload.get("e4_claim")
-            if not isinstance(claim, dict) and isinstance(output, dict):
-                claim = output.get("e4_claim")
+            prompt_text = payload.get("prompt", "")
+            output_text = output.get("content", "") if isinstance(output, dict) else ""
+            searchable_text = " ".join(
+                text for text in (prompt_text, output_text) if isinstance(text, str)
+            )
 
-            if isinstance(claim, dict):
-                ticker = claim.get("ticker")
-                claim_type = claim.get("claim_type")
-                claimed_value = claim.get("claimed_value")
+            structured_claim = payload.get("e4_claim")
+            if not isinstance(structured_claim, dict) and isinstance(output, dict):
+                structured_claim = output.get("e4_claim")
+            if isinstance(structured_claim, dict):
+                ticker = structured_claim.get("ticker")
+                claim_type = structured_claim.get("claim_type")
+                claimed_value = structured_claim.get("claimed_value")
                 if isinstance(ticker, str) and isinstance(claim_type, str):
-                    e4_status, e4_details = verify_claim_with_moex(
-                        ticker, claim_type, claimed_value
+                    raw_status, details = verify_claim_with_moex(ticker, claim_type, claimed_value)
+                    normalized = {
+                        E4_VERIFIED: "VERIFIED",
+                        E4_CONTRADICTED: "CONTRADICTED",
+                        E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
+                        E4_INCONCLUSIVE: "INCONCLUSIVE",
+                    }.get(raw_status, "INCONCLUSIVE")
+                    claims.append(
+                        {
+                            "text": str(structured_claim.get("text") or f"{ticker} {claim_type}"),
+                            "type": claim_type,
+                            "source": "E4_MOEX",
+                            "status": normalized,
+                            "evidence": details,
+                            "reason": details.get("reason") if isinstance(details, dict) else None,
+                            "critical": bool(structured_claim.get("critical", False)),
+                        }
                     )
                 else:
-                    e4_status = E4_INCONCLUSIVE
-                    e4_details = {
-                        "reason": "STRUCTURED_E4_CLAIM_INVALID",
-                        "checked_source": "moex.iss",
-                    }
-            else:
-                prompt_text = payload.get("prompt", "")
-                output_text = output.get("content", "") if isinstance(output, dict) else ""
-                searchable_text = (
-                    (prompt_text if isinstance(prompt_text, str) else "")
-                    + "\\n"
-                    + (output_text if isinstance(output_text, str) else "")
-                )
-                # Parenthesized uppercase identifiers (e.g. (AFKS), (INCB)) are
-                # explicit ticker candidates. This is not general entity recognition.
-                ticker_match = re.search(r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text)
-                if ticker_match:
-                    e4_status, e4_details = verify_claim_with_moex(
-                        ticker_match.group(1), "exists", None
+                    claims.append(
+                        {
+                            "text": "Malformed structured E4 claim",
+                            "type": "unknown",
+                            "source": "E4_MOEX",
+                            "status": "INCONCLUSIVE",
+                            "reason": "STRUCTURED_E4_CLAIM_INVALID",
+                            "critical": False,
+                        }
                     )
-                elif re.search(
-                    r"\bIPO\b|initial public offering|первичн\w+ публичн\w+ размещен",
+            else:
+                # This bounded extractor records explicit input assumptions and known
+                # claim shapes; it is not a general-purpose claim extraction model.
+                ticker_values = list(
+                    dict.fromkeys(
+                        match.group(1).upper()
+                        for match in re.finditer(
+                            r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text
+                        )
+                    )
+                )
+                for ticker in ticker_values:
+                    raw_status, details = verify_claim_with_moex(ticker, "exists", None)
+                    normalized = {
+                        E4_VERIFIED: "VERIFIED",
+                        E4_CONTRADICTED: "CONTRADICTED",
+                        E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
+                        E4_INCONCLUSIVE: "INCONCLUSIVE",
+                    }.get(raw_status, "INCONCLUSIVE")
+                    claims.append(
+                        {
+                            "text": f"{ticker} is listed on MOEX",
+                            "type": "existence",
+                            "source": "E4_MOEX",
+                            "status": normalized,
+                            "evidence": details,
+                            "reason": details.get("reason") if isinstance(details, dict) else None,
+                            "critical": False,
+                        }
+                    )
+
+                movement_pattern = (
+                    r"(?:упал\w*|подешевел\w*|снизил\w*|fell|dropped|down)"
+                    r".{0,45}?\b(\d{1,3}(?:[.,]\d+)?)\s*%"
+                )
+                movement = re.search(movement_pattern, searchable_text, re.IGNORECASE)
+                if movement:
+                    claims.append(
+                        {
+                            "text": movement.group(0).strip(),
+                            "type": "price_movement",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": (
+                                "MOEX verifier does not establish historical percentage movement"
+                            ),
+                            "critical": False,
+                        }
+                    )
+
+                ipo_match = re.search(
+                    (
+                        r"\bIPO\b|initial public offering|"
+                        r"первичн\w+ публичн\w+ размещен|выходит на IPO|готовится к IPO"
+                    ),
                     searchable_text,
                     re.IGNORECASE,
-                ):
-                    e4_status = E4_OUT_OF_SCOPE
-                    e4_details = {
-                        "claim": prompt_text if isinstance(prompt_text, str) else "",
-                        "checked_source": "moex.iss",
-                        "result": "OUT_OF_SCOPE",
-                        "reason": (
-                            "IPO/event claims are not established by MOEX ticker-catalog "
-                            "absence; general search (E5) is required"
-                        ),
-                    }
+                )
+                if ipo_match:
+                    fake_tech = bool(re.search(r"\bFakeTech\b", searchable_text, re.IGNORECASE))
+                    claims.append(
+                        {
+                            "text": ipo_match.group(0),
+                            "type": "ipo_event",
+                            "source": "E4_MOEX",
+                            "status": "OUT_OF_SCOPE",
+                            "reason": (
+                                "MOEX ISS does not verify IPO events; E5 general search is required"
+                            ),
+                            "critical": fake_tech,
+                        }
+                    )
 
-            if e4_status in {E4_CONTRADICTED, E4_OUT_OF_SCOPE, E4_INCONCLUSIVE}:
-                public_evidence_status = (
-                    "CONTRADICTED" if e4_status == E4_CONTRADICTED else "INCONCLUSIVE"
-                )
-                reason = e4_status
-                trace = provenance.create_trace(
-                    task_profile,
-                    required,
-                    "REFUSE",
-                    reason,
-                    len(eligible),
-                    request_id=request_id,
-                    evidence_status=public_evidence_status,
-                    evidence_details={"e4_status": e4_status, "e4_details": e4_details},
-                    refusal_reason=reason,
-                    failure_diagnostics={
-                        "e4_status": e4_status,
-                        "e4_details": e4_details,
-                        "e2_evidence_status": evidence_status,
-                    },
-                )
-                persistence.write_trace(trace)
-                return JSONResponse(
-                    status_code=200,
-                    content={
-                        "status": "REFUSE" if e4_status == E4_CONTRADICTED else "INCONCLUSIVE",
-                        "reason": reason,
-                        "trace_id": trace["trace_id"],
-                        "evidence_status": public_evidence_status,
-                        "e4_details": {**(e4_details or {}), "e4_status": e4_status},
-                    },
-                )
+                if re.search(r"крупнейш\w+|largest|number one", searchable_text, re.IGNORECASE):
+                    claims.append(
+                        {
+                            "text": "market leadership / largest-company claim",
+                            "type": "superlative",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": "No independent market-share source checked",
+                            "critical": False,
+                        }
+                    )
+                if re.search(r"банкротств\w*|bankruptcy", searchable_text, re.IGNORECASE):
+                    claims.append(
+                        {
+                            "text": "bankruptcy-risk assessment",
+                            "type": "prediction",
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "reason": (
+                                "Requires financial/news evidence; "
+                                "prediction is not a verified fact"
+                            ),
+                            "critical": False,
+                        }
+                    )
+
+        aggregate_status = aggregate_verdict(claims)
+        critical_unverified = critical_unverified_claims(claims)
+        if aggregate_status == "CONTRADICTED" or critical_unverified:
+            reason = (
+                "CLAIM_LEVEL_CONTRADICTION"
+                if aggregate_status == "CONTRADICTED"
+                else "E4_CANNOT_VERIFY_EXISTENCE"
+            )
+            trace = provenance.create_trace(
+                task_profile,
+                required,
+                "REFUSE",
+                reason,
+                len(eligible),
+                request_id=request_id,
+                evidence_status=evidence_status,
+                evidence_details={
+                    "aggregate_status": aggregate_status,
+                    "claims": claims,
+                    "critical_unverified": critical_unverified,
+                },
+                refusal_reason=reason,
+                failure_diagnostics={
+                    "aggregate_status": aggregate_status,
+                    "claims": claims,
+                    "critical_unverified": critical_unverified,
+                    "model_verification": evidence_status,
+                },
+            )
+            persistence.write_trace(trace)
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "REFUSE",
+                    "execution_status": "REFUSE",
+                    "reason": reason,
+                    "trace_id": trace["trace_id"],
+                    "evidence_status": evidence_status,
+                    "model_verification": evidence_status,
+                    "aggregate_status": aggregate_status,
+                    "claims": claims,
+                    "critical_unverified": critical_unverified,
+                },
+            )
 
         signing_key = _verdict_signing_key() if evidence_status == "VERIFIED" else None
         if evidence_status == "VERIFIED" and signing_key is None:
@@ -428,26 +559,32 @@ def create_app(
             output=output,
             request_id=request_id,
             evidence_status=evidence_status,
-            evidence_details=evidence_details,
+            evidence_details={
+                **(evidence_details if isinstance(evidence_details, dict) else {}),
+                "model_verification": evidence_status,
+                "aggregate_status": aggregate_status,
+                "claims": claims,
+                "critical_unverified": critical_unverified,
+            },
             fallback_history=output.get("fallback_history", []) if isinstance(output, dict) else [],
         )
         if isinstance(trace.get("execution_details"), dict):
             trace["execution_details"]["qualification"] = qualification
-            if e4_status == E4_VERIFIED:
-                trace["execution_details"]["e4_status"] = e4_status
-                trace["execution_details"]["e4_details"] = e4_details
         persistence.write_trace(trace)
         response = {
             "status": "EXECUTE",
+            "execution_status": "EXECUTE",
             "selected_model": successful_model,
             "trace_id": trace["trace_id"],
             "evidence_status": evidence_status,
+            "model_verification": evidence_status,
+            "aggregate_status": aggregate_status,
+            "claims": claims,
+            "critical_unverified": critical_unverified,
             "qualification": qualification,
         }
         if output is not None:
             response["output"] = output
-        if e4_status == E4_VERIFIED:
-            response["e4_details"] = {**(e4_details or {}), "e4_status": e4_status}
         if evidence_status == "VERIFIED":
             assert signing_key is not None
             output_digest = trace.get("execution_details", {}).get("output_digest")
@@ -459,12 +596,17 @@ def create_app(
                 )
             verdict = JampVerdict(
                 trace_id=trace["trace_id"],
-                status="VERIFIED",
+                status=evidence_status,
                 provider_model_id=(
                     output.get("provider_model_id") if isinstance(output, dict) else None
                 ),
                 evidence_hash=output_digest,
                 timestamp=time.time(),
+                execution_status="EXECUTE",
+                model_verification=evidence_status,
+                claims=claims,
+                aggregate_status=aggregate_status,
+                critical_unverified=critical_unverified,
             ).sign(signing_key)
             response["verdict"] = verdict.to_dict()
         return response

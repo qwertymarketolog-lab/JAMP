@@ -497,7 +497,9 @@ def test_openrouter_empty_content_error_captures_safe_provider_diagnostics():
         "reasoning_len": len(reasoning),
         "requested_max_tokens": 20,
         "model": "nvidia/nemotron-3-super-120b-a12b",
+        "retry_count": 1,
     }
+    assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
     assert reasoning not in repr(caught.value.diagnostics)
     assert "test-secret" not in repr(caught.value.diagnostics)
 
@@ -1087,3 +1089,101 @@ def test_openrouter_executor_loads_fallback_models_from_env(monkeypatch):
         "z-ai/glm-5.3-flash",
         "google/gemini-2.0-flash-lite-preview-02-05:free",
     ]
+
+
+def test_openrouter_retries_empty_content_once_then_succeeds():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self.body
+
+    responses = [
+        Response(b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'),
+        Response(b'{"id":"or-good","choices":[{"message":{"content":"recovered"}}]}'),
+    ]
+    calls = []
+
+    def fake_open(request, timeout):
+        calls.append(request)
+        return responses.pop(0)
+
+    executor = OpenRouterChatExecutor("test-secret", opener=fake_open)
+    with patch("jamp.provider.openrouter.time.sleep") as sleep:
+        result = executor("provider/approved-model", {"prompt": "hello"})
+
+    assert result["content"] == "recovered"
+    assert len(calls) == 2
+    sleep.assert_called_once_with(5)
+
+
+def test_openrouter_empty_content_after_retry_is_classified_inconclusive():
+    from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'
+
+    executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())
+    with (
+        patch("jamp.provider.openrouter.time.sleep") as sleep,
+        pytest.raises(OpenRouterError) as caught,
+    ):
+        executor("provider/approved-model", {"prompt": "hello"})
+
+    assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
+    assert caught.value.diagnostics["retry_count"] == 1
+    sleep.assert_called_once_with(5)
+
+
+def test_fallback_chain_empty_content_exhaustion_returns_inconclusive(monkeypatch):
+    import jamp.api.app as app_module
+    from jamp.provider.fallback import FallbackChainExecutor
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'
+
+    selected_model = "provider/approved-model"
+    monkeypatch.setattr(
+        app_module.ModelSelector,
+        "select_model",
+        lambda self, eligible, task_profile: ("EXECUTE", selected_model),
+    )
+    chain = FallbackChainExecutor(
+        [OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())],
+        max_attempts=1,
+    )
+    client = TestClient(create_app(executor=chain))
+    with patch("jamp.provider.openrouter.time.sleep"):
+        response = client.post(
+            "/v1/execute",
+            json={"intent": "search_and_extraction", "prompt": "hello"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "INCONCLUSIVE"
+    assert response.json()["reason"] == "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED"
+    assert response.json()["evidence_status"] == "INCONCLUSIVE"
