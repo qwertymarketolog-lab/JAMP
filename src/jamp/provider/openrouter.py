@@ -209,7 +209,13 @@ class OpenRouterChatExecutor:
             normalized.append({"role": role, "content": content})
         return normalized
 
-    def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def __call__(
+        self,
+        selected_model: str,
+        payload: dict[str, Any],
+        *,
+        _retry_empty_content: bool = True,
+    ) -> dict[str, Any]:
         """Call the selected model and return a compact, auditable result."""
         if not isinstance(selected_model, str) or not selected_model:
             raise OpenRouterError("JAMP must select exactly one model for this executor")
