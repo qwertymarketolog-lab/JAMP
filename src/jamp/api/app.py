@@ -252,8 +252,14 @@ def create_app(
                     status_code=200,
                     content={
                         "status": "INCONCLUSIVE",
+                        "execution_status": "INCONCLUSIVE",
                         "reason": "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED",
                         "trace_id": trace["trace_id"],
+                        "evidence_status": "INCONCLUSIVE",
+                        "model_verification": "INCONCLUSIVE",
+                        "aggregate_status": "PARTIAL",
+                        "claims": [],
+                        "critical_unverified": [],
                     },
                 )
             return JSONResponse(
@@ -444,9 +450,9 @@ def create_app(
         critical_unverified = critical_unverified_claims(claims)
         if aggregate_status == "CONTRADICTED" or critical_unverified:
             reason = (
-                "E4_CANNOT_VERIFY_EXISTENCE"
-                if critical_unverified
-                else "CLAIM_LEVEL_CONTRADICTION"
+                "CLAIM_LEVEL_CONTRADICTION"
+                if aggregate_status == "CONTRADICTED"
+                else "E4_CANNOT_VERIFY_EXISTENCE"
             )
             trace = provenance.create_trace(
                 task_profile,
@@ -474,9 +480,11 @@ def create_app(
                 status_code=200,
                 content={
                     "status": "REFUSE",
+                    "execution_status": "REFUSE",
                     "reason": reason,
                     "trace_id": trace["trace_id"],
                     "evidence_status": evidence_status,
+                    "model_verification": evidence_status,
                     "aggregate_status": aggregate_status,
                     "claims": claims,
                     "critical_unverified": critical_unverified,
