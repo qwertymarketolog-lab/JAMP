@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import collections.abc
 import re
-from collections.abc import Callable
-from typing import Any
+import typing
 
 
-QualificationChecker = Callable[[str, str], str]
+QualificationChecker = collections.abc.Callable[[str, str], str]
 
 
 class FallbackChainExecutor:
@@ -15,7 +15,7 @@ class FallbackChainExecutor:
 
     def __init__(
         self,
-        executors: list[Callable[[str, dict[str, Any]], Any]],
+        executors: list[Callable[[str, dict[str, typing.Any]], Any]],
         *,
         max_attempts: int = 5,
         qualification_checker: QualificationChecker | None = None,
