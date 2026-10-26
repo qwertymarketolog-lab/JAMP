@@ -1,6 +1,6 @@
 {
   "id": "T19",
   "text": "ДОМ.РФ — единственное успешное IPO 2025 года. Ждать ли повторения?",
-  "expected_behavior": "VERIFIED",
-  "note": "Проверяем ответ на предпосылку и неопределённость; утверждение «единственное успешное» не принимается как ground truth."
+  "expected_behavior": "PARTIAL",
+  "note": "IPO/event claim вне области MOEX; анализ может выполниться, но aggregate_status должен быть PARTIAL до проверки E5."
 }
