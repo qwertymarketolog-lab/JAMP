@@ -143,11 +143,145 @@ def _evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> t
     return True, "acceptance_rule explicit_refusal matched all required fields"
 
 
+def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
+    """Extract model response and E4/provenance metadata without inventing evidence."""
+    status = response.get("status")
+    trace_id = response.get("trace_id")
+    provenance_url = (
+        f"/v1/provenance/{trace_id}"
+        if isinstance(trace_id, str) and trace_id.startswith("trace_")
+        else None
+    )
+
+    if status in {"REFUSE", "INCONCLUSIVE"}:
+        model_response = None
+        model_response_reason = "refused_before_generation"
+    else:
+        output = response.get("output")
+        content = output.get("content") if isinstance(output, dict) else None
+        if isinstance(content, str):
+            model_response = content
+            model_response_reason = None
+        else:
+            model_response = None
+            model_response_reason = "model_response_unavailable"
+
+    e4_status = response.get("e4_status")
+    e4_details = response.get("e4_details")
+    if not isinstance(e4_status, str) and isinstance(e4_details, dict):
+        e4_status = e4_details.get("e4_status")
+
+    if not isinstance(e4_status, str) or not e4_status:
+        claims = response.get("claims")
+        claim_statuses = {
+            claim.get("status")
+            for claim in claims
+            if isinstance(claim, dict)
+            and claim.get("source") == "E4_MOEX"
+            and isinstance(claim.get("status"), str)
+            and claim.get("status")
+        } if isinstance(claims, list) else set()
+        if not claim_statuses:
+            e4_status = "NOT_EVALUATED"
+        elif len(claim_statuses) == 1:
+            e4_status = next(iter(claim_statuses))
+        else:
+            e4_status = "MIXED"
+
+    return {
+        "model_response": model_response,
+        "model_response_reason": model_response_reason,
+        "provenance_url": provenance_url,
+        "e4_status": e4_status,
+    }
+
+
+def _markdown_cell(value: Any, *, limit: int | None = None) -> str:
+    if value is None:
+        return "—"
+    cell = str(value).replace("\\r", " ").replace("\\n", " ").replace("|", "\\|")
+    if limit is not None and len(cell) > limit:
+        cell = cell[: limit - 1] + "…"
+    return cell or "—"
+
+
+def _build_markdown_report(
+    report: dict[str, Any], *, run_id: str, sha: str, generated_at_utc: str
+) -> str:
+    lines = [
+        "# Stock Audit v2 — отчёт",
+        "",
+        f"- Run ID: {run_id}",
+        f"- SHA: {sha}",
+        f"- Date (UTC): {generated_at_utc}",
+        f"- Result: {report.get('result', 'UNKNOWN')}",
+        "",
+        "| ID | Вопрос | Статус | Ответ модели | Ссылка на provenance |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    cases = report.get("cases", [])
+    for record in cases if isinstance(cases, list) else []:
+        if not isinstance(record, dict):
+            continue
+        status = f"{record.get('result', 'UNKNOWN')} / {record.get('status', 'UNKNOWN')}"
+        provenance_url = record.get("provenance_url")
+        provenance_cell = (
+            f"[provenance]({provenance_url})"
+            if isinstance(provenance_url, str) and provenance_url
+            else "—"
+        )
+        answer = record.get("model_response")
+        if answer is None and record.get("model_response_reason"):
+            answer = f"— ({record['model_response_reason']})"
+        lines.append(
+            "| "
+            + " | ".join(
+                (
+                    _markdown_cell(record.get("id")),
+                    _markdown_cell(record.get("question")),
+                    _markdown_cell(status),
+                    _markdown_cell(answer, limit=200),
+                    provenance_cell,
+                )
+            )
+            + " |"
+        )
+
+    failures = [
+        record for record in cases
+        if isinstance(record, dict) and record.get("result") == "FAILED"
+    ] if isinstance(cases, list) else []
+    lines.extend(["", "## Провалы", ""])
+    if not failures:
+        lines.append("Нет.")
+    else:
+        for record in failures:
+            reason = record.get("reason")
+            full_reason = str(reason) if reason is not None else "failure reason missing"
+            lines.append(f"- **{_markdown_cell(record.get('id'))}**: {full_reason}")
+    lines.append("")
+    return "\\n".join(lines)
+
+
+def _git_sha() -> str:
+    try:
+        sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return "UNKNOWN"
+    return sha if sha else "UNKNOWN"
+
+
 def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> dict[str, Any]:
     case_id = case["id"]
     expected = case["expected_behavior"]
     record: dict[str, Any] = {
         "id": case_id,
+        "question": case["text"],
         "expected_behavior": expected,
         "started_at_utc": datetime.now(UTC).isoformat(),
         "http_status": None,
@@ -160,6 +294,10 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         "result": "FAILED",
         "reason": None,
         "response_reason": None,
+        "model_response": None,
+        "model_response_reason": None,
+        "provenance_url": None,
+        "e4_status": "NOT_EVALUATED",
     }
     try:
         http_status, response = _http_json(
@@ -176,21 +314,22 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         record["aggregate_status"] = response.get("aggregate_status", "UNKNOWN")
         record["response_reason"] = response.get("reason")
         record["trace_id"] = response.get("trace_id")
+        record.update(_model_response_details(response))
         if record["evidence_status"] == "UNKNOWN":
             output = response.get("output")
             if isinstance(output, dict):
                 record["evidence_status"] = output.get("evidence_status", "UNKNOWN")
 
-        if case.get("acceptance_rule"):
-            passed, rule_reason = _evaluate_acceptance_rule(case, record)
-            record["result"] = "PASSED" if passed else "FAILED"
-            record["reason"] = rule_reason
-            return record
-
         export_error = _save_provenance(base_url, record["trace_id"], provenance_path)
         record["provenance_export"] = "SAVED" if export_error is None else "FAILED"
         if export_error is not None:
             record["reason"] = f"provenance export failed: {export_error}"
+            return record
+
+        if case.get("acceptance_rule"):
+            passed, rule_reason = _evaluate_acceptance_rule(case, record)
+            record["result"] = "PASSED" if passed else "FAILED"
+            record["reason"] = rule_reason
             return record
 
         if expected == "PARTIAL":
@@ -266,6 +405,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
 def run() -> int:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     report_path = ARTIFACT_DIR / "stock_audit_v2_report.json"
+    markdown_report_path = ARTIFACT_DIR / "stock_audit_v2_report.md"
     provenance_path = ARTIFACT_DIR / "stock_audit_v2_provenance.jsonl"
     server_log_path = ARTIFACT_DIR / "uvicorn.log"
     results_path = ARTIFACT_DIR / "stock_audit_v2_results.jsonl"
@@ -354,10 +494,15 @@ def run() -> int:
 
     passed = sum(item["result"] == "PASSED" for item in results)
     failed = len(results) - passed
+    finished_at_utc = datetime.now(UTC).isoformat()
+    run_id = os.environ.get("GITHUB_RUN_ID", "UNKNOWN")
+    run_sha = os.environ.get("GITHUB_SHA") or _git_sha()
     report = {
         "schema_version": "stock-audit-v2-report-v1",
+        "run_id": run_id,
+        "sha": run_sha,
         "started_at_utc": results[0]["started_at_utc"] if results else None,
-        "finished_at_utc": datetime.now(UTC).isoformat(),
+        "finished_at_utc": finished_at_utc,
         "expected_cases": 24,
         "observed_cases": len(results),
         "passed": passed,
@@ -372,8 +517,16 @@ def run() -> int:
         "cases": results,
     }
     _save_json(report_path, report)
+    markdown_report = _build_markdown_report(
+        report,
+        run_id=run_id,
+        sha=run_sha,
+        generated_at_utc=finished_at_utc,
+    )
+    markdown_report_path.write_text(markdown_report, encoding="utf-8")
     print(f"[STOCK AUDIT V2] PASSED={passed} FAILED={failed} TOTAL={len(results)}", flush=True)
     print(f"[STOCK AUDIT V2] Report: {report_path}", flush=True)
+    print(f"[STOCK AUDIT V2] Markdown report: {markdown_report_path}", flush=True)
     if len(results) == 24 and failed == 0:
         print("RESULT: STOCK AUDIT V2 PASSED", flush=True)
         return 0
