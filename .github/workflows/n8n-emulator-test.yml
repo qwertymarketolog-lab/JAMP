@@ -1,0 +1,41 @@
+name: n8n Emulator Stage 10
+
+on:
+  pull_request:
+    paths:
+      - "experiments/n8n_emulator/**"
+      - ".github/workflows/n8n-emulator-test.yml"
+      - "src/jamp/**"
+      - "tests/fixtures/runtime_evidence_projection.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  n8n-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
+      JAMP_ENV: production
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install project and development dependencies
+        run: python -m pip install -e ".[dev]" uvicorn
+      - name: Run real HTTP execute → verify → CRM flow
+        run: python experiments/n8n_emulator/run_workflow.py
+      - name: Upload emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n8n-emulator-diagnostics-${{ github.run_id }}
+          path: artifacts/n8n-emulator/
+          if-no-files-found: ignore
+          retention-days: 30
