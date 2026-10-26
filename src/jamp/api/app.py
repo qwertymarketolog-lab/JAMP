@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import re
 import time
 from collections.abc import Callable
 from contextlib import suppress
@@ -15,6 +16,13 @@ from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
+from jamp.provider.moex_verify import (
+    E4_CONTRADICTED,
+    E4_INCONCLUSIVE,
+    E4_OUT_OF_SCOPE,
+    E4_VERIFIED,
+    verify_claim_with_moex,
+)
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
     AuditPersistence,
@@ -295,6 +303,92 @@ def create_app(
                     },
                 )
 
+        # E4 verifies only explicit, bounded MOEX claims. It does not prove general factual truth.
+        e4_status = None
+        e4_details = None
+        if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
+            claim = payload.get("e4_claim")
+            if not isinstance(claim, dict) and isinstance(output, dict):
+                claim = output.get("e4_claim")
+
+            if isinstance(claim, dict):
+                ticker = claim.get("ticker")
+                claim_type = claim.get("claim_type")
+                claimed_value = claim.get("claimed_value")
+                if isinstance(ticker, str) and isinstance(claim_type, str):
+                    e4_status, e4_details = verify_claim_with_moex(
+                        ticker, claim_type, claimed_value
+                    )
+                else:
+                    e4_status = E4_INCONCLUSIVE
+                    e4_details = {
+                        "reason": "STRUCTURED_E4_CLAIM_INVALID",
+                        "checked_source": "moex.iss",
+                    }
+            else:
+                prompt_text = payload.get("prompt", "")
+                output_text = output.get("content", "") if isinstance(output, dict) else ""
+                searchable_text = (
+                    (prompt_text if isinstance(prompt_text, str) else "")
+                    + "\\n"
+                    + (output_text if isinstance(output_text, str) else "")
+                )
+                # Parenthesized uppercase identifiers (e.g. (AFKS), (INCB)) are
+                # explicit ticker candidates. This is not general entity recognition.
+                ticker_match = re.search(r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text)
+                if ticker_match:
+                    e4_status, e4_details = verify_claim_with_moex(
+                        ticker_match.group(1), "exists", None
+                    )
+                elif re.search(
+                    r"\bIPO\b|initial public offering|первичн\w+ публичн\w+ размещен",
+                    searchable_text,
+                    re.IGNORECASE,
+                ):
+                    e4_status = E4_OUT_OF_SCOPE
+                    e4_details = {
+                        "claim": prompt_text if isinstance(prompt_text, str) else "",
+                        "checked_source": "moex.iss",
+                        "result": "OUT_OF_SCOPE",
+                        "reason": (
+                            "IPO/event claims are not established by MOEX ticker-catalog "
+                            "absence; general search (E5) is required"
+                        ),
+                    }
+
+            if e4_status in {E4_CONTRADICTED, E4_OUT_OF_SCOPE, E4_INCONCLUSIVE}:
+                public_evidence_status = (
+                    "CONTRADICTED" if e4_status == E4_CONTRADICTED else "INCONCLUSIVE"
+                )
+                reason = e4_status
+                trace = provenance.create_trace(
+                    task_profile,
+                    required,
+                    "REFUSE",
+                    reason,
+                    len(eligible),
+                    request_id=request_id,
+                    evidence_status=public_evidence_status,
+                    evidence_details={"e4_status": e4_status, "e4_details": e4_details},
+                    refusal_reason=reason,
+                    failure_diagnostics={
+                        "e4_status": e4_status,
+                        "e4_details": e4_details,
+                        "e2_evidence_status": evidence_status,
+                    },
+                )
+                persistence.write_trace(trace)
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "REFUSE" if e4_status == E4_CONTRADICTED else "INCONCLUSIVE",
+                        "reason": reason,
+                        "trace_id": trace["trace_id"],
+                        "evidence_status": public_evidence_status,
+                        "e4_details": {**(e4_details or {}), "e4_status": e4_status},
+                    },
+                )
+
         signing_key = _verdict_signing_key() if evidence_status == "VERIFIED" else None
         if evidence_status == "VERIFIED" and signing_key is None:
             reason = "SIGNING_KEY_NOT_CONFIGURED"
@@ -339,6 +433,9 @@ def create_app(
         )
         if isinstance(trace.get("execution_details"), dict):
             trace["execution_details"]["qualification"] = qualification
+            if e4_status == E4_VERIFIED:
+                trace["execution_details"]["e4_status"] = e4_status
+                trace["execution_details"]["e4_details"] = e4_details
         persistence.write_trace(trace)
         response = {
             "status": "EXECUTE",
@@ -349,6 +446,8 @@ def create_app(
         }
         if output is not None:
             response["output"] = output
+        if e4_status == E4_VERIFIED:
+            response["e4_details"] = {**(e4_details or {}), "e4_status": e4_status}
         if evidence_status == "VERIFIED":
             assert signing_key is not None
             output_digest = trace.get("execution_details", {}).get("output_digest")

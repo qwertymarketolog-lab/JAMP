@@ -10,6 +10,7 @@ import urllib.request
 from typing import Any
 
 OPENROUTER_GENERATION_URL = "https://openrouter.ai/api/v1/generation"
+NOT_FOUND_BACKOFF_SECONDS = (1, 2, 4, 8, 16)
 
 
 def _model_matches(jamp_model: str, provider_model: str) -> bool:
@@ -44,37 +45,88 @@ def verify_generation(
     request.add_header("User-Agent", "JAMP-Trust-Layer/1.0")
 
     parsed = None
-    last_exc = None
-    for attempt in range(5):
+    last_exc: urllib.error.HTTPError | None = None
+    not_found_attempt = 0
+    rate_limit_retried = False
+    server_error_retried = False
+    timeout_retried = False
+
+    while True:
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 parsed = json.load(response)
             break
         except urllib.error.HTTPError as exc:
-            if exc.code == 404 and attempt < 4:
+            if exc.code == 404 and not_found_attempt < len(NOT_FOUND_BACKOFF_SECONDS):
                 last_exc = exc
-                time.sleep(5)
+                delay = NOT_FOUND_BACKOFF_SECONDS[not_found_attempt]
+                not_found_attempt += 1
+                time.sleep(delay)
                 continue
-            if exc.code == 429 and attempt < 2:
+            if exc.code == 429 and not rate_limit_retried:
                 last_exc = exc
-                time.sleep(2)
+                rate_limit_retried = True
+                time.sleep(30)
+                continue
+            if 500 <= exc.code <= 599 and not server_error_retried:
+                last_exc = exc
+                server_error_retried = True
+                time.sleep(5)
                 continue
             error_body = exc.read().decode("utf-8", errors="replace")[:500]
             return "INCONCLUSIVE", {
                 "reason": "API_ERROR",
                 "http_status": exc.code,
                 "error_body": error_body,
+                "retry_count": (
+                    not_found_attempt
+                    + int(rate_limit_retried)
+                    + int(server_error_retried)
+                    + int(timeout_retried)
+                ),
+            }
+        except TimeoutError as exc:
+            if not timeout_retried:
+                timeout_retried = True
+                time.sleep(5)
+                continue
+            return "INCONCLUSIVE", {
+                "reason": "API_ERROR",
+                "exception_type": type(exc).__name__,
+                "error_message": str(exc),
+                "retry_count": (
+                    not_found_attempt
+                    + int(rate_limit_retried)
+                    + int(server_error_retried)
+                    + int(timeout_retried)
+                ),
             }
         except urllib.error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError) and not timeout_retried:
+                timeout_retried = True
+                time.sleep(5)
+                continue
             return "INCONCLUSIVE", {
                 "reason": "API_ERROR",
                 "network_error": str(exc.reason),
+                "retry_count": (
+                    not_found_attempt
+                    + int(rate_limit_retried)
+                    + int(server_error_retried)
+                    + int(timeout_retried)
+                ),
             }
         except Exception as exc:
             return "INCONCLUSIVE", {
                 "reason": "API_ERROR",
                 "exception_type": type(exc).__name__,
                 "error_message": str(exc),
+                "retry_count": (
+                    not_found_attempt
+                    + int(rate_limit_retried)
+                    + int(server_error_retried)
+                    + int(timeout_retried)
+                ),
             }
 
     if parsed is None:
@@ -83,7 +135,13 @@ def verify_generation(
             "reason": "API_ERROR",
             "http_status": getattr(last_exc, "code", 500),
             "error_body": error_body,
-            "error_message": "Max retries exceeded for 404/429",
+            "error_message": "Generation remained unavailable after retry policy was exhausted",
+            "retry_count": (
+                not_found_attempt
+                + int(rate_limit_retried)
+                + int(server_error_retried)
+                + int(timeout_retried)
+            ),
         }
 
     if not isinstance(parsed, dict):
@@ -101,6 +159,12 @@ def verify_generation(
         "provider_model": provider_model,
         "provider_name": data.get("provider_name"),
         "generation_id": gen_id,
+        "retry_count": (
+            not_found_attempt
+            + int(rate_limit_retried)
+            + int(server_error_retried)
+            + int(timeout_retried)
+        ),
     }
 
     if _model_matches(jamp_model, provider_model):
