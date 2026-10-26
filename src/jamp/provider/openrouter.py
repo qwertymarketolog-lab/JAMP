@@ -326,8 +326,17 @@ class OpenRouterChatExecutor:
                 "requested_max_tokens": self._max_tokens,
                 "model": provider_requested_model,
             }
+            if _retry_empty_content:
+                time.sleep(5)
+                return self(
+                    selected_model,
+                    payload,
+                    _retry_empty_content=False,
+                )
+            diagnostics["retry_count"] = 1
             raise OpenRouterError(
-                "OpenRouter response has no text content",
+                "OpenRouter response has no text content after one retry",
+                code="OPENROUTER_EMPTY_CONTENT",
                 diagnostics=diagnostics,
             )
 
