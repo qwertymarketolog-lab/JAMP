@@ -18,7 +18,10 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 FINANCIAL_TEXT = (
     "Quarterly report Q3: revenue $5,200,000.50, operating expenses $1,200,000, "
-    "net income $4,000,000.50. Extract these values as a JSON object."
+    "net income $4,000,000.50. Extract these exact values. Return ONLY one valid JSON "
+    "object, with no Markdown fences, prose, prefix, or suffix, using exactly these keys: "
+    "quarter (string), revenue (number), operating_expenses (number), net_income (number). "
+    "Use JSON numbers without currency symbols. Do not add any other keys."
 )
 HTTP_TIMEOUT = 60.0
 STARTUP_TIMEOUT = 30.0
