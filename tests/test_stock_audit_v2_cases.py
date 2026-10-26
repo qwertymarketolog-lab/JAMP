@@ -24,9 +24,11 @@ def test_stock_audit_v2_case_contract_and_expected_behaviors() -> None:
             "INCONCLUSIVE",
             "INCONCLUSIVE/REFUSE",
         }
-    assert json.loads((CASES / "T07.json").read_text(encoding="utf-8"))[
-        "expected_behavior"
-    ] == "INCONCLUSIVE"
-    assert json.loads((CASES / "T23.json").read_text(encoding="utf-8"))[
-        "expected_behavior"
-    ] == "INCONCLUSIVE/REFUSE"
+    assert (
+        json.loads((CASES / "T07.json").read_text(encoding="utf-8"))["expected_behavior"]
+        == "INCONCLUSIVE"
+    )
+    assert (
+        json.loads((CASES / "T23.json").read_text(encoding="utf-8"))["expected_behavior"]
+        == "INCONCLUSIVE/REFUSE"
+    )
