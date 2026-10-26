@@ -20,13 +20,14 @@ FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EXPECTED_MATRIX_GIT_BLOB_SHA = "ad5ac0d4cab10b64b0a629ec6433ad0dacd935c5"
 STATUS_VALUES = {"VERIFIED", "CONTRADICTED", "INCONCLUSIVE"}
 CAPABILITY_IDS = tuple(f"C{i:02}" for i in range(1, 11))
+PILOT_MODEL_ID = "z-ai/glm-5.3-flash"
+PILOT_BENCHMARK_VERSION = "v1"
 
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _MATRIX_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "artifacts"
-    / "research"
-    / "jamp_task_scoped_derived_matrix_v2.json"
+    _REPOSITORY_ROOT / "artifacts" / "research" / "jamp_task_scoped_derived_matrix_v2.json"
 )
+_PILOT_MODELS_PATH = _REPOSITORY_ROOT / "data" / "projections" / "pilot_models.json"
 
 
 def _git_blob_sha(data: bytes) -> str:
@@ -144,6 +145,42 @@ def _load_derived_matrix() -> dict[str, Any]:
     return matrix
 
 
+def _load_pilot_models() -> dict[str, Any]:
+    """Load the isolated pilot profile; malformed or missing data never authorizes routing."""
+    try:
+        document = json.loads(_PILOT_MODELS_PATH.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Pilot model profile is unavailable or invalid") from exc
+    if not isinstance(document, dict) or document.get("schema_version") != "jamp-pilot-models-v1":
+        raise ValueError("Pilot model profile schema is invalid")
+    models = document.get("models")
+    if not isinstance(models, dict):
+        raise ValueError("Pilot model profile models are invalid")
+    model = models.get(PILOT_MODEL_ID)
+    if not isinstance(model, dict) or model.get("provider") != "openrouter":
+        raise ValueError("GLM pilot model entry is invalid")
+    profiles = model.get("task_profiles")
+    if not isinstance(profiles, dict) or set(profiles) != set(CAPABILITY_MAP):
+        raise ValueError("GLM pilot task profile set is invalid")
+    search = profiles.get("search_and_extraction")
+    if not isinstance(search, dict):
+        raise ValueError("GLM search pilot profile is invalid")
+    if (
+        search.get("status") != "QUALIFIED"
+        or search.get("benchmark_version") != PILOT_BENCHMARK_VERSION
+        or search.get("score") != 1.0
+        or model.get("evidence_ref")
+        != "src/jamp/runtime/measured_benchmarks.json#/z-ai~1glm-5.3-flash/search_and_extraction"
+    ):
+        raise ValueError("GLM search pilot profile evidence reference is invalid")
+    for profile in CAPABILITY_MAP:
+        if profile != "search_and_extraction":
+            item = profiles.get(profile)
+            if not isinstance(item, dict) or item.get("status") != "NOT_APPROVED":
+                raise ValueError("GLM pilot profile must deny unapproved tasks")
+    return document
+
+
 class CapabilityResolver:
     def get_required_capabilities(self, task_profile: str) -> tuple[str, ...]:
         try:
@@ -206,7 +243,28 @@ class CapabilityResolver:
         self.get_required_capabilities(task_profile)
         matrix = _load_derived_matrix()
         try:
-            models = matrix["task_profiles"][task_profile]["eligible_models"]
+            models = tuple(matrix["task_profiles"][task_profile]["eligible_models"])
         except (KeyError, TypeError) as exc:
             raise ValueError("Capability matrix task profile is invalid") from exc
-        return tuple(models)
+
+        # The pilot is an isolated, versioned route. It replaces one slot in the
+        # search pool, preserving the canonical selector's expected pool size and
+        # leaving the pinned 17-model/170-check matrix untouched.
+        if task_profile == "search_and_extraction":
+            pilot = _load_pilot_models()["models"][PILOT_MODEL_ID]
+            search = pilot["task_profiles"]["search_and_extraction"]
+            from jamp.runtime.qualification import evaluate_model_qualification
+
+            if (
+                search["status"] == "QUALIFIED"
+                and evaluate_model_qualification(
+                    PILOT_MODEL_ID,
+                    task_profile,
+                    required_benchmark_version=PILOT_BENCHMARK_VERSION,
+                )
+                == "QUALIFIED"
+            ):
+                if not models:
+                    raise ValueError("Cannot select pilot model from an empty eligible pool")
+                return (PILOT_MODEL_ID, *models[1:])
+        return models

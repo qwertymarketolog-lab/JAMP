@@ -18,6 +18,10 @@ class FakeExecutor:
         return dict(self.result or {})
 
 
+def qualified(_model_id: str, _task_profile: str) -> str:
+    return "QUALIFIED"
+
+
 def test_first_provider_success_has_empty_history():
     first = FakeExecutor({"provider": "first", "content": "ok"})
     chain = FallbackChainExecutor([first])
@@ -27,10 +31,12 @@ def test_first_provider_success_has_empty_history():
     assert first.calls == 1
 
 
-def test_fallback_records_first_provider_502():
+def test_fallback_records_first_provider_502_for_qualified_model():
     first = FakeExecutor(error=RuntimeError("HTTP 502 upstream unavailable"))
     second = FakeExecutor({"provider": "second", "content": "ok"})
-    result = FallbackChainExecutor([first, second])("model-a", {"prompt": "hello"})
+    result = FallbackChainExecutor([first, second], qualification_checker=qualified)(
+        "model-a", {"intent": "search_and_extraction", "prompt": "hello"}
+    )
     assert result["provider"] == "second"
     assert result["fallback_history"] == [
         {
@@ -42,20 +48,46 @@ def test_fallback_records_first_provider_502():
     ]
 
 
-def test_all_failures_raise_with_bounded_history():
+def test_unqualified_fallback_is_refused_without_calling_next_provider():
+    first = FakeExecutor(error=RuntimeError("HTTP 502 upstream unavailable"))
+    second = FakeExecutor({"provider": "second", "content": "must not run"})
+    chain = FallbackChainExecutor(
+        [first, second], qualification_checker=lambda _model, _task: "UNKNOWN"
+    )
+
+    with pytest.raises(RuntimeError, match="Fallback refused") as raised:
+        chain("model-a", {"intent": "search_and_extraction", "prompt": "hello"})
+
+    assert first.calls == 1
+    assert second.calls == 0
+    assert raised.value.fallback_history[0]["http_status"] == 502
+
+
+def test_fallback_refuses_when_task_profile_is_missing():
+    first = FakeExecutor(error=RuntimeError("HTTP 502 upstream unavailable"))
+    second = FakeExecutor({"provider": "second"})
+    chain = FallbackChainExecutor([first, second], qualification_checker=qualified)
+
+    with pytest.raises(RuntimeError, match="Fallback refused"):
+        chain("model-a", {"prompt": "hello"})
+
+    assert second.calls == 0
+
+
+def test_all_failures_raise_with_bounded_history_for_qualified_model():
     first = FakeExecutor(error=RuntimeError("HTTP 402 payment required"))
     second = FakeExecutor(error=RuntimeError("HTTP 404 model missing"))
-    chain = FallbackChainExecutor([first, second])
+    chain = FallbackChainExecutor([first, second], qualification_checker=qualified)
     with pytest.raises(RuntimeError, match="All fallback providers failed") as raised:
-        chain("model-a", {"prompt": "hello"})
+        chain("model-a", {"intent": "search_and_extraction", "prompt": "hello"})
     assert [entry["http_status"] for entry in raised.value.fallback_history] == [402, 404]
 
 
 def test_attempts_are_capped_at_five_and_error_is_redacted():
     executors = [FakeExecutor(error=RuntimeError("Bearer supersecret HTTP 503")) for _ in range(7)]
-    chain = FallbackChainExecutor(executors, max_attempts=99)
+    chain = FallbackChainExecutor(executors, max_attempts=99, qualification_checker=qualified)
     with pytest.raises(RuntimeError) as raised:
-        chain("model-a", {"prompt": "hello"})
+        chain("model-a", {"intent": "search_and_extraction", "prompt": "hello"})
     history = raised.value.fallback_history
     assert len(history) == 5
     assert all("supersecret" not in entry["error"] for entry in history)

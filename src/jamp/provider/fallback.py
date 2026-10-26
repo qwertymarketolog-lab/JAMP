@@ -1,20 +1,23 @@
-"""Bounded, auditable provider fallback execution."""
+"""Bounded, auditable provider fallback execution with task-scoped qualification."""
 
 from __future__ import annotations
 
+import collections.abc
 import re
-from collections.abc import Callable
-from typing import Any
+import typing
+
+QualificationChecker = collections.abc.Callable[[str, str], str]
 
 
 class FallbackChainExecutor:
-    """Try configured executors in order and retain sanitized failure history."""
+    """Try providers in order, but never retry an unqualified model on another provider."""
 
     def __init__(
         self,
-        executors: list[Callable[[str, dict[str, Any]], Any]],
+        executors: list[collections.abc.Callable[[str, dict[str, typing.Any]], typing.Any]],
         *,
         max_attempts: int = 5,
+        qualification_checker: QualificationChecker | None = None,
     ):
         if not isinstance(executors, list):
             raise TypeError("executors must be a list")
@@ -22,8 +25,11 @@ class FallbackChainExecutor:
             raise ValueError("max_attempts must be a positive integer")
         if any(not callable(executor) for executor in executors):
             raise TypeError("every executor must be callable")
+        if qualification_checker is not None and not callable(qualification_checker):
+            raise TypeError("qualification_checker must be callable")
         self.executors = list(executors)
         self.max_attempts = min(max_attempts, 5)
+        self._qualification_checker = qualification_checker
 
     @staticmethod
     def _status(exc: Exception) -> int:
@@ -58,9 +64,43 @@ class FallbackChainExecutor:
         )
         return message[:150]
 
-    def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
-        history: list[dict[str, Any]] = []
-        for executor in self.executors[: self.max_attempts]:
+    @staticmethod
+    def _task_profile(payload: dict[str, typing.Any]) -> str | None:
+        candidate = payload.get("task_profile") or payload.get("intent")
+        return (
+            candidate
+            if candidate
+            in {
+                "search_and_extraction",
+                "tool_execution_agent",
+                "long_context_analysis",
+                "strict_compliance_safety",
+            }
+            else None
+        )
+
+    def _is_qualified(self, model_id: str, task_profile: str | None) -> bool:
+        if task_profile is None:
+            return False
+        checker = self._qualification_checker
+        if checker is None:
+            from jamp.runtime.qualification import evaluate_model_qualification
+
+            checker = evaluate_model_qualification
+        try:
+            return checker(model_id, task_profile) == "QUALIFIED"
+        except Exception:
+            return False
+
+    def __call__(
+        self, selected_model: str, payload: dict[str, typing.Any]
+    ) -> dict[str, typing.Any]:
+        history: list[dict[str, typing.Any]] = []
+        for index, executor in enumerate(self.executors[: self.max_attempts]):
+            if index > 0 and not self._is_qualified(selected_model, self._task_profile(payload)):
+                error = RuntimeError("Fallback refused: model is not QUALIFIED for this task.")
+                error.fallback_history = list(history)  # type: ignore[attr-defined]
+                raise error
             try:
                 result = executor(selected_model, payload)
                 if not isinstance(result, dict):
