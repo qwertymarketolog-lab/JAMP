@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from jamp.runtime import resolver as resolver_module
+from jamp.runtime.resolver import PILOT_MODEL_ID, CapabilityResolver
 from jamp.runtime.selector import ModelSelector
-from jamp.runtime.resolver import CapabilityResolver, PILOT_MODEL_ID
 
 
 def _matrix(search_models=None, tool_models=None):
