@@ -316,7 +316,7 @@ def create_app(
                     },
                 )
 
-        # Claim-level verification: E2 verifies model provenance; E4 verifies only bounded MOEX claims.
+        # E2 verifies model provenance; E4 verifies only bounded MOEX claims.
         claims = []
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
             prompt_text = payload.get("prompt", "")
@@ -383,7 +383,10 @@ def create_app(
                         "critical": False,
                     })
 
-                movement_pattern = r"(?:упал\w*|упал\w*|подешевел\w*|снизил\w*|fell|dropped|down).{0,45}?\b(\d{1,3}(?:[.,]\d+)?)\s*%"
+                movement_pattern = (
+                    r"(?:упал\w*|подешевел\w*|снизил\w*|fell|dropped|down)"
+                    r".{0,45}?\b(\d{1,3}(?:[.,]\d+)?)\s*%"
+                )
                 movement = re.search(movement_pattern, searchable_text, re.IGNORECASE)
                 if movement:
                     claims.append({
@@ -396,7 +399,10 @@ def create_app(
                     })
 
                 ipo_match = re.search(
-                    r"\bIPO\b|initial public offering|первичн\w+ публичн\w+ размещен|выходит на IPO|готовится к IPO",
+                    (
+                        r"\bIPO\b|initial public offering|"
+                        r"первичн\w+ публичн\w+ размещен|выходит на IPO|готовится к IPO"
+                    ),
                     searchable_text,
                     re.IGNORECASE,
                 )
@@ -407,7 +413,9 @@ def create_app(
                         "type": "ipo_event",
                         "source": "E4_MOEX",
                         "status": "OUT_OF_SCOPE",
-                        "reason": "MOEX ISS does not verify IPO events; E5 general search is required",
+                        "reason": (
+                            "MOEX ISS does not verify IPO events; E5 general search is required"
+                        ),
                         "critical": fake_tech,
                     })
 
@@ -426,7 +434,9 @@ def create_app(
                         "type": "prediction",
                         "source": None,
                         "status": "INCONCLUSIVE",
-                        "reason": "Requires financial/news evidence; prediction is not a verified fact",
+                        "reason": (
+                            "Requires financial/news evidence; prediction is not a verified fact"
+                        ),
                         "critical": False,
                     })
 
