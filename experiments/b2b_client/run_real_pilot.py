@@ -112,6 +112,7 @@ def _write_persisted_trace(trace_id: str, audit_path: Path) -> None:
         raise PilotError(f"Could not read persisted AuditTrace: {type(exc).__name__}") from None
     raise PilotError(f"Persisted AuditTrace not found for trace_id={trace_id}")
 
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
