@@ -19,7 +19,7 @@ def _model_matches(jamp_model: str, provider_model: str) -> bool:
         return True
     if provider_model.startswith(jamp_model + "-"):
         suffix = provider_model[len(jamp_model) :]
-        return bool(re.fullmatch(r"-\\d+(\\.\\d+)*", suffix))
+        return bool(re.fullmatch(r"-\d+(\.\d+)*", suffix))
     return False
 
 
