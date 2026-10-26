@@ -243,6 +243,15 @@ def create_app(
                 or None,
             )
             persistence.write_trace(trace)
+            if getattr(exc, "code", None) == "OPENROUTER_EMPTY_CONTENT":
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "INCONCLUSIVE",
+                        "reason": "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED",
+                        "trace_id": trace["trace_id"],
+                    },
+                )
             return JSONResponse(
                 status_code=502,
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
