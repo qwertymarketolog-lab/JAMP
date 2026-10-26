@@ -178,9 +178,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             case_id, expected, record["status"], record["evidence_status"]
         ):
             record["result"] = "PASSED"
-            record["reason"] = (
-                "explicit refusal/inconclusive response matches case expectation"
-            )
+            record["reason"] = "explicit refusal/inconclusive response matches case expectation"
             return record
 
         if case_id == "T23":
