@@ -307,7 +307,7 @@ def create_app(
         e4_status = None
         e4_details = None
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
-            claim = payload.get("e4_claim"
+            claim = payload.get("e4_claim")
             if not isinstance(claim, dict) and isinstance(output, dict):
                 claim = output.get("e4_claim")
 
