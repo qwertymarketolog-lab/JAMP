@@ -109,9 +109,7 @@ def test_model_response_details_refusal_has_no_generated_response() -> None:
 
 
 def test_model_response_details_inconclusive_has_no_generated_response() -> None:
-    details = _model_response_details(
-        {"status": "INCONCLUSIVE", "trace_id": "trace_inconclusive"}
-    )
+    details = _model_response_details({"status": "INCONCLUSIVE", "trace_id": "trace_inconclusive"})
     assert details["model_response"] is None
     assert details["model_response_reason"] == "refused_before_generation"
 
