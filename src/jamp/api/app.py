@@ -512,7 +512,13 @@ def create_app(
             output=output,
             request_id=request_id,
             evidence_status=evidence_status,
-            evidence_details=evidence_details,
+            evidence_details={
+                **(evidence_details if isinstance(evidence_details, dict) else {}),
+                "model_verification": evidence_status,
+                "aggregate_status": aggregate_status,
+                "claims": claims,
+                "critical_unverified": critical_unverified,
+            },
             fallback_history=output.get("fallback_history", []) if isinstance(output, dict) else [],
         )
         if isinstance(trace.get("execution_details"), dict):
