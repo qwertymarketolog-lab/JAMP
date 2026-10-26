@@ -70,3 +70,57 @@ def test_missing_secrets_fail_before_server_start(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(pilot, "_free_port", forbidden_port)
     with pytest.raises(pilot.PilotError, match="OPENROUTER_API_KEY"):
         pilot.run_pilot()
+
+
+def test_http_502_exports_remote_provenance_before_failing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    trace_id = "trace_refused_502"
+    trace = {
+        "trace_id": trace_id,
+        "status": "REFUSE",
+        "refusal_reason": "E2_VERIFICATION_INCONCLUSIVE",
+        "failure_diagnostics": {"evidence_status": "INCONCLUSIVE"},
+    }
+    calls: list[tuple[str, bool]] = []
+
+    def fake_http_json(
+        url: str,
+        *,
+        payload: dict | None = None,
+        allow_http_errors: bool = False,
+    ) -> tuple[int, dict]:
+        calls.append((url, allow_http_errors))
+        if url.endswith("/v1/execute"):
+            assert allow_http_errors is True
+            return 502, {
+                "status": "REFUSE",
+                "reason": "E2_VERIFICATION_INCONCLUSIVE",
+                "trace_id": trace_id,
+            }
+        assert url == f"http://pilot/v1/provenance/{trace_id}"
+        return 200, trace
+
+    monkeypatch.setattr(pilot, "_http_json", fake_http_json)
+    monkeypatch.setattr(
+        pilot,
+        "run_pilot",
+        lambda: pilot._execute_with_provenance(
+            "http://pilot",
+            {"intent": "search_and_extraction"},
+            tmp_path / "provenance_traces.jsonl",
+        ),
+    )
+
+    assert pilot.main() == 1
+
+    provenance_path = tmp_path / "provenance.json"
+    assert provenance_path.is_file()
+    assert __import__("json").loads(provenance_path.read_text(encoding="utf-8")) == trace
+    assert calls == [
+        ("http://pilot/v1/execute", True),
+        (f"http://pilot/v1/provenance/{trace_id}", False),
+    ]
+    captured = capsys.readouterr()
+    assert "[PILOT] REFUSE: E2_VERIFICATION_INCONCLUSIVE" in captured.err
+    assert "Execution refused: status=502" in captured.err
