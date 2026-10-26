@@ -247,7 +247,15 @@ def create_app(
                 or None,
             )
             persistence.write_trace(trace)
-            if getattr(exc, "code", None) == "OPENROUTER_EMPTY_CONTENT":
+            empty_content_exhausted = getattr(exc, "code", None) == "OPENROUTER_EMPTY_CONTENT" or (
+                isinstance(fallback_history, list)
+                and any(
+                    isinstance(item, dict)
+                    and "no text content after one retry" in str(item.get("error", "")).lower()
+                    for item in fallback_history
+                )
+            )
+            if empty_content_exhausted:
                 return JSONResponse(
                     status_code=200,
                     content={
