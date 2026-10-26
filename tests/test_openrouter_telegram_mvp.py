@@ -497,7 +497,9 @@ def test_openrouter_empty_content_error_captures_safe_provider_diagnostics():
         "reasoning_len": len(reasoning),
         "requested_max_tokens": 20,
         "model": "nvidia/nemotron-3-super-120b-a12b",
+        "retry_count": 1,
     }
+    assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
     assert reasoning not in repr(caught.value.diagnostics)
     assert "test-secret" not in repr(caught.value.diagnostics)
 
