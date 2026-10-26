@@ -168,7 +168,8 @@ def verify_claim_with_moex(
         }
 
     candidates = [
-        row for row in market_rows
+        row
+        for row in market_rows
         if isinstance(row.get("SECID"), str)
         and row["SECID"].upper() == normalized_ticker
         and isinstance(row.get("LAST"), (int, float))
