@@ -115,8 +115,17 @@ def run_pilot() -> None:
 
     try:
         command = [
-            sys.executable, "-m", "uvicorn", "jamp.api.app:create_app",
-            "--factory", "--host", "127.0.0.1", "--port", str(port), "--log-level", "info",
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "jamp.api.app:create_app",
+            "--factory",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "info",
         ]
         print("[PILOT] Starting real Uvicorn process", flush=True)
         process = subprocess.Popen(
