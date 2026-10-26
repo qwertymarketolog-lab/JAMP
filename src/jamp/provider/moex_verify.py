@@ -81,11 +81,11 @@ def verify_claim_with_moex(
         or not math.isfinite(float(claimed_value))
         or float(claimed_value) <= 0
     ):
-            return E4_INCONCLUSIVE, {
-                "reason": "INVALID_CLAIMED_PRICE",
-                "claim": {"ticker": normalized_ticker, "type": claim_type, "value": claimed_value},
-                "checked_source": "moex.iss",
-            }
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_CLAIMED_PRICE",
+            "claim": {"ticker": normalized_ticker, "type": claim_type, "value": claimed_value},
+            "checked_source": "moex.iss",
+        }
 
     query = urllib.parse.urlencode(
         {
