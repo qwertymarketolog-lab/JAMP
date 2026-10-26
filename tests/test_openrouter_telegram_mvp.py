@@ -1140,9 +1140,11 @@ def test_openrouter_empty_content_after_retry_is_classified_inconclusive():
             return b'{"id":"or-empty","choices":[{"message":{"content":""}}]}'
 
     executor = OpenRouterChatExecutor("test-secret", opener=lambda request, timeout: Response())
-    with patch("jamp.provider.openrouter.time.sleep") as sleep:
-        with pytest.raises(OpenRouterError) as caught:
-            executor("provider/approved-model", {"prompt": "hello"})
+    with (
+        patch("jamp.provider.openrouter.time.sleep") as sleep,
+        pytest.raises(OpenRouterError) as caught,
+    ):
+        executor("provider/approved-model", {"prompt": "hello"})
 
     assert caught.value.code == "OPENROUTER_EMPTY_CONTENT"
     assert caught.value.diagnostics["retry_count"] == 1
