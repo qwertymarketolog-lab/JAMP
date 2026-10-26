@@ -420,8 +420,7 @@ def create_app(
                             "source": None,
                             "status": "INCONCLUSIVE",
                             "reason": (
-                                "MOEX verifier does not establish "
-                                "historical percentage movement"
+                                "MOEX verifier does not establish historical percentage movement"
                             ),
                             "critical": False,
                         }
