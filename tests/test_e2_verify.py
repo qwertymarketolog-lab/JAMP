@@ -77,6 +77,7 @@ def test_verify_http_error_diagnostics(mock_urlopen):
         "reason": "API_ERROR",
         "http_status": 403,
         "error_body": '{"error":"forbidden"}',
+        "retry_count": 0,
     }
 
 
@@ -91,12 +92,16 @@ def test_verify_url_error_diagnostics(mock_urlopen):
     assert details == {
         "reason": "API_ERROR",
         "network_error": "name resolution failed",
+        "retry_count": 0,
     }
 
 
 @patch("urllib.request.urlopen")
-def test_verify_inconclusive_on_transport_error(mock_urlopen):
-    mock_urlopen.side_effect = TimeoutError("generation request timed out")
+def test_verify_inconclusive_after_timeout_retry(mock_urlopen):
+    mock_urlopen.side_effect = [
+        TimeoutError("generation request timed out"),
+        TimeoutError("generation request timed out"),
+    ]
     status, details = verify_generation(
         {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
         api_key="fake",
@@ -106,7 +111,9 @@ def test_verify_inconclusive_on_transport_error(mock_urlopen):
         "reason": "API_ERROR",
         "exception_type": "TimeoutError",
         "error_message": "generation request timed out",
+        "retry_count": 1,
     }
+    assert mock_urlopen.call_count == 2
 
 
 @patch("jamp.provider.e2_verify.time.sleep")
