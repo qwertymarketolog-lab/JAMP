@@ -122,6 +122,7 @@ def _expected_inconclusive_response(
     expected_behavior: str,
     status: Any,
     evidence_status: Any,
+    response_reason: Any = None,
 ) -> bool:
     """Return whether a refusal/inconclusive response matches the case contract."""
     observed_non_execution = (
@@ -130,7 +131,12 @@ def _expected_inconclusive_response(
     if not observed_non_execution:
         return False
     if case_id == "T23":
-        return expected_behavior == "REFUSE" and status == "REFUSE"
+        return (
+            expected_behavior == "REFUSE"
+            and status == "REFUSE"
+            and evidence_status == "VERIFIED"
+            and response_reason == "E4_CANNOT_VERIFY_EXISTENCE"
+        )
     if expected_behavior == "REFUSE":
         return status == "REFUSE"
     return expected_behavior in {"INCONCLUSIVE", "INCONCLUSIVE/REFUSE"}
@@ -151,6 +157,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         "provenance_export": "NOT_ATTEMPTED",
         "result": "FAILED",
         "reason": None,
+        "response_reason": None,
     }
     try:
         http_status, response = _http_json(
@@ -165,6 +172,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         record["status"] = response.get("status", "UNKNOWN")
         record["evidence_status"] = response.get("evidence_status", "UNKNOWN")
         record["aggregate_status"] = response.get("aggregate_status", "UNKNOWN")
+        record["response_reason"] = response.get("reason")
         record["trace_id"] = response.get("trace_id")
         if record["evidence_status"] == "UNKNOWN":
             output = response.get("output")
@@ -178,7 +186,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
             return record
 
         if _expected_inconclusive_response(
-            case_id, expected, record["status"], record["evidence_status"]
+            case_id, expected, record["status"], record["evidence_status"], record["response_reason"]
         ):
             record["result"] = "PASSED"
             record["reason"] = "explicit refusal/inconclusive response matches case expectation"
