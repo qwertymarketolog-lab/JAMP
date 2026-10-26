@@ -306,8 +306,8 @@ def create_app(
         # E4 verifies only explicit, bounded MOEX claims. It does not prove general factual truth.
         e4_status = None
         e4_details = None
-        if task_profile == "search_and_extraction":
-            claim = payload.get("e4_claim")
+        if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
+            claim = payload.get("e4_claim"
             if not isinstance(claim, dict) and isinstance(output, dict):
                 claim = output.get("e4_claim")
 
