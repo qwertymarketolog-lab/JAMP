@@ -3,6 +3,7 @@
 This module verifies only explicit claims about a MOEX security. A missing ticker
 is OUT_OF_SCOPE, never proof that a company does not exist.
 """
+
 from __future__ import annotations
 
 import json
