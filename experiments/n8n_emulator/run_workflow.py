@@ -102,14 +102,26 @@ def run_workflow() -> None:
         with log_path.open("w", encoding="utf-8") as server_log:
             try:
                 command = [
-                    sys.executable, "-m", "uvicorn", "jamp.api.app:create_app",
-                    "--factory", "--host", "127.0.0.1", "--port", str(port),
-                    "--log-level", "info",
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "jamp.api.app:create_app",
+                    "--factory",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                    "--log-level",
+                    "info",
                 ]
                 print("[n8n EMULATOR] Starting JAMP HTTP server", flush=True)
                 process = subprocess.Popen(
-                    command, cwd=ROOT, env=os.environ.copy(),
-                    stdout=server_log, stderr=subprocess.STDOUT, text=True,
+                    command,
+                    cwd=ROOT,
+                    env=os.environ.copy(),
+                    stdout=server_log,
+                    stderr=subprocess.STDOUT,
+                    text=True,
                 )
                 deadline = time.monotonic() + STARTUP_TIMEOUT
                 while time.monotonic() < deadline:
@@ -174,7 +186,8 @@ def run_workflow() -> None:
                 if verification.get("valid") is not True:
                     print(
                         "[n8n EMULATOR] SECURITY_ALERT: Signature mismatch. Flow aborted.",
-                        file=sys.stderr, flush=True,
+                        file=sys.stderr,
+                        flush=True,
                     )
                     raise WorkflowAbort("ABORT: authentic verdict signature is invalid")
 
