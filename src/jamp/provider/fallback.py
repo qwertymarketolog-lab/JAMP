@@ -67,12 +67,17 @@ class FallbackChainExecutor:
     @staticmethod
     def _task_profile(payload: dict[str, typing.Any]) -> str | None:
         candidate = payload.get("task_profile") or payload.get("intent")
-        return candidate if candidate in {
-            "search_and_extraction",
-            "tool_execution_agent",
-            "long_context_analysis",
-            "strict_compliance_safety",
-        } else None
+        return (
+            candidate
+            if candidate
+            in {
+                "search_and_extraction",
+                "tool_execution_agent",
+                "long_context_analysis",
+                "strict_compliance_safety",
+            }
+            else None
+        )
 
     def _is_qualified(self, model_id: str, task_profile: str | None) -> bool:
         if task_profile is None:
@@ -92,12 +97,8 @@ class FallbackChainExecutor:
     ) -> dict[str, typing.Any]:
         history: list[dict[str, typing.Any]] = []
         for index, executor in enumerate(self.executors[: self.max_attempts]):
-            if index > 0 and not self._is_qualified(
-                selected_model, self._task_profile(payload)
-            ):
-                error = RuntimeError(
-                    "Fallback refused: model is not QUALIFIED for this task."
-                )
+            if index > 0 and not self._is_qualified(selected_model, self._task_profile(payload)):
+                error = RuntimeError("Fallback refused: model is not QUALIFIED for this task.")
                 error.fallback_history = list(history)  # type: ignore[attr-defined]
                 raise error
             try:
