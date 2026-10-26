@@ -152,6 +152,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         "http_status": None,
         "status": "UNKNOWN",
         "evidence_status": "UNKNOWN",
+        "aggregate_status": "UNKNOWN",
         "trace_id": None,
         "verdict_valid": None,
         "provenance_export": "NOT_ATTEMPTED",
