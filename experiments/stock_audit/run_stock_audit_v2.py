@@ -251,10 +251,15 @@ def _build_markdown_report(
             + " |"
         )
 
-    failures = [
-        record for record in cases
-        if isinstance(record, dict) and record.get("result") == "FAILED"
-    ] if isinstance(cases, list) else []
+    failures = (
+        [
+            record
+            for record in cases
+            if isinstance(record, dict) and record.get("result") == "FAILED"
+        ]
+        if isinstance(cases, list)
+        else []
+    )
     lines.extend(["", "## Провалы", ""])
     if not failures:
         lines.append("Нет.")
