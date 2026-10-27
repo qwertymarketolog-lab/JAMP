@@ -50,11 +50,11 @@ def extract_claims(text: str) -> list[Claim]:
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     claims: list[Claim] = []
-    for index, sentence in enumerate((part.strip() for part in re.split(r"(?<=[.!?])\\s+", text)), 1):
+    for index, sentence in enumerate((part.strip() for part in re.split(r"(?<=[.!?])\s+", text)), 1):
         if not sentence:
             continue
         # Preserve the agreed mixed-case company example before uppercase acronyms such as IPO.
-        proper_name = re.search(r"\b([A-Z][a-z]{2,})\b", sentence)
+        proper_name = re.search(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b", sentence)
         ticker_match = TICKER_RE.search(sentence)
         ticker = (
             proper_name.group(1).upper()
