@@ -168,6 +168,13 @@ def verify_claim_with_coingecko(
         }
 
     if claim_type == "existence":
+        if payload.get("id") != normalized_id:
+            return E4_INCONCLUSIVE, {
+                "reason": "COINGECKO_RESPONSE_ID_MISMATCH",
+                "coin_id": normalized_id,
+                "observed_id": payload.get("id"),
+                "checked_source": "coingecko",
+            }
         return E4_VERIFIED, {
             "result": "VERIFIED",
             "claim_type": claim_type,
@@ -180,6 +187,13 @@ def verify_claim_with_coingecko(
         coin_data = payload.get(normalized_id)
         observed_value = coin_data.get("usd") if isinstance(coin_data, dict) else None
     else:
+        if payload.get("id") != normalized_id:
+            return E4_INCONCLUSIVE, {
+                "reason": "COINGECKO_RESPONSE_ID_MISMATCH",
+                "coin_id": normalized_id,
+                "observed_id": payload.get("id"),
+                "checked_source": "coingecko",
+            }
         market_data = payload.get("market_data")
         values = market_data.get("market_cap") if isinstance(market_data, dict) else None
         observed_value = values.get("usd") if isinstance(values, dict) else None
@@ -190,7 +204,8 @@ def verify_claim_with_coingecko(
         or not math.isfinite(float(observed_value))
         or float(observed_value) <= 0
     ):
-        return E4_OUT_OF_SCOPE, {
+        missing_status = E4_OUT_OF_SCOPE if claim_type == "price" else E4_INCONCLUSIVE
+        return missing_status, {
             "reason": "COIN_OR_VALUE_NOT_FOUND",
             "claim_type": claim_type,
             "coin_id": normalized_id,
