@@ -1,4 +1,4 @@
-name: Gemini Argon AnyModel API Probe
+name: GPT-6 Astra AnyModel API Probe
 
 on:
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-argon-anymodel-api-probe
-          path: artifacts/research/gemini_argon_api_probe/
+          name: gpt-6-astra-anymodel-api-probe
+          path: artifacts/research/gpt6_astra_api_probe/
           if-no-files-found: error
           retention-days: 30
