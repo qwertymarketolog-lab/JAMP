@@ -13,29 +13,40 @@ def _mock_response(case: dict) -> dict:
     case_id = case["id"]
     if case.get("acceptance_rule", {}).get("kind") == "explicit_refusal":
         status, aggregate_status, reason, e4_status = (
-            "REFUSE", "CONTRADICTED", "E4_CANNOT_VERIFY_EXISTENCE", "CONTRADICTED"
+            "REFUSE",
+            "CONTRADICTED",
+            "E4_CANNOT_VERIFY_EXISTENCE",
+            "CONTRADICTED",
         )
         evidence = {
             "claim_type": "existence",
             "coin_id": case["e4_claim"]["coin_id"],
             "reason": "COIN_NOT_FOUND",
         }
-        claims = [{
-            "source": "E4_COINGECKO", "status": e4_status,
-            "critical": True, "evidence": evidence,
-        }]
+        claims = [
+            {
+                "source": "E4_COINGECKO",
+                "status": e4_status,
+                "critical": True,
+                "evidence": evidence,
+            }
+        ]
     elif case_id == "C04":
         status, aggregate_status, reason, e4_status = "EXECUTE", "VERIFIED", None, "VERIFIED"
         evidence = {
-            "claim_type": "market_cap", "claimed_value": 50000000000,
-            "observed_value": 60000000000, "predicate_satisfied": True,
+            "claim_type": "market_cap",
+            "claimed_value": 50000000000,
+            "observed_value": 60000000000,
+            "predicate_satisfied": True,
             "comparison": "greater_than",
         }
         claims = [{"source": "E4_COINGECKO", "status": e4_status, "evidence": evidence}]
     elif case_id == "C05":
         status, aggregate_status, reason, e4_status = "EXECUTE", "VERIFIED", None, "VERIFIED"
         evidence = {
-            "claim_type": "price", "claimed_value": 1.0, "observed_value": 1.001,
+            "claim_type": "price",
+            "claimed_value": 1.0,
+            "observed_value": 1.001,
             "relative_delta_pct": 0.1,
         }
         claims = [{"source": "E4_COINGECKO", "status": e4_status, "evidence": evidence}]
@@ -48,11 +59,15 @@ def _mock_response(case: dict) -> dict:
         evidence = {"claim_type": case["e4_claim"]["claim_type"], "coin_id": "bitcoin"}
         claims = [{"source": "E4_COINGECKO", "status": e4_status, "evidence": evidence}]
     return {
-        "status": status, "execution_status": status, "reason": reason,
-        "trace_id": f"trace_{case_id}", "evidence_status": "VERIFIED",
+        "status": status,
+        "execution_status": status,
+        "reason": reason,
+        "trace_id": f"trace_{case_id}",
+        "evidence_status": "VERIFIED",
         "aggregate_status": aggregate_status,
         "output": {"content": f"Full model response for {case_id}: " + "model text " * 25},
-        "claims": claims, "verdict": {"trace_id": f"trace_{case_id}"},
+        "claims": claims,
+        "verdict": {"trace_id": f"trace_{case_id}"},
     }
 
 
@@ -101,11 +116,23 @@ def test_case_catalog_has_exact_ids_and_data_driven_fake_token_rules():
 def test_markdown_report_preserves_complete_model_response():
     response = "complete response " * 300
     markdown = audit._build_markdown_report(
-        {"result": "HOLD/FAILED", "cases": [{
-            "id": "C01", "question": "question", "result": "FAILED", "status": "EXECUTE",
-            "model_response": response, "e4_status": "VERIFIED", "e4_details": {},
-            "reason": "expected failure",
-        }]},
-        run_id="123", sha="abc", generated_at_utc="2026-10-27T00:00:00+00:00",
+        {
+            "result": "HOLD/FAILED",
+            "cases": [
+                {
+                    "id": "C01",
+                    "question": "question",
+                    "result": "FAILED",
+                    "status": "EXECUTE",
+                    "model_response": response,
+                    "e4_status": "VERIFIED",
+                    "e4_details": {},
+                    "reason": "expected failure",
+                }
+            ],
+        },
+        run_id="123",
+        sha="abc",
+        generated_at_utc="2026-10-27T00:00:00+00:00",
     )
     assert response in markdown

@@ -85,7 +85,11 @@ def _load_cases() -> list[dict[str, Any]]:
         if not isinstance(case.get("e4_claim"), dict):
             raise AuditError(f"Missing structured e4_claim in {path.name}")
         if case.get("expected_behavior") not in {
-            "VERIFIED", "PARTIAL", "REFUSE", "INCONCLUSIVE", "INCONCLUSIVE/REFUSE"
+            "VERIFIED",
+            "PARTIAL",
+            "REFUSE",
+            "INCONCLUSIVE",
+            "INCONCLUSIVE/REFUSE",
         }:
             raise AuditError(f"Unsupported expected_behavior in {path.name}")
         if "acceptance_rule" in case and not isinstance(case["acceptance_rule"], dict):
@@ -138,14 +142,16 @@ def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
     claims = response.get("claims")
     crypto_claims = (
         [
-            claim for claim in claims
+            claim
+            for claim in claims
             if isinstance(claim, dict) and claim.get("source") == "E4_COINGECKO"
         ]
         if isinstance(claims, list)
         else []
     )
     statuses = {
-        claim.get("status") for claim in crypto_claims
+        claim.get("status")
+        for claim in crypto_claims
         if isinstance(claim.get("status"), str) and claim.get("status")
     }
     if not statuses:
@@ -285,9 +291,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
                 verify_status, verification = _http_json(
                     f"{base_url}/v1/verify-verdict", payload=verdict, timeout=20
                 )
-                record["verdict_valid"] = (
-                    verify_status == 200 and verification.get("valid") is True
-                )
+                record["verdict_valid"] = verify_status == 200 and verification.get("valid") is True
         passed, reason = evaluate_acceptance(case, record)
         record["result"] = "PASSED" if passed else "FAILED"
         record["reason"] = reason
@@ -329,13 +333,26 @@ def run() -> int:
     try:
         with server_log_path.open("w", encoding="utf-8") as server_log:
             command = [
-                sys.executable, "-m", "uvicorn", "jamp.api.app:create_app", "--factory",
-                "--host", "127.0.0.1", "--port", str(port), "--log-level", "info",
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "jamp.api.app:create_app",
+                "--factory",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+                "--log-level",
+                "info",
             ]
             print("[CRYPTO AUDIT V1] Starting real Uvicorn HTTP server", flush=True)
             process = subprocess.Popen(
-                command, cwd=ROOT, env=env, stdout=server_log,
-                stderr=subprocess.STDOUT, text=True,
+                command,
+                cwd=ROOT,
+                env=env,
+                stdout=server_log,
+                stderr=subprocess.STDOUT,
+                text=True,
             )
             deadline = time.monotonic() + STARTUP_TIMEOUT
             while time.monotonic() < deadline:

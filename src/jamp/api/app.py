@@ -381,11 +381,14 @@ def create_app(
                             "existence" if claim_type in {"exists", "existence"} else claim_type
                         )
                         if not coin_id:
-                            raw_status, details = E4_INCONCLUSIVE, {
-                                "reason": "CRYPTO_TICKER_NOT_MAPPED",
-                                "ticker": ticker,
-                                "checked_source": "coingecko",
-                            }
+                            raw_status, details = (
+                                E4_INCONCLUSIVE,
+                                {
+                                    "reason": "CRYPTO_TICKER_NOT_MAPPED",
+                                    "ticker": ticker,
+                                    "checked_source": "coingecko",
+                                },
+                            )
                         else:
                             raw_status, details = verify_claim_with_coingecko(
                                 coin_id, crypto_claim_type, claimed_value

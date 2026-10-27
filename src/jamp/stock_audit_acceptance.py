@@ -21,8 +21,7 @@ def evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tu
                 return False, f"invalid_acceptance_rule_field: {rule_key}"
             if record.get(record_key) != required:
                 return False, (
-                    f"{record_key} mismatch: expected {required!r}, "
-                    f"got {record.get(record_key)!r}"
+                    f"{record_key} mismatch: expected {required!r}, got {record.get(record_key)!r}"
                 )
         details = record.get("e4_details")
         if not isinstance(details, dict) or details.get("claim_type") != "price":
@@ -78,8 +77,7 @@ def evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tu
         expected_status = "EXECUTE" if actual_predicate else "REFUSE"
         if record.get("status") != expected_status:
             return False, (
-                f"status mismatch: expected {expected_status!r}, "
-                f"got {record.get('status')!r}"
+                f"status mismatch: expected {expected_status!r}, got {record.get('status')!r}"
             )
         return True, "market_cap_threshold matched the observed CoinGecko value"
 
