@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def evaluate_acceptance_rule(
-    case: dict[str, Any], record: dict[str, Any]
-) -> tuple[bool, str]:
+def evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tuple[bool, str]:
     """Evaluate a case's data-driven acceptance rule against an observed record."""
     rule = case.get("acceptance_rule")
     if not isinstance(rule, dict):
