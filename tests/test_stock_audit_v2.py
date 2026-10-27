@@ -2,7 +2,6 @@ from experiments.stock_audit.run_stock_audit_v2 import (
     _build_markdown_report,
     _model_response_details,
 )
-
 from jamp.stock_audit_acceptance import evaluate_acceptance_rule
 
 
