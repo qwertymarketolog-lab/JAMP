@@ -53,13 +53,14 @@ def extract_claims(text: str) -> list[Claim]:
     for index, sentence in enumerate((part.strip() for part in re.split(r"[.!?]+", text)), 1):
         if not sentence:
             continue
+        # Preserve the agreed mixed-case company example before uppercase acronyms such as IPO.
+        proper_name = re.search(r"\b([A-Z][a-z]{2,})\b", sentence)
         ticker_match = TICKER_RE.search(sentence)
-        ticker = ticker_match.group(0) if ticker_match else None
-        # Preserve the agreed mixed-case company example while keeping ticker matching bounded.
-        if ticker is None:
-            proper_name = re.search(r"\b([A-Z][a-z]{2,})\b", sentence)
-            if proper_name:
-                ticker = proper_name.group(1).upper()
+        ticker = (
+            proper_name.group(1).upper()
+            if proper_name
+            else ticker_match.group(0) if ticker_match else None
+        )
         price_match = PRICE_RE.search(sentence)
         cited_value = _parse_value(price_match.group(1)) if price_match else None
         citation_match = URL_RE.search(sentence)
