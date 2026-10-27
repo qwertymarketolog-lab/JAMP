@@ -7,7 +7,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any
 
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
