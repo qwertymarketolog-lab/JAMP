@@ -12,7 +12,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from jamp.stock_audit_acceptance import evaluate_acceptance_rule
+from jamp.stock_audit_acceptance import evaluate_acceptance
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES_DIR = ROOT / "experiments" / "stock_audit" / "test_cases"
@@ -263,27 +263,14 @@ def _git_sha() -> str:
 
 def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> dict[str, Any]:
     case_id = case["id"]
-    expected = case["expected_behavior"]
-    record: dict[str, Any] = {
-        "id": case_id,
-        "question": case["text"],
-        "expected_behavior": expected,
-        "started_at_utc": datetime.now(UTC).isoformat(),
-        "http_status": None,
-        "status": "UNKNOWN",
-        "evidence_status": "UNKNOWN",
-        "aggregate_status": "UNKNOWN",
-        "trace_id": None,
-        "verdict_valid": None,
-        "provenance_export": "NOT_ATTEMPTED",
-        "result": "FAILED",
-        "reason": None,
-        "response_reason": None,
-        "model_response": None,
-        "model_response_reason": None,
-        "provenance_url": None,
-        "e4_status": "NOT_EVALUATED",
-    }
+    record: dict[str, Any] = dict(
+        id=case_id, question=case["text"], expected_behavior=case["expected_behavior"],
+        started_at_utc=datetime.now(UTC).isoformat(), http_status=None,
+        status="UNKNOWN", evidence_status="UNKNOWN", aggregate_status="UNKNOWN",
+        trace_id=None, verdict_valid=None, provenance_export="NOT_ATTEMPTED",
+        result="FAILED", reason=None, response_reason=None, model_response=None,
+        model_response_reason=None, provenance_url=None, e4_status="NOT_EVALUATED",
+    )
     try:
         http_status, response = _http_json(
             f"{base_url}/v1/execute",
@@ -293,92 +280,36 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
                 "request_id": f"stock-audit-v2-{case_id}-{int(time.time())}",
             },
         )
-        record["http_status"] = http_status
-        record["status"] = response.get("status", "UNKNOWN")
-        record["evidence_status"] = response.get("evidence_status", "UNKNOWN")
-        record["aggregate_status"] = response.get("aggregate_status", "UNKNOWN")
-        record["response_reason"] = response.get("reason")
-        record["trace_id"] = response.get("trace_id")
+        record.update(
+            {
+                "http_status": http_status,
+                "status": response.get("status", "UNKNOWN"),
+                "evidence_status": response.get("evidence_status", "UNKNOWN"),
+                "aggregate_status": response.get("aggregate_status", "UNKNOWN"),
+                "response_reason": response.get("reason"),
+                "trace_id": response.get("trace_id"),
+            }
+        )
         record.update(_model_response_details(response))
-        if record["evidence_status"] == "UNKNOWN":
-            output = response.get("output")
-            if isinstance(output, dict):
-                record["evidence_status"] = output.get("evidence_status", "UNKNOWN")
+        if record["evidence_status"] == "UNKNOWN" and isinstance(response.get("output"), dict):
+            record["evidence_status"] = response["output"].get("evidence_status", "UNKNOWN")
 
         export_error = _save_provenance(base_url, record["trace_id"], provenance_path)
         record["provenance_export"] = "SAVED" if export_error is None else "FAILED"
-        if export_error is not None:
-            record["reason"] = f"provenance export failed: {export_error}"
-            return record
-
-        if case.get("acceptance_rule"):
-            passed, rule_reason = evaluate_acceptance_rule(case, record)
-            record["result"] = "PASSED" if passed else "FAILED"
-            record["reason"] = rule_reason
-            return record
-
-        if expected == "PARTIAL":
-            if record["status"] == "EXECUTE" and record["aggregate_status"] == "PARTIAL":
-                record["result"] = "PASSED"
-                record["reason"] = "EXECUTE with explicitly expected PARTIAL claim-level verdict"
-            else:
-                record["reason"] = (
-                    "expected EXECUTE + aggregate_status PARTIAL, got "
-                    f"status={record['status']!r}, aggregate_status={record['aggregate_status']!r}"
+        if record["status"] == "EXECUTE" and record["evidence_status"] == "VERIFIED":
+            record["verdict_valid"] = False
+            verdict = response.get("verdict")
+            if isinstance(verdict, dict) and verdict.get("trace_id") == record["trace_id"]:
+                verify_status, verification = _http_json(
+                    f"{base_url}/v1/verify-verdict", payload=verdict, timeout=20
                 )
-            return record
-
-        if expected in {"INCONCLUSIVE", "INCONCLUSIVE/REFUSE"}:
-            observed_non_execution = (
-                record["status"] in {"REFUSE", "INCONCLUSIVE"}
-                or record["evidence_status"] == "INCONCLUSIVE"
-            )
-            if observed_non_execution:
-                record["result"] = "PASSED"
-                record["reason"] = "explicit refusal/inconclusive response matches case expectation"
-            else:
-                record["reason"] = (
-                    "expected refusal/inconclusive, got "
-                    f"status={record['status']!r}, evidence_status={record['evidence_status']!r}"
+                record["verdict_valid"] = (
+                    verify_status == 200 and verification.get("valid") is True
                 )
-            return record
 
-        if http_status != 200:
-            record["reason"] = f"expected HTTP 200, got {http_status}"
-            return record
-        if record["status"] != "EXECUTE":
-            record["reason"] = f"expected EXECUTE, got {record['status']!r}"
-            return record
-        if record["evidence_status"] != "VERIFIED":
-            record["reason"] = (
-                f"expected evidence_status VERIFIED, got {record['evidence_status']!r}"
-            )
-            return record
-
-        verdict = response.get("verdict")
-        if not isinstance(verdict, dict):
-            record["reason"] = "signed verdict object missing"
-            return record
-        if verdict.get("trace_id") != record["trace_id"]:
-            record["reason"] = "verdict trace_id does not match execution trace_id"
-            return record
-        verify_status, verification = _http_json(
-            f"{base_url}/v1/verify-verdict", payload=verdict, timeout=20
-        )
-        valid = verify_status == 200 and verification.get("valid") is True
-        record["verdict_valid"] = valid
-        if not valid:
-            record["reason"] = (
-                f"verdict verification failed: HTTP {verify_status}, "
-                f"valid={verification.get('valid')!r}"
-            )
-            return record
-
-        record["result"] = "PASSED"
-        record["reason"] = (
-            "HTTP execution, evidence_status, signed-verdict validation and provenance verified; "
-            "factual correctness is not independently established by this harness"
-        )
+        passed, reason = evaluate_acceptance(case, record)
+        record["result"] = "PASSED" if passed else "FAILED"
+        record["reason"] = reason
         return record
     except (AuditError, OSError, ValueError) as exc:
         record["reason"] = f"{type(exc).__name__}: {exc}"
