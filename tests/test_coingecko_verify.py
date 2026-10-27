@@ -106,7 +106,9 @@ def test_unknown_coin_id_numeric_claim_is_out_of_scope(mock_urlopen):
 
 @patch("jamp.provider.coingecko_verify.urllib.request.urlopen")
 def test_market_cap_uses_twenty_percent_threshold_by_default(mock_urlopen):
-    mock_urlopen.return_value = _response({"id": "dogecoin", "market_data": {"market_cap": {"usd": 1000000}}})
+    mock_urlopen.return_value = _response(
+        {"id": "dogecoin", "market_data": {"market_cap": {"usd": 1000000}}}
+    )
     status, details = verify_claim_with_coingecko("dogecoin", "market_cap", 1150000)
     assert status == E4_VERIFIED
     assert details["threshold_pct"] == 20.0
