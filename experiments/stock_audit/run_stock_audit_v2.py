@@ -264,12 +264,18 @@ def _git_sha() -> str:
 def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> dict[str, Any]:
     case_id = case["id"]
     record: dict[str, Any] = dict(
-        id=case_id, question=case["text"], expected_behavior=case["expected_behavior"],
-        started_at_utc=datetime.now(UTC).isoformat(), http_status=None,
-        status="UNKNOWN", evidence_status="UNKNOWN", aggregate_status="UNKNOWN",
-        trace_id=None, verdict_valid=None, provenance_export="NOT_ATTEMPTED",
-        result="FAILED", reason=None, response_reason=None, model_response=None,
-        model_response_reason=None, provenance_url=None, e4_status="NOT_EVALUATED",
+        id=case_id,
+        question=case["text"],
+        expected_behavior=case["expected_behavior"],
+        started_at_utc=datetime.now(UTC).isoformat(),
+        http_status=None,
+        status="UNKNOWN",
+        evidence_status="UNKNOWN",
+        aggregate_status="UNKNOWN",
+        verdict_valid=None,
+        provenance_export="NOT_ATTEMPTED",
+        result="FAILED",
+        response_reason=None,
     )
     try:
         http_status, response = _http_json(
@@ -280,16 +286,12 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
                 "request_id": f"stock-audit-v2-{case_id}-{int(time.time())}",
             },
         )
-        record.update(
-            {
-                "http_status": http_status,
-                "status": response.get("status", "UNKNOWN"),
-                "evidence_status": response.get("evidence_status", "UNKNOWN"),
-                "aggregate_status": response.get("aggregate_status", "UNKNOWN"),
-                "response_reason": response.get("reason"),
-                "trace_id": response.get("trace_id"),
-            }
-        )
+        record["http_status"] = http_status
+        record["status"] = response.get("status", "UNKNOWN")
+        record["evidence_status"] = response.get("evidence_status", "UNKNOWN")
+        record["aggregate_status"] = response.get("aggregate_status", "UNKNOWN")
+        record["response_reason"] = response.get("reason")
+        record["trace_id"] = response.get("trace_id")
         record.update(_model_response_details(response))
         if record["evidence_status"] == "UNKNOWN" and isinstance(response.get("output"), dict):
             record["evidence_status"] = response["output"].get("evidence_status", "UNKNOWN")
@@ -302,9 +304,7 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
                 verify_status, verification = _http_json(
                     f"{base_url}/v1/verify-verdict", payload=verdict, timeout=20
                 )
-                record["verdict_valid"] = (
-                    verify_status == 200 and verification.get("valid") is True
-                )
+                record["verdict_valid"] = verify_status == 200 and verification.get("valid") is True
 
         passed, reason = evaluate_acceptance(case, record)
         record["result"] = "PASSED" if passed else "FAILED"

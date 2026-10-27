@@ -78,9 +78,7 @@ def test_partial_rejects_verified_aggregate() -> None:
 
 
 def test_partial_rejects_missing_aggregate() -> None:
-    passed, reason = evaluate_acceptance(
-        {"expected_behavior": "PARTIAL"}, {"status": "EXECUTE"}
-    )
+    passed, reason = evaluate_acceptance({"expected_behavior": "PARTIAL"}, {"status": "EXECUTE"})
     assert passed is False
     assert "aggregate_status PARTIAL" in reason
 
@@ -101,9 +99,7 @@ def test_inconclusive_accepts_inconclusive_status() -> None:
 
 
 def test_inconclusive_accepts_refuse_status() -> None:
-    passed, _ = evaluate_acceptance(
-        {"expected_behavior": "INCONCLUSIVE"}, {"status": "REFUSE"}
-    )
+    passed, _ = evaluate_acceptance({"expected_behavior": "INCONCLUSIVE"}, {"status": "REFUSE"})
     assert passed is True
 
 

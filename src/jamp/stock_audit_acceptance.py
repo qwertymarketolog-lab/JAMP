@@ -32,9 +32,7 @@ def evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tu
 
     return True, "acceptance_rule explicit_refusal matched all required fields"
 
-def _evaluate_expected_behavior(
-    expected: str, record: dict[str, Any]
-) -> tuple[bool, str]:
+def _evaluate_expected_behavior(expected: str, record: dict[str, Any]) -> tuple[bool, str]:
     """Evaluate expected_behavior against the observed record, without I/O."""
     status = record.get("status")
     evidence_status = record.get("evidence_status")
@@ -86,4 +84,3 @@ def evaluate_acceptance(case: dict[str, Any], record: dict[str, Any]) -> tuple[b
     if not isinstance(expected, str):
         return False, "missing_or_invalid_expected_behavior"
     return _evaluate_expected_behavior(expected, record)
-
