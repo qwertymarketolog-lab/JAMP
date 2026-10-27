@@ -124,3 +124,19 @@ def test_invalid_coin_id_is_inconclusive():
     status, details = verify_claim_with_coingecko("../bitcoin", "existence", None)
     assert status == E4_INCONCLUSIVE
     assert details["reason"] == "INVALID_COIN_ID"
+
+@patch("jamp.provider.coingecko_verify.urllib.request.urlopen")
+def test_existence_malformed_response_is_inconclusive(mock_urlopen):
+    mock_urlopen.return_value = _response({"name": "Unexpected payload"})
+    status, details = verify_claim_with_coingecko("bitcoin", "existence", None)
+    assert status == E4_INCONCLUSIVE
+    assert details["reason"] == "COINGECKO_RESPONSE_ID_MISMATCH"
+
+
+@patch("jamp.provider.coingecko_verify.urllib.request.urlopen")
+def test_market_cap_missing_from_existing_coin_is_inconclusive(mock_urlopen):
+    mock_urlopen.return_value = _response({"id": "dogecoin", "market_data": {}})
+    status, details = verify_claim_with_coingecko("dogecoin", "market_cap", 1000000)
+    assert status == E4_INCONCLUSIVE
+    assert details["reason"] == "COIN_OR_VALUE_NOT_FOUND"
+
