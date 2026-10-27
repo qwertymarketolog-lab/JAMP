@@ -1,0 +1,20 @@
+{
+  "id": "C07",
+  "text": "FakeTokenXYZ вырос на 500%. Проверь, существует ли эта монета.",
+  "expected_behavior": "REFUSE",
+  "note": "CoinGecko absence is contradiction within this v1 evidence boundary; DEX-only assets are Stage 15 tradeoff.",
+  "e4_claim": {
+    "ticker": "FakeTokenXYZ",
+    "coin_id": "fake-token-xyz",
+    "claim_type": "existence",
+    "claimed_value": null,
+    "text": "FakeTokenXYZ exists",
+    "critical": true
+  },
+  "acceptance_rule": {
+    "kind": "explicit_refusal",
+    "required_status": "REFUSE",
+    "required_evidence_status": "VERIFIED",
+    "required_response_reason": "E4_CANNOT_VERIFY_EXISTENCE"
+  }
+}

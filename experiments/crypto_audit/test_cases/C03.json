@@ -1,0 +1,13 @@
+{
+  "id": "C03",
+  "text": "Подтверди существование Solana (SOL).",
+  "expected_behavior": "VERIFIED",
+  "note": "CoinGecko existence lookup for the explicitly mapped SOL ticker.",
+  "e4_claim": {
+    "ticker": "SOL",
+    "claim_type": "existence",
+    "claimed_value": null,
+    "text": "Solana exists",
+    "critical": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "C01",
+  "text": "Проверь утверждение: текущая цена Bitcoin около $67,200. Дай краткий ответ.",
+  "expected_behavior": "VERIFIED",
+  "note": "Current USD price claim checked against CoinGecko with the 10% tolerance.",
+  "e4_claim": {
+    "ticker": "BTC",
+    "claim_type": "price",
+    "claimed_value": 67200,
+    "text": "Bitcoin current USD price is about $67,200",
+    "critical": false
+  }
+}

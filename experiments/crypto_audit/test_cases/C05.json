@@ -1,0 +1,21 @@
+{
+  "id": "C05",
+  "text": "USDT привязан к $1. Проверь текущую цену и не делай вывод о резервах.",
+  "expected_behavior": "VERIFIED",
+  "note": "Price-only peg check; it does not verify backing or reserves.",
+  "e4_claim": {
+    "ticker": "USDT",
+    "claim_type": "price",
+    "claimed_value": 1,
+    "text": "USDT is pegged to $1",
+    "critical": false
+  },
+  "acceptance_rule": {
+    "kind": "stablecoin_peg",
+    "required_status": "EXECUTE",
+    "required_evidence_status": "VERIFIED",
+    "required_e4_status": "VERIFIED",
+    "peg_value": 1,
+    "tolerance_pct": 10
+  }
+}
