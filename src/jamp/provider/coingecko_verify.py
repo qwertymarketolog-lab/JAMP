@@ -152,11 +152,10 @@ def verify_claim_with_coingecko(
             "checked_source": "coingecko",
         }
     except RuntimeError as exc:
-        reason = (
-            "LOCAL_RATE_LIMIT"
-            if str(exc) == "LOCAL_RATE_LIMIT"
-            else "COINGECKO_REQUEST_FAILED"
-        )
+        if str(exc) == "LOCAL_RATE_LIMIT":
+            reason = "LOCAL_RATE_LIMIT"
+        else:
+            reason = "COINGECKO_REQUEST_FAILED"
         return E4_INCONCLUSIVE, {"reason": reason, "checked_source": "coingecko"}
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
         return E4_INCONCLUSIVE, {
