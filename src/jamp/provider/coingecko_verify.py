@@ -3,6 +3,7 @@
 This adapter verifies current existence, USD price, and USD market capitalization.
 Historical price movements and predictions are outside its evidence scope.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,7 +83,9 @@ def verify_claim_with_coingecko(
         or not all(char.isalnum() or char in "-_" for char in normalized_id)
     ):
         return E4_INCONCLUSIVE, {
-            "reason": "INVALID_COIN_ID", "checked_source": "coingecko", "coin_id": coin_id
+            "reason": "INVALID_COIN_ID",
+            "checked_source": "coingecko",
+            "coin_id": coin_id,
         }
     if claim_type == "prediction":
         return E4_OUT_OF_SCOPE, {
