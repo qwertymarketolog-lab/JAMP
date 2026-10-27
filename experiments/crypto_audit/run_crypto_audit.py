@@ -96,7 +96,7 @@ def _load_cases() -> list[dict[str, Any]]:
 
 def _save_json(path: Path, value: Any) -> None:
     path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\\n",
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -119,7 +119,7 @@ def _save_provenance(base_url: str, trace_id: Any, output_path: Path) -> str | N
                 ensure_ascii=False,
                 sort_keys=True,
             )
-            + "\\n"
+            + "\n"
         )
     return None
 
@@ -167,7 +167,7 @@ def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
 def _markdown_cell(value: Any) -> str:
     if value is None:
         return "—"
-    return str(value).replace("\\r", " ").replace("\\n", " ").replace("|", "\\\\|") or "—"
+    return str(value).replace("\r", " ").replace("\n", " ").replace("|", "\\|") or "—"
 
 
 def _build_markdown_report(
@@ -222,7 +222,7 @@ def _build_markdown_report(
                     "",
                 ]
             )
-    return "\\n".join(lines) + "\\n"
+    return "\n".join(lines) + "\n"
 
 
 def _git_sha() -> str:
@@ -349,7 +349,7 @@ def run() -> int:
                 result = _check_case(case, base_url, provenance_path)
                 results.append(result)
                 with results_path.open("a", encoding="utf-8") as handle:
-                    handle.write(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\\n")
+                    handle.write(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n")
                 print(
                     f"[{result['result']}] {case['id']} expected={case['expected_behavior']} "
                     f"status={result['status']} e4={result['e4_status']} "
