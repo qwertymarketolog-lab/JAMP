@@ -47,9 +47,7 @@ def test_non_object_acceptance_rule_fails_closed() -> None:
 
 
 def test_unsupported_rule_kind_fails_closed() -> None:
-    passed, reason = evaluate_acceptance_rule(
-        {"acceptance_rule": {"kind": "implicit_success"}}, {}
-    )
+    passed, reason = evaluate_acceptance_rule({"acceptance_rule": {"kind": "implicit_success"}}, {})
     assert passed is False
     assert "unsupported_acceptance_rule_kind" in reason
 
