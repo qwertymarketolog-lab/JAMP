@@ -50,7 +50,7 @@ def extract_claims(text: str) -> list[Claim]:
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     claims: list[Claim] = []
-    for index, sentence in enumerate((part.strip() for part in re.split(r"[.!?]+", text)), 1):
+    for index, sentence in enumerate((part.strip() for part in re.split(r"(?<=[.!?])\\s+", text)), 1):
         if not sentence:
             continue
         # Preserve the agreed mixed-case company example before uppercase acronyms such as IPO.
