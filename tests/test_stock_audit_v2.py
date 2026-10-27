@@ -4,7 +4,6 @@ from experiments.stock_audit.run_stock_audit_v2 import (
 )
 from jamp.stock_audit_acceptance import evaluate_acceptance_rule
 
-
 T23_RULE = {
     "kind": "explicit_refusal",
     "required_status": "REFUSE",
