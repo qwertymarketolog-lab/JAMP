@@ -293,7 +293,6 @@ def _check_case(case: dict[str, Any], base_url: str, provenance_path: Path) -> d
         record.update(_model_response_details(response))
         if record["evidence_status"] == "UNKNOWN" and isinstance(response.get("output"), dict):
             record["evidence_status"] = response["output"].get("evidence_status", "UNKNOWN")
-
         export_error = _save_provenance(base_url, record["trace_id"], provenance_path)
         record["provenance_export"] = "SAVED" if export_error is None else "FAILED"
         if record["status"] == "EXECUTE" and record["evidence_status"] == "VERIFIED":
