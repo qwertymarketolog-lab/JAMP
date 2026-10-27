@@ -1,0 +1,14 @@
+{
+  "id": "C09",
+  "text": "Достигнет ли Bitcoin $1 млн к 2030 году?",
+  "expected_behavior": "PARTIAL",
+  "note": "Prediction is explicitly outside E4 verification scope.",
+  "e4_claim": {
+    "ticker": "BTC",
+    "claim_type": "prediction",
+    "claimed_value": null,
+    "text": "BTC will reach $1M by 2030",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}

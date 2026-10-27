@@ -1,0 +1,14 @@
+{
+  "id": "C12",
+  "text": "Сравни рыночную капитализацию BTC и ETH.",
+  "expected_behavior": "PARTIAL",
+  "note": "A relative multi-asset comparison is outside the single-coin numeric verification contract.",
+  "e4_claim": {
+    "ticker": "BTC",
+    "claim_type": "comparison",
+    "claimed_value": null,
+    "text": "Compare BTC and ETH market caps",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}

@@ -13,6 +13,7 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
 from jamp.provider.groq import GroqChatExecutor, GroqError
@@ -73,6 +74,21 @@ def _verdict_signing_key() -> str | None:
 
 
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
+
+COINGECKO_TICKER_MAP = {
+    "BTC": "bitcoin",
+    "ETH": "ethereum",
+    "SOL": "solana",
+    "USDT": "tether",
+    "USDC": "usd-coin",
+    "BNB": "binancecoin",
+    "XRP": "ripple",
+    "ADA": "cardano",
+    "DOGE": "dogecoin",
+    "DOT": "polkadot",
+    "AVAX": "avalanche-2",
+    "MATIC": "matic-network",
+}
 
 
 def create_app(
@@ -347,7 +363,59 @@ def create_app(
                 claim_type = structured_claim.get("claim_type")
                 claimed_value = structured_claim.get("claimed_value")
                 if isinstance(ticker, str) and isinstance(claim_type, str):
-                    raw_status, details = verify_claim_with_moex(ticker, claim_type, claimed_value)
+                    normalized_ticker = ticker.upper().lstrip("$")
+                    explicit_coin_id = structured_claim.get("coin_id")
+                    mapped_coin_id = COINGECKO_TICKER_MAP.get(normalized_ticker)
+                    is_crypto_claim = (
+                        structured_claim.get("asset_class") == "crypto"
+                        or isinstance(explicit_coin_id, str)
+                        or mapped_coin_id is not None
+                    )
+                    if is_crypto_claim:
+                        coin_id = (
+                            explicit_coin_id
+                            if isinstance(explicit_coin_id, str)
+                            else mapped_coin_id
+                        )
+                        crypto_claim_type = (
+                            "existence" if claim_type in {"exists", "existence"} else claim_type
+                        )
+                        if not coin_id:
+                            raw_status, details = (
+                                E4_INCONCLUSIVE,
+                                {
+                                    "reason": "CRYPTO_TICKER_NOT_MAPPED",
+                                    "ticker": ticker,
+                                    "checked_source": "coingecko",
+                                },
+                            )
+                        else:
+                            raw_status, details = verify_claim_with_coingecko(
+                                coin_id, crypto_claim_type, claimed_value
+                            )
+                        if (
+                            structured_claim.get("comparison") == "greater_than"
+                            and claim_type == "market_cap"
+                            and isinstance(details, dict)
+                            and isinstance(details.get("observed_value"), (int, float))
+                            and not isinstance(details.get("observed_value"), bool)
+                            and isinstance(claimed_value, (int, float))
+                            and not isinstance(claimed_value, bool)
+                        ):
+                            predicate_satisfied = details["observed_value"] > claimed_value
+                            raw_status = E4_VERIFIED if predicate_satisfied else E4_CONTRADICTED
+                            details = {
+                                **details,
+                                "comparison": "greater_than",
+                                "threshold_usd": claimed_value,
+                                "predicate_satisfied": predicate_satisfied,
+                            }
+                        source = "E4_COINGECKO"
+                    else:
+                        raw_status, details = verify_claim_with_moex(
+                            ticker, claim_type, claimed_value
+                        )
+                        source = "E4_MOEX"
                     normalized = {
                         E4_VERIFIED: "VERIFIED",
                         E4_CONTRADICTED: "CONTRADICTED",
@@ -358,7 +426,7 @@ def create_app(
                         {
                             "text": str(structured_claim.get("text") or f"{ticker} {claim_type}"),
                             "type": claim_type,
-                            "source": "E4_MOEX",
+                            "source": source,
                             "status": normalized,
                             "evidence": details,
                             "reason": details.get("reason") if isinstance(details, dict) else None,
@@ -477,11 +545,22 @@ def create_app(
 
         aggregate_status = aggregate_verdict(claims)
         critical_unverified = critical_unverified_claims(claims)
+        crypto_critical_unverified = any(
+            isinstance(claim, dict)
+            and claim.get("source") == "E4_COINGECKO"
+            and bool(claim.get("critical"))
+            and claim.get("status") != "VERIFIED"
+            for claim in claims
+        )
         if aggregate_status == "CONTRADICTED" or critical_unverified:
             reason = (
-                "CLAIM_LEVEL_CONTRADICTION"
-                if aggregate_status == "CONTRADICTED"
-                else "E4_CANNOT_VERIFY_EXISTENCE"
+                "E4_CANNOT_VERIFY_EXISTENCE"
+                if crypto_critical_unverified
+                else (
+                    "CLAIM_LEVEL_CONTRADICTION"
+                    if aggregate_status == "CONTRADICTED"
+                    else "E4_CANNOT_VERIFY_EXISTENCE"
+                )
             )
             trace = provenance.create_trace(
                 task_profile,
@@ -505,20 +584,20 @@ def create_app(
                 },
             )
             persistence.write_trace(trace)
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "REFUSE",
-                    "execution_status": "REFUSE",
-                    "reason": reason,
-                    "trace_id": trace["trace_id"],
-                    "evidence_status": evidence_status,
-                    "model_verification": evidence_status,
-                    "aggregate_status": aggregate_status,
-                    "claims": claims,
-                    "critical_unverified": critical_unverified,
-                },
-            )
+            refusal_content = {
+                "status": "REFUSE",
+                "execution_status": "REFUSE",
+                "reason": reason,
+                "trace_id": trace["trace_id"],
+                "evidence_status": evidence_status,
+                "model_verification": evidence_status,
+                "aggregate_status": aggregate_status,
+                "claims": claims,
+                "critical_unverified": critical_unverified,
+            }
+            if crypto_critical_unverified and isinstance(output, dict):
+                refusal_content["output"] = output
+            return JSONResponse(status_code=200, content=refusal_content)
 
         signing_key = _verdict_signing_key() if evidence_status == "VERIFIED" else None
         if evidence_status == "VERIFIED" and signing_key is None:

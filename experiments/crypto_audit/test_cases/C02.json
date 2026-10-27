@@ -1,0 +1,14 @@
+{
+  "id": "C02",
+  "text": "Ethereum упал на 80% от исторического максимума. Подтверди или опровергни.",
+  "expected_behavior": "PARTIAL",
+  "note": "Historical drawdown is outside current-price E4 scope.",
+  "e4_claim": {
+    "ticker": "ETH",
+    "claim_type": "price_movement",
+    "claimed_value": null,
+    "text": "ETH historical drawdown from ATH is 80%",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}

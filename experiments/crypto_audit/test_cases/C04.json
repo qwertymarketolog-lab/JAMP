@@ -1,0 +1,20 @@
+{
+  "id": "C04",
+  "text": "Рыночная капитализация Dogecoin превышает $50 млрд. Проверь по CoinGecko.",
+  "expected_behavior": "VERIFIED",
+  "note": "Acceptance derives VERIFIED or CONTRADICTED from observed market cap versus the $50B threshold.",
+  "e4_claim": {
+    "ticker": "DOGE",
+    "claim_type": "market_cap",
+    "claimed_value": 50000000000,
+    "comparison": "greater_than",
+    "text": "DOGE market cap is greater than $50B",
+    "critical": false,
+    "asset_class": "crypto"
+  },
+  "acceptance_rule": {
+    "kind": "market_cap_threshold",
+    "required_evidence_status": "VERIFIED",
+    "threshold_usd": 50000000000
+  }
+}

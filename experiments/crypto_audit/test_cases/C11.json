@@ -1,0 +1,14 @@
+{
+  "id": "C11",
+  "text": "XRP упал на 50% за последний квартал. Проверь утверждение.",
+  "expected_behavior": "PARTIAL",
+  "note": "Historical quarter-over-quarter movement is outside current-price E4 scope.",
+  "e4_claim": {
+    "ticker": "XRP",
+    "claim_type": "price_movement",
+    "claimed_value": null,
+    "text": "XRP fell 50% over the quarter",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}
