@@ -366,7 +366,11 @@ def create_app(
                     normalized_ticker = ticker.upper().lstrip("$")
                     explicit_coin_id = structured_claim.get("coin_id")
                     mapped_coin_id = COINGECKO_TICKER_MAP.get(normalized_ticker)
-                    is_crypto_claim = isinstance(explicit_coin_id, str) or mapped_coin_id is not None
+                    is_crypto_claim = (
+                        structured_claim.get("asset_class") == "crypto"
+                        or isinstance(explicit_coin_id, str)
+                        or mapped_coin_id is not None
+                    )
                     if is_crypto_claim:
                         coin_id = explicit_coin_id if isinstance(explicit_coin_id, str) else mapped_coin_id
                         crypto_claim_type = (

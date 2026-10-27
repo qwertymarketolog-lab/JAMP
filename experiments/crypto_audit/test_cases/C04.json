@@ -9,7 +9,8 @@
     "claimed_value": 50000000000,
     "comparison": "greater_than",
     "text": "DOGE market cap is greater than $50B",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   },
   "acceptance_rule": {
     "kind": "market_cap_threshold",

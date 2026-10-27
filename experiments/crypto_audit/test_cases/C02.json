@@ -8,6 +8,7 @@
     "claim_type": "price_movement",
     "claimed_value": null,
     "text": "ETH historical drawdown from ATH is 80%",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }

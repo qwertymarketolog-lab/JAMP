@@ -8,6 +8,7 @@
     "claim_type": "price",
     "claimed_value": 67200,
     "text": "Bitcoin current USD price is about $67,200",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }

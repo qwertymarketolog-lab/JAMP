@@ -8,7 +8,8 @@
     "claim_type": "price",
     "claimed_value": 1,
     "text": "USDT is pegged to $1",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   },
   "acceptance_rule": {
     "kind": "stablecoin_peg",

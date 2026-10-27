@@ -9,7 +9,8 @@
     "claim_type": "existence",
     "claimed_value": null,
     "text": "FakeTokenXYZ exists",
-    "critical": true
+    "critical": true,
+    "asset_class": "crypto"
   },
   "acceptance_rule": {
     "kind": "explicit_refusal",

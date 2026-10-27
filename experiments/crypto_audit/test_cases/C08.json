@@ -8,6 +8,7 @@
     "claim_type": "comparison",
     "claimed_value": null,
     "text": "BTC and ETH are the top two assets by market cap",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }

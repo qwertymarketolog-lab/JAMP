@@ -8,6 +8,7 @@
     "claim_type": "price_movement",
     "claimed_value": null,
     "text": "XRP fell 50% over the quarter",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }

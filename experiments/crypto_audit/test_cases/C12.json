@@ -8,6 +8,7 @@
     "claim_type": "comparison",
     "claimed_value": null,
     "text": "Compare BTC and ETH market caps",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }

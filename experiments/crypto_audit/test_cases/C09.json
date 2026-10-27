@@ -8,6 +8,7 @@
     "claim_type": "prediction",
     "claimed_value": null,
     "text": "BTC will reach $1M by 2030",
-    "critical": false
+    "critical": false,
+    "asset_class": "crypto"
   }
 }
