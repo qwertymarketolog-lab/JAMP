@@ -372,7 +372,11 @@ def create_app(
                         or mapped_coin_id is not None
                     )
                     if is_crypto_claim:
-                        coin_id = explicit_coin_id if isinstance(explicit_coin_id, str) else mapped_coin_id
+                        coin_id = (
+                            explicit_coin_id
+                            if isinstance(explicit_coin_id, str)
+                            else mapped_coin_id
+                        )
                         crypto_claim_type = (
                             "existence" if claim_type in {"exists", "existence"} else claim_type
                         )
@@ -405,7 +409,9 @@ def create_app(
                             }
                         source = "E4_COINGECKO"
                     else:
-                        raw_status, details = verify_claim_with_moex(ticker, claim_type, claimed_value)
+                        raw_status, details = verify_claim_with_moex(
+                            ticker, claim_type, claimed_value
+                        )
                         source = "E4_MOEX"
                     normalized = {
                         E4_VERIFIED: "VERIFIED",

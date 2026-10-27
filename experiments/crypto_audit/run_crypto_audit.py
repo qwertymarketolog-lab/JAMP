@@ -157,7 +157,9 @@ def _model_response_details(response: dict[str, Any]) -> dict[str, Any]:
     evidence = crypto_claims[0].get("evidence") if crypto_claims else None
     return {
         "model_response": model_response,
-        "model_response_reason": None if model_response is not None else "model_response_unavailable",
+        "model_response_reason": (
+            None if model_response is not None else "model_response_unavailable"
+        ),
         "provenance_url": provenance_url,
         "e4_status": e4_status,
         "e4_details": evidence if isinstance(evidence, dict) else None,
@@ -197,7 +199,9 @@ def _build_markdown_report(
                     _markdown_cell(
                         f"{record.get('result', 'UNKNOWN')} / {record.get('status', 'UNKNOWN')}"
                     ),
-                    _markdown_cell(record.get("model_response") or record.get("model_response_reason")),
+                    _markdown_cell(
+                        record.get("model_response") or record.get("model_response_reason")
+                    ),
                     _markdown_cell(record.get("e4_status")),
                 )
             )
@@ -217,7 +221,11 @@ def _build_markdown_report(
                     "Полный ответ модели:",
                     "",
                     "<pre>",
-                    str(record.get("model_response") or record.get("model_response_reason") or "UNKNOWN"),
+                    str(
+                        record.get("model_response")
+                        or record.get("model_response_reason")
+                        or "UNKNOWN"
+                    ),
                     "</pre>",
                     "",
                 ]
@@ -333,7 +341,8 @@ def run() -> int:
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     raise AuditError(
-                        f"Uvicorn exited before readiness (exit={process.returncode}); inspect artifact log"
+                        f"Uvicorn exited before readiness (exit={process.returncode}); "
+                        "inspect artifact log"
                     )
                 try:
                     status, _ = _http_json(f"{base_url}/openapi.json", timeout=2)
@@ -383,7 +392,8 @@ def run() -> int:
         "result": "CRYPTO AUDIT V1 PASSED" if len(results) == 12 and failed == 0 else "HOLD/FAILED",
         "scope_warning": (
             "This harness verifies JAMP execution/refusal behavior and bounded CoinGecko claims. "
-            "Historical movements, predictions and multi-asset comparisons remain outside E4 scope. "
+            "Historical movements, predictions and multi-asset comparisons remain outside "
+            "E4 scope. "
             "CoinGecko absence does not prove that a DEX-only token does not exist."
         ),
         "cases": results,

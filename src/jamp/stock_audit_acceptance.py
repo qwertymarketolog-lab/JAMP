@@ -33,7 +33,9 @@ def evaluate_acceptance_rule(case: dict[str, Any], record: dict[str, Any]) -> tu
         claimed = details.get("claimed_value")
         values = (peg_value, tolerance_pct, observed, claimed)
         if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values):
-            return False, "stablecoin_peg requires numeric peg, tolerance, claimed and observed values"
+            return False, (
+                "stablecoin_peg requires numeric peg, tolerance, claimed and observed values"
+            )
         if peg_value <= 0 or tolerance_pct < 0 or observed <= 0 or claimed != peg_value:
             return False, "stablecoin_peg values are invalid or claim does not match the peg"
         delta_pct = abs(observed - peg_value) / peg_value * 100.0
