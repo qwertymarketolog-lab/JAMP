@@ -8,7 +8,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import Any
 
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
@@ -201,7 +200,6 @@ def main() -> int:
         text = "SBER 5000₽. SBER вырастет. SBER вырос из-за дивидендов."
     report = run_pipeline(text)
     output = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    Path("report.json").write_text(output, encoding="utf-8")
     sys.stdout.write(output)
     return 0
 
