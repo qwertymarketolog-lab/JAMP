@@ -15,6 +15,7 @@ jobs:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_MAX_TOKENS: "2048"
+      OPENROUTER_MAX_TOKENS: "2048"
       JAMP_ENVIRONMENT: local
       OPENROUTER_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"z-ai/glm-5.3-flash"}'
       GROQ_MODEL_ID_MAP: '{"am/nemotron-3-super-120b-a12b":"openai/gpt-oss-120b"}'
