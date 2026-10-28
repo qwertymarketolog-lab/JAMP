@@ -98,7 +98,7 @@ def test_ticker_not_extracted_from_url() -> None:
     )
     claim = pipeline.extract_claims(text)[0]
     assert claim.ticker == "SBER"
-    assert claim.claim_type == "price"
+    assert claim.claim_type == "historical_price"
     assert claim.cited_value == 5000.0
     assert (
         claim.citation_url
@@ -130,3 +130,29 @@ def test_fake_existence_not_found() -> None:
     result = report["claims"][0]
     assert result["claim_type"] == "existence"
     assert result["verdict"] == "not_found"
+
+
+def test_historical_price_marker() -> None:
+    """Past-tense price → historical_price."""
+    claims = pipeline.extract_claims("SBER достиг 5000₽.")
+    assert len(claims) == 1
+    assert claims[0].claim_type == "historical_price"
+    assert claims[0].ticker == "SBER"
+
+
+def test_current_price_no_marker() -> None:
+    """Present-tense price → price (регрессия)."""
+    claims = pipeline.extract_claims("SBER стоит 5000₽.")
+    assert len(claims) == 1
+    assert claims[0].claim_type == "price"
+
+
+def test_historical_price_returns_inconclusive() -> None:
+    """historical_price → inconclusive, не contradicted."""
+    report = pipeline.run_pipeline("SBER достиг 5000₽.")
+    assert len(report["claims"]) == 1
+    claim = report["claims"][0]
+    assert claim["claim_type"] == "historical_price"
+    assert claim["verdict"] == "inconclusive"
+    assert claim["reason"] == "requires_historical_data_or_E5"
+    assert "R19" in claim["r_codes"]

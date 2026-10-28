@@ -23,6 +23,17 @@ VERDICT_MAP = {
 }
 PREDICTION_MARKERS = ("будет", "вырастет", "упадёт", "упадет", "к 20", "прогноз")
 CAUSAL_MARKERS = ("из-за", "потому что", "в связи с", "вследствие")
+HISTORICAL_PRICE_MARKERS = (
+    "достиг",
+    "достигал",
+    "достигала",
+    "торговался",
+    "торговалась",
+    "была цена",
+    "было значение",
+    "стоил",
+    "стоила",
+)
 TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 PRICE_RE = re.compile(r"(\d[\d\s]*[.,]?\d*)\s*[₽$]?")
 CHANGE_PCT_RE = re.compile(
@@ -112,6 +123,12 @@ def extract_claims(text: str) -> list[Claim]:
             claim_type = "prediction"
         elif any(marker in lowered for marker in CAUSAL_MARKERS):
             claim_type = "causal"
+        elif (
+            ticker
+            and cited_value is not None
+            and any(marker in lowered for marker in HISTORICAL_PRICE_MARKERS)
+        ):
+            claim_type = "historical_price"
         elif ticker and cited_value is not None:
             claim_type = "price"
         elif ticker:
@@ -124,7 +141,11 @@ def extract_claims(text: str) -> list[Claim]:
                 text=restored_sentence,
                 ticker=ticker,
                 claim_type=claim_type,
-                cited_value=cited_value if claim_type in {"price", "change_percent"} else None,
+                cited_value=(
+                    cited_value
+                    if claim_type in {"price", "historical_price", "change_percent"}
+                    else None
+                ),
                 citation_url=citation_url,
             )
         )
@@ -188,7 +209,7 @@ def run_pipeline(text: str) -> dict[str, Any]:
         reason: str | None = None
         citation_evidence: dict[str, Any] = {}
         citation_failed = False
-        if claim.citation_url:
+        if claim.citation_url and claim.claim_type != "historical_price":
             reachable, citation_reason = check_citation(claim.citation_url)
             citation_evidence = {
                 "citation_url": claim.citation_url,
@@ -202,7 +223,12 @@ def run_pipeline(text: str) -> dict[str, Any]:
                 citation_failed = True
             else:
                 r_codes.append("R20")
-        if not citation_failed and claim.claim_type == "change_percent":
+        if not citation_failed and claim.claim_type == "historical_price":
+            r_codes.append("R19")
+            verdict = "inconclusive"
+            reason = "requires_historical_data_or_E5"
+            evidence = citation_evidence
+        elif not citation_failed and claim.claim_type == "change_percent":
             r_codes.extend(("R21", "R22"))
             verdict = "inconclusive"
             reason = "requires_E5_or_history"
