@@ -327,17 +327,18 @@ def verify_historical_price(
             tolerance_pct,
             reason="historical_high_unavailable",
             result="INCONCLUSIVE",
-            http_status=200, trading_days_count=len(history_rows),
+            http_status=200,
+            trading_days_count=len(history_rows),
         )
 
     observed_max_high = max(highs)
     observed_min_low = min(lows) if lows else None
     details = _evidence(
         normalized_ticker,
-            float(claimed_price),
-            date_from,
-            date_till,
-            tolerance_pct,
+        float(claimed_price),
+        date_from,
+        date_till,
+        tolerance_pct,
         reason=None,
         result="VERIFIED",
         observed_max_high=observed_max_high,
