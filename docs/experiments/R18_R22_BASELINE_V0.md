@@ -54,6 +54,8 @@
 4. **Non-MOEX, non-CoinGecko entities** — E4 v0 is scoped to two sources.
 5. **`not_found` ≠ non-existence** — FakeTech is not in MOEX, but this does not prove the company does not exist in other jurisdictions.
 
+**Fragility notice:** This baseline depends on MOEX API state at run time. If SBER, VKCO, or any referenced ticker is delisted, renamed, or reassigned on MOEX, re-running the E2E on the same commit SHA will produce different report.json. The baseline is a snapshot, not a permanent invariant. Ticker reassignment (same symbol, different entity) is a known semantic risk that R18–R22 v0 cannot detect; mitigation requires issue_date validation in future MOEX history adapter.
+
 ## Constraints (not to be changed without new evidence)
 
 - `src/jamp/run.py` — Frozen Core, Δ = 0
