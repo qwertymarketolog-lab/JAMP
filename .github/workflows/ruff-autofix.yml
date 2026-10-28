@@ -1,0 +1,32 @@
+name: ruff autofix (one-shot)
+on:
+  push:
+    paths:
+      - '.github/workflows/ruff-autofix.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/api-key-auth
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install "ruff==0.17.3"
+      - run: ruff --version
+      - name: Apply safe fixes
+        run: ruff check --fix src/jamp/api/app.py conftest.py tests/test_api_auth_wiring.py
+      - name: Verify clean
+        run: ruff check src/jamp/api/app.py conftest.py tests/test_api_auth_wiring.py
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "jamp-bot"
+          git config user.email "jamp-bot@users.noreply.github.com"
+          git add src/jamp/api/app.py conftest.py tests/test_api_auth_wiring.py
+          if git diff --cached --quiet; then echo "nothing to fix"; exit 0; fi
+          git commit -m "style: ruff check --fix (I001, SIM117)"
+          git push
