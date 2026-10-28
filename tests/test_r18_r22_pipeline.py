@@ -98,7 +98,7 @@ def test_ticker_not_extracted_from_url() -> None:
     )
     claim = pipeline.extract_claims(text)[0]
     assert claim.ticker == "SBER"
-    assert claim.claim_type == "price"
+    assert claim.claim_type == "historical_price"
     assert claim.cited_value == 5000.0
     assert (
         claim.citation_url
@@ -130,7 +130,6 @@ def test_fake_existence_not_found() -> None:
     result = report["claims"][0]
     assert result["claim_type"] == "existence"
     assert result["verdict"] == "not_found"
-
 
 
 def test_historical_price_marker() -> None:
