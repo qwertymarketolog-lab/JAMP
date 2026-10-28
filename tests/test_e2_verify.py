@@ -73,12 +73,12 @@ def test_verify_http_error_diagnostics(mock_urlopen):
         api_key="fake",
     )
     assert status == "INCONCLUSIVE"
-    assert details == {
-        "reason": "API_ERROR",
-        "http_status": 403,
-        "error_body": '{"error":"forbidden"}',
-        "retry_count": 0,
-    }
+    assert details["reason"] == "API_ERROR"
+    assert details["http_status"] == 403
+    assert details["error_body"] == '{"error":"forbidden"}'
+    assert details["retry_count"] == 0
+    assert len(details["attempts"]) == 1
+    assert details["attempts"][0]["http_status"] == 403
 
 
 @patch("urllib.request.urlopen")
@@ -89,11 +89,11 @@ def test_verify_url_error_diagnostics(mock_urlopen):
         api_key="fake",
     )
     assert status == "INCONCLUSIVE"
-    assert details == {
-        "reason": "API_ERROR",
-        "network_error": "name resolution failed",
-        "retry_count": 0,
-    }
+    assert details["reason"] == "API_ERROR"
+    assert details["network_error"] == "name resolution failed"
+    assert details["retry_count"] == 0
+    assert len(details["attempts"]) == 1
+    assert details["attempts"][0]["http_status"] is None
 
 
 @patch("jamp.provider.e2_verify.time.sleep")
@@ -108,12 +108,12 @@ def test_verify_inconclusive_after_timeout_retry(mock_urlopen, mock_sleep):
         api_key="fake",
     )
     assert status == "INCONCLUSIVE"
-    assert details == {
-        "reason": "API_ERROR",
-        "exception_type": "TimeoutError",
-        "error_message": "generation request timed out",
-        "retry_count": 1,
-    }
+    assert details["reason"] == "API_ERROR"
+    assert details["exception_type"] == "TimeoutError"
+    assert details["error_message"] == "generation request timed out"
+    assert details["retry_count"] == 1
+    assert len(details["attempts"]) == 2
+    assert [item["http_status"] for item in details["attempts"]] == [None, None]
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(5)
 
