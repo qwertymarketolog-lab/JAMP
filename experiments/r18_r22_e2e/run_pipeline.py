@@ -30,7 +30,7 @@ DEFAULT_SAMPLE = (
     "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json, "
     "SBER достиг 5000 рублей. "
     "VKCO потерял 93% капитализации. "
-    "FakeTech объявила IPO в 2027 году. "
+    "FakeTech объявила IPO. "
     "SBER вырастет из-за дивидендов."
 )
 
