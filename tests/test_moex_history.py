@@ -66,7 +66,10 @@ def test_historical_price_contradicted():
 
 
 def test_ticker_not_yet_existed():
-    with patch("urllib.request.urlopen", return_value=_response(_description(issue_date="2007-07-20")) ) as mocked:
+    with patch(
+        "urllib.request.urlopen",
+        return_value=_response(_description(issue_date="2007-07-20")),
+    ) as mocked:
         status, evidence = verify_historical_price("SBER", 5000.0, "2000-01-01", "2001-01-01")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "ticker_not_yet_existed"
