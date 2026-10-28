@@ -4,6 +4,7 @@ import logging
 
 import pytest
 from fastapi import Depends, FastAPI, HTTPException
+from typing import Annotated
 from fastapi.testclient import TestClient
 
 from jamp.api import auth
@@ -21,7 +22,7 @@ def _build_app(calls: list[str]) -> FastAPI:
     app = FastAPI()
 
     @app.get("/protected")
-    async def handler(ctx: auth.OrganizationContext = Depends(auth.require_api_key)):
+    async def handler(ctx: Annotated[auth.OrganizationContext, Depends(auth.require_api_key)]):
         calls.append("called")
         return {"org_id": ctx.org_id, "org_name": ctx.org_name}
 
