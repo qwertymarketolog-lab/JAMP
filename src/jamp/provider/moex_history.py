@@ -79,18 +79,23 @@ def verify_historical_price(
             raise ValueError("dates must be ordered YYYY-MM-DD values")
     except (TypeError, ValueError):
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, claimed_price, str(date_from), str(date_till),
+            normalized_ticker,
+            claimed_price,
+            str(date_from),
+            str(date_till),
             tolerance_pct, reason="invalid_date_range", result="INCONCLUSIVE",
             parse_error="dates must be ordered YYYY-MM-DD values",
         )
 
-    if (
-        not normalized_ticker
-        or not normalized_ticker.replace(".", "").replace("-", "").isalnum()
-    ):
+    if not normalized_ticker or not normalized_ticker.replace(".", "").replace("-", "").isalnum():
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, claimed_price, date_from, date_till, tolerance_pct,
-            reason="invalid_ticker", result="INCONCLUSIVE",
+            normalized_ticker,
+            claimed_price,
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="invalid_ticker",
+            result="INCONCLUSIVE",
         )
     if (
         isinstance(claimed_price, bool)
@@ -99,23 +104,37 @@ def verify_historical_price(
         or float(claimed_price) <= 0
     ):
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, claimed_price, date_from, date_till, tolerance_pct,
-            reason="invalid_claimed_price", result="INCONCLUSIVE",
+            normalized_ticker,
+            claimed_price,
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="invalid_claimed_price",
+            result="INCONCLUSIVE",
         )
     if not math.isfinite(tolerance_pct) or not 0 <= tolerance_pct < 100:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, claimed_price, date_from, date_till, tolerance_pct,
-            reason="invalid_tolerance_pct", result="INCONCLUSIVE",
+            normalized_ticker,
+            claimed_price,
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="invalid_tolerance_pct",
+            result="INCONCLUSIVE",
         )
     if not math.isfinite(timeout) or timeout <= 0:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, claimed_price, date_from, date_till, tolerance_pct,
-            reason="invalid_timeout", result="INCONCLUSIVE",
+            normalized_ticker,
+            claimed_price,
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="invalid_timeout",
+            result="INCONCLUSIVE",
         )
 
     security_url = (
-        f"{MOEX_ISS_BASE}/securities/"
-        f"{urllib.parse.quote(normalized_ticker, safe='')}.json"
+        f"{MOEX_ISS_BASE}/securities/{urllib.parse.quote(normalized_ticker, safe='')}.json"
     )
     try:
         security_payload = _get_json(security_url, timeout)
@@ -132,29 +151,52 @@ def verify_historical_price(
             else "moex_source_unavailable_or_invalid"
         )
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason=reason, result="INCONCLUSIVE", http_status=exc.code,
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason=reason,
+            result="INCONCLUSIVE",
+            http_status=exc.code,
             error_type=type(exc).__name__,
         )
     except (
         urllib.error.URLError, TimeoutError, OSError, ValueError,
     ) as exc:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="moex_source_unavailable_or_invalid", result="INCONCLUSIVE",
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="moex_source_unavailable_or_invalid",
+            result="INCONCLUSIVE",
             **_failure_diagnostics(exc=exc),
             error_type=type(exc).__name__,
         )
 
     if not metadata or not metadata.get("SECID"):
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="ticker_not_found_in_catalog", result="INCONCLUSIVE", http_status=200,
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="ticker_not_found_in_catalog",
+            result="INCONCLUSIVE",
+            http_status=200,
         )
     if str(metadata.get("SECID", "")).upper() != normalized_ticker:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="ticker_not_found_in_catalog", result="INCONCLUSIVE", http_status=200,
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="ticker_not_found_in_catalog",
+            result="INCONCLUSIVE",
+            http_status=200,
         )
 
     issue_date = metadata.get("ISSUEDATE")
@@ -164,18 +206,19 @@ def verify_historical_price(
                 return E4_INCONCLUSIVE, _evidence(
                     normalized_ticker, float(claimed_price), date_from, date_till,
                     tolerance_pct, reason="ticker_not_yet_existed",
-                    result="INCONCLUSIVE", http_status=200,
+                    result="INCONCLUSIVE",
+                    http_status=200,
                 )
         except ValueError:
             return E4_INCONCLUSIVE, _evidence(
                 normalized_ticker, float(claimed_price), date_from, date_till,
-                tolerance_pct, reason="invalid_issue_date", result="INCONCLUSIVE",
-                http_status=200, parse_error=f"invalid ISSUEDATE: {issue_date}",
+                tolerance_pct, reason="invalid_issue_date",
+            result="INCONCLUSIVE",
+                http_status=200,
+                parse_error=f"invalid ISSUEDATE: {issue_date}",
             )
 
-    query = urllib.parse.urlencode(
-        {"from": date_from, "till": date_till, "iss.meta": "off"}
-    )
+    query = urllib.parse.urlencode({"from": date_from, "till": date_till, "iss.meta": "off"})
     history_url = (
         f"{MOEX_ISS_BASE}/history/engines/stock/markets/shares/boards/TQBR/"
         f"securities/{urllib.parse.quote(normalized_ticker, safe='')}.json?{query}"
@@ -185,22 +228,43 @@ def verify_historical_price(
         history_rows = _table_rows(history_payload, "history")
     except urllib.error.HTTPError as exc:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="moex_history_unavailable_or_invalid", result="INCONCLUSIVE",
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="moex_history_unavailable_or_invalid",
+            result="INCONCLUSIVE",
             http_status=exc.code, error_type=type(exc).__name__,
         )
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
+    ) as exc:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="moex_history_unavailable_or_invalid", result="INCONCLUSIVE",
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="moex_history_unavailable_or_invalid",
+            result="INCONCLUSIVE",
             **_failure_diagnostics(exc=exc),
             error_type=type(exc).__name__,
         )
 
     if not history_rows:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="no_data_in_range", result="INCONCLUSIVE", http_status=200,
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="no_data_in_range",
+            result="INCONCLUSIVE",
+            http_status=200,
         )
 
     metadata_shortname = metadata.get("SHORTNAME")
@@ -213,8 +277,14 @@ def verify_historical_price(
         metadata_shortname and row_names and str(metadata_shortname).strip() not in row_names
     ):
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="ticker_reassigned", result="INCONCLUSIVE", http_status=200,
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="ticker_reassigned",
+            result="INCONCLUSIVE",
+            http_status=200,
             trading_days_count=len(history_rows),
             observed_shortnames=sorted(row_names),
             metadata_shortname=metadata_shortname,
@@ -236,17 +306,29 @@ def verify_historical_price(
     ]
     if not highs:
         return E4_INCONCLUSIVE, _evidence(
-            normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-            reason="historical_high_unavailable", result="INCONCLUSIVE",
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="historical_high_unavailable",
+            result="INCONCLUSIVE",
             http_status=200, trading_days_count=len(history_rows),
         )
 
     observed_max_high = max(highs)
     observed_min_low = min(lows) if lows else None
     details = _evidence(
-        normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
-        reason=None, result="VERIFIED", observed_max_high=observed_max_high,
-        observed_min_low=observed_min_low, trading_days_count=len(history_rows),
+        normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+        reason=None,
+        result="VERIFIED",
+        observed_max_high=observed_max_high,
+        observed_min_low=observed_min_low,
+        trading_days_count=len(history_rows),
         http_status=200,
     )
     if observed_max_high >= float(claimed_price) * (1 - tolerance_pct / 100):
