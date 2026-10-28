@@ -25,6 +25,10 @@ PREDICTION_MARKERS = ("будет", "вырастет", "упадёт", "упа�
 CAUSAL_MARKERS = ("из-за", "потому что", "в связи с", "вследствие")
 TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 PRICE_RE = re.compile(r"(\d[\d\s]*[.,]?\d*)\s*[₽$]?")
+CHANGE_PCT_RE = re.compile(
+    r"(упал|вырос|потерял|прибавил)[^\d]*(\d+(?:[.,]\d+)?)\s*%",
+    re.IGNORECASE,
+)
 URL_RE = re.compile(r"https?://[^\s,;)»]+")
 DEFAULT_SAMPLE = (
     "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/boards/"
@@ -59,10 +63,28 @@ def extract_claims(text: str) -> list[Claim]:
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     claims: list[Claim] = []
-    sentences = (part.strip() for part in re.split(r"(?<=[.!?])\s+", text))
+    urls: list[str] = []
+
+    def replace_url(match: re.Match[str]) -> str:
+        urls.append(match.group(0))
+        return "__URLTOKEN__"
+
+    text_without_urls = URL_RE.sub(replace_url, text)
+    sentences = (part.strip() for part in re.split(r"(?<=[.!?])\s+", text_without_urls))
+    url_index = 0
     for index, sentence in enumerate(sentences, 1):
         if not sentence:
             continue
+        sentence_urls: list[str] = []
+
+        def restore_url(_match: re.Match[str], _sentence_urls: list[str] = sentence_urls) -> str:
+            nonlocal url_index
+            url = urls[url_index]
+            url_index += 1
+            _sentence_urls.append(url)
+            return url
+
+        restored_sentence = re.sub(r"__URLTOKEN__", restore_url, sentence)
         # Preserve the agreed mixed-case company example before uppercase acronyms such as IPO.
         proper_name = re.search(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b", sentence)
         ticker_match = TICKER_RE.search(sentence)
@@ -73,11 +95,20 @@ def extract_claims(text: str) -> list[Claim]:
             if ticker_match
             else None
         )
-        price_match = PRICE_RE.search(sentence)
-        cited_value = _parse_value(price_match.group(1)) if price_match else None
-        citation_match = URL_RE.search(sentence)
+        change_match = CHANGE_PCT_RE.search(sentence)
+        price_match = None if change_match else PRICE_RE.search(sentence)
+        cited_value = (
+            _parse_value(change_match.group(2))
+            if change_match
+            else _parse_value(price_match.group(1))
+            if price_match
+            else None
+        )
+        citation_url = sentence_urls[0] if sentence_urls else None
         lowered = sentence.lower()
-        if any(marker in lowered for marker in PREDICTION_MARKERS):
+        if change_match:
+            claim_type = "change_percent"
+        elif any(marker in lowered for marker in PREDICTION_MARKERS):
             claim_type = "prediction"
         elif any(marker in lowered for marker in CAUSAL_MARKERS):
             claim_type = "causal"
@@ -90,13 +121,14 @@ def extract_claims(text: str) -> list[Claim]:
         claims.append(
             Claim(
                 id=f"claim-{index:04d}",
-                text=sentence,
+                text=restored_sentence,
                 ticker=ticker,
                 claim_type=claim_type,
-                cited_value=cited_value if claim_type == "price" else None,
-                citation_url=citation_match.group(0) if citation_match else None,
+                cited_value=cited_value if claim_type in {"price", "change_percent"} else None,
+                citation_url=citation_url,
             )
         )
+
     return claims
 
 
@@ -154,29 +186,44 @@ def run_pipeline(text: str) -> dict[str, Any]:
         r_codes: list[str] = []
         evidence: dict[str, Any] = {}
         reason: str | None = None
+        citation_evidence: dict[str, Any] = {}
+        citation_failed = False
         if claim.citation_url:
             reachable, citation_reason = check_citation(claim.citation_url)
+            citation_evidence = {
+                "citation_url": claim.citation_url,
+                "citation_check": "reachable" if reachable else "failed",
+            }
             if not reachable:
                 r_codes.extend(("R20", "R22"))
                 verdict = "contradicted"
                 reason = citation_reason or "citation_check_failed"
-                evidence = {"citation_url": claim.citation_url, "citation_check": "failed"}
+                evidence = citation_evidence
+                citation_failed = True
             else:
                 r_codes.append("R20")
-                verdict = "not_found"
-                reason = "citation_not_found"
-                evidence = {"citation_url": claim.citation_url, "citation_check": "reachable"}
-        elif claim.claim_type in {"price", "existence"} and claim.ticker:
+        if not citation_failed and claim.claim_type == "change_percent":
+            r_codes.extend(("R21", "R22"))
+            verdict = "inconclusive"
+            reason = "requires_E5_or_history"
+            evidence = citation_evidence
+        elif not citation_failed and claim.claim_type in {"price", "existence"} and claim.ticker:
             r_codes.append("R18")
-            status, evidence = _verify_claim(claim)
-            verdict = map_e4_verdict(status)
+            status, provider_evidence = _verify_claim(claim)
+            verdict = (
+                "not_found"
+                if claim.claim_type == "existence" and status == "E4_OUT_OF_SCOPE"
+                else map_e4_verdict(status)
+            )
+            evidence = {**provider_evidence, **citation_evidence}
             reason = evidence.get("reason")
             if verdict == "inconclusive" and not reason:
                 reason = "e4_inconclusive_without_reason"
-        else:
+        elif not citation_failed:
             r_codes.extend(("R21", "R22"))
             verdict = "inconclusive"
             reason = "requires_E5_search"
+            evidence = citation_evidence
         if verdict == "inconclusive" and not reason:
             reason = "inconclusive_reason_missing"
         results.append(
