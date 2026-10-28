@@ -112,7 +112,6 @@ def test_unknown_task_persists_refusal_trace(tmp_path):
     assert record["status"] == "REFUSE"
 
 
-
 def test_attempts_preserved_on_execute(tmp_path):
     """attempts[] из evidence_details сохраняется в trace через AuditPersistence."""
     tracker = ProvenanceTracker()
@@ -133,7 +132,8 @@ def test_attempts_preserved_on_execute(tmp_path):
     )
     store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
     store.write_trace(trace)
-    saved = store.read_trace_by_id(trace["trace_id"])["execution_details"]["evidence_details"]["attempts"]
+    record = store.read_trace_by_id(trace["trace_id"])
+    saved = record["execution_details"]["evidence_details"]["attempts"]
     assert len(saved) == 2
     assert saved[1]["http_status"] == 200
 
@@ -158,7 +158,8 @@ def test_attempts_preserved_on_refuse(tmp_path):
     )
     store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
     store.write_trace(trace)
-    saved = store.read_trace_by_id(trace["trace_id"])["refusal_details"]["provider_diagnostics"]["attempts"]
+    record = store.read_trace_by_id(trace["trace_id"])
+    saved = record["refusal_details"]["provider_diagnostics"]["attempts"]
     assert len(saved) == 6
     assert all(attempt["http_status"] == 404 for attempt in saved)
 
