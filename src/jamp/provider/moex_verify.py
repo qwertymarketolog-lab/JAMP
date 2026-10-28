@@ -63,7 +63,11 @@ def _failure_diagnostics(
 ) -> dict[str, Any]:
     if isinstance(exc, urllib.error.HTTPError):
         http_status = exc.code
-    if exc is not None and parse_error is None and isinstance(exc, (ValueError, json.JSONDecodeError)):
+    if (
+        exc is not None
+        and parse_error is None
+        and isinstance(exc, (ValueError, json.JSONDecodeError))
+    ):
         parse_error = f"{type(exc).__name__}: {exc}"
     return {
         "http_status": http_status,
