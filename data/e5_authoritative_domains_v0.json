@@ -1,0 +1,21 @@
+{
+  "version": "e5-authoritative-domains-v0",
+  "groups": {
+    "international_wire": ["reuters.com", "bloomberg.com", "ft.com", "apnews.com", "wsj.com", "nytimes.com", "bbc.com"],
+    "russian_regulators": ["cbr.ru", "moex.com", "e-disclosure.ru"],
+    "russian_registries": ["egrul.nalog.ru", "fedresurs.ru"],
+    "russian_media": ["interfax.ru", "rbc.ru", "kommersant.ru", "vedomosti.ru", "tass.ru"],
+    "international_registries": ["sec.gov", "companieshouse.gov.uk"],
+    "academic": ["arxiv.org", "nature.com", "science.org"]
+  },
+  "independence_rules": {
+    "same_domain": "not_independent",
+    "different_domains": "independent_v0",
+    "cross_domain_reprint": "not_detected_v0"
+  },
+  "known_limitations_v0": [
+    "Cross-domain reprints (Reuters → RBC) are not detected",
+    "Subdomains of one registered domain count as one source",
+    "Whitelist changes require a new version"
+  ]
+}
