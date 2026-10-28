@@ -206,7 +206,7 @@ def screen_ticker(ticker: str) -> dict[str, Any]:
         max_high, max_date = max(highs, key=lambda item: item[0])
         result["max_high"] = max_high
         result["max_date"] = max_date
-    values = [_number(row.get("VALUE")) for row in valid_rows[-30:]]
+    values = [\n        float(row["VALUE"])\n        for row in valid_rows[-30:]\n        if isinstance(row.get("VALUE"), (int, float))\n        and not isinstance(row.get("VALUE"), bool)\n        and math.isfinite(float(row["VALUE"]))\n        and float(row["VALUE"]) >= 0\n    ]
     usable_values = [value for value in values if value is not None]
     if len(usable_values) == 30:
         result["avg_daily_volume"] = sum(usable_values) / len(usable_values)
