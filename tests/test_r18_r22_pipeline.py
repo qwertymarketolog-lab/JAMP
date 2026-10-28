@@ -26,9 +26,7 @@ def test_extract_causal() -> None:
 
 
 def test_extract_citation_url() -> None:
-    claim = pipeline.extract_claims(
-        "SBER подтверждён: https://iss.moex.com/iss/securities"
-    )[0]
+    claim = pipeline.extract_claims("SBER подтверждён: https://iss.moex.com/iss/securities")[0]
     assert claim.citation_url == "https://iss.moex.com/iss/securities"
 
 
@@ -84,8 +82,4 @@ def test_pipeline_coverage_empty() -> None:
 
 def test_inconclusive_has_reason() -> None:
     report = pipeline.run_pipeline("SBER вырастет. SBER вырос из-за дивидендов.")
-    assert all(
-        item["reason"]
-        for item in report["claims"]
-        if item["verdict"] == "inconclusive"
-    )
+    assert all(item["reason"] for item in report["claims"] if item["verdict"] == "inconclusive")
