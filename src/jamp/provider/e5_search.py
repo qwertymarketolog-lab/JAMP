@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -284,6 +285,8 @@ def verify_with_search(
     )
     query = _query_for_claim(claim_text, normalized_ticker, normalized_type)
     evidence = _base_evidence(claim_text, normalized_type, normalized_ticker, query)
+    attempts: list[dict[str, Any]] = []
+    evidence["attempts"] = attempts
 
     if normalized_type == "prediction":
         return _finish(
@@ -357,11 +360,29 @@ def verify_with_search(
         headers={"Accept": "application/json", "Content-Type": "application/json"},
         method="POST",
     )
+    attempt_started = time.monotonic()
+    http_status: int | None = None
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            evidence["http_status"] = getattr(response, "status", 200)
-            parsed = json.loads(response.read().decode("utf-8"))
+            http_status = getattr(response, "status", None)
+            evidence["http_status"] = http_status
+            raw = response.read()
+        attempts.append(
+            {
+                "attempt": 1,
+                "http_status": http_status,
+                "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+            }
+        )
+        parsed = json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        attempts.append(
+            {
+                "attempt": 1,
+                "http_status": exc.code,
+                "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+            }
+        )
         evidence["http_status"] = exc.code
         reason = (
             "api_auth_error"
@@ -376,8 +397,22 @@ def verify_with_search(
         )
         return _finish(evidence, E5_INCONCLUSIVE, reason, "no_authoritative_source", "single")
     except TimeoutError:
+        attempts.append(
+            {
+                "attempt": 1,
+                "http_status": None,
+                "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+            }
+        )
         return _finish(evidence, E5_INCONCLUSIVE, "timeout", "no_authoritative_source", "single")
     except (urllib.error.URLError, OSError):
+        attempts.append(
+            {
+                "attempt": 1,
+                "http_status": http_status,
+                "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+            }
+        )
         return _finish(
             evidence, E5_INCONCLUSIVE, "network_error", "no_authoritative_source", "single"
         )
@@ -476,6 +511,6 @@ def verify_with_search(
         evidence,
         E5_OUT_OF_SCOPE,
         "snippet_inconclusive",
-        "no_authoritative_source",
+        "snippet_inconclusive",
         independence,
     )

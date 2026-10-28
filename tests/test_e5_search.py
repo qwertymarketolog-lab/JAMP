@@ -197,3 +197,63 @@ def test_evidence_has_query_and_version(mock_urlopen):
     _, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert evidence["query"]
     assert evidence["whitelist_version"] == "e5-authoritative-domains-v0"
+
+
+@patch("urllib.request.urlopen")
+def test_verdict_basis_matches_reason_on_inconclusive_snippets(mock_urlopen):
+    """Whitelisted snippets without support must have matching reason and verdict basis."""
+    results = [
+        _result(domain="rbc.ru", content="SBER trading volume normal today") for _ in range(10)
+    ]
+    mock_urlopen.return_value = _response({"results": results})
+
+    claim_text, claim_type, ticker = _claim(
+        claim_text="VKCO потерял 93%",
+        claim_type="change_percent",
+        ticker="VKCO",
+    )
+    status, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
+
+    assert status == E5_OUT_OF_SCOPE
+    assert evidence["reason"] == "snippet_inconclusive"
+    assert evidence["verdict_basis"] == "snippet_inconclusive"
+    assert evidence["authoritative_results_count"] >= 1
+
+
+@patch("urllib.request.urlopen")
+def test_verdict_basis_no_authoritative_when_zero_results(mock_urlopen):
+    """Zero results must keep reason and verdict basis at no_authoritative_source."""
+    mock_urlopen.return_value = _response({"results": []})
+
+    claim_text, claim_type, ticker = _claim(
+        claim_text="VKCO потерял 93%",
+        claim_type="change_percent",
+        ticker="VKCO",
+    )
+    status, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
+
+    assert status == E5_OUT_OF_SCOPE
+    assert evidence["reason"] == "no_authoritative_source"
+    assert evidence["verdict_basis"] == "no_authoritative_source"
+
+
+@patch("urllib.request.urlopen")
+def test_attempts_present_with_real_shape(mock_urlopen):
+    """Successful HTTP reads expose measured attempt timing and actual response status."""
+    mock_urlopen.return_value = _response({"results": []}, status=200)
+
+    claim_text, claim_type, ticker = _claim(
+        claim_text="SBER вырастет",
+        claim_type="causal",
+        ticker="SBER",
+    )
+    _, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
+
+    assert "attempts" in evidence
+    assert isinstance(evidence["attempts"], list)
+    assert len(evidence["attempts"]) == 1
+    attempt = evidence["attempts"][0]
+    assert attempt["attempt"] == 1
+    assert attempt["http_status"] == 200
+    assert isinstance(attempt["elapsed_ms"], int)
+    assert attempt["elapsed_ms"] >= 0
