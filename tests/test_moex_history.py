@@ -190,7 +190,6 @@ def test_incomplete_history_fetch():
     assert evidence["total_rows"] == 3000
 
 
-
 def test_claim_year_filters_rows():
     """Only highs from the claimed year may determine the verdict."""
     year_row = ["TQBR", "2021-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0]
