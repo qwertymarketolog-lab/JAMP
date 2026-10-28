@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 
+from typing import Annotated
+
 import pytest
 from fastapi import Depends, FastAPI, HTTPException
-from typing import Annotated
 from fastapi.testclient import TestClient
 
 from jamp.api import auth
