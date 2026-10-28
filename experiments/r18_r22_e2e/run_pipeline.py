@@ -275,13 +275,27 @@ def run_pipeline(text: str) -> dict[str, Any]:
             "inconclusive",
         )
     }
+    supported_count = counts["supported"]
+    contradicted_count = counts["contradicted"]
+    not_found_count = counts["not_found"]
+
+    verified = supported_count + contradicted_count + not_found_count
+    confirmed = supported_count + contradicted_count
     total = len(results)
-    verified = counts["supported"] + counts["contradicted"] + counts["not_found"]
+
     coverage = {
         "total": total,
         **counts,
         "verified": verified,
+        "confirmed": confirmed,
         "verified_ratio": verified / total if total else None,
+        "confirmed_ratio": confirmed / total if total else None,
+        "definition": {
+            "verified": "supported + contradicted + not_found",
+            "confirmed": "supported + contradicted",
+            "verified_meaning": "source returned a conclusive answer (including verified absence)",
+            "confirmed_meaning": "claim proven true or false",
+        },
     }
     return {"schema_version": "r18-r22-report-v0", "coverage": coverage, "claims": results}
 
