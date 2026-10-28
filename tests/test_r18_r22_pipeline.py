@@ -148,14 +148,36 @@ def test_current_price_no_marker() -> None:
 
 
 def test_historical_price_returns_inconclusive() -> None:
-    """historical_price → inconclusive, не contradicted."""
-    report = pipeline.run_pipeline("SBER достиг 5000₽.")
+    """historical_price delegates to MOEX history and preserves inconclusive evidence."""
+    with patch(
+        "jamp.provider.moex_history.verify_historical_price",
+        return_value=("INCONCLUSIVE", {"reason": "no_data_in_range"}),
+    ):
+        report = pipeline.run_pipeline("SBER достиг 5000₽.")
     assert len(report["claims"]) == 1
     claim = report["claims"][0]
     assert claim["claim_type"] == "historical_price"
     assert claim["verdict"] == "inconclusive"
-    assert claim["reason"] == "requires_historical_data_or_E5"
+    assert claim["reason"] == "no_data_in_range"
     assert "R19" in claim["r_codes"]
+
+
+def test_historical_price_supported_via_adapter() -> None:
+    with patch(
+        "jamp.provider.moex_history.verify_historical_price",
+        return_value=("VERIFIED", {"reason": None, "observed_max_high": 5100.0}),
+    ):
+        report = pipeline.run_pipeline("SBER достиг 5000₽.")
+    assert report["claims"][0]["verdict"] == "supported"
+
+
+def test_historical_price_contradicted_via_adapter() -> None:
+    with patch(
+        "jamp.provider.moex_history.verify_historical_price",
+        return_value=("CONTRADICTED", {"reason": "historical_max_below_claimed"}),
+    ):
+        report = pipeline.run_pipeline("SBER достиг 5000₽.")
+    assert report["claims"][0]["verdict"] == "contradicted"
 
 
 def test_coverage_verified_and_confirmed_separate() -> None:
