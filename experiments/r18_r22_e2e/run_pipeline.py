@@ -1,4 +1,5 @@
 """Deterministic R18-R22 claim pipeline; provider verification is delegated to E4 adapters."""
+
 from __future__ import annotations
 
 import json
@@ -60,7 +61,9 @@ def extract_claims(text: str) -> list[Claim]:
         ticker = (
             proper_name.group(1).upper()
             if proper_name
-            else ticker_match.group(0) if ticker_match else None
+            else ticker_match.group(0)
+            if ticker_match
+            else None
         )
         price_match = PRICE_RE.search(sentence)
         cited_value = _parse_value(price_match.group(1)) if price_match else None
