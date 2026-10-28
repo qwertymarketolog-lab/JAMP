@@ -38,13 +38,18 @@ def _history(*rows):
 
 
 def test_historical_price_supported():
-    with patch("urllib.request.urlopen", side_effect=[
-        _response(_description()),
-        _response(_history(
-            ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4900.0, 5050.0, 5000.0],
-            ["TQBR", "2024-01-04", "Сбербанк", "SBER", 4950.0, 5100.0, 5080.0],
-        )),
-    ]):
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(
+                _history(
+                    ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4900.0, 5050.0, 5000.0],
+                    ["TQBR", "2024-01-04", "Сбербанк", "SBER", 4950.0, 5100.0, 5080.0],
+                )
+            ),
+        ],
+    ):
         status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
     assert status == E4_VERIFIED
     assert evidence["observed_max_high"] == 5100.0
@@ -53,12 +58,17 @@ def test_historical_price_supported():
 
 
 def test_historical_price_contradicted():
-    with patch("urllib.request.urlopen", side_effect=[
-        _response(_description()),
-        _response(_history(
-            ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4700.0, 4800.0, 4750.0],
-        )),
-    ]):
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(
+                _history(
+                    ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4700.0, 4800.0, 4750.0],
+                )
+            ),
+        ],
+    ):
         status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
     assert status == E4_CONTRADICTED
     assert evidence["observed_max_high"] == 4800.0
@@ -77,10 +87,13 @@ def test_ticker_not_yet_existed():
 
 
 def test_no_data_in_range():
-    with patch("urllib.request.urlopen", side_effect=[
-        _response(_description()),
-        _response(_history()),
-    ]):
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(_history()),
+        ],
+    ):
         status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "no_data_in_range"
@@ -88,13 +101,18 @@ def test_no_data_in_range():
 
 
 def test_ticker_reassigned():
-    with patch("urllib.request.urlopen", side_effect=[
-        _response(_description()),
-        _response(_history(
-            ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4700.0, 4800.0, 4750.0],
-            ["TQBR", "2024-01-04", "Другое общество", "SBER", 4700.0, 4800.0, 4750.0],
-        )),
-    ]):
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(
+                _history(
+                    ["TQBR", "2024-01-03", "Сбербанк", "SBER", 4700.0, 4800.0, 4750.0],
+                    ["TQBR", "2024-01-04", "Другое общество", "SBER", 4700.0, 4800.0, 4750.0],
+                )
+            ),
+        ],
+    ):
         status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "ticker_reassigned"
