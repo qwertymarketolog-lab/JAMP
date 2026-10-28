@@ -1,4 +1,4 @@
-""""Route-level wiring: API key auth on 4 v1 routes; Telegram unaffected."""
+"""Route-level wiring: API key auth on 4 v1 routes; Telegram unaffected."""
 
 import pytest
 from fastapi.testclient import TestClient
