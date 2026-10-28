@@ -66,7 +66,7 @@ def test_screen_ticker_computes_drawdown(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_filter_by_drawdown_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_mock(monkeypatch, history=_history_rows(max_high=500.0, current=350.0))
+    _install_mock(monkeypatch, history=_history_rows(max_high=500.0, current=350.0), current=350.0)
     result = screener.screen_ticker("SMLT")
     assert result["drawdown"] == pytest.approx(0.30)
     assert result["verdict"] == "FAIL"
