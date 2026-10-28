@@ -151,8 +151,7 @@ def test_attempts_preserved_on_refuse(tmp_path):
             "reason": "API_ERROR",
             "http_status": 404,
             "attempts": [
-                {"attempt": i, "http_status": 404, "elapsed_ms": i * 100}
-                for i in range(1, 7)
+                {"attempt": i, "http_status": 404, "elapsed_ms": i * 100} for i in range(1, 7)
             ],
         },
     )
