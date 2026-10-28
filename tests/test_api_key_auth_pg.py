@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Callable, Iterator
+from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -13,10 +14,13 @@ from fastapi.testclient import TestClient
 from jamp.api import auth
 from jamp.db import get_connection, init_schema, release_connection
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("JAMP_DATABASE_URL"),
-    reason="PostgreSQL integration tests require JAMP_DATABASE_URL",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.environ.get("JAMP_DATABASE_URL"),
+        reason="PostgreSQL integration tests require JAMP_DATABASE_URL",
+    ),
+    pytest.mark.real_auth,
+]
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -80,7 +84,9 @@ def test_disabled_org_gets_403(org_factory):
     app = FastAPI()
 
     @app.get("/protected")
-    async def protected(ctx: auth.OrganizationContext = Depends(auth.require_api_key)):
+    async def protected(
+        ctx: Annotated[auth.OrganizationContext, Depends(auth.require_api_key)],
+    ):
         return {"org_id": ctx.org_id, "org_name": ctx.org_name}
 
     response = TestClient(app).get(
