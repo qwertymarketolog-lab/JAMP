@@ -169,9 +169,7 @@ def test_pagination_stalled_returns_inconclusive():
         "urllib.request.urlopen",
         side_effect=[_response(_description()), _response(first), _response(stalled)],
     ):
-        status, evidence = verify_historical_price(
-            "SBER", 500.0, "2024-01-01", "2024-12-31"
-        )
+        status, evidence = verify_historical_price("SBER", 500.0, "2024-01-01", "2024-12-31")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "pagination_stalled"
     assert evidence["pages_fetched"] == 2
