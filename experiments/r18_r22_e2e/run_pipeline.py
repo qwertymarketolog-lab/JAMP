@@ -77,9 +77,7 @@ def extract_claims(text: str) -> list[Claim]:
             continue
         sentence_urls: list[str] = []
 
-        def restore_url(
-            _match: re.Match[str], _sentence_urls: list[str] = sentence_urls
-        ) -> str:
+        def restore_url(_match: re.Match[str], _sentence_urls: list[str] = sentence_urls) -> str:
             nonlocal url_index
             url = urls[url_index]
             url_index += 1
