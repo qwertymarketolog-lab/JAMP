@@ -84,7 +84,8 @@ def verify_historical_price(
             str(date_from),
             str(date_till),
             tolerance_pct,
-            reason="invalid_date_range", result="INCONCLUSIVE",
+            reason="invalid_date_range",
+            result="INCONCLUSIVE",
             parse_error="dates must be ordered YYYY-MM-DD values",
         )
 
