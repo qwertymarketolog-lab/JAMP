@@ -8,7 +8,6 @@ repo root, shadowing the real top-level 'research/' package with
 """
 import pytest
 
-
 TEST_HMAC_SECRET = "test-hmac-secret-not-for-production"  # noqa: S105
 
 
@@ -39,6 +38,7 @@ def _bypass_api_key_auth(
 
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+
     from jamp.api.auth import OrganizationContext, require_api_key
 
     def _apply_override(app: object) -> None:

@@ -99,8 +99,7 @@ def create_app(
     telegram_update_db_path: str | Path | None = None,
 ):
     try:
-        from fastapi import Depends
-        from fastapi import FastAPI
+        from fastapi import Depends, FastAPI
         from fastapi import Request as FastAPIRequest
         from fastapi.responses import JSONResponse
     except ImportError as exc:  # pragma: no cover
