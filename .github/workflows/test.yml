@@ -14,6 +14,22 @@ jobs:
   test:
     if: "${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.event.head_commit.message, 'import: assemble historical upstream') }}"
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jamp_test
+          POSTGRES_USER: jamp
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      JAMP_DATABASE_URL: postgresql://jamp:test@localhost:5432/jamp_test
 
     steps:
     - name: Checkout repository
