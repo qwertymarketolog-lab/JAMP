@@ -67,22 +67,24 @@ def extract_claims(text: str) -> list[Claim]:
 
     def replace_url(match: re.Match[str]) -> str:
         urls.append(match.group(0))
-        return f"__URL_{len(urls) - 1}__"
+        return "__URLTOKEN__"
 
     text_without_urls = URL_RE.sub(replace_url, text)
     sentences = (part.strip() for part in re.split(r"(?<=[.!?])\s+", text_without_urls))
+    url_index = 0
     for index, sentence in enumerate(sentences, 1):
         if not sentence:
             continue
-        sentence_urls = [
-            urls[int(match.group(1))]
-            for match in re.finditer(r"__URL_(\d+)__", sentence)
-        ]
-        restored_sentence = re.sub(
-            r"__URL_(\d+)__",
-            lambda match: urls[int(match.group(1))],
-            sentence,
-        )
+        sentence_urls: list[str] = []
+
+        def restore_url(_match: re.Match[str]) -> str:
+            nonlocal url_index
+            url = urls[url_index]
+            url_index += 1
+            sentence_urls.append(url)
+            return url
+
+        restored_sentence = re.sub(r"__URLTOKEN__", restore_url, sentence)
         # Preserve the agreed mixed-case company example before uppercase acronyms such as IPO.
         proper_name = re.search(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b", sentence)
         ticker_match = TICKER_RE.search(sentence)
