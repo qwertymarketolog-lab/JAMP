@@ -19,13 +19,24 @@ jobs:
       - run: pip install "ruff==0.17.3"
       - run: ruff --version
       - name: Apply SIM117 fallback
-        run: >-
-          python -c "from pathlib import Path; p=Path('tests/test_api_auth_wiring.py');
-          s=p.read_text();
-          old='    with pytest.raises(RuntimeError, match=\\"JAMP_API_KEY_HASH_SECRET\\"):\\n        with TestClient(create_app()):\\n            pass';
-          new='    with (\\n        pytest.raises(RuntimeError, match=\\"JAMP_API_KEY_HASH_SECRET\\"),\\n        TestClient(create_app()),\\n    ):\\n        pass';
-          assert old in s, 'expected SIM117 block not found';
-          p.write_text(s.replace(old, new, 1))"
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("tests/test_api_auth_wiring.py")
+          text = path.read_text()
+          pattern = r'    with pytest\.raises\(RuntimeError, match="JAMP_API_KEY_HASH_SECRET"\):\n        with TestClient\(create_app\(\)\):\n            pass'
+          replacement = '''    with (
+          pytest.raises(RuntimeError, match="JAMP_API_KEY_HASH_SECRET"),
+          TestClient(create_app()),
+      ):
+          pass'''
+          updated, count = re.subn(pattern, lambda _match: replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one SIM117 block; found {count}. Refusing to edit.")
+          path.write_text(updated)
+          PY
       - name: Apply targeted Ruff fixes
         run: ruff check --fix src/jamp/api/app.py conftest.py tests/test_api_auth_wiring.py
       - name: Verify clean
