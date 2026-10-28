@@ -95,7 +95,6 @@ def test_verify_url_error_diagnostics(mock_urlopen):
     assert len(details["attempts"]) == 1
     assert details["attempts"][0]["http_status"] is None
 
-
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
 def test_verify_inconclusive_after_timeout_retry(mock_urlopen, mock_sleep):
@@ -116,7 +115,6 @@ def test_verify_inconclusive_after_timeout_retry(mock_urlopen, mock_sleep):
     assert [item["http_status"] for item in details["attempts"]] == [None, None]
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(5)
-
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
@@ -144,7 +142,6 @@ def test_verify_retries_404_then_succeeds(mock_urlopen, mock_sleep):
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(1)
 
-
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
 def test_verify_retries_404_five_attempts_then_inconclusive(mock_urlopen, mock_sleep):
@@ -167,7 +164,6 @@ def test_verify_retries_404_five_attempts_then_inconclusive(mock_urlopen, mock_s
     assert details["http_status"] == 404
     assert mock_urlopen.call_count == 6
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2, 4, 8, 16]
-
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
@@ -192,7 +188,6 @@ def test_verify_retries_429(mock_urlopen, mock_sleep):
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(30)
 
-
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
 def test_verify_retries_5xx_once_then_succeeds(mock_urlopen, mock_sleep):
@@ -216,7 +211,6 @@ def test_verify_retries_5xx_once_then_succeeds(mock_urlopen, mock_sleep):
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(5)
 
-
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
 def test_verify_retries_timeout_once_then_succeeds(mock_urlopen, mock_sleep):
@@ -233,7 +227,6 @@ def test_verify_retries_timeout_once_then_succeeds(mock_urlopen, mock_sleep):
     assert status == "VERIFIED"
     assert mock_urlopen.call_count == 2
     mock_sleep.assert_called_once_with(5)
-
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
@@ -253,8 +246,6 @@ def test_verify_does_not_retry_other_4xx(mock_urlopen, mock_sleep):
     assert details["http_status"] == 403
     mock_urlopen.assert_called_once()
     mock_sleep.assert_not_called()
-
-
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
@@ -288,7 +279,6 @@ def test_e2_attempts_logged_on_success(mock_urlopen, mock_sleep):
     assert all(isinstance(item["elapsed_ms"], int) for item in details["attempts"])
     assert details["attempts"][-1]["result"] == "success"
     assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2]
-
 
 @patch("jamp.provider.e2_verify.time.sleep")
 @patch("urllib.request.urlopen")
