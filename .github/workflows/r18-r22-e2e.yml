@@ -30,6 +30,9 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run R18-R22 pipeline
+        env:
+          JAMP_E5_ENABLED: "true"
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python experiments/r18_r22_e2e/run_pipeline.py > report.json
 
       - name: Validate report exists
