@@ -181,9 +181,16 @@ def run_pipeline(text: str) -> dict[str, Any]:
             }
         )
 
-    counts = {name: sum(item["verdict"] == name for item in results) for name in (
-        "supported", "contradicted", "not_found", "ambiguous", "inconclusive"
-    )}
+    counts = {
+        name: sum(item["verdict"] == name for item in results)
+        for name in (
+            "supported",
+            "contradicted",
+            "not_found",
+            "ambiguous",
+            "inconclusive",
+        )
+    }
     total = len(results)
     verified = counts["supported"] + counts["contradicted"] + counts["not_found"]
     coverage = {
