@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -13,6 +14,7 @@ from typing import Any
 
 from jamp.provider import moex_history
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
+from jamp.provider.e5_search import verify_with_search
 from jamp.provider.moex_verify import verify_claim_with_moex
 
 CRYPTO_TICKERS = {"BTC", "ETH", "SOL", "USDT", "USDC", "BNB", "XRP", "ADA", "DOGE"}
@@ -218,6 +220,10 @@ def _verify_claim(claim: Claim) -> tuple[str, dict[str, Any]]:
     return verify_claim_with_moex(claim.ticker or "", adapter_type, claim.cited_value)
 
 
+def _e5_enabled() -> bool:
+    return os.getenv("JAMP_E5_ENABLED", "").lower() == "true"
+
+
 def run_pipeline(text: str) -> dict[str, Any]:
     claims = extract_claims(text)
     results: list[dict[str, Any]] = []
@@ -249,9 +255,26 @@ def run_pipeline(text: str) -> dict[str, Any]:
             reason = evidence.get("reason")
         elif not citation_failed and claim.claim_type == "change_percent":
             r_codes.extend(("R21", "R22"))
-            verdict = "inconclusive"
-            reason = "requires_E5_or_history"
-            evidence = citation_evidence
+            if _e5_enabled():
+                e5_status, e5_evidence = verify_with_search(
+                    claim_text=claim.text,
+                    claim_type=claim.claim_type,
+                    ticker=claim.ticker,
+                )
+                verdict = {
+                    "E5_VERIFIED": "supported",
+                    "E5_CONTRADICTED": "contradicted",
+                    "E5_OUT_OF_SCOPE": "inconclusive",
+                    "E5_INCONCLUSIVE": "inconclusive",
+                }.get(e5_status, "inconclusive")
+                evidence = {**e5_evidence, **citation_evidence}
+                reason = e5_evidence.get("reason") or (
+                    None if verdict == "supported" else "e5_unresolved"
+                )
+            else:
+                verdict = "inconclusive"
+                reason = "requires_E5_or_history"
+                evidence = citation_evidence
         elif not citation_failed and claim.claim_type in {"price", "existence"} and claim.ticker:
             r_codes.append("R18")
             status, provider_evidence = _verify_claim(claim)
@@ -266,9 +289,26 @@ def run_pipeline(text: str) -> dict[str, Any]:
                 reason = "e4_inconclusive_without_reason"
         elif not citation_failed:
             r_codes.extend(("R21", "R22"))
-            verdict = "inconclusive"
-            reason = "requires_E5_search"
-            evidence = citation_evidence
+            if _e5_enabled():
+                e5_status, e5_evidence = verify_with_search(
+                    claim_text=claim.text,
+                    claim_type=claim.claim_type,
+                    ticker=claim.ticker,
+                )
+                verdict = {
+                    "E5_VERIFIED": "supported",
+                    "E5_CONTRADICTED": "contradicted",
+                    "E5_OUT_OF_SCOPE": "inconclusive",
+                    "E5_INCONCLUSIVE": "inconclusive",
+                }.get(e5_status, "inconclusive")
+                evidence = {**e5_evidence, **citation_evidence}
+                reason = e5_evidence.get("reason") or (
+                    None if verdict == "supported" else "e5_unresolved"
+                )
+            else:
+                verdict = "inconclusive"
+                reason = "requires_E5_search"
+                evidence = citation_evidence
         if verdict == "inconclusive" and not reason:
             reason = "inconclusive_reason_missing"
         results.append(

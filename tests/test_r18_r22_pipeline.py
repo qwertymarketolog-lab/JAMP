@@ -213,3 +213,58 @@ def test_coverage_empty_returns_none() -> None:
     assert cov["total"] == 0
     assert cov["verified_ratio"] is None
     assert cov["confirmed_ratio"] is None
+
+
+def test_e5_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("JAMP_E5_ENABLED", raising=False)
+    report = pipeline.run_pipeline("SBER вырастет из-за дивидендов.")
+    assert report["claims"][0]["verdict"] == "inconclusive"
+    assert report["claims"][0]["reason"] == "requires_E5_search"
+
+
+def test_e5_enabled_prediction_calls_search(monkeypatch):
+    monkeypatch.setenv("JAMP_E5_ENABLED", "true")
+    with patch(
+        "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
+        return_value=("E5_VERIFIED", {"checked_source": "tavily"}),
+    ):
+        report = pipeline.run_pipeline("SBER вырастет из-за дивидендов.")
+    assert report["claims"][0]["verdict"] == "supported"
+    assert report["claims"][0]["evidence"]["checked_source"] == "tavily"
+
+
+def test_e5_enabled_causal_contradicted(monkeypatch):
+    monkeypatch.setenv("JAMP_E5_ENABLED", "true")
+    with patch(
+        "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
+        return_value=("E5_CONTRADICTED", {"reason": "conflicting_sources"}),
+    ):
+        report = pipeline.run_pipeline("SBER вырос из-за дивидендов.")
+    assert report["claims"][0]["verdict"] == "contradicted"
+
+
+def test_e5_does_not_override_e4_historical(monkeypatch):
+    monkeypatch.setenv("JAMP_E5_ENABLED", "true")
+    with (
+        patch(
+            "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
+        ) as mock_e5,
+        patch(
+            "jamp.provider.moex_history.verify_historical_price",
+            return_value=("CONTRADICTED", {"reason": "historical_max_below_claimed"}),
+        ),
+    ):
+        report = pipeline.run_pipeline("SBER достиг 5000₽.")
+    mock_e5.assert_not_called()
+    assert report["claims"][0]["verdict"] == "contradicted"
+
+
+def test_e5_inconclusive_preserves_reason(monkeypatch):
+    monkeypatch.setenv("JAMP_E5_ENABLED", "true")
+    with patch(
+        "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
+        return_value=("E5_INCONCLUSIVE", {"reason": "rate_limit"}),
+    ):
+        report = pipeline.run_pipeline("SBER вырастет из-за дивидендов.")
+    assert report["claims"][0]["verdict"] == "inconclusive"
+    assert report["claims"][0]["reason"] == "rate_limit"
