@@ -18,6 +18,27 @@ jobs:
           python-version: '3.11'
       - run: pip install "ruff==0.17.3"
       - run: ruff --version
+      - name: Apply SIM117 fallback
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("tests/test_api_auth_wiring.py")
+          text = path.read_text()
+          old = '''    with pytest.raises(RuntimeError, match="JAMP_API_KEY_HASH_SECRET"):
+          with TestClient(create_app()):
+              pass
+          '''
+          new = '''    with (
+          pytest.raises(RuntimeError, match="JAMP_API_KEY_HASH_SECRET"),
+          TestClient(create_app()),
+      ):
+          pass
+          '''
+          if old not in text:
+              raise SystemExit("Expected SIM117 block not found; refusing to edit")
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Apply safe fixes
         run: ruff check --fix src/jamp/api/app.py conftest.py tests/test_api_auth_wiring.py
       - name: Verify clean
