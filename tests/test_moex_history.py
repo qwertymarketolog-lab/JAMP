@@ -193,11 +193,8 @@ def test_incomplete_history_fetch():
 def test_claim_year_filters_rows():
     """Only highs from the claimed year may determine the verdict."""
     year_row = ["TQBR", "2021-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0]
-    other_year_rows = [
-        ["TQBR", "2024-06-15", "Сбербанк", "SBER", 120.0, 153.73, 150.0]
-    ] + [
-        ["TQBR", "2024-06-15", "Сбербанк", "SBER", 119.0, 120.0, 120.0]
-        for _ in range(599)
+    other_year_rows = [["TQBR", "2024-06-15", "Сбербанк", "SBER", 120.0, 153.73, 150.0]] + [
+        ["TQBR", "2024-06-15", "Сбербанк", "SBER", 119.0, 120.0, 120.0] for _ in range(599)
     ]
     with patch(
         "urllib.request.urlopen",
@@ -218,10 +215,7 @@ def test_claim_year_filters_rows():
 
 def test_claim_year_no_data_inconclusive():
     """No rows in the claimed year produce an explicit inconclusive result."""
-    rows = [
-        ["TQBR", "2023-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0]
-        for _ in range(400)
-    ]
+    rows = [["TQBR", "2023-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0] for _ in range(400)]
     with patch(
         "urllib.request.urlopen",
         side_effect=[
