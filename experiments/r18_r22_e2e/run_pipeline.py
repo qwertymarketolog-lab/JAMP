@@ -41,6 +41,7 @@ HISTORICAL_PRICE_MARKERS = (
 )
 TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 PRICE_RE = re.compile(r"(\d[\d\s]*[.,]?\d*)\s*[₽$]?")
+YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 CHANGE_PCT_RE = re.compile(
     r"(упал|вырос|потерял|прибавил)[^\d]*(\d+(?:[.,]\d+)?)\s*%",
     re.IGNORECASE,
@@ -206,11 +207,14 @@ def _verify_claim(claim: Claim) -> tuple[str, dict[str, Any]]:
     if claim.claim_type == "historical_price":
         if not claim.ticker or claim.cited_value is None:
             return "INCONCLUSIVE", {"reason": "missing_ticker_or_value"}
+        year_match = YEAR_RE.search(claim.text)
+        claim_year = int(year_match.group(0)) if year_match else None
         return moex_history.verify_historical_price(
             claim.ticker,
             claim.cited_value,
             date_from=DEFAULT_HISTORY_FROM,
             date_till=DEFAULT_HISTORY_TILL,
+            claim_year=claim_year,
         )
     if claim.ticker in CRYPTO_TICKERS:
         return verify_claim_with_coingecko(
