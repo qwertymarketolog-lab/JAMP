@@ -3,7 +3,6 @@
 import os
 from typing import Any
 
-import psycopg2
 from psycopg2 import pool as pg_pool
 
 _pool: pg_pool.ThreadedConnectionPool | None = None
