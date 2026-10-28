@@ -157,6 +157,7 @@ def test_historical_price_returns_inconclusive() -> None:
     assert claim["reason"] == "requires_historical_data_or_E5"
     assert "R19" in claim["r_codes"]
 
+
 def test_coverage_verified_and_confirmed_separate() -> None:
     """not_found is verified as a source answer, but not confirmed as claim truth."""
     with patch.object(
