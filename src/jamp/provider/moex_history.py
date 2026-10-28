@@ -484,11 +484,7 @@ def verify_historical_price(
     claim_history_rows = (
         history_rows
         if claim_year is None
-        else [
-            row
-            for row in history_rows
-            if str(row.get("TRADEDATE", ""))[:4] == str(claim_year)
-        ]
+        else [row for row in history_rows if str(row.get("TRADEDATE", ""))[:4] == str(claim_year)]
     )
     if claim_year is not None and not claim_history_rows:
         return E4_INCONCLUSIVE, _evidence(
