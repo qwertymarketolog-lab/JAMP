@@ -567,6 +567,7 @@ def verify_historical_price(
         )
 
     observed_max_high = max(highs)
+    observed_min_low = min(lows) if lows else None
     max_high_row = next(
         row
         for row in claim_history_rows
