@@ -38,7 +38,7 @@ def verify_generation(
 
     key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
-        return "INCONCLUSIVE", {"reason": "API_KEY_MISSING"}
+        return "INCONCLUSIVE", {"reason": "API_KEY_MISSING", "attempts": []}
 
     request = urllib.request.Request(f"{OPENROUTER_GENERATION_URL}?id={urllib.parse.quote(gen_id)}")
     request.add_header("Authorization", f"Bearer {key}")
@@ -50,13 +50,37 @@ def verify_generation(
     rate_limit_retried = False
     server_error_retried = False
     timeout_retried = False
+    attempts: list[dict[str, Any]] = []
+    attempt_number = 0
 
     while True:
+        attempt_number += 1
+        attempt_started = time.monotonic()
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 parsed = json.load(response)
+                http_status = getattr(response, "status", None)
+                if not isinstance(http_status, int):
+                    http_status = response.getcode()
+                if not isinstance(http_status, int):
+                    http_status = 200
+            attempts.append(
+                {
+                    "attempt": attempt_number,
+                    "http_status": http_status,
+                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                    "result": "success",
+                }
+            )
             break
         except urllib.error.HTTPError as exc:
+            attempts.append(
+                {
+                    "attempt": attempt_number,
+                    "http_status": exc.code,
+                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                }
+            )
             if exc.code == 404 and not_found_attempt < len(NOT_FOUND_BACKOFF_SECONDS):
                 last_exc = exc
                 delay = NOT_FOUND_BACKOFF_SECONDS[not_found_attempt]
@@ -78,6 +102,7 @@ def verify_generation(
                 "reason": "API_ERROR",
                 "http_status": exc.code,
                 "error_body": error_body,
+                "attempts": attempts,
                 "retry_count": (
                     not_found_attempt
                     + int(rate_limit_retried)
@@ -86,6 +111,14 @@ def verify_generation(
                 ),
             }
         except TimeoutError as exc:
+            attempts.append(
+                {
+                    "attempt": attempt_number,
+                    "http_status": None,
+                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                    "error": type(exc).__name__,
+                }
+            )
             if not timeout_retried:
                 timeout_retried = True
                 time.sleep(5)
@@ -94,6 +127,7 @@ def verify_generation(
                 "reason": "API_ERROR",
                 "exception_type": type(exc).__name__,
                 "error_message": str(exc),
+                "attempts": attempts,
                 "retry_count": (
                     not_found_attempt
                     + int(rate_limit_retried)
@@ -102,6 +136,14 @@ def verify_generation(
                 ),
             }
         except urllib.error.URLError as exc:
+            attempts.append(
+                {
+                    "attempt": attempt_number,
+                    "http_status": None,
+                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                    "error": type(exc.reason).__name__,
+                }
+            )
             if isinstance(exc.reason, TimeoutError) and not timeout_retried:
                 timeout_retried = True
                 time.sleep(5)
@@ -109,6 +151,7 @@ def verify_generation(
             return "INCONCLUSIVE", {
                 "reason": "API_ERROR",
                 "network_error": str(exc.reason),
+                "attempts": attempts,
                 "retry_count": (
                     not_found_attempt
                     + int(rate_limit_retried)
@@ -117,10 +160,19 @@ def verify_generation(
                 ),
             }
         except Exception as exc:
+            attempts.append(
+                {
+                    "attempt": attempt_number,
+                    "http_status": None,
+                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                    "error": type(exc).__name__,
+                }
+            )
             return "INCONCLUSIVE", {
                 "reason": "API_ERROR",
                 "exception_type": type(exc).__name__,
                 "error_message": str(exc),
+                "attempts": attempts,
                 "retry_count": (
                     not_found_attempt
                     + int(rate_limit_retried)
@@ -136,6 +188,7 @@ def verify_generation(
             "http_status": getattr(last_exc, "code", 500),
             "error_body": error_body,
             "error_message": "Generation remained unavailable after retry policy was exhausted",
+            "attempts": attempts,
             "retry_count": (
                 not_found_attempt
                 + int(rate_limit_retried)
@@ -145,20 +198,21 @@ def verify_generation(
         }
 
     if not isinstance(parsed, dict):
-        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE"}
+        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE", "attempts": attempts}
 
     data = parsed.get("data")
     if not isinstance(data, dict):
-        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE"}
+        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE", "attempts": attempts}
 
     provider_model = data.get("model")
     if not isinstance(provider_model, str) or not provider_model:
-        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE"}
+        return "INCONCLUSIVE", {"reason": "MALFORMED_RESPONSE", "attempts": attempts}
 
     details = {
         "provider_model": provider_model,
         "provider_name": data.get("provider_name"),
         "generation_id": gen_id,
+        "attempts": attempts,
         "retry_count": (
             not_found_attempt
             + int(rate_limit_retried)
