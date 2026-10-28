@@ -207,11 +207,7 @@ def screen_ticker(ticker: str) -> dict[str, Any]:
         result["reason"] = "SHORTNAME_MISMATCH"
         return result
 
-    highs = [
-        (float(row["HIGH"]), row["TRADEDATE"])
-        for row in valid_rows
-        if _number(row.get("HIGH"))
-    ]
+    highs = [(float(row["HIGH"]), row["TRADEDATE"]) for row in valid_rows if _number(row.get("HIGH"))]
     if highs:
         max_high, max_date = max(highs, key=lambda item: item[0])
         result["max_high"] = max_high
@@ -299,11 +295,7 @@ def _markdown(report: dict[str, Any]) -> str:
                 date=item["max_date"] or "—",
                 price=item["current_price"] if item["current_price"] is not None else "—",
                 drawdown=f"{drawdown:.3f}" if drawdown is not None else "—",
-                volume=(
-                    round(item["avg_daily_volume"])
-                    if item["avg_daily_volume"] is not None
-                    else "—"
-                ),
+                volume=round(item["avg_daily_volume"]) if item["avg_daily_volume"] is not None else "—",
                 days=item["trading_days"],
                 verdict=item["verdict"],
             )

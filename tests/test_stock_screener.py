@@ -140,14 +140,23 @@ def _payload(table_name: str, columns: list[str], data: list[list[object]]) -> d
 def test_max_high_is_actual_max_not_first_page(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(screener, "_security_metadata", lambda ticker: _metadata())
     monkeypatch.setattr(screener, "_current_price", lambda ticker: 340.0)
-    page1 = _payload("history", ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
-                      [["TQBR", "2024-01-01", "Самолет", "SMLT", 500.0, 2_000_000.0]])
+    page1 = _payload(
+        "history",
+        ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
+        [["TQBR", "2024-01-01", "Самолет", "SMLT", 500.0, 2_000_000.0]],
+    )
     page1["history.cursor"] = {"columns": ["INDEX", "TOTAL", "PAGESIZE"], "data": [[0, 3, 1]]}
-    page2 = _payload("history", ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
-                      [["TQBR", "2024-01-02", "Самолет", "SMLT", 600.0, 2_000_000.0]])
+    page2 = _payload(
+        "history",
+        ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
+        [["TQBR", "2024-01-02", "Самолет", "SMLT", 600.0, 2_000_000.0]],
+    )
     page2["history.cursor"] = {"columns": ["INDEX", "TOTAL", "PAGESIZE"], "data": [[1, 3, 1]]}
-    page3 = _payload("history", ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
-                      [["TQBR", "2024-01-03", "Самолет", "SMLT", 5800.0, 2_000_000.0]])
+    page3 = _payload(
+        "history",
+        ["BOARDID", "TRADEDATE", "SHORTNAME", "SECID", "HIGH", "VALUE"],
+        [["TQBR", "2024-01-03", "Самолет", "SMLT", 5800.0, 2_000_000.0]],
+    )
     page3["history.cursor"] = {"columns": ["INDEX", "TOTAL", "PAGESIZE"], "data": [[2, 3, 1]]}
     payloads = [page1, page2, page3]
 
