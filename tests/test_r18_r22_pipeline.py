@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+import urllib.error
+from unittest.mock import patch
+
+from experiments.r18_r22_e2e import run_pipeline as pipeline
+
+
+def test_extract_price() -> None:
+    claim = pipeline.extract_claims("SBER 5000₽")[0]
+    assert (claim.ticker, claim.claim_type, claim.cited_value) == ("SBER", "price", 5000.0)
+
+
+def test_extract_existence() -> None:
+    claim = pipeline.extract_claims("FakeTech объявила IPO")[0]
+    assert claim.claim_type == "existence"
+    assert claim.ticker == "FAKETECH"
+
+
+def test_extract_prediction() -> None:
+    assert pipeline.extract_claims("SBER вырастет")[0].claim_type == "prediction"
+
+
+def test_extract_causal() -> None:
+    assert pipeline.extract_claims("SBER вырос из-за дивидендов")[0].claim_type == "causal"
+
+
+def test_extract_citation_url() -> None:
+    claim = pipeline.extract_claims("SBER подтверждён: https://iss.moex.com/iss/securities")[0]
+    assert claim.citation_url == "https://iss.moex.com/iss/securities"
+
+
+def test_citation_whitelist_moex() -> None:
+    with patch.object(pipeline.urllib.request, "urlopen", side_effect=AssertionError("network")):
+        assert pipeline.check_citation("https://iss.moex.com/iss/securities") == (True, None)
+
+
+def test_citation_invalid_url() -> None:
+    assert pipeline.check_citation("not-a-url") == (False, "malformed_url")
+
+
+def test_citation_fake_domain() -> None:
+    with patch.object(
+        pipeline.urllib.request,
+        "urlopen",
+        side_effect=urllib.error.URLError("offline"),
+    ):
+        ok, reason = pipeline.check_citation("https://example.invalid/evidence")
+    assert not ok
+    assert reason == "URLError"
+
+
+def test_verdict_mapping() -> None:
+    assert pipeline.map_e4_verdict("E4_VERIFIED") == "supported"
+    assert pipeline.map_e4_verdict("E4_CONTRADICTED") == "contradicted"
+    assert pipeline.map_e4_verdict("E4_OUT_OF_SCOPE") == "ambiguous"
+    assert pipeline.map_e4_verdict("E4_INCONCLUSIVE") == "inconclusive"
+
+
+def test_pipeline_coverage_full() -> None:
+    text = "SBER 5000₽. SBER. SBER вырастет. SBER вырос из-за дивидендов."
+    with patch.object(
+        pipeline,
+        "_verify_claim",
+        side_effect=[
+            ("E4_VERIFIED", {"source": "fixture"}),
+            ("E4_CONTRADICTED", {"source": "fixture"}),
+        ],
+    ):
+        report = pipeline.run_pipeline(text)
+    assert report["coverage"]["total"] == 4
+    assert report["coverage"]["verified"] == 2
+    assert report["coverage"]["inconclusive"] == 2
+    assert report["coverage"]["verified_ratio"] == 0.5
+
+
+def test_pipeline_coverage_empty() -> None:
+    report = pipeline.run_pipeline("")
+    assert report["coverage"]["total"] == 0
+    assert report["coverage"]["verified_ratio"] is None
+
+
+def test_inconclusive_has_reason() -> None:
+    report = pipeline.run_pipeline("SBER вырастет. SBER вырос из-за дивидендов.")
+    assert all(item["reason"] for item in report["claims"] if item["verdict"] == "inconclusive")
