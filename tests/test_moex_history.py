@@ -188,3 +188,70 @@ def test_incomplete_history_fetch():
     assert evidence["expected_approx"] == evidence["expected_trading_days_approx"]
     assert evidence["received"] == 200
     assert evidence["total_rows"] == 3000
+
+
+def test_claim_year_filters_rows():
+    """Only highs from the claimed year may determine the verdict."""
+    year_row = ["TQBR", "2021-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0]
+    other_year_rows = [["TQBR", "2024-06-15", "Сбербанк", "SBER", 120.0, 153.73, 150.0]] + [
+        ["TQBR", "2024-06-15", "Сбербанк", "SBER", 119.0, 120.0, 120.0] for _ in range(599)
+    ]
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(_history(year_row, *other_year_rows, cursor=(0, 601, 601))),
+        ],
+    ):
+        status, evidence = verify_historical_price(
+            "SBER", 153.0, "2021-01-01", "2024-12-31", claim_year=2021
+        )
+    assert status == E4_CONTRADICTED
+    assert evidence["observed_max_high"] == 100.0
+    assert evidence["observed_max_high_date"] == "2021-06-15"
+    assert evidence["claimed_year"] == 2021
+    assert evidence["trading_days_in_claimed_year"] == 1
+
+
+def test_claim_year_no_data_inconclusive():
+    """No rows in the claimed year produce an explicit inconclusive result."""
+    rows = [["TQBR", "2023-06-15", "Сбербанк", "SBER", 99.0, 100.0, 100.0] for _ in range(400)]
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(_history(*rows, cursor=(0, 400, 400))),
+        ],
+    ):
+        status, evidence = verify_historical_price(
+            "SBER", 153.0, "2022-01-01", "2024-12-31", claim_year=2021
+        )
+    assert status == E4_INCONCLUSIVE
+    assert evidence["reason"] == "no_data_in_claimed_year"
+    assert evidence["claimed_year"] == 2021
+    assert evidence["trading_days_in_claimed_year"] == 0
+
+
+def test_evidence_contains_max_high_date():
+    """Evidence records the trade date of the observed maximum high."""
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=[
+            _response(_description()),
+            _response(
+                _history(
+                    ["TQBR", "2021-09-14", "Сбербанк", "SBER", 100.0, 120.0, 115.0],
+                    ["TQBR", "2021-09-15", "Сбербанк", "SBER", 120.0, 153.73, 150.0],
+                    ["TQBR", "2021-09-16", "Сбербанк", "SBER", 120.0, 130.0, 125.0],
+                )
+            ),
+        ],
+    ):
+        status, evidence = verify_historical_price(
+            "SBER", 153.0, "2021-09-14", "2021-09-16", claim_year=2021
+        )
+    assert status == E4_VERIFIED
+    assert evidence["observed_max_high"] == 153.73
+    assert evidence["observed_max_high_date"] == "2021-09-15"
+    assert evidence["claimed_year"] == 2021
+    assert evidence["trading_days_in_claimed_year"] == 3
