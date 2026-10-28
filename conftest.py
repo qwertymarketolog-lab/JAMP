@@ -6,6 +6,7 @@ conftest.py to sys.path. A conftest in tests/ would put 'tests' ahead of the
 repo root, shadowing the real top-level 'research/' package with
 'tests/research/' and breaking collection of research.exp18/exp19/exp21.
 """
+
 import pytest
 
 TEST_HMAC_SECRET = "test-hmac-secret-not-for-production"  # noqa: S105
@@ -25,9 +26,7 @@ def _auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _bypass_api_key_auth(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-):
+def _bypass_api_key_auth(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch):
     """Default: inject a stub OrganizationContext so legacy tests don't need
     Authorization headers. Tests marked @pytest.mark.real_auth opt out and
     exercise the real require_api_key dependency.
@@ -43,9 +42,7 @@ def _bypass_api_key_auth(
 
     def _apply_override(app: object) -> None:
         if isinstance(app, FastAPI):
-            app.dependency_overrides[require_api_key] = (
-                lambda: OrganizationContext(0, "test")
-            )
+            app.dependency_overrides[require_api_key] = lambda: OrganizationContext(0, "test")
 
     original_init = TestClient.__init__
 

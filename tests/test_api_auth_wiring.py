@@ -62,9 +62,7 @@ def test_protected_route_disabled_org_403(client_disabled_org, method, path):
 
 def test_startup_without_secret_raises(monkeypatch):
     monkeypatch.delenv("JAMP_API_KEY_HASH_SECRET", raising=False)
-    with pytest.raises(
-        RuntimeError, match="JAMP_API_KEY_HASH_SECRET"
-    ), TestClient(create_app()):
+    with pytest.raises(RuntimeError, match="JAMP_API_KEY_HASH_SECRET"), TestClient(create_app()):
         pass
 
 
@@ -79,4 +77,3 @@ def test_telegram_webhook_not_blocked_by_api_key(client, monkeypatch):
         json={"update_id": 1},
     )
     assert response.status_code != 401
-
