@@ -100,10 +100,7 @@ def test_ticker_not_extracted_from_url() -> None:
     assert claim.ticker == "SBER"
     assert claim.claim_type == "price"
     assert claim.cited_value == 5000.0
-    assert claim.citation_url == (
-        "https://iss.moex.com/iss/engines/stock/markets/shares/"
-        "boards/TQBR/securities/SBER.json"
-    )
+    assert claim.citation_url == "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json"
 
 
 def test_change_percent_not_price() -> None:
