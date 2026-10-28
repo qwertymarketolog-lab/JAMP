@@ -87,8 +87,7 @@ def _current_price(ticker: str) -> float | None:
     candidates = [
         row
         for row in rows
-        if str(row.get("SECID", "")).upper() == ticker
-        and _number(row.get("LAST")) is not None
+        if str(row.get("SECID", "")).upper() == ticker and _number(row.get("LAST")) is not None
     ]
     if not candidates:
         return None
