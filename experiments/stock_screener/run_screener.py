@@ -64,9 +64,7 @@ def _url(path: str, params: dict[str, Any]) -> str:
 
 
 def _security_metadata(ticker: str) -> dict[str, Any]:
-    payload = _get_json(
-        f"{MOEX_ISS_BASE}/securities/{urllib.parse.quote(ticker, safe='')}.json"
-    )
+    payload = _get_json(f"{MOEX_ISS_BASE}/securities/{urllib.parse.quote(ticker, safe='')}.json")
     rows = _rows(payload, "description")
     metadata = {str(row.get("name", "")).upper(): row.get("value") for row in rows}
     if str(metadata.get("SECID", "")).upper() != ticker:
