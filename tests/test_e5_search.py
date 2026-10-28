@@ -202,8 +202,7 @@ def test_evidence_has_query_and_version(mock_urlopen):
 def test_verdict_basis_matches_reason_on_inconclusive_snippets(mock_urlopen):
     """Whitelisted snippets without support must have matching reason and verdict basis."""
     results = [
-        _result(domain="rbc.ru", content="SBER trading volume normal today")
-        for _ in range(10)
+        _result(domain="rbc.ru", content="SBER trading volume normal today") for _ in range(10)
     ]
     mock_urlopen.return_value = _response({"results": results})
 
