@@ -76,14 +76,23 @@ def _current_price(ticker: str) -> float | None:
     payload = _get_json(
         _url(
             f"engines/stock/markets/shares/securities/{urllib.parse.quote(ticker, safe='')}.json",
-            {"iss.meta": "off", "iss.only": "marketdata", "marketdata.columns": "SECID,LAST"},
+            {
+                "iss.meta": "off",
+                "iss.only": "marketdata",
+                "marketdata.columns": "SECID,BOARDID,LAST,TRADEDATE",
+            },
         )
     )
     rows = _rows(payload, "marketdata")
-    for row in rows:
-        if str(row.get("SECID", "")).upper() == ticker:
-            return _number(row.get("LAST"))
-    return None
+    candidates = [
+        row
+        for row in rows
+        if str(row.get("SECID", "")).upper() == ticker and _number(row.get("LAST")) is not None
+    ]
+    if not candidates:
+        return None
+    primary = next((row for row in candidates if row.get("BOARDID") == "TQBR"), candidates[0])
+    return _number(primary.get("LAST"))
 
 
 def _all_history(ticker: str) -> list[dict[str, Any]]:

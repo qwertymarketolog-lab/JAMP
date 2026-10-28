@@ -168,3 +168,20 @@ def test_max_high_is_actual_max_not_first_page(monkeypatch: pytest.MonkeyPatch) 
     result = screener.screen_ticker("SMLT")
     assert result["max_high"] == 5800.0
     assert result["max_date"] == "2024-01-03"
+
+
+def test_current_price_skips_null_board_row_and_prefers_tqbr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = {
+        "marketdata": {
+            "columns": ["SECID", "BOARDID", "LAST", "TRADEDATE"],
+            "data": [
+                ["SBER", "TQTF", None, "2026-10-28"],
+                ["SBER", "TQBR", 250.0, "2026-10-28"],
+                ["SBER", "TQOB", 249.5, "2026-10-28"],
+            ],
+        }
+    }
+    monkeypatch.setattr(screener, "_get_json", lambda url: payload)
+    assert screener._current_price("SBER") == 250.0
