@@ -97,3 +97,71 @@ def test_invalid_price_claim_is_inconclusive_without_network():
     assert status == E4_INCONCLUSIVE
     assert details["reason"] == "INVALID_CLAIMED_PRICE"
     mock_urlopen.assert_not_called()
+
+
+@patch("urllib.request.urlopen")
+def test_missing_last_records_all_tried_price_fields(mock_urlopen):
+    mock_urlopen.side_effect = [
+        _response(_securities(["SBER", "Сбербанк", "Sberbank", "Сбербанк"])),
+        _response(
+            {
+                "marketdata": {
+                    "columns": [
+                        "SECID",
+                        "LAST",
+                        "MARKETPRICE",
+                        "MARKETPRICE2",
+                        "BOARDID",
+                        "TRADEDATE",
+                    ],
+                    "data": [["SBER", None, None, 284.0, "TQBR", "2026-10-27"]],
+                }
+            }
+        ),
+    ]
+
+    status, details = verify_claim_with_moex("SBER", "price", 5000.0)
+
+    assert status == E4_INCONCLUSIVE
+    assert details["reason"] == "MOEX_LAST_PRICE_UNAVAILABLE"
+    assert details["tried_fields"] == ["LAST", "MARKETPRICE", "MARKETPRICE2"]
+    assert details["marketdata_columns"] == [
+        "SECID",
+        "LAST",
+        "MARKETPRICE",
+        "MARKETPRICE2",
+        "BOARDID",
+        "TRADEDATE",
+    ]
+    assert details["marketdata_rows_count"] == 1
+    assert details["board_id"] == "TQBR"
+    assert details["http_status"] == 200
+
+
+@patch("urllib.request.urlopen")
+def test_all_price_fields_null_preserves_marketdata_row_count(mock_urlopen):
+    mock_urlopen.side_effect = [
+        _response(_securities(["SBER", "Сбербанк", "Sberbank", "Сбербанк"])),
+        _response(
+            {
+                "marketdata": {
+                    "columns": [
+                        "SECID",
+                        "LAST",
+                        "MARKETPRICE",
+                        "MARKETPRICE2",
+                        "BOARDID",
+                        "TRADEDATE",
+                    ],
+                    "data": [["SBER", None, None, None, "TQBR", "2026-10-27"]],
+                }
+            }
+        ),
+    ]
+
+    status, details = verify_claim_with_moex("SBER", "price", 5000.0)
+
+    assert status == E4_INCONCLUSIVE
+    assert details["reason"] == "MOEX_LAST_PRICE_UNAVAILABLE"
+    assert details["marketdata_rows_count"] == 1
+    assert details["tried_fields"] == ["LAST", "MARKETPRICE", "MARKETPRICE2"]

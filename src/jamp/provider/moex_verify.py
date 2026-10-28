@@ -18,6 +18,7 @@ E4_VERIFIED = "E4_VERIFIED"
 E4_CONTRADICTED = "E4_CONTRADICTED"
 E4_OUT_OF_SCOPE = "E4_OUT_OF_SCOPE"
 E4_INCONCLUSIVE = "E4_INCONCLUSIVE"
+PRICE_FIELDS = ["LAST", "MARKETPRICE", "MARKETPRICE2"]
 
 
 def _get_json(url: str, timeout: float) -> dict[str, Any]:
@@ -49,6 +50,36 @@ def _table_rows(payload: dict[str, Any], table_name: str) -> list[dict[str, Any]
     return result
 
 
+def _failure_diagnostics(
+    *,
+    exc: Exception | None = None,
+    http_status: int | None = None,
+    board_id: str | None = None,
+    marketdata_columns: list[str] | None = None,
+    marketdata_rows_count: int | None = None,
+    securities_columns: list[str] | None = None,
+    parse_error: str | None = None,
+    tried_fields: list[str] | None = None,
+) -> dict[str, Any]:
+    if isinstance(exc, urllib.error.HTTPError):
+        http_status = exc.code
+    if (
+        exc is not None
+        and parse_error is None
+        and isinstance(exc, (ValueError, json.JSONDecodeError))
+    ):
+        parse_error = f"{type(exc).__name__}: {exc}"
+    return {
+        "http_status": http_status,
+        "board_id": board_id,
+        "marketdata_columns": marketdata_columns,
+        "marketdata_rows_count": marketdata_rows_count,
+        "securities_columns": securities_columns,
+        "parse_error": parse_error,
+        "tried_fields": list(tried_fields or []),
+    }
+
+
 def verify_claim_with_moex(
     ticker: str,
     claim_type: str,
@@ -64,17 +95,30 @@ def verify_claim_with_moex(
     """
     normalized_ticker = ticker.strip().upper() if isinstance(ticker, str) else ""
     if not normalized_ticker or not normalized_ticker.replace(".", "").replace("-", "").isalnum():
-        return E4_INCONCLUSIVE, {"reason": "INVALID_TICKER", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_TICKER",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if claim_type not in {"exists", "price"}:
         return E4_INCONCLUSIVE, {
             "reason": "UNSUPPORTED_CLAIM_TYPE",
             "claim_type": claim_type,
             "checked_source": "moex.iss",
+            **_failure_diagnostics(),
         }
     if timeout <= 0 or not math.isfinite(timeout):
-        return E4_INCONCLUSIVE, {"reason": "INVALID_TIMEOUT", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_TIMEOUT",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if not math.isfinite(price_tolerance) or not 0 <= price_tolerance < 1:
-        return E4_INCONCLUSIVE, {"reason": "INVALID_PRICE_TOLERANCE", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_PRICE_TOLERANCE",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if claim_type == "price" and (
         isinstance(claimed_value, bool)
         or not isinstance(claimed_value, (int, float))
@@ -85,6 +129,7 @@ def verify_claim_with_moex(
             "reason": "INVALID_CLAIMED_PRICE",
             "claim": {"ticker": normalized_ticker, "type": claim_type, "value": claimed_value},
             "checked_source": "moex.iss",
+            **_failure_diagnostics(),
         }
 
     query = urllib.parse.urlencode(
@@ -95,8 +140,14 @@ def verify_claim_with_moex(
             "securities.columns": "secid,shortname,latinname,emitent_title",
         }
     )
+    securities_columns: list[str] | None = None
     try:
         catalog = _get_json(f"{MOEX_ISS_BASE}/securities.json?{query}", timeout)
+        securities_table = catalog.get("securities")
+        if isinstance(securities_table, dict) and isinstance(securities_table.get("columns"), list):
+            securities_columns = [
+                col for col in securities_table["columns"] if isinstance(col, str)
+            ]
         securities = _table_rows(catalog, "securities")
     except (
         urllib.error.HTTPError,
@@ -110,6 +161,7 @@ def verify_claim_with_moex(
             "reason": "MOEX_SOURCE_UNAVAILABLE_OR_INVALID",
             "error_type": type(exc).__name__,
             "checked_source": "moex.iss",
+            **_failure_diagnostics(exc=exc, securities_columns=securities_columns),
         }
 
     match = next(
@@ -129,6 +181,7 @@ def verify_claim_with_moex(
                 "Ticker not found in MOEX catalog; cannot verify existence of unlisted "
                 "or foreign company"
             ),
+            **_failure_diagnostics(securities_columns=securities_columns),
         }
 
     if claim_type == "exists":
@@ -137,22 +190,31 @@ def verify_claim_with_moex(
             "checked_source": "moex.iss",
             "result": "VERIFIED",
             "security": match,
+            **_failure_diagnostics(securities_columns=securities_columns),
         }
 
     price_query = urllib.parse.urlencode(
         {
             "iss.meta": "off",
             "iss.only": "marketdata",
-            "marketdata.columns": "SECID,LAST,BOARDID,TRADEDATE",
+            "marketdata.columns": "SECID,LAST,MARKETPRICE,MARKETPRICE2,BOARDID,TRADEDATE",
         }
     )
     price_url = (
         f"{MOEX_ISS_BASE}/engines/stock/markets/shares/securities/"
         f"{urllib.parse.quote(normalized_ticker, safe='')}.json?{price_query}"
     )
+    marketdata_columns: list[str] | None = None
+    marketdata_rows_count: int | None = None
     try:
         market = _get_json(price_url, timeout)
+        marketdata_table = market.get("marketdata")
+        if isinstance(marketdata_table, dict) and isinstance(marketdata_table.get("columns"), list):
+            marketdata_columns = [
+                col for col in marketdata_table["columns"] if isinstance(col, str)
+            ]
         market_rows = _table_rows(market, "marketdata")
+        marketdata_rows_count = len(market_rows)
     except (
         urllib.error.HTTPError,
         urllib.error.URLError,
@@ -166,6 +228,13 @@ def verify_claim_with_moex(
             "error_type": type(exc).__name__,
             "claim": {"ticker": normalized_ticker, "type": "price", "value": claimed_value},
             "checked_source": "moex.iss",
+            **_failure_diagnostics(
+                exc=exc,
+                securities_columns=securities_columns,
+                marketdata_columns=marketdata_columns,
+                marketdata_rows_count=marketdata_rows_count,
+                tried_fields=PRICE_FIELDS,
+            ),
         }
 
     candidates = [
@@ -179,11 +248,29 @@ def verify_claim_with_moex(
         and float(row["LAST"]) > 0
     ]
     if not candidates:
+        observed_board = next(
+            (
+                row.get("BOARDID")
+                for row in market_rows
+                if isinstance(row.get("SECID"), str)
+                and row["SECID"].upper() == normalized_ticker
+                and isinstance(row.get("BOARDID"), str)
+            ),
+            None,
+        )
         return E4_INCONCLUSIVE, {
             "reason": "MOEX_LAST_PRICE_UNAVAILABLE",
             "claim": {"ticker": normalized_ticker, "type": "price", "value": claimed_value},
             "checked_source": "moex.iss",
             "security": match,
+            **_failure_diagnostics(
+                http_status=200,
+                board_id=observed_board,
+                securities_columns=securities_columns,
+                marketdata_columns=marketdata_columns,
+                marketdata_rows_count=marketdata_rows_count,
+                tried_fields=PRICE_FIELDS,
+            ),
         }
 
     latest = candidates[0]
@@ -198,6 +285,13 @@ def verify_claim_with_moex(
         "tolerance": price_tolerance,
         "board_id": latest.get("BOARDID"),
         "trade_date": latest.get("TRADEDATE"),
+        **_failure_diagnostics(
+            http_status=200,
+            securities_columns=securities_columns,
+            marketdata_columns=marketdata_columns,
+            marketdata_rows_count=marketdata_rows_count,
+            tried_fields=PRICE_FIELDS,
+        ),
     }
     if relative_delta > price_tolerance:
         return E4_CONTRADICTED, {**details, "result": "CONTRADICTED"}
