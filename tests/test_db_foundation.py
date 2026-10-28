@@ -11,7 +11,6 @@ from jamp.db import get_connection, init_schema, release_connection
 
 
 @pytest.fixture
-
 def db_connection() -> Iterator[object]:
     if not os.environ.get("JAMP_DATABASE_URL"):
         pytest.skip("PostgreSQL integration tests require JAMP_DATABASE_URL")
