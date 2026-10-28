@@ -192,6 +192,7 @@ def _claim_match(claim_text: str, claim_type: str, ticker: str | None, snippet: 
             or not _contains_ticker(snippet, ticker)
         ):
             return "unrelated"
+
         def normalize(value: str) -> float:
             return float(value.replace("%", "").replace(",", ".").strip())
 
@@ -388,8 +389,9 @@ def verify_with_search(
 
     if not isinstance(parsed, dict) or not isinstance(parsed.get("results"), list):
         evidence["parse_error"] = "results must be a list"
-        return _finish(evidence, E5_INCONCLUSIVE, "malformed_response",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "malformed_response", "no_authoritative_source", "single"
+        )
 
     raw_results = parsed["results"]
     evidence["results_count"] = len(raw_results)

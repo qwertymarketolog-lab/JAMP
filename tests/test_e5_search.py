@@ -197,4 +197,3 @@ def test_evidence_has_query_and_version(mock_urlopen):
     _, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert evidence["query"]
     assert evidence["whitelist_version"] == "e5-authoritative-domains-v0"
-
