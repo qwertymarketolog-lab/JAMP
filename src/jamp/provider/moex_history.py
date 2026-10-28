@@ -39,7 +39,10 @@ def _evidence(
     reason: str | None,
     result: str,
     observed_max_high: float | None = None,
+    observed_max_high_date: str | None = None,
     observed_min_low: float | None = None,
+    claimed_year: int | None = None,
+    trading_days_in_claimed_year: int = 0,
     trading_days_count: int = 0,
     http_status: int | None = None,
     parse_error: str | None = None,
@@ -57,7 +60,10 @@ def _evidence(
         "date_till": date_till,
         "tolerance_pct": tolerance_pct,
         "observed_max_high": observed_max_high,
+        "observed_max_high_date": observed_max_high_date,
         "observed_min_low": observed_min_low,
+        "claimed_year": claimed_year,
+        "trading_days_in_claimed_year": trading_days_in_claimed_year,
         "trading_days_count": trading_days_count,
         "pages_fetched": diagnostics.pop("pages_fetched", 0),
         "total_rows": diagnostics.pop("total_rows", None),
@@ -83,6 +89,7 @@ def verify_historical_price(
     date_till: str,
     tolerance_pct: float = 2.0,
     timeout: float = DEFAULT_TIMEOUT,
+    claim_year: int | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Verify whether a security reached a claimed price in a date range."""
     normalized_ticker = ticker.strip().upper() if isinstance(ticker, str) else ""
@@ -98,9 +105,26 @@ def verify_historical_price(
             str(date_from),
             str(date_till),
             tolerance_pct,
+            claimed_year=claim_year,
             reason="invalid_date_range",
             result="INCONCLUSIVE",
             parse_error="dates must be ordered YYYY-MM-DD values",
+        )
+
+    if claim_year is not None and (
+        isinstance(claim_year, bool)
+        or not isinstance(claim_year, int)
+        or not 1000 <= claim_year <= 9999
+    ):
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            claimed_price,
+            date_from,
+            date_till,
+            tolerance_pct,
+            claimed_year=claim_year,
+            reason="invalid_claim_year",
+            result="INCONCLUSIVE",
         )
 
     if not normalized_ticker or not normalized_ticker.replace(".", "").replace("-", "").isalnum():
@@ -110,6 +134,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="invalid_ticker",
             result="INCONCLUSIVE",
         )
@@ -125,6 +150,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="invalid_claimed_price",
             result="INCONCLUSIVE",
         )
@@ -135,6 +161,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="invalid_tolerance_pct",
             result="INCONCLUSIVE",
         )
@@ -145,6 +172,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="invalid_timeout",
             result="INCONCLUSIVE",
         )
@@ -172,6 +200,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason=reason,
             result="INCONCLUSIVE",
             http_status=exc.code,
@@ -189,6 +218,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="moex_source_unavailable_or_invalid",
             result="INCONCLUSIVE",
             **_failure_diagnostics(exc=exc),
@@ -202,6 +232,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="ticker_not_found_in_catalog",
             result="INCONCLUSIVE",
             http_status=200,
@@ -213,6 +244,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="ticker_not_found_in_catalog",
             result="INCONCLUSIVE",
             http_status=200,
@@ -228,6 +260,7 @@ def verify_historical_price(
                     date_from,
                     date_till,
                     tolerance_pct,
+                    claimed_year=claim_year,
                     reason="ticker_not_yet_existed",
                     result="INCONCLUSIVE",
                     http_status=200,
@@ -239,6 +272,7 @@ def verify_historical_price(
                 date_from,
                 date_till,
                 tolerance_pct,
+                claimed_year=claim_year,
                 reason="invalid_issue_date",
                 result="INCONCLUSIVE",
                 http_status=200,
@@ -329,6 +363,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="moex_history_unavailable_or_invalid",
             result="INCONCLUSIVE",
             http_status=exc.code,
@@ -348,6 +383,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="moex_history_unavailable_or_invalid",
             result="INCONCLUSIVE",
             **_failure_diagnostics(exc=exc),
@@ -364,6 +400,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="pagination_stalled",
             result="INCONCLUSIVE",
             http_status=200,
@@ -380,6 +417,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="incomplete_history_fetch",
             result="INCONCLUSIVE",
             http_status=200,
@@ -393,7 +431,13 @@ def verify_historical_price(
 
     if not history_rows:
         has_reported_rows = total_rows is not None and total_rows > 0
-        reason = "incomplete_history_fetch" if has_reported_rows else "no_data_in_range"
+        reason = (
+            "incomplete_history_fetch"
+            if has_reported_rows
+            else "no_data_in_claimed_year"
+            if claim_year is not None
+            else "no_data_in_range"
+        )
         diagnostics = (
             {
                 "expected_approx": expected_days,
@@ -408,6 +452,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason=reason,
             result="INCONCLUSIVE",
             http_status=200,
@@ -424,6 +469,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="incomplete_history_fetch",
             result="INCONCLUSIVE",
             http_status=200,
@@ -435,10 +481,36 @@ def verify_historical_price(
             received=len(history_rows),
         )
 
+    claim_history_rows = (
+        history_rows
+        if claim_year is None
+        else [
+            row
+            for row in history_rows
+            if str(row.get("TRADEDATE", ""))[:4] == str(claim_year)
+        ]
+    )
+    if claim_year is not None and not claim_history_rows:
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="no_data_in_claimed_year",
+            result="INCONCLUSIVE",
+            http_status=200,
+            trading_days_count=len(history_rows),
+            trading_days_in_claimed_year=0,
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+        )
+
     metadata_shortname = metadata.get("SHORTNAME")
     row_names = {
         str(row["SHORTNAME"]).strip()
-        for row in history_rows
+        for row in claim_history_rows
         if isinstance(row.get("SHORTNAME"), str) and row["SHORTNAME"].strip()
     }
     if len(row_names) > 1 or (
@@ -450,6 +522,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="ticker_reassigned",
             result="INCONCLUSIVE",
             http_status=200,
@@ -463,14 +536,14 @@ def verify_historical_price(
 
     highs = [
         float(row["HIGH"])
-        for row in history_rows
+        for row in claim_history_rows
         if isinstance(row.get("HIGH"), (int, float))
         and not isinstance(row.get("HIGH"), bool)
         and math.isfinite(float(row["HIGH"]))
     ]
     lows = [
         float(row["LOW"])
-        for row in history_rows
+        for row in claim_history_rows
         if isinstance(row.get("LOW"), (int, float))
         and not isinstance(row.get("LOW"), bool)
         and math.isfinite(float(row["LOW"]))
@@ -482,6 +555,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="historical_high_unavailable",
             result="INCONCLUSIVE",
             http_status=200,
@@ -492,17 +566,47 @@ def verify_historical_price(
         )
 
     observed_max_high = max(highs)
-    observed_min_low = min(lows) if lows else None
+    max_high_row = next(
+        row
+        for row in claim_history_rows
+        if isinstance(row.get("HIGH"), (int, float))
+        and not isinstance(row.get("HIGH"), bool)
+        and math.isfinite(float(row["HIGH"]))
+        and float(row["HIGH"]) == observed_max_high
+    )
+    observed_max_high_date = max_high_row.get("TRADEDATE")
+    if not isinstance(observed_max_high_date, str):
+        observed_max_high_date = None
+    if observed_max_high_date is None:
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="historical_high_date_unavailable",
+            result="INCONCLUSIVE",
+            http_status=200,
+            observed_max_high=observed_max_high,
+            trading_days_count=len(history_rows),
+            trading_days_in_claimed_year=len(claim_history_rows) if claim_year is not None else 0,
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+        )
     details = _evidence(
         normalized_ticker,
         float(claimed_price),
         date_from,
         date_till,
         tolerance_pct,
+        claimed_year=claim_year,
         reason=None,
         result="VERIFIED",
         observed_max_high=observed_max_high,
+        observed_max_high_date=observed_max_high_date,
         observed_min_low=observed_min_low,
+        trading_days_in_claimed_year=len(claim_history_rows) if claim_year is not None else 0,
         trading_days_count=len(history_rows),
         http_status=200,
         pages_fetched=pages_fetched,
