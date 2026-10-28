@@ -6,6 +6,13 @@ from fastapi.testclient import TestClient
 from jamp.api import auth
 from jamp.api.app import create_app
 
+TEST_HMAC_SECRET = "test-hmac-secret-not-for-production"  # noqa: S105
+
+
+@pytest.fixture(autouse=True)
+def _hmac_env(monkeypatch):
+    monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", TEST_HMAC_SECRET)
+
 VALID_TOKEN = "jamp_sk_wiring_test"  # noqa: S105
 
 PROTECTED = [
