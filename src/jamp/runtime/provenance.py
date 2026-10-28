@@ -91,22 +91,25 @@ class ProvenanceTracker:
                     if isinstance(value, str) and value:
                         safe_evidence_details[key] = value
                 attempts_value = evidence_details.get("attempts")
-                if isinstance(attempts_value, list) and attempts_value:
-                    if all(
+                if (
+                    isinstance(attempts_value, list)
+                    and attempts_value
+                    and all(
                         isinstance(item, dict)
                         and isinstance(item.get("attempt"), int)
                         and isinstance(item.get("http_status"), (int, type(None)))
                         and isinstance(item.get("elapsed_ms"), int)
                         for item in attempts_value
-                    ):
-                        safe_evidence_details["attempts"] = [
-                            {
-                                "attempt": item["attempt"],
-                                "http_status": item["http_status"],
-                                "elapsed_ms": item["elapsed_ms"],
-                            }
-                            for item in attempts_value
-                        ]
+                    )
+                ):
+                    safe_evidence_details["attempts"] = [
+                        {
+                            "attempt": item["attempt"],
+                            "http_status": item["http_status"],
+                            "elapsed_ms": item["elapsed_ms"],
+                        }
+                        for item in attempts_value
+                    ]
                 if safe_evidence_details:
                     execution_details["evidence_details"] = safe_evidence_details
             if isinstance(output, dict):
