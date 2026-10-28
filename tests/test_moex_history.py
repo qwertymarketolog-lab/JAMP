@@ -147,7 +147,12 @@ def test_pagination_fetches_all_pages():
     third = _history(*_history_rows(50, high_start=500), cursor=(200, 250, 100))
     with patch(
         "urllib.request.urlopen",
-        side_effect=[_response(_description()), _response(first), _response(second), _response(third)],
+        side_effect=[
+            _response(_description()),
+            _response(first),
+            _response(second),
+            _response(third),
+        ],
     ):
         status, evidence = verify_historical_price(
             "SBER", 500.0, "2024-01-01", "2024-12-31"
