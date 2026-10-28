@@ -497,6 +497,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="no_data_in_claimed_year",
             result="INCONCLUSIVE",
             http_status=200,
@@ -575,7 +576,14 @@ def verify_historical_price(
         and float(row["HIGH"]) == observed_max_high
     )
     observed_max_high_date = max_high_row.get("TRADEDATE")
-    if not isinstance(observed_max_high_date, str):
+    if isinstance(observed_max_high_date, str):
+        try:
+            parsed_high_date = dt.date.fromisoformat(observed_max_high_date)
+            if parsed_high_date.isoformat() != observed_max_high_date:
+                observed_max_high_date = None
+        except ValueError:
+            observed_max_high_date = None
+    else:
         observed_max_high_date = None
     if observed_max_high_date is None:
         return E4_INCONCLUSIVE, _evidence(
@@ -584,6 +592,7 @@ def verify_historical_price(
             date_from,
             date_till,
             tolerance_pct,
+            claimed_year=claim_year,
             reason="historical_high_date_unavailable",
             result="INCONCLUSIVE",
             http_status=200,
