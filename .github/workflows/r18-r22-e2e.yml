@@ -2,6 +2,11 @@ name: R18-R22 Pipeline E2E
 
 on:
   workflow_dispatch:
+    inputs:
+      claims_text:
+        description: "Claims text (empty = default sample)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -33,7 +38,13 @@ jobs:
         env:
           JAMP_E5_ENABLED: "true"
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
-        run: python experiments/r18_r22_e2e/run_pipeline.py > report.json
+          CLAIMS_TEXT: ${{ inputs.claims_text }}
+        run: |
+          if [ -z "$CLAIMS_TEXT" ]; then
+            python experiments/r18_r22_e2e/run_pipeline.py > report.json
+          else
+            printf '%s' "$CLAIMS_TEXT" | python experiments/r18_r22_e2e/run_pipeline.py > report.json
+          fi
 
       - name: Validate report exists
         if: always()
