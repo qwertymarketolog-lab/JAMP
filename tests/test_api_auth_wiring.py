@@ -6,12 +6,7 @@ from fastapi.testclient import TestClient
 from jamp.api import auth
 from jamp.api.app import create_app
 
-TEST_HMAC_SECRET = "test-hmac-secret-not-for-production"  # noqa: S105
-
-
-@pytest.fixture(autouse=True)
-def _hmac_env(monkeypatch):
-    monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", TEST_HMAC_SECRET)
+pytestmark = pytest.mark.real_auth
 
 VALID_TOKEN = "jamp_sk_wiring_test"  # noqa: S105
 
@@ -26,13 +21,13 @@ PROTECTED = [
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: (42, "acme", False))
-    return TestClient(create_app())
+    return TestClient(create_app(), raise_server_exceptions=False)
 
 
 @pytest.fixture
 def client_disabled_org(monkeypatch):
     monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: (42, "acme", True))
-    return TestClient(create_app())
+    return TestClient(create_app(), raise_server_exceptions=False)
 
 
 @pytest.mark.parametrize("method,path", PROTECTED)
@@ -42,14 +37,16 @@ def test_protected_route_no_header_401(client, method, path):
 
 
 @pytest.mark.parametrize("method,path", PROTECTED)
-def test_protected_route_valid_key_not_401(client, method, path):
+def test_protected_route_valid_key_passes_auth(client, method, path):
     response = client.request(
         method,
         path,
         json={},
         headers={"Authorization": f"Bearer {VALID_TOKEN}"},
     )
-    assert response.status_code != 401
+    # Handler may throw on empty payload (→500 with raise_server_exceptions=False),
+    # but auth must not reject. 401/403 = auth failure = test must fail.
+    assert response.status_code not in (401, 403)
 
 
 @pytest.mark.parametrize("method,path", PROTECTED)
