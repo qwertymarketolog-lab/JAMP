@@ -83,7 +83,8 @@ def verify_historical_price(
             claimed_price,
             str(date_from),
             str(date_till),
-            tolerance_pct, reason="invalid_date_range", result="INCONCLUSIVE",
+            tolerance_pct,
+            reason="invalid_date_range", result="INCONCLUSIVE",
             parse_error="dates must be ordered YYYY-MM-DD values",
         )
 
@@ -162,7 +163,10 @@ def verify_historical_price(
             error_type=type(exc).__name__,
         )
     except (
-        urllib.error.URLError, TimeoutError, OSError, ValueError,
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
     ) as exc:
         return E4_INCONCLUSIVE, _evidence(
             normalized_ticker,
@@ -204,15 +208,23 @@ def verify_historical_price(
         try:
             if start < dt.date.fromisoformat(issue_date[:10]):
                 return E4_INCONCLUSIVE, _evidence(
-                    normalized_ticker, float(claimed_price), date_from, date_till,
-                    tolerance_pct, reason="ticker_not_yet_existed",
+                    normalized_ticker,
+                    float(claimed_price),
+                    date_from,
+                    date_till,
+                    tolerance_pct,
+                    reason="ticker_not_yet_existed",
                     result="INCONCLUSIVE",
                     http_status=200,
                 )
         except ValueError:
             return E4_INCONCLUSIVE, _evidence(
-                normalized_ticker, float(claimed_price), date_from, date_till,
-                tolerance_pct, reason="invalid_issue_date",
+                normalized_ticker,
+                float(claimed_price),
+                date_from,
+                date_till,
+                tolerance_pct,
+                reason="invalid_issue_date",
             result="INCONCLUSIVE",
                 http_status=200,
                 parse_error=f"invalid ISSUEDATE: {issue_date}",
@@ -235,7 +247,8 @@ def verify_historical_price(
             tolerance_pct,
             reason="moex_history_unavailable_or_invalid",
             result="INCONCLUSIVE",
-            http_status=exc.code, error_type=type(exc).__name__,
+            http_status=exc.code,
+            error_type=type(exc).__name__,
         )
     except (
         urllib.error.URLError,
