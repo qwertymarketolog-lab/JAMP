@@ -191,4 +191,3 @@ def test_coverage_empty_returns_none() -> None:
     assert cov["total"] == 0
     assert cov["verified_ratio"] is None
     assert cov["confirmed_ratio"] is None
-
