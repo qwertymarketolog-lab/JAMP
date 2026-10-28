@@ -387,15 +387,29 @@ def verify_historical_price(
         )
 
     if not history_rows:
+        has_reported_rows = total_rows is not None and total_rows > 0
+        reason = "incomplete_history_fetch" if has_reported_rows else "no_data_in_range"
+        diagnostics = (
+            {
+                "expected_approx": expected_days,
+                "received": 0,
+            }
+            if has_reported_rows
+            else {}
+        )
         return E4_INCONCLUSIVE, _evidence(
             normalized_ticker,
             float(claimed_price),
             date_from,
             date_till,
             tolerance_pct,
-            reason="no_data_in_range",
+            reason=reason,
             result="INCONCLUSIVE",
             http_status=200,
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+            **diagnostics,
         )
 
     if (
