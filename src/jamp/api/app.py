@@ -12,6 +12,7 @@ from typing import Any
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
+from jamp.api.auth import require_api_key, verify_auth_config
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
@@ -98,6 +99,7 @@ def create_app(
     telegram_update_db_path: str | Path | None = None,
 ):
     try:
+        from fastapi import Depends
         from fastapi import FastAPI
         from fastapi import Request as FastAPIRequest
         from fastapi.responses import JSONResponse
@@ -139,13 +141,17 @@ def create_app(
     app = FastAPI(title="JAMP API", version="v1")
     app.openapi_version = "3.0.3"
 
-    @app.post("/v1/classify")
+    @app.on_event("startup")
+    def _startup_auth_check() -> None:
+        verify_auth_config()
+
+    @app.post("/v1/classify", dependencies=[Depends(require_api_key)])
     def classify(payload: dict[str, Any]):
         task_profile = classifier.classify(payload)
         required = resolver.get_required_capabilities(task_profile)
         return {"task_profile": task_profile, "required_capabilities": list(required)}
 
-    @app.post("/v1/execute")
+    @app.post("/v1/execute", dependencies=[Depends(require_api_key)])
     def execute(payload: dict[str, Any]):
         request_id = payload.get("request_id")
         try:
@@ -817,7 +823,7 @@ def create_app(
     telegram_webhook.__annotations__["request"] = FastAPIRequest
     app.post("/v1/telegram/webhook")(telegram_webhook)
 
-    @app.post("/v1/verify-verdict")
+    @app.post("/v1/verify-verdict", dependencies=[Depends(require_api_key)])
     def verify_verdict(payload: dict[str, Any]):
         """Verify a verdict signature; malformed or unverifiable payloads fail closed."""
         signing_key = _verdict_signing_key()
@@ -830,7 +836,7 @@ def create_app(
             valid = False
         return {"valid": valid}
 
-    @app.get("/v1/provenance/{trace_id}")
+    @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
     def get_provenance(trace_id: str):
         trace = persistence.read_trace_by_id(trace_id)
         if trace is None:
