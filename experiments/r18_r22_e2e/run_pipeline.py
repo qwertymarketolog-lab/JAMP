@@ -11,10 +11,13 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from jamp.provider import moex_history
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.moex_verify import verify_claim_with_moex
 
 CRYPTO_TICKERS = {"BTC", "ETH", "SOL", "USDT", "USDC", "BNB", "XRP", "ADA", "DOGE"}
+DEFAULT_HISTORY_FROM = "2013-01-01"
+DEFAULT_HISTORY_TILL = "2026-10-28"
 VERDICT_MAP = {
     "E4_VERIFIED": "supported",
     "E4_CONTRADICTED": "contradicted",
@@ -187,11 +190,26 @@ def check_citation(url: str) -> tuple[bool, str | None]:
 
 
 def map_e4_verdict(status: str) -> str:
-    """Map the four E4 adapter statuses to the pipeline's four-verdict taxonomy."""
-    return VERDICT_MAP.get(status, "inconclusive")
+    """Map adapter status values to the pipeline's four-verdict taxonomy."""
+    aliases = {
+        "VERIFIED": "supported",
+        "CONTRADICTED": "contradicted",
+        "OUT_OF_SCOPE": "ambiguous",
+        "INCONCLUSIVE": "inconclusive",
+    }
+    return VERDICT_MAP.get(status, aliases.get(status, "inconclusive"))
 
 
 def _verify_claim(claim: Claim) -> tuple[str, dict[str, Any]]:
+    if claim.claim_type == "historical_price":
+        if not claim.ticker or claim.cited_value is None:
+            return "INCONCLUSIVE", {"reason": "missing_ticker_or_value"}
+        return moex_history.verify_historical_price(
+            claim.ticker,
+            claim.cited_value,
+            date_from=DEFAULT_HISTORY_FROM,
+            date_till=DEFAULT_HISTORY_TILL,
+        )
     if claim.ticker in CRYPTO_TICKERS:
         return verify_claim_with_coingecko(
             claim.ticker.lower(), claim.claim_type, claim.cited_value
@@ -225,9 +243,10 @@ def run_pipeline(text: str) -> dict[str, Any]:
                 r_codes.append("R20")
         if not citation_failed and claim.claim_type == "historical_price":
             r_codes.append("R19")
-            verdict = "inconclusive"
-            reason = "requires_historical_data_or_E5"
-            evidence = citation_evidence
+            status, provider_evidence = _verify_claim(claim)
+            verdict = map_e4_verdict(status)
+            evidence = {**provider_evidence, **citation_evidence}
+            reason = evidence.get("reason")
         elif not citation_failed and claim.claim_type == "change_percent":
             r_codes.extend(("R21", "R22"))
             verdict = "inconclusive"
