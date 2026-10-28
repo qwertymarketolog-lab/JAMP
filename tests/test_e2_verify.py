@@ -253,3 +253,64 @@ def test_verify_does_not_retry_other_4xx(mock_urlopen, mock_sleep):
     assert details["http_status"] == 403
     mock_urlopen.assert_called_once()
     mock_sleep.assert_not_called()
+
+
+
+@patch("jamp.provider.e2_verify.time.sleep")
+@patch("urllib.request.urlopen")
+def test_e2_attempts_logged_on_success(mock_urlopen, mock_sleep):
+    def http_error():
+        return urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/generation?id=gen-1",
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"generation not found"}'),
+        )
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = (
+        b'{"data": {"model": "z-ai/glm-5.3", "provider_name": "CoreWeave"}}'
+    )
+    mock_urlopen.side_effect = [
+        http_error(),
+        http_error(),
+        MagicMock(__enter__=MagicMock(return_value=mock_resp)),
+    ]
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "VERIFIED"
+    assert len(details["attempts"]) == 3
+    assert [item["http_status"] for item in details["attempts"]] == [404, 404, 200]
+    assert all(isinstance(item["elapsed_ms"], int) for item in details["attempts"])
+    assert details["attempts"][-1]["result"] == "success"
+    assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2]
+
+
+@patch("jamp.provider.e2_verify.time.sleep")
+@patch("urllib.request.urlopen")
+def test_e2_attempts_logged_on_failure(mock_urlopen, mock_sleep):
+    errors = [
+        urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/generation?id=gen-1",
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(b'{"error":"generation not found"}'),
+        )
+        for _ in range(6)
+    ]
+    mock_urlopen.side_effect = errors
+    status, details = verify_generation(
+        {"provider_response_id": "gen-1", "provider_model_id": "z-ai/glm-5.3"},
+        api_key="fake",
+    )
+    assert status == "INCONCLUSIVE"
+    assert details["reason"] == "API_ERROR"
+    assert len(details["attempts"]) == 6
+    assert [item["http_status"] for item in details["attempts"]] == [404] * 6
+    assert all(isinstance(item["elapsed_ms"], int) for item in details["attempts"])
+    assert [call.args[0] for call in mock_sleep.call_args_list] == [1, 2, 4, 8, 16]
