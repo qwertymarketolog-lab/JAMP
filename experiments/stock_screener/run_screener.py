@@ -183,7 +183,8 @@ def screen_ticker(ticker: str) -> dict[str, Any]:
 
     result["current_price"] = current_price
     valid_rows = [
-        row for row in history
+        row
+        for row in history
         if row.get("BOARDID") == "TQBR"
         and str(row.get("SECID", "")).upper() == normalized
         and isinstance(row.get("TRADEDATE"), str)
