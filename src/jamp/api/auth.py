@@ -1,4 +1,5 @@
 """API key authentication (v0). See docs/architecture/adr-api-key-auth-v0.md."""
+
 from __future__ import annotations
 
 import hashlib
@@ -49,7 +50,7 @@ def _lookup_by_hash(api_key_hash: str) -> tuple[int, str, bool] | None:
 def _parse_bearer(authorization: str | None) -> str:
     if not authorization or not authorization.startswith(_BEARER_PREFIX):
         raise HTTPException(status_code=401, detail="missing or invalid credentials")
-    token = authorization[len(_BEARER_PREFIX):].strip()
+    token = authorization[len(_BEARER_PREFIX) :].strip()
     if not token:
         raise HTTPException(status_code=401, detail="missing or invalid credentials")
     return token

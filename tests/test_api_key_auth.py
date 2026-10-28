@@ -32,6 +32,7 @@ def _build_app(calls: list[str]) -> FastAPI:
 def _lookup_returns(row):
     def _fake(_hash: str):
         return row
+
     return _fake
 
 
@@ -41,10 +42,11 @@ def _lookup_raises(_hash: str):
 
 # --- hash_api_key ---
 
+
 def test_hash_api_key_prefix_and_length():
     h = auth.hash_api_key("token")
     assert h.startswith("v1:")
-    int(h[len("v1:"):], 16)
+    int(h[len("v1:") :], 16)
     assert len(h) == len("v1:") + 64
 
 
@@ -62,6 +64,7 @@ def test_hash_api_key_empty_token_raises():
 
 # --- verify_auth_config ---
 
+
 def test_verify_auth_config_missing_secret_raises(monkeypatch):
     monkeypatch.delenv(auth._ENV_SECRET, raising=False)
     with pytest.raises(RuntimeError):
@@ -73,6 +76,7 @@ def test_verify_auth_config_with_secret_ok():
 
 
 # --- _parse_bearer ---
+
 
 @pytest.mark.parametrize("value", [None, "", "Bearer", "Bearer ", "bearer tok", "Token abc"])
 def test_parse_bearer_invalid(value):
@@ -86,6 +90,7 @@ def test_parse_bearer_valid():
 
 
 # --- require_api_key ---
+
 
 def test_no_header_401_handler_not_called(monkeypatch):
     calls: list[str] = []
@@ -147,6 +152,7 @@ def test_default_stub_fails_closed_503():
 
 
 # --- log hygiene ---
+
 
 def test_secret_and_token_not_logged(monkeypatch, caplog):
     monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns(None))
