@@ -269,8 +269,15 @@ def verify_historical_price(
             pages_fetched += 1
 
             cursor_payload = history_payload.get("history.cursor")
+            if not isinstance(cursor_payload, dict):
+                history_table = history_payload.get("history")
+                cursor_payload = (
+                    history_table.get("cursor")
+                    if isinstance(history_table, dict)
+                    else None
+                )
             cursor_rows = (
-                _table_rows(history_payload, "history.cursor")
+                _table_rows({"cursor": cursor_payload}, "cursor")
                 if isinstance(cursor_payload, dict)
                 else []
             )
