@@ -272,9 +272,7 @@ def verify_historical_price(
             if not isinstance(cursor_payload, dict):
                 history_table = history_payload.get("history")
                 cursor_payload = (
-                    history_table.get("cursor")
-                    if isinstance(history_table, dict)
-                    else None
+                    history_table.get("cursor") if isinstance(history_table, dict) else None
                 )
             cursor_rows = (
                 _table_rows({"cursor": cursor_payload}, "cursor")
@@ -419,10 +417,7 @@ def verify_historical_price(
             **diagnostics,
         )
 
-    if (
-        expected_days is not None
-        and len(history_rows) < expected_days * 0.5
-    ):
+    if expected_days is not None and len(history_rows) < expected_days * 0.5:
         return E4_INCONCLUSIVE, _evidence(
             normalized_ticker,
             float(claimed_price),
