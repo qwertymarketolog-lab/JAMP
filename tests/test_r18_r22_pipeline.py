@@ -26,7 +26,9 @@ def test_extract_causal() -> None:
 
 
 def test_extract_citation_url() -> None:
-    claim = pipeline.extract_claims("SBER подтверждён: https://iss.moex.com/iss/securities")[0]
+    claim = pipeline.extract_claims(
+        "SBER подтверждён: https://iss.moex.com/iss/securities"
+    )[0]
     assert claim.citation_url == "https://iss.moex.com/iss/securities"
 
 
