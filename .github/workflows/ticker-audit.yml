@@ -1,0 +1,44 @@
+name: Ticker Audit SMLT ALRS AFKS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ticker-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      JAMP_E5_ENABLED: "true"
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run ticker audit
+        run: python -m experiments.ticker_audit.run_ticker_audit > ticker_audit_report.json
+
+      - name: Validate report exists
+        if: always()
+        run: test -s ticker_audit_report.json
+
+      - name: Upload ticker audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ticker-audit-report
+          path: ticker_audit_report.json
+          if-no-files-found: error
+          retention-days: 14
