@@ -140,7 +140,6 @@ def test_ticker_reassigned():
     assert evidence["reason"] == "ticker_reassigned"
 
 
-
 def test_pagination_fetches_all_pages():
     first = _history(*_history_rows(100), cursor=(0, 250, 100))
     second = _history(*_history_rows(100, high_start=200), cursor=(100, 250, 100))
@@ -154,9 +153,7 @@ def test_pagination_fetches_all_pages():
             _response(third),
         ],
     ):
-        status, evidence = verify_historical_price(
-            "SBER", 500.0, "2024-01-01", "2024-12-31"
-        )
+        status, evidence = verify_historical_price("SBER", 500.0, "2024-01-01", "2024-12-31")
     assert status == E4_VERIFIED
     assert evidence["pages_fetched"] == 3
     assert evidence["trading_days_count"] == 250
@@ -187,9 +184,7 @@ def test_incomplete_history_fetch():
         "urllib.request.urlopen",
         side_effect=[_response(_description()), _response(first), _response(second)],
     ):
-        status, evidence = verify_historical_price(
-            "SBER", 5000.0, "2013-01-01", "2026-10-28"
-        )
+        status, evidence = verify_historical_price("SBER", 5000.0, "2013-01-01", "2026-10-28")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "incomplete_history_fetch"
     assert evidence["expected_approx"] == evidence["expected_trading_days_approx"]
