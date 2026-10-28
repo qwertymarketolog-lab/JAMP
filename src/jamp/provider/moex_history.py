@@ -21,6 +21,14 @@ from jamp.provider.moex_verify import (
 DEFAULT_TIMEOUT = 5.0
 
 
+def _expected_trading_days_approx(date_from: str, date_till: str) -> int | None:
+    try:
+        days = (dt.date.fromisoformat(date_till) - dt.date.fromisoformat(date_from)).days
+    except (TypeError, ValueError):
+        return None
+    return max(0, round(days * 250 / 365))
+
+
 def _evidence(
     ticker: str,
     claimed_price: float,
@@ -51,6 +59,12 @@ def _evidence(
         "observed_max_high": observed_max_high,
         "observed_min_low": observed_min_low,
         "trading_days_count": trading_days_count,
+        "pages_fetched": diagnostics.pop("pages_fetched", 0),
+        "total_rows": diagnostics.pop("total_rows", None),
+        "expected_trading_days_approx": diagnostics.pop(
+            "expected_trading_days_approx",
+            _expected_trading_days_approx(date_from, date_till),
+        ),
         "result": result,
         "reason": reason,
         **_failure_diagnostics(
@@ -231,14 +245,78 @@ def verify_historical_price(
                 parse_error=f"invalid ISSUEDATE: {issue_date}",
             )
 
-    query = urllib.parse.urlencode({"from": date_from, "till": date_till, "iss.meta": "off"})
-    history_url = (
+    history_base_url = (
         f"{MOEX_ISS_BASE}/history/engines/stock/markets/shares/boards/TQBR/"
-        f"securities/{urllib.parse.quote(normalized_ticker, safe='')}.json?{query}"
+        f"securities/{urllib.parse.quote(normalized_ticker, safe='')}.json"
     )
+    history_rows: list[dict[str, Any]] = []
+    pages_fetched = 0
+    total_rows: int | None = None
+    page_size: int | None = None
+    previous_index: int | None = None
+    next_start = 0
+    max_pages = 1
+    pagination_stalled = False
+    cursor_missing = False
     try:
-        history_payload = _get_json(history_url, timeout)
-        history_rows = _table_rows(history_payload, "history")
+        while pages_fetched < max_pages:
+            params = {"from": date_from, "till": date_till, "iss.meta": "off"}
+            if next_start:
+                params["start"] = str(next_start)
+            history_url = f"{history_base_url}?{urllib.parse.urlencode(params)}"
+            history_payload = _get_json(history_url, timeout)
+            page_rows = _table_rows(history_payload, "history")
+            pages_fetched += 1
+
+            cursor_payload = history_payload.get("history.cursor")
+            cursor_rows = (
+                _table_rows(history_payload, "history.cursor")
+                if isinstance(cursor_payload, dict)
+                else []
+            )
+            if not cursor_rows:
+                history_rows.extend(page_rows)
+                cursor_missing = True
+                break
+
+            cursor = cursor_rows[0]
+            try:
+                page_index = cursor["INDEX"]
+                page_total = cursor["TOTAL"]
+                current_page_size = cursor["PAGESIZE"]
+                if any(
+                    isinstance(value, bool) or not isinstance(value, int)
+                    for value in (page_index, page_total, current_page_size)
+                ):
+                    raise ValueError("history cursor values must be integers")
+                if page_index < 0 or page_total < 0 or current_page_size <= 0:
+                    raise ValueError("history cursor values are out of range")
+            except (KeyError, TypeError, ValueError):
+                history_rows.extend(page_rows)
+                cursor_missing = True
+                break
+
+            if total_rows is None:
+                total_rows = page_total
+                page_size = current_page_size
+                max_pages = max(1, math.ceil(total_rows / page_size))
+            elif page_total != total_rows or current_page_size != page_size:
+                history_rows.extend(page_rows)
+                cursor_missing = True
+                break
+
+            if page_index != next_start or (
+                previous_index is not None and page_index <= previous_index
+            ):
+                pagination_stalled = True
+                break
+
+            history_rows.extend(page_rows)
+            next_index = page_index + current_page_size
+            if next_index >= page_total:
+                break
+            previous_index = page_index
+            next_start = next_index
     except urllib.error.HTTPError as exc:
         return E4_INCONCLUSIVE, _evidence(
             normalized_ticker,
@@ -249,6 +327,8 @@ def verify_historical_price(
             reason="moex_history_unavailable_or_invalid",
             result="INCONCLUSIVE",
             http_status=exc.code,
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
             error_type=type(exc).__name__,
         )
     except (
@@ -266,7 +346,44 @@ def verify_historical_price(
             reason="moex_history_unavailable_or_invalid",
             result="INCONCLUSIVE",
             **_failure_diagnostics(exc=exc),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
             error_type=type(exc).__name__,
+        )
+
+    expected_days = _expected_trading_days_approx(date_from, date_till)
+    if pagination_stalled:
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="pagination_stalled",
+            result="INCONCLUSIVE",
+            http_status=200,
+            trading_days_count=len(history_rows),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+        )
+
+    if cursor_missing:
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="incomplete_history_fetch",
+            result="INCONCLUSIVE",
+            http_status=200,
+            trading_days_count=len(history_rows),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+            expected_approx=expected_days,
+            received=len(history_rows),
         )
 
     if not history_rows:
@@ -279,6 +396,27 @@ def verify_historical_price(
             reason="no_data_in_range",
             result="INCONCLUSIVE",
             http_status=200,
+        )
+
+    if (
+        expected_days is not None
+        and len(history_rows) < expected_days * 0.5
+    ):
+        return E4_INCONCLUSIVE, _evidence(
+            normalized_ticker,
+            float(claimed_price),
+            date_from,
+            date_till,
+            tolerance_pct,
+            reason="incomplete_history_fetch",
+            result="INCONCLUSIVE",
+            http_status=200,
+            trading_days_count=len(history_rows),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
+            expected_approx=expected_days,
+            received=len(history_rows),
         )
 
     metadata_shortname = metadata.get("SHORTNAME")
@@ -300,6 +438,9 @@ def verify_historical_price(
             result="INCONCLUSIVE",
             http_status=200,
             trading_days_count=len(history_rows),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
             observed_shortnames=sorted(row_names),
             metadata_shortname=metadata_shortname,
         )
@@ -329,6 +470,9 @@ def verify_historical_price(
             result="INCONCLUSIVE",
             http_status=200,
             trading_days_count=len(history_rows),
+            pages_fetched=pages_fetched,
+            total_rows=total_rows,
+            expected_trading_days_approx=expected_days,
         )
 
     observed_max_high = max(highs)
@@ -345,6 +489,9 @@ def verify_historical_price(
         observed_min_low=observed_min_low,
         trading_days_count=len(history_rows),
         http_status=200,
+        pages_fetched=pages_fetched,
+        total_rows=total_rows,
+        expected_trading_days_approx=expected_days,
     )
     if observed_max_high >= float(claimed_price) * (1 - tolerance_pct / 100):
         return E4_VERIFIED, details
