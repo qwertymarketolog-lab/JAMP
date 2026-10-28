@@ -134,7 +134,7 @@ def test_missing_last_records_all_tried_price_fields(mock_urlopen):
         "TRADEDATE",
     ]
     assert details["marketdata_rows_count"] == 1
-    assert details["board_id"] is None
+    assert details["board_id"] == "TQBR"
     assert details["http_status"] == 200
 
 
