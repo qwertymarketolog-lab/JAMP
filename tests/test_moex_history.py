@@ -72,7 +72,7 @@ def test_historical_price_supported():
             ),
         ],
     ):
-        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
+        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-03", "2024-01-04")
     assert status == E4_VERIFIED
     assert evidence["observed_max_high"] == 5100.0
     assert evidence["trading_days_count"] == 2
@@ -91,7 +91,7 @@ def test_historical_price_contradicted():
             ),
         ],
     ):
-        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
+        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-03", "2024-01-04")
     assert status == E4_CONTRADICTED
     assert evidence["observed_max_high"] == 4800.0
     assert evidence["reason"] == "historical_max_below_claimed"
@@ -135,7 +135,7 @@ def test_ticker_reassigned():
             ),
         ],
     ):
-        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-01", "2024-01-31")
+        status, evidence = verify_historical_price("SBER", 5000.0, "2024-01-03", "2024-01-04")
     assert status == E4_INCONCLUSIVE
     assert evidence["reason"] == "ticker_reassigned"
 
