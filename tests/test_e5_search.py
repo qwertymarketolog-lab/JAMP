@@ -39,10 +39,14 @@ def _claim(claim_text="SBER increased due to dividends", claim_type="causal", ti
 
 @patch("urllib.request.urlopen")
 def test_verified_multi_source(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result("reuters.com"),
-        _result("bloomberg.com", "SBER dividends increased due to dividend payments"),
-    ]})
+    mock_urlopen.return_value = _response(
+        {
+            "results": [
+                _result("reuters.com"),
+                _result("bloomberg.com", "SBER dividends increased due to dividend payments"),
+            ]
+        }
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_VERIFIED
     assert evidence["verdict_basis"] == "multi_source_confirmed"
@@ -59,9 +63,9 @@ def test_verified_single_source(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_contradicted(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result(content="SBER dividends did not cause the increase in share price")
-    ]})
+    mock_urlopen.return_value = _response(
+        {"results": [_result(content="SBER dividends did not cause the increase in share price")]}
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_CONTRADICTED
     assert evidence["conflicting"] is False
@@ -69,10 +73,16 @@ def test_contradicted(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_conflicting_sources(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result("reuters.com"),
-        _result("bloomberg.com", "SBER dividends did not cause the increase in share price"),
-    ]})
+    mock_urlopen.return_value = _response(
+        {
+            "results": [
+                _result("reuters.com"),
+                _result(
+                    "bloomberg.com", "SBER dividends did not cause the increase in share price"
+                ),
+            ]
+        }
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_INCONCLUSIVE
     assert evidence["verdict_basis"] == "conflicting_sources"
@@ -89,9 +99,9 @@ def test_no_authoritative_source(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_non_whitelisted_filtered(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result("twitter.com", "SBER dividends increased due to dividend payments")
-    ]})
+    mock_urlopen.return_value = _response(
+        {"results": [_result("twitter.com", "SBER dividends increased due to dividend payments")]}
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_OUT_OF_SCOPE
     assert evidence["results"] == []
@@ -129,18 +139,18 @@ def test_timeout(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_causal_with_marker(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result(content="SBER shares rose due to dividend payments")
-    ]})
+    mock_urlopen.return_value = _response(
+        {"results": [_result(content="SBER shares rose due to dividend payments")]}
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_VERIFIED
 
 
 @patch("urllib.request.urlopen")
 def test_causal_without_marker(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result(content="SBER dividend payments were announced yesterday")
-    ]})
+    mock_urlopen.return_value = _response(
+        {"results": [_result(content="SBER dividend payments were announced yesterday")]}
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_OUT_OF_SCOPE
     assert evidence["reason"] == "facts_without_causality"
@@ -167,10 +177,14 @@ def test_api_key_missing(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_same_domain_not_independent(mock_urlopen):
-    mock_urlopen.return_value = _response({"results": [
-        _result(url="https://reuters.com/a"),
-        _result(url="https://uk.reuters.com/b"),
-    ]})
+    mock_urlopen.return_value = _response(
+        {
+            "results": [
+                _result(url="https://reuters.com/a"),
+                _result(url="https://uk.reuters.com/b"),
+            ]
+        }
+    )
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_VERIFIED
     assert evidence["unique_domains_count"] == 1

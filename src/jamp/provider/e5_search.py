@@ -3,6 +3,7 @@
 E5 collects evidence candidates; it does not establish ground truth. Verdicts use
 only whitelisted publisher domains and deliberately conservative snippet rules.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,19 +23,45 @@ TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 WHITELIST_PATH = Path(__file__).resolve().parents[3] / "data" / "e5_authoritative_domains_v0.json"
 
 CAUSAL_MARKERS_EN = (
-    "due to", "caused by", "because of", "as a result of", "led to",
-    "triggered by", "driven by", "cause",
+    "due to",
+    "caused by",
+    "because of",
+    "as a result of",
+    "led to",
+    "triggered by",
+    "driven by",
+    "cause",
 )
 CAUSAL_MARKERS_RU = (
-    "из-за", "в связи с", "потому что", "вследствие", "привело к",
-    "стало причиной", "обусловлено",
+    "из-за",
+    "в связи с",
+    "потому что",
+    "вследствие",
+    "привело к",
+    "стало причиной",
+    "обусловлено",
 )
 NEGATION_MARKERS = (
-    "not", "did not", "does not", "never", "denied", "не ", "нет ", "ни ",
+    "not",
+    "did not",
+    "does not",
+    "never",
+    "denied",
+    "не ",
+    "нет ",
+    "ни ",
 )
 OPPOSITION_MARKERS = (
-    "contrary to", "instead of", "rather than", "did not cause", "not cause",
-    "не выплачив", "не платил", "не привело", "не стало причиной", "без связи",
+    "contrary to",
+    "instead of",
+    "rather than",
+    "did not cause",
+    "not cause",
+    "не выплачив",
+    "не платил",
+    "не привело",
+    "не стало причиной",
+    "без связи",
 )
 
 
@@ -84,10 +111,42 @@ def _has_causal_marker(text: str) -> bool:
 
 def _claim_keywords(claim_text: str) -> list[str]:
     stopwords = {
-        "the", "and", "for", "from", "with", "that", "this", "was", "were", "will",
-        "has", "have", "had", "into", "after", "before", "because", "due", "said",
-        "акция", "акции", "вырос", "выросла", "выросли", "упал", "упала", "упали",
-        "из-за", "вследствие", "потому", "что", "в", "на", "за", "для", "компания",
+        "the",
+        "and",
+        "for",
+        "from",
+        "with",
+        "that",
+        "this",
+        "was",
+        "were",
+        "will",
+        "has",
+        "have",
+        "had",
+        "into",
+        "after",
+        "before",
+        "because",
+        "due",
+        "said",
+        "акция",
+        "акции",
+        "вырос",
+        "выросла",
+        "выросли",
+        "упал",
+        "упала",
+        "упали",
+        "из-за",
+        "вследствие",
+        "потому",
+        "что",
+        "в",
+        "на",
+        "за",
+        "для",
+        "компания",
     }
     words = re.findall(r"[a-zа-яё0-9]{3,}", claim_text.casefold())
     return list(dict.fromkeys(word for word in words if word not in stopwords))
@@ -137,9 +196,7 @@ def _claim_match(claim_text: str, claim_type: str, ticker: str | None, snippet: 
             return float(value.replace("%", "").replace(",", ".").strip())
 
         if any(
-            normalize(a) == normalize(b)
-            for a in claim_percentages
-            for b in snippet_percentages
+            normalize(a) == normalize(b) for a in claim_percentages for b in snippet_percentages
         ):
             return (
                 "contradict"
@@ -172,7 +229,10 @@ def _claim_match(claim_text: str, claim_type: str, ticker: str | None, snippet: 
 
 
 def _base_evidence(
-    claim_text: str, claim_type: str, ticker: str | None, query: str,
+    claim_text: str,
+    claim_type: str,
+    ticker: str | None,
+    query: str,
 ) -> dict[str, Any]:
     return {
         "checked_source": "tavily",
@@ -194,8 +254,11 @@ def _base_evidence(
 
 
 def _finish(
-    evidence: dict[str, Any], status: str, reason: str | None,
-    basis: str, independence_basis: str,
+    evidence: dict[str, Any],
+    status: str,
+    reason: str | None,
+    basis: str,
+    independence_basis: str,
 ) -> tuple[str, dict[str, Any]]:
     evidence["result"] = status
     evidence["reason"] = reason
@@ -216,47 +279,68 @@ def verify_with_search(
     """Search public sources and return a conservative E5 verdict plus bounded evidence."""
     normalized_type = claim_type.strip().lower() if isinstance(claim_type, str) else ""
     normalized_ticker = (
-        ticker.strip().upper()
-        if isinstance(ticker, str) and ticker.strip()
-        else None
+        ticker.strip().upper() if isinstance(ticker, str) and ticker.strip() else None
     )
     query = _query_for_claim(claim_text, normalized_ticker, normalized_type)
     evidence = _base_evidence(claim_text, normalized_type, normalized_ticker, query)
 
     if normalized_type == "prediction":
-        return _finish(evidence, E5_OUT_OF_SCOPE, "future_prediction_not_searchable",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence,
+            E5_OUT_OF_SCOPE,
+            "future_prediction_not_searchable",
+            "no_authoritative_source",
+            "single",
+        )
     if normalized_type == "historical_price":
-        return _finish(evidence, E5_OUT_OF_SCOPE, "foreign_price_not_supported_v0",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence,
+            E5_OUT_OF_SCOPE,
+            "foreign_price_not_supported_v0",
+            "no_authoritative_source",
+            "single",
+        )
     if normalized_type not in {"causal", "change_percent", "existence"}:
-        return _finish(evidence, E5_OUT_OF_SCOPE, "claim_type_not_supported_v0",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence,
+            E5_OUT_OF_SCOPE,
+            "claim_type_not_supported_v0",
+            "no_authoritative_source",
+            "single",
+        )
     if normalized_type in {"causal", "existence"} and not normalized_ticker:
-        return _finish(evidence, E5_INCONCLUSIVE, "ticker_not_extractable",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "ticker_not_extractable", "no_authoritative_source", "single"
+        )
     if not isinstance(claim_text, str) or not claim_text.strip():
-        return _finish(evidence, E5_INCONCLUSIVE, "empty_claim",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "empty_claim", "no_authoritative_source", "single"
+        )
     if timeout <= 0:
-        return _finish(evidence, E5_INCONCLUSIVE, "timeout",
-                       "no_authoritative_source", "single")
+        return _finish(evidence, E5_INCONCLUSIVE, "timeout", "no_authoritative_source", "single")
 
     key = api_key or os.getenv("TAVILY_API_KEY")
     if not key:
-        return _finish(evidence, E5_INCONCLUSIVE, "api_key_missing",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "api_key_missing", "no_authoritative_source", "single"
+        )
     try:
         whitelist = _load_whitelist()
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         evidence["parse_error"] = f"whitelist_error:{type(exc).__name__}"
-        return _finish(evidence, E5_INCONCLUSIVE, "whitelist_unavailable",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "whitelist_unavailable", "no_authoritative_source", "single"
+        )
 
-    all_domains = sorted({
-        domain for domains in whitelist["groups"].values()
-        if isinstance(domains, list) for domain in domains if isinstance(domain, str)
-    })
+    all_domains = sorted(
+        {
+            domain
+            for domains in whitelist["groups"].values()
+            if isinstance(domains, list)
+            for domain in domains
+            if isinstance(domain, str)
+        }
+    )
     payload = {
         "api_key": key,
         "query": query,
@@ -278,9 +362,16 @@ def verify_with_search(
             parsed = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         evidence["http_status"] = exc.code
-        reason = "api_auth_error" if exc.code in {401, 403} else (
-            "rate_limit" if exc.code == 429 else
-            "api_server_error" if exc.code >= 500 else "api_http_error"
+        reason = (
+            "api_auth_error"
+            if exc.code in {401, 403}
+            else (
+                "rate_limit"
+                if exc.code == 429
+                else "api_server_error"
+                if exc.code >= 500
+                else "api_http_error"
+            )
         )
         return _finish(evidence, E5_INCONCLUSIVE, reason, "no_authoritative_source", "single")
     except TimeoutError:
@@ -291,8 +382,9 @@ def verify_with_search(
         )
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         evidence["parse_error"] = type(exc).__name__
-        return _finish(evidence, E5_INCONCLUSIVE, "malformed_response",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "malformed_response", "no_authoritative_source", "single"
+        )
 
     if not isinstance(parsed, dict) or not isinstance(parsed.get("results"), list):
         evidence["parse_error"] = "results must be a list"
@@ -314,25 +406,32 @@ def verify_with_search(
         domain, group = _domain_for_url(url, groups)
         if domain is None:
             continue
-        authoritative.append({
-            "url": url,
-            "title": title[:500] if isinstance(title, str) else "",
-            "snippet": snippet[:500] if isinstance(snippet, str) else "",
-            "domain": domain,
-            "source_group": group,
-            "published_date": (
-                item.get("published_date")
-                if isinstance(item.get("published_date"), str)
-                else None
-            ),
-        })
+        authoritative.append(
+            {
+                "url": url,
+                "title": title[:500] if isinstance(title, str) else "",
+                "snippet": snippet[:500] if isinstance(snippet, str) else "",
+                "domain": domain,
+                "source_group": group,
+                "published_date": (
+                    item.get("published_date")
+                    if isinstance(item.get("published_date"), str)
+                    else None
+                ),
+            }
+        )
     evidence["results"] = authoritative
     evidence["authoritative_results_count"] = len(authoritative)
     unique_domains = sorted({result["domain"] for result in authoritative})
     evidence["unique_domains_count"] = len(unique_domains)
     if not authoritative:
-        return _finish(evidence, E5_OUT_OF_SCOPE, "no_authoritative_source",
-                       "no_authoritative_source", "single")
+        return _finish(
+            evidence,
+            E5_OUT_OF_SCOPE,
+            "no_authoritative_source",
+            "no_authoritative_source",
+            "single",
+        )
 
     supports = 0
     contradicts = 0
@@ -346,15 +445,21 @@ def verify_with_search(
     if normalized_type == "causal" and supports == 0 and contradicts == 0:
         independence = "single" if len(unique_domains) == 1 else "different_domains"
         return _finish(
-            evidence, E5_OUT_OF_SCOPE, "facts_without_causality",
-            "facts_without_causality", independence,
+            evidence,
+            E5_OUT_OF_SCOPE,
+            "facts_without_causality",
+            "facts_without_causality",
+            independence,
         )
     if supports and contradicts:
         evidence["conflicting"] = True
         independence = "different_domains" if len(unique_domains) > 1 else "same_domain"
         return _finish(
-            evidence, E5_INCONCLUSIVE, "conflicting_sources",
-            "conflicting_sources", independence,
+            evidence,
+            E5_INCONCLUSIVE,
+            "conflicting_sources",
+            "conflicting_sources",
+            independence,
         )
     if contradicts:
         basis = "single_source" if len(unique_domains) == 1 else "multi_source_confirmed"
@@ -366,6 +471,9 @@ def verify_with_search(
         return _finish(evidence, E5_VERIFIED, None, basis, independence)
     independence = "different_domains" if len(unique_domains) > 1 else "single"
     return _finish(
-        evidence, E5_OUT_OF_SCOPE, "snippet_inconclusive",
-        "no_authoritative_source", independence,
+        evidence,
+        E5_OUT_OF_SCOPE,
+        "snippet_inconclusive",
+        "no_authoritative_source",
+        independence,
     )
