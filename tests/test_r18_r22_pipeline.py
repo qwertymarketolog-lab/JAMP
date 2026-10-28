@@ -91,7 +91,6 @@ def test_inconclusive_has_reason() -> None:
     assert all(item["reason"] for item in report["claims"] if item["verdict"] == "inconclusive")
 
 
-
 def test_ticker_not_extracted_from_url() -> None:
     text = (
         "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/"
