@@ -27,7 +27,8 @@ TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 PRICE_RE = re.compile(r"(\d[\d\s]*[.,]?\d*)\s*[₽$]?")
 URL_RE = re.compile(r"https?://[^\s,;)»]+")
 DEFAULT_SAMPLE = (
-    "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json, "
+    "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/boards/"
+    "TQBR/securities/SBER.json, "
     "SBER достиг 5000 рублей. "
     "VKCO потерял 93% капитализации. "
     "FakeTech объявила IPO. "
