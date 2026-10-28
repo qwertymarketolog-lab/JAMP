@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from unittest.mock import patch
 
 import pytest
 
@@ -53,7 +51,11 @@ def _install_mock(
     current: float | None = 340.0,
 ) -> None:
     monkeypatch.setattr(screener, "_security_metadata", lambda ticker: metadata or _metadata())
-    monkeypatch.setattr(screener, "_all_history", lambda ticker: history if history is not None else _history_rows())
+    monkeypatch.setattr(
+        screener,
+        "_all_history",
+        lambda ticker: history if history is not None else _history_rows(),
+    )
     monkeypatch.setattr(screener, "_current_price", lambda ticker: current)
 
 

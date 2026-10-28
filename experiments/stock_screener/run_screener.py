@@ -172,7 +172,13 @@ def screen_ticker(ticker: str) -> dict[str, Any]:
         result["reason"] = f"MOEX_HTTP_ERROR_{exc.code}"
         result["flags"].append("source_error")
         return result
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as exc:
         result["reason"] = f"MOEX_DATA_ERROR:{type(exc).__name__}"
         result["flags"].append("source_error")
         return result
@@ -201,7 +207,11 @@ def screen_ticker(ticker: str) -> dict[str, Any]:
         result["reason"] = "SHORTNAME_MISMATCH"
         return result
 
-    highs = [(float(row["HIGH"]), row["TRADEDATE"]) for row in valid_rows if _number(row.get("HIGH"))]
+    highs = [
+        (float(row["HIGH"]), row["TRADEDATE"])
+        for row in valid_rows
+        if _number(row.get("HIGH"))
+    ]
     if highs:
         max_high, max_date = max(highs, key=lambda item: item[0])
         result["max_high"] = max_high
@@ -270,20 +280,30 @@ def screen(tickers: list[str]) -> dict[str, Any]:
 
 def _markdown(report: dict[str, Any]) -> str:
     rows = [
-        "| Ticker | Company | Max high | Max date | Current | Drawdown | Avg daily volume (RUB) | Days | Verdict |",
+        (
+            "| Ticker | Company | Max high | Max date | Current | Drawdown | "
+            "Avg daily volume (RUB) | Days | Verdict |"
+        ),
         "|---|---|---:|---|---:|---:|---:|---:|---|",
     ]
     for item in report["tickers"]:
         drawdown = item["drawdown"]
         rows.append(
-            "| {ticker} | {shortname} | {high} | {date} | {price} | {drawdown} | {volume} | {days} | {verdict} |".format(
+            (
+                "| {ticker} | {shortname} | {high} | {date} | {price} | "
+                "| {drawdown} | {volume} | {days} | {verdict} |"
+            ).format(
                 ticker=item["ticker"],
                 shortname=item["shortname"] or "—",
                 high=item["max_high"] if item["max_high"] is not None else "—",
                 date=item["max_date"] or "—",
                 price=item["current_price"] if item["current_price"] is not None else "—",
                 drawdown=f"{drawdown:.3f}" if drawdown is not None else "—",
-                volume=round(item["avg_daily_volume"]) if item["avg_daily_volume"] is not None else "—",
+                volume=(
+                    round(item["avg_daily_volume"])
+                    if item["avg_daily_volume"] is not None
+                    else "—"
+                ),
                 days=item["trading_days"],
                 verdict=item["verdict"],
             )
@@ -293,7 +313,11 @@ def _markdown(report: dict[str, Any]) -> str:
 
 def main() -> int:
     raw_tickers = sys.stdin.read().strip()
-    tickers = [line.strip().upper() for line in raw_tickers.splitlines() if line.strip()] if raw_tickers else DEFAULT_TICKERS
+    tickers = (
+        [line.strip().upper() for line in raw_tickers.splitlines() if line.strip()]
+        if raw_tickers
+        else DEFAULT_TICKERS
+    )
     report = screen(tickers)
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
     print("\n" + _markdown(report))
