@@ -26,6 +26,14 @@ CAUSAL_MARKERS = ("из-за", "потому что", "в связи с", "вс�
 TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 PRICE_RE = re.compile(r"(\d[\d\s]*[.,]?\d*)\s*[₽$]?")
 URL_RE = re.compile(r"https?://[^\s,;)»]+")
+DEFAULT_SAMPLE = (
+    "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/boards/"
+    "TQBR/securities/SBER.json, "
+    "SBER достиг 5000 рублей. "
+    "VKCO потерял 93% капитализации. "
+    "FakeTech объявила IPO. "
+    "SBER вырастет из-за дивидендов."
+)
 
 
 @dataclass(frozen=True)
@@ -209,7 +217,7 @@ def main() -> int:
     # Explicit input is preferred; the default is an input fixture, not precomputed evidence.
     text = sys.stdin.read()
     if not text:
-        text = "SBER 5000₽. SBER вырастет. SBER вырос из-за дивидендов."
+        text = DEFAULT_SAMPLE
     report = run_pipeline(text)
     output = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     sys.stdout.write(output)
