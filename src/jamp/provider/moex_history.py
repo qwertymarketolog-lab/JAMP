@@ -126,7 +126,11 @@ def verify_historical_price(
             if row.get("name") is not None
         }
     except urllib.error.HTTPError as exc:
-        reason = "ticker_not_found_in_catalog" if exc.code == 404 else "moex_source_unavailable_or_invalid"
+        reason = (
+            "ticker_not_found_in_catalog"
+            if exc.code == 404
+            else "moex_source_unavailable_or_invalid"
+        )
         return E4_INCONCLUSIVE, _evidence(
             normalized_ticker, float(claimed_price), date_from, date_till, tolerance_pct,
             reason=reason, result="INCONCLUSIVE", http_status=exc.code,
