@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 from jamp.api import auth
 
+pytestmark = pytest.mark.real_auth
+
 TEST_HMAC_SECRET = "test-hmac-secret-not-for-production"  # noqa: S105
 VALID_TOKEN = "jamp_sk_test_token_abc123"  # noqa: S105
 
