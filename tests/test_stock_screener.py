@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import pytest
 
 from experiments.stock_screener import run_screener as screener
@@ -157,7 +156,6 @@ def test_max_high_is_actual_max_not_first_page(monkeypatch: pytest.MonkeyPatch) 
         return payloads.pop(0)
 
     monkeypatch.setattr(screener, "_get_json", fake_get_json)
-    history = screener._all_history("SMLT")
-    assert len(history) == 3
-    assert max(row["HIGH"] for row in history) == 5800.0
-    assert "start=2" in fake_get_json.__name__ or True
+    result = screener.screen_ticker("SMLT")
+    assert result["max_high"] == 5800.0
+    assert result["max_date"] == "2024-01-03"
