@@ -156,3 +156,38 @@ def test_historical_price_returns_inconclusive() -> None:
     assert claim["verdict"] == "inconclusive"
     assert claim["reason"] == "requires_historical_data_or_E5"
     assert "R19" in claim["r_codes"]
+
+def test_coverage_verified_and_confirmed_separate() -> None:
+    """not_found is verified as a source answer, but not confirmed as claim truth."""
+    with patch.object(
+        pipeline,
+        "_verify_claim",
+        return_value=(
+            "E4_OUT_OF_SCOPE",
+            {"reason": "ticker_not_found", "checked_source": "moex.iss"},
+        ),
+    ):
+        report = pipeline.run_pipeline("FakeTech объявила IPO.")
+
+    cov = report["coverage"]
+    assert cov["not_found"] == 1
+    assert cov["verified"] == 1
+    assert cov["confirmed"] == 0
+    assert cov["verified_ratio"] == 1.0
+    assert cov["confirmed_ratio"] == 0.0
+    assert cov["definition"] == {
+        "verified": "supported + contradicted + not_found",
+        "confirmed": "supported + contradicted",
+        "verified_meaning": "source returned a conclusive answer (including verified absence)",
+        "confirmed_meaning": "claim proven true or false",
+    }
+
+
+def test_coverage_empty_returns_none() -> None:
+    """An empty report has undefined ratios, not zero ratios."""
+    report = pipeline.run_pipeline("")
+    cov = report["coverage"]
+    assert cov["total"] == 0
+    assert cov["verified_ratio"] is None
+    assert cov["confirmed_ratio"] is None
+
