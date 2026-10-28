@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import socket
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -34,8 +33,8 @@ NEGATION_MARKERS = (
     "not", "did not", "does not", "never", "denied", "не ", "нет ", "ни ",
 )
 OPPOSITION_MARKERS = (
-    "contrary to", "instead of", "rather than", "did not cause", "not cause", "не выплачив", "не платил",
-    "не привело", "не стало причиной", "без связи",
+    "contrary to", "instead of", "rather than", "did not cause", "not cause",
+    "не выплачив", "не платил", "не привело", "не стало причиной", "без связи",
 )
 
 
@@ -69,8 +68,12 @@ def _query_for_claim(claim_text: str, ticker: str | None, claim_type: str) -> st
     parts = [claim_text.strip()]
     if ticker and ticker.casefold() not in claim_text.casefold():
         parts.append(ticker)
-    parts.append(" ".join({"causal": ("cause", "reason"), "change_percent": ("percentage", "period"),
-                           "existence": ("official", "company")}.get(claim_type, ())))
+    query_terms = {
+        "causal": ("cause", "reason"),
+        "change_percent": ("percentage", "period"),
+        "existence": ("official", "company"),
+    }.get(claim_type, ())
+    parts.append(" ".join(query_terms))
     return " ".join(part for part in parts if part).strip()
 
 
@@ -93,7 +96,8 @@ def _claim_keywords(claim_text: str) -> list[str]:
 def _contains_ticker(snippet: str, ticker: str | None) -> bool:
     if not ticker:
         return False
-    return re.search(r"(?<![\w])" + re.escape(ticker) + r"(?![\w])", snippet, re.IGNORECASE) is not None
+    pattern = r"(?<![\w])" + re.escape(ticker) + r"(?![\w])"
+    return re.search(pattern, snippet, re.IGNORECASE) is not None
 
 
 def _is_negated(text: str) -> bool:
@@ -108,26 +112,49 @@ def _claim_match(claim_text: str, claim_type: str, ticker: str | None, snippet: 
     if claim_type == "causal":
         keywords = [word for word in _claim_keywords(claim_text) if len(word) >= 4]
         keyword_match = any(word in lowered_snippet for word in keywords)
-        if not _contains_ticker(snippet, ticker) or not keyword_match or not _has_causal_marker(snippet):
+        if (
+            not _contains_ticker(snippet, ticker)
+            or not keyword_match
+            or not _has_causal_marker(snippet)
+        ):
             return "unrelated"
-        return "contradict" if any(marker in lowered_snippet for marker in OPPOSITION_MARKERS) else "support"
+        return (
+            "contradict"
+            if any(marker in lowered_snippet for marker in OPPOSITION_MARKERS)
+            else "support"
+        )
 
     if claim_type == "change_percent":
         claim_percentages = re.findall(r"\d+(?:[.,]\d+)?\s*%", lowered_claim)
         snippet_percentages = re.findall(r"\d+(?:[.,]\d+)?\s*%", lowered_snippet)
-        if not claim_percentages or not snippet_percentages or not _contains_ticker(snippet, ticker):
+        if (
+            not claim_percentages
+            or not snippet_percentages
+            or not _contains_ticker(snippet, ticker)
+        ):
             return "unrelated"
         def normalize(value: str) -> float:
             return float(value.replace("%", "").replace(",", ".").strip())
 
-        if any(normalize(a) == normalize(b) for a in claim_percentages for b in snippet_percentages):
-            return "contradict" if any(marker in lowered_snippet for marker in OPPOSITION_MARKERS) else "support"
+        if any(
+            normalize(a) == normalize(b)
+            for a in claim_percentages
+            for b in snippet_percentages
+        ):
+            return (
+                "contradict"
+                if any(marker in lowered_snippet for marker in OPPOSITION_MARKERS)
+                else "support"
+            )
         return "unrelated"
 
     if claim_type == "existence":
         if not ticker or not _contains_ticker(snippet, ticker):
             return "unrelated"
-        if any(marker in lowered_snippet for marker in ("does not exist", "no such company", "не существует")):
+        if any(
+            marker in lowered_snippet
+            for marker in ("does not exist", "no such company", "не существует")
+        ):
             return "contradict"
         return "support"
 
@@ -188,7 +215,11 @@ def verify_with_search(
 ) -> tuple[str, dict[str, Any]]:
     """Search public sources and return a conservative E5 verdict plus bounded evidence."""
     normalized_type = claim_type.strip().lower() if isinstance(claim_type, str) else ""
-    normalized_ticker = ticker.strip().upper() if isinstance(ticker, str) and ticker.strip() else None
+    normalized_ticker = (
+        ticker.strip().upper()
+        if isinstance(ticker, str) and ticker.strip()
+        else None
+    )
     query = _query_for_claim(claim_text, normalized_ticker, normalized_type)
     evidence = _base_evidence(claim_text, normalized_type, normalized_ticker, query)
 
@@ -252,10 +283,12 @@ def verify_with_search(
             "api_server_error" if exc.code >= 500 else "api_http_error"
         )
         return _finish(evidence, E5_INCONCLUSIVE, reason, "no_authoritative_source", "single")
-    except (TimeoutError, socket.timeout):
+    except TimeoutError:
         return _finish(evidence, E5_INCONCLUSIVE, "timeout", "no_authoritative_source", "single")
     except (urllib.error.URLError, OSError):
-        return _finish(evidence, E5_INCONCLUSIVE, "network_error", "no_authoritative_source", "single")
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "network_error", "no_authoritative_source", "single"
+        )
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         evidence["parse_error"] = type(exc).__name__
         return _finish(evidence, E5_INCONCLUSIVE, "malformed_response",
@@ -287,7 +320,11 @@ def verify_with_search(
             "snippet": snippet[:500] if isinstance(snippet, str) else "",
             "domain": domain,
             "source_group": group,
-            "published_date": item.get("published_date") if isinstance(item.get("published_date"), str) else None,
+            "published_date": (
+                item.get("published_date")
+                if isinstance(item.get("published_date"), str)
+                else None
+            ),
         })
     evidence["results"] = authoritative
     evidence["authoritative_results_count"] = len(authoritative)
@@ -307,12 +344,18 @@ def verify_with_search(
             contradicts += 1
 
     if normalized_type == "causal" and supports == 0 and contradicts == 0:
-        return _finish(evidence, E5_OUT_OF_SCOPE, "facts_without_causality",
-                       "facts_without_causality", "single" if len(unique_domains) == 1 else "different_domains")
+        independence = "single" if len(unique_domains) == 1 else "different_domains"
+        return _finish(
+            evidence, E5_OUT_OF_SCOPE, "facts_without_causality",
+            "facts_without_causality", independence,
+        )
     if supports and contradicts:
         evidence["conflicting"] = True
-        return _finish(evidence, E5_INCONCLUSIVE, "conflicting_sources",
-                       "conflicting_sources", "different_domains" if len(unique_domains) > 1 else "same_domain")
+        independence = "different_domains" if len(unique_domains) > 1 else "same_domain"
+        return _finish(
+            evidence, E5_INCONCLUSIVE, "conflicting_sources",
+            "conflicting_sources", independence,
+        )
     if contradicts:
         basis = "single_source" if len(unique_domains) == 1 else "multi_source_confirmed"
         independence = "single" if len(unique_domains) == 1 else "different_domains"
@@ -321,5 +364,8 @@ def verify_with_search(
         basis = "multi_source_confirmed" if len(unique_domains) >= 2 else "single_source"
         independence = "different_domains" if len(unique_domains) >= 2 else "single"
         return _finish(evidence, E5_VERIFIED, None, basis, independence)
-    return _finish(evidence, E5_OUT_OF_SCOPE, "snippet_inconclusive",
-                   "no_authoritative_source", "different_domains" if len(unique_domains) > 1 else "single")
+    independence = "different_domains" if len(unique_domains) > 1 else "single"
+    return _finish(
+        evidence, E5_OUT_OF_SCOPE, "snippet_inconclusive",
+        "no_authoritative_source", independence,
+    )

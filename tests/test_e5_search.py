@@ -19,7 +19,11 @@ def _response(payload, status=200):
     return MagicMock(__enter__=MagicMock(return_value=response))
 
 
-def _result(domain="reuters.com", content="SBER dividends increased due to dividend payments", url=None):
+def _result(
+    domain="reuters.com",
+    content="SBER dividends increased due to dividend payments",
+    url=None,
+):
     return {
         "title": "SBER dividend report",
         "url": url or f"https://{domain}/markets/sber-dividends",
@@ -36,7 +40,8 @@ def _claim(claim_text="SBER increased due to dividends", claim_type="causal", ti
 @patch("urllib.request.urlopen")
 def test_verified_multi_source(mock_urlopen):
     mock_urlopen.return_value = _response({"results": [
-        _result("reuters.com"), _result("bloomberg.com", "SBER dividends increased due to dividend payments")
+        _result("reuters.com"),
+        _result("bloomberg.com", "SBER dividends increased due to dividend payments"),
     ]})
     status, evidence = verify_with_search(*_claim(), api_key="test-key")
     assert status == E5_VERIFIED
@@ -143,7 +148,9 @@ def test_causal_without_marker(mock_urlopen):
 
 @patch("urllib.request.urlopen")
 def test_prediction_future_out_of_scope(mock_urlopen):
-    status, evidence = verify_with_search("SBER will rise", "prediction", "SBER", api_key="test-key")
+    status, evidence = verify_with_search(
+        "SBER will rise", "prediction", "SBER", api_key="test-key"
+    )
     assert status == E5_OUT_OF_SCOPE
     assert evidence["reason"] == "future_prediction_not_searchable"
     mock_urlopen.assert_not_called()
