@@ -91,17 +91,30 @@ def verify_claim_with_moex(
     """
     normalized_ticker = ticker.strip().upper() if isinstance(ticker, str) else ""
     if not normalized_ticker or not normalized_ticker.replace(".", "").replace("-", "").isalnum():
-        return E4_INCONCLUSIVE, {"reason": "INVALID_TICKER", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_TICKER",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if claim_type not in {"exists", "price"}:
         return E4_INCONCLUSIVE, {
             "reason": "UNSUPPORTED_CLAIM_TYPE",
             "claim_type": claim_type,
             "checked_source": "moex.iss",
+            **_failure_diagnostics(),
         }
     if timeout <= 0 or not math.isfinite(timeout):
-        return E4_INCONCLUSIVE, {"reason": "INVALID_TIMEOUT", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_TIMEOUT",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if not math.isfinite(price_tolerance) or not 0 <= price_tolerance < 1:
-        return E4_INCONCLUSIVE, {"reason": "INVALID_PRICE_TOLERANCE", "checked_source": "moex.iss"}
+        return E4_INCONCLUSIVE, {
+            "reason": "INVALID_PRICE_TOLERANCE",
+            "checked_source": "moex.iss",
+            **_failure_diagnostics(),
+        }
     if claim_type == "price" and (
         isinstance(claimed_value, bool)
         or not isinstance(claimed_value, (int, float))
@@ -231,6 +244,16 @@ def verify_claim_with_moex(
         and float(row["LAST"]) > 0
     ]
     if not candidates:
+        observed_board = next(
+            (
+                row.get("BOARDID")
+                for row in market_rows
+                if isinstance(row.get("SECID"), str)
+                and row["SECID"].upper() == normalized_ticker
+                and isinstance(row.get("BOARDID"), str)
+            ),
+            None,
+        )
         return E4_INCONCLUSIVE, {
             "reason": "MOEX_LAST_PRICE_UNAVAILABLE",
             "claim": {"ticker": normalized_ticker, "type": "price", "value": claimed_value},
@@ -238,6 +261,7 @@ def verify_claim_with_moex(
             "security": match,
             **_failure_diagnostics(
                 http_status=200,
+                board_id=observed_board,
                 securities_columns=securities_columns,
                 marketdata_columns=marketdata_columns,
                 marketdata_rows_count=marketdata_rows_count,
