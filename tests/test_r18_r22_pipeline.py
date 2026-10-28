@@ -62,6 +62,7 @@ def test_default_sample_has_four_claims() -> None:
     assert len(claims) == 4
     assert any(claim.ticker == "FAKETECH" and claim.claim_type == "existence" for claim in claims)
 
+
 def test_pipeline_coverage_full() -> None:
     text = "SBER 5000₽. SBER. SBER вырастет. SBER вырос из-за дивидендов."
     with patch.object(
