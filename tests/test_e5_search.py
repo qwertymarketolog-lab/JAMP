@@ -198,6 +198,7 @@ def test_evidence_has_query_and_version(mock_urlopen):
     assert evidence["query"]
     assert evidence["whitelist_version"] == "e5-authoritative-domains-v0"
 
+
 @patch("urllib.request.urlopen")
 def test_verdict_basis_matches_reason_on_inconclusive_snippets(mock_urlopen):
     """Whitelisted snippets without support must have matching reason and verdict basis."""
@@ -229,9 +230,7 @@ def test_verdict_basis_no_authoritative_when_zero_results(mock_urlopen):
         claim_type="change_percent",
         ticker="VKCO",
     )
-    status, evidence = verify_with_search(
-        claim_text, claim_type, ticker, api_key="test-key"
-    )
+    status, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
 
     assert status == E5_OUT_OF_SCOPE
     assert evidence["reason"] == "no_authoritative_source"
@@ -258,4 +257,3 @@ def test_attempts_present_with_real_shape(mock_urlopen):
     assert attempt["http_status"] == 200
     assert isinstance(attempt["elapsed_ms"], int)
     assert attempt["elapsed_ms"] >= 0
-
