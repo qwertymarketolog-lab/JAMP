@@ -11,7 +11,6 @@ from typing import Any
 from jamp.provider.moex_verify import (
     E4_CONTRADICTED,
     E4_INCONCLUSIVE,
-    E4_OUT_OF_SCOPE,
     E4_VERIFIED,
     MOEX_ISS_BASE,
     _failure_diagnostics,
