@@ -8,6 +8,7 @@ import os
 from dataclasses import dataclass
 
 from fastapi import Header, HTTPException
+from psycopg2 import InterfaceError, OperationalError
 
 _HASH_PREFIX = "v1:"
 _ENV_SECRET = "JAMP_API_KEY_HASH_SECRET"
@@ -16,7 +17,7 @@ _BEARER_PREFIX = "Bearer "
 
 @dataclass(frozen=True)
 class OrganizationContext:
-    org_id: int
+    org_id: str
     org_name: str
 
 
@@ -39,12 +40,24 @@ def hash_api_key(token: str) -> str:
     return _HASH_PREFIX + mac.hexdigest()
 
 
-def _lookup_by_hash(api_key_hash: str) -> tuple[int, str, bool] | None:
-    """Returns (org_id, org_name, disabled) or None.
+def _lookup_by_hash(api_key_hash: str) -> tuple[str, str, bool] | None:
+    """Return (org_id, org_name, disabled) or None."""
+    from jamp.db.connection import get_connection, release_connection
 
-    Commit 1: stub. Real DB query via src.jamp.db.connection in commit 3.
-    """
-    raise NotImplementedError("DB lookup wired in commit 3")
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name, disabled FROM organizations "
+                "WHERE api_key_hash = %s",
+                (api_key_hash,),
+            )
+            row = cur.fetchone()
+        return row
+    finally:
+        if conn is not None:
+            release_connection(conn)
 
 
 def _parse_bearer(authorization: str | None) -> str:
@@ -64,7 +77,7 @@ async def require_api_key(
 
     try:
         row = _lookup_by_hash(api_key_hash)
-    except Exception:  # TODO commit 3: narrow to psycopg2 Operational/InterfaceError
+    except (OperationalError, InterfaceError):
         raise HTTPException(status_code=503, detail="service unavailable") from None
 
     if row is None:

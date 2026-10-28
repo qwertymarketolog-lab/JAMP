@@ -6,6 +6,7 @@ from typing import Annotated
 import pytest
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
 
 from jamp.api import auth
 
@@ -39,7 +40,7 @@ def _lookup_returns(row):
 
 
 def _lookup_raises(_hash: str):
-    raise RuntimeError("db down")
+    raise OperationalError("db down")
 
 
 # --- hash_api_key ---
@@ -96,7 +97,7 @@ def test_parse_bearer_valid():
 
 def test_no_header_401_handler_not_called(monkeypatch):
     calls: list[str] = []
-    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns((1, "org", False)))
+    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns(("org-1", "org", False)))
     r = TestClient(_build_app(calls)).get("/protected")
     assert r.status_code == 401
     assert calls == []
@@ -114,18 +115,18 @@ def test_wrong_key_401_handler_not_called(monkeypatch):
 
 def test_valid_key_200_handler_called(monkeypatch):
     calls: list[str] = []
-    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns((42, "acme", False)))
+    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns(("org-42", "acme", False)))
     r = TestClient(_build_app(calls)).get(
         "/protected", headers={"Authorization": f"Bearer {VALID_TOKEN}"}
     )
     assert r.status_code == 200
     assert calls == ["called"]
-    assert r.json() == {"org_id": 42, "org_name": "acme"}
+    assert r.json() == {"org_id": "org-42", "org_name": "acme"}
 
 
 def test_disabled_org_403_handler_not_called(monkeypatch):
     calls: list[str] = []
-    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns((42, "acme", True)))
+    monkeypatch.setattr(auth, "_lookup_by_hash", _lookup_returns(("org-42", "acme", True)))
     r = TestClient(_build_app(calls)).get(
         "/protected", headers={"Authorization": f"Bearer {VALID_TOKEN}"}
     )
@@ -143,13 +144,14 @@ def test_db_error_503_not_401_handler_not_called(monkeypatch):
     assert calls == []
 
 
-def test_default_stub_fails_closed_503():
-    # no monkeypatch → NotImplementedError → 503, never 200
+def test_unexpected_error_is_not_masked_as_database_unavailable(monkeypatch):
     calls: list[str] = []
-    r = TestClient(_build_app(calls)).get(
-        "/protected", headers={"Authorization": f"Bearer {VALID_TOKEN}"}
+    monkeypatch.setattr(
+        auth, "_lookup_by_hash", lambda _h: (_ for _ in ()).throw(RuntimeError("unexpected"))
     )
-    assert r.status_code == 503
+    client = TestClient(_build_app(calls), raise_server_exceptions=False)
+    r = client.get("/protected", headers={"Authorization": f"Bearer {VALID_TOKEN}"})
+    assert r.status_code == 500
     assert calls == []
 
 

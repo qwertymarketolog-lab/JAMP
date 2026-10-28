@@ -20,13 +20,13 @@ PROTECTED = [
 
 @pytest.fixture
 def client(monkeypatch):
-    monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: (42, "acme", False))
+    monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: ("org-42", "acme", False))
     return TestClient(create_app(), raise_server_exceptions=False)
 
 
 @pytest.fixture
 def client_disabled_org(monkeypatch):
-    monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: (42, "acme", True))
+    monkeypatch.setattr(auth, "_lookup_by_hash", lambda _h: ("org-42", "acme", True))
     return TestClient(create_app(), raise_server_exceptions=False)
 
 
