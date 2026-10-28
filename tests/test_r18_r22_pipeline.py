@@ -57,6 +57,11 @@ def test_verdict_mapping() -> None:
     assert pipeline.map_e4_verdict("E4_INCONCLUSIVE") == "inconclusive"
 
 
+def test_default_sample_has_four_claims() -> None:
+    claims = pipeline.extract_claims(pipeline.DEFAULT_SAMPLE)
+    assert len(claims) == 4
+    assert any(claim.ticker == "FAKETECH" and claim.claim_type == "existence" for claim in claims)
+
 def test_pipeline_coverage_full() -> None:
     text = "SBER 5000₽. SBER. SBER вырастет. SBER вырос из-за дивидендов."
     with patch.object(
