@@ -226,7 +226,7 @@ def verify_historical_price(
                 date_till,
                 tolerance_pct,
                 reason="invalid_issue_date",
-            result="INCONCLUSIVE",
+                result="INCONCLUSIVE",
                 http_status=200,
                 parse_error=f"invalid ISSUEDATE: {issue_date}",
             )
