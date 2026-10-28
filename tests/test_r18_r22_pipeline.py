@@ -245,11 +245,14 @@ def test_e5_enabled_causal_contradicted(monkeypatch):
 
 def test_e5_does_not_override_e4_historical(monkeypatch):
     monkeypatch.setenv("JAMP_E5_ENABLED", "true")
-    with patch(
-        "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
-    ) as mock_e5, patch(
-        "jamp.provider.moex_history.verify_historical_price",
-        return_value=("CONTRADICTED", {"reason": "historical_max_below_claimed"}),
+    with (
+        patch(
+            "experiments.r18_r22_e2e.run_pipeline.verify_with_search",
+        ) as mock_e5,
+        patch(
+            "jamp.provider.moex_history.verify_historical_price",
+            return_value=("CONTRADICTED", {"reason": "historical_max_below_claimed"}),
+        ),
     ):
         report = pipeline.run_pipeline("SBER достиг 5000₽.")
     mock_e5.assert_not_called()
