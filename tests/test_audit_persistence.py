@@ -3,6 +3,7 @@ import json
 import pytest
 
 from jamp.runtime.persistence import AuditPersistence
+from jamp.runtime.provenance import ProvenanceTracker
 
 
 def test_audit_persistence_write_and_read(tmp_path):
@@ -109,3 +110,72 @@ def test_unknown_task_persists_refusal_trace(tmp_path):
     record = AuditPersistence(path).read_trace_by_id(trace_id)
     assert record is not None
     assert record["status"] == "REFUSE"
+
+
+def test_attempts_preserved_on_execute(tmp_path):
+    """attempts[] из evidence_details сохраняется в trace через AuditPersistence."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "EXECUTE",
+        "model-id",
+        1,
+        evidence_status="VERIFIED",
+        evidence_details={
+            "provider_model": "z-ai/glm-5.3-flash",
+            "attempts": [
+                {"attempt": 1, "http_status": 404, "elapsed_ms": 42},
+                {"attempt": 2, "http_status": 200, "elapsed_ms": 55},
+            ],
+        },
+    )
+    store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
+    store.write_trace(trace)
+    record = store.read_trace_by_id(trace["trace_id"])
+    saved = record["execution_details"]["evidence_details"]["attempts"]
+    assert len(saved) == 2
+    assert saved[1]["http_status"] == 200
+
+
+def test_attempts_preserved_on_refuse(tmp_path):
+    """attempts[] из failure_diagnostics сохраняется в refusal_details."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "REFUSE",
+        "E2_VERIFICATION_INCONCLUSIVE",
+        1,
+        failure_diagnostics={
+            "reason": "API_ERROR",
+            "http_status": 404,
+            "attempts": [
+                {"attempt": i, "http_status": 404, "elapsed_ms": i * 100} for i in range(1, 7)
+            ],
+        },
+    )
+    store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
+    store.write_trace(trace)
+    record = store.read_trace_by_id(trace["trace_id"])
+    saved = record["refusal_details"]["provider_diagnostics"]["attempts"]
+    assert len(saved) == 6
+    assert all(attempt["http_status"] == 404 for attempt in saved)
+
+
+def test_attempts_invalid_shape_rejected():
+    """attempts с элементами неправильной формы отбрасывается."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "EXECUTE",
+        "model-id",
+        1,
+        evidence_status="VERIFIED",
+        evidence_details={
+            "provider_model": "z-ai/glm-5.3-flash",
+            "attempts": [{"attempt": "one", "http_status": 404}],
+        },
+    )
+    assert "attempts" not in trace["execution_details"]["evidence_details"]
