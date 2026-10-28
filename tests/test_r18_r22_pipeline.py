@@ -89,3 +89,45 @@ def test_pipeline_coverage_empty() -> None:
 def test_inconclusive_has_reason() -> None:
     report = pipeline.run_pipeline("SBER вырастет. SBER вырос из-за дивидендов.")
     assert all(item["reason"] for item in report["claims"] if item["verdict"] == "inconclusive")
+
+
+
+def test_ticker_not_extracted_from_url() -> None:
+    text = (
+        "Согласно https://iss.moex.com/iss/engines/stock/markets/shares/"
+        "boards/TQBR/securities/SBER.json, SBER достиг 5000 рублей."
+    )
+    claim = pipeline.extract_claims(text)[0]
+    assert claim.ticker == "SBER"
+    assert claim.claim_type == "price"
+    assert claim.cited_value == 5000.0
+    assert claim.citation_url == (
+        "https://iss.moex.com/iss/engines/stock/markets/shares/"
+        "boards/TQBR/securities/SBER.json"
+    )
+
+
+def test_change_percent_not_price() -> None:
+    claim = pipeline.extract_claims("VKCO потерял 93% капитализации")[0]
+    assert claim.ticker == "VKCO"
+    assert claim.claim_type == "change_percent"
+    assert claim.cited_value == 93.0
+    report = pipeline.run_pipeline("VKCO потерял 93% капитализации")
+    result = report["claims"][0]
+    assert result["verdict"] == "inconclusive"
+    assert result["reason"] == "requires_E5_or_history"
+
+
+def test_fake_existence_not_found() -> None:
+    with patch.object(
+        pipeline,
+        "_verify_claim",
+        return_value=(
+            "E4_OUT_OF_SCOPE",
+            {"reason": "ticker_not_found", "checked_source": "moex.iss"},
+        ),
+    ):
+        report = pipeline.run_pipeline("FakeTech объявила IPO")
+    result = report["claims"][0]
+    assert result["claim_type"] == "existence"
+    assert result["verdict"] == "not_found"
