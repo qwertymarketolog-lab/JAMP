@@ -77,11 +77,13 @@ def extract_claims(text: str) -> list[Claim]:
             continue
         sentence_urls: list[str] = []
 
-        def restore_url(_match: re.Match[str]) -> str:
+        def restore_url(
+            _match: re.Match[str], _sentence_urls: list[str] = sentence_urls
+        ) -> str:
             nonlocal url_index
             url = urls[url_index]
             url_index += 1
-            sentence_urls.append(url)
+            _sentence_urls.append(url)
             return url
 
         restored_sentence = re.sub(r"__URLTOKEN__", restore_url, sentence)
