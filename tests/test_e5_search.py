@@ -212,9 +212,7 @@ def test_verdict_basis_matches_reason_on_inconclusive_snippets(mock_urlopen):
         claim_type="change_percent",
         ticker="VKCO",
     )
-    status, evidence = verify_with_search(
-        claim_text, claim_type, ticker, api_key="test-key"
-    )
+    status, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
 
     assert status == E5_OUT_OF_SCOPE
     assert evidence["reason"] == "snippet_inconclusive"
@@ -251,9 +249,7 @@ def test_attempts_present_with_real_shape(mock_urlopen):
         claim_type="causal",
         ticker="SBER",
     )
-    _, evidence = verify_with_search(
-        claim_text, claim_type, ticker, api_key="test-key"
-    )
+    _, evidence = verify_with_search(claim_text, claim_type, ticker, api_key="test-key")
 
     assert "attempts" in evidence
     assert isinstance(evidence["attempts"], list)
