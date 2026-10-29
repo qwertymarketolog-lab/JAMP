@@ -44,6 +44,7 @@ def _bypass_api_key_auth(
     try:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from jamp.api.auth import OrganizationContext, require_api_key
     except ImportError:
         yield
