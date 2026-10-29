@@ -16,7 +16,20 @@ MVP stores one API key per organization using the existing `organizations.api_ke
 
 - Generate a token with `secrets.token_urlsafe(32)` (32 random bytes; 256 bits of entropy before URL-safe encoding).
 - Store only HMAC-SHA256 using `JAMP_API_KEY_HASH_SECRET`; never store or log the plaintext token.
-- Verify with `hmac.compare_digest`.
+**Verification (v0):**
+
+The client-supplied token is hashed (`v1:<hex(HMAC-SHA256(secret, token))>`)
+and looked up via the UNIQUE index on `organizations.api_key_hash`.
+Equality is resolved by the database's B-tree comparison, not by Python
+string comparison. `hmac.compare_digest` is not called in v0 because the
+comparison happens inside the SQL engine.
+
+Security note: a timing attack against the B-tree index is not viable for
+a 256-bit HMAC output — each attempted token produces an independent hash
+and cannot be iterated toward a match.
+
+`hmac.compare_digest` will be required if a future version performs the
+comparison in application memory (e.g., in-memory cache of hashes).
 - Missing HMAC secret is a fail-closed configuration error. Do not silently fall back to plain SHA-256 or another key.
 - **Why HMAC-SHA256 rather than bcrypt/Argon2:** these are password-hashing KDFs intended to slow guessing of low-entropy human secrets. A 256-bit randomly generated API token is not realistically brute-forceable; a keyed HMAC supports deterministic equality lookup through the existing unique index and avoids a per-request slow KDF. Keeping the HMAC secret separate from the database also prevents a database-only leak from being sufficient to validate guesses.
 - **Hash storage format:** `organizations.api_key_hash` stores `v1:<hex(HMAC-SHA256(secret, token))>`. The `v1:` prefix is part of the storage contract from day one. Version dispatch is not needed in v0 because only one algorithm is supported; the prefix reserves a format boundary for future migration tooling.
