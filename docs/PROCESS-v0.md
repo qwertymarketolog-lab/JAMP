@@ -37,9 +37,9 @@ is treated as a process incident, recorded as a PR comment.
 
 ## Process incidents
 
-- #463 merged without a formal approve. Investigation found the ruleset
-  did not require review, so this was compliant with the repository
-  configuration. Recorded for transparency.
+- #463 merged without a formal approve. The current integration API read
+  of branch protection returns 403, so the ruleset configuration could not
+  be independently verified here. Recorded for transparency.
 - #470, #471 followed the same practice; no incident.
 
 ## Baseline
