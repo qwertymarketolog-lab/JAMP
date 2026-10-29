@@ -89,9 +89,7 @@ def test_disabled_org_gets_403(org_factory):
     ):
         return {"org_id": ctx.org_id, "org_name": ctx.org_name}
 
-    response = TestClient(app).get(
-        "/protected", headers={"Authorization": "Bearer key-disabled"}
-    )
+    response = TestClient(app).get("/protected", headers={"Authorization": "Bearer key-disabled"})
     assert response.status_code == 403
 
 

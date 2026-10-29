@@ -49,8 +49,7 @@ def _lookup_by_hash(api_key_hash: str) -> tuple[str, str, bool] | None:
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, name, disabled FROM organizations "
-                "WHERE api_key_hash = %s",
+                "SELECT id, name, disabled FROM organizations WHERE api_key_hash = %s",
                 (api_key_hash,),
             )
             row = cur.fetchone()
