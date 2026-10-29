@@ -20,11 +20,13 @@ def client(monkeypatch, tmp_path):
 
     monkeypatch.setenv("JAMP_SIGNING_KEY", "test-signing-key")
     monkeypatch.setattr(
-        app_module, "verify_generation",
+        app_module,
+        "verify_generation",
         lambda _d: ("VERIFIED", {"reason": "UV_TEST_FIXTURE"}),
     )
     monkeypatch.setattr(
-        auth_module, "_lookup_by_hash",
+        auth_module,
+        "_lookup_by_hash",
         lambda _h: ("test-org", "test", False),
     )
 
