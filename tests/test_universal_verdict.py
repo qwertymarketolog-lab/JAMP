@@ -45,9 +45,9 @@ def test_compute_jamp_verdict_hash_is_deterministic_and_uses_sign_canonicalizati
         timestamp=1793275200.0,
     )
     payload = jv._payload()
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
     expected = "sha256:" + hashlib.sha256(canonical).hexdigest()
 
     assert compute_jamp_verdict_hash(jv) == expected
