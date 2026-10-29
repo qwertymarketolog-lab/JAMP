@@ -17,6 +17,8 @@ jobs:
     name: B2B real HTTP contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      JAMP_API_KEY_HASH_SECRET: test-hmac-secret-not-for-production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
