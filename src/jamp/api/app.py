@@ -40,8 +40,8 @@ from jamp.runtime.universal_verdict import (
     SpecRef,
     UniversalClassification,
     UniversalVerdict,
-    VerifierInfo,
     VerdictResult,
+    VerifierInfo,
     compute_jamp_verdict_hash,
 )
 from jamp.runtime.verdict import (
