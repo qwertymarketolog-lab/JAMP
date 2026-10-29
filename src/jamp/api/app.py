@@ -921,7 +921,7 @@ def create_app(
             timestamp=ts,
         )
 
-        return {
+        response_body = {
             "universal_verdict": uv.canonical_payload(),
             "verdict_hash": uv.compute_verdict_hash(),
             "signature": uv.sign(signing_key.encode("utf-8")),
@@ -929,6 +929,28 @@ def create_app(
                 "spec_hash/criteria_hash are SHA-256 of identifiers, not of document content (v0)"
             ),
         }
+        persistence.write_universal_verdict(jv.trace_id, response_body)
+        return response_body
+
+    @app.get(
+        "/v1/universal-verdict/{trace_id}",
+        dependencies=[Depends(require_api_key)],
+    )
+    def get_universal_verdict(trace_id: str):
+        """Return the last persisted UniversalVerdict envelope for trace_id.
+
+        Re-POST with the same trace_id creates a new record; this endpoint
+        returns the most recent one. Absence of an envelope → 404 (the
+        underlying JampVerdict may still exist and be retrievable via
+        GET /v1/jamp-verdict/{trace_id}).
+        """
+        stored = persistence.read_universal_verdict_by_id(trace_id)
+        if stored is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "Universal verdict not found for trace_id"},
+            )
+        return stored
 
     @app.get("/v1/jamp-verdict/{trace_id}", dependencies=[Depends(require_api_key)])
     def get_jamp_verdict(trace_id: str):

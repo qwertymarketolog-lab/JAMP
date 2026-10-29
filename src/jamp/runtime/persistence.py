@@ -21,6 +21,7 @@ class AuditPersistence:
             )
         self.storage_path = Path(storage_path)
         self.verdicts_path = self.storage_path.parent / "verdicts.jsonl"
+        self.universal_verdicts_path = self.storage_path.parent / "universal_verdicts.jsonl"
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
 
     def write_trace(self, trace_payload: dict[str, Any]) -> str:
@@ -83,3 +84,35 @@ class AuditPersistence:
                 if record.get("trace_id") == trace_id:
                     return record
         return None
+
+    def write_universal_verdict(self, trace_id: str, payload: dict[str, Any]) -> str:
+        """Append-only persistence of a UniversalVerdict envelope.
+
+        Re-POST with the same trace_id appends a new record;
+        read_universal_verdict_by_id returns the last matching record.
+        """
+        if not trace_id:
+            raise ValueError("write_universal_verdict requires non-empty trace_id")
+
+        body = dict(payload)
+        body["trace_id"] = trace_id
+        serialized_entry = json.dumps(body, ensure_ascii=False, sort_keys=True) + "\n"
+        with self.universal_verdicts_path.open("a", encoding="utf-8") as handle:
+            handle.write(serialized_entry)
+            handle.flush()
+            os.fsync(handle.fileno())
+        return trace_id
+
+    def read_universal_verdict_by_id(self, trace_id: str) -> dict[str, Any] | None:
+        if not self.universal_verdicts_path.exists():
+            return None
+
+        match: dict[str, Any] | None = None
+        with self.universal_verdicts_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                if record.get("trace_id") == trace_id:
+                    match = record
+        return match
