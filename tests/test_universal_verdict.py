@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from pathlib import Path
 
 from jamp.runtime.universal_verdict import (
     CriteriaRef,
@@ -36,7 +38,7 @@ def _universal_verdict(
     )
 
 
-def test_compute_jamp_verdict_hash_is_deterministic_and_uses_sign_canonicalization():
+def test_jamp_hash_uses_same_canonicalization_as_sign():
     jv = JampVerdict(
         trace_id="trace_universal_v0",
         status="VERIFIED",
@@ -97,3 +99,41 @@ def test_evidence_refs_are_immutable_and_execution_jamp_verdict_is_not_modified(
     assert verdict.execution_ref.jamp_verdict_hash == jamp_hash
     assert jv._payload() == original_payload
     assert not hasattr(verdict.evidence_refs, "append")
+
+
+
+def test_contract_examples_hash_matches_payload():
+    contract_path = (
+        Path(__file__).parents[1]
+        / "docs"
+        / "research"
+        / "UNIVERSAL-VERDICT-CONTRACT-v0.md"
+    )
+    contract = contract_path.read_text(encoding="utf-8")
+    examples = re.findall(
+        r"### 8\.\d+ ([^\n]+)\n\n```json\n(.*?)\n```",
+        contract,
+        flags=re.DOTALL,
+    )
+    assert len(examples) == 3, "Expected VERIFIED, CONTRADICTED, INCONCLUSIVE examples"
+
+    for name, raw_payload in examples:
+        payload = json.loads(raw_payload)
+        verdict = UniversalVerdict(
+            spec_ref=SpecRef(**payload["spec_ref"]),
+            criteria_ref=CriteriaRef(**payload["criteria_ref"]),
+            execution_ref=ExecutionRef(**payload["execution_ref"]),
+            evidence_refs=tuple(EvidenceRef(**item) for item in payload["evidence_refs"]),
+            classification=UniversalClassification(**payload["classification"]),
+            verdict=VerdictResult(**payload["verdict"]),
+            verifier=VerifierInfo(**payload["verifier"]),
+            timestamp=payload["timestamp"],
+        )
+        assert (
+            verdict.classification.classification_hash
+            == payload["classification"]["classification_hash"]
+        ), f"{name}: classification_hash does not match its canonical payload"
+        assert verdict.compute_verdict_hash() == payload["verdict"]["verdict_hash"], (
+            f"{name}: expected {payload['verdict']['verdict_hash']}, "
+            f"got {verdict.compute_verdict_hash()}"
+        )
