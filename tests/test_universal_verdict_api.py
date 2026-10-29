@@ -1,27 +1,26 @@
-"""Tests for POST /v1/universal-verdict (Universal Verdict v0 envelope)."""
+"""Tests for POST /v1/universal-verdict (Universal Verdict v0 envelope).
+
+Marked real_auth: bypass from root conftest must NOT apply, otherwise
+require_api_key is stubbed and 401 cannot be tested.
+"""
 import pytest
 from fastapi.testclient import TestClient
 
 from jamp.api import auth as auth_module
 from jamp.api.app import create_app
 
+pytestmark = pytest.mark.real_auth
+
 AUTH = {"Authorization": "Bearer test-token"}
-
-
-@pytest.fixture(autouse=True)
-def _env(monkeypatch, tmp_path):
-    monkeypatch.setenv("JAMP_SIGNING_KEY", "test-signing-key")
-    monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "test-hmac-secret-not-for-production")
-    monkeypatch.setenv("JAMP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
 
 
 @pytest.fixture
 def client(monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
+    monkeypatch.setenv("JAMP_SIGNING_KEY", "test-signing-key")
     monkeypatch.setattr(
-        app_module,
-        "verify_generation",
+        app_module, "verify_generation",
         lambda _d: ("VERIFIED", {"reason": "UV_TEST_FIXTURE"}),
     )
     monkeypatch.setattr(
