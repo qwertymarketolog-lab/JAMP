@@ -62,9 +62,7 @@ def create_test_app():
     except ImportError:
         return app
 
-    app.dependency_overrides[require_api_key] = (
-        lambda: OrganizationContext("b2b-test", "b2b-test")
-    )
+    app.dependency_overrides[require_api_key] = lambda: OrganizationContext("b2b-test", "b2b-test")
     return app
 
 
