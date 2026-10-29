@@ -103,7 +103,7 @@ def run_workflow() -> None:
                     sys.executable,
                     "-m",
                     "uvicorn",
-                    "jamp.api.app:create_app",
+                    "experiments.n8n_emulator.test_app:create_app_with_bypass",
                     "--factory",
                     "--host",
                     "127.0.0.1",
