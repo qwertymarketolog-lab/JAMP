@@ -1,4 +1,5 @@
 """Tests for stateful POST + GET /v1/universal-verdict/{trace_id}."""
+
 import pytest
 from fastapi.testclient import TestClient
 
