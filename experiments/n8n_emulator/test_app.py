@@ -10,6 +10,7 @@ behaviour is covered separately by tests/test_openrouter_telegram_mvp.py.
 Pre-#463 main: jamp.api.auth is absent, try/except returns plain app.
 Cleanup: issue #466.
 """
+
 import importlib
 import json
 from typing import Any
@@ -41,7 +42,5 @@ def create_app_with_bypass():
         from jamp.api.auth import OrganizationContext, require_api_key
     except ImportError:
         return app
-    app.dependency_overrides[require_api_key] = (
-        lambda: OrganizationContext("n8n-test", "n8n-test")
-    )
+    app.dependency_overrides[require_api_key] = lambda: OrganizationContext("n8n-test", "n8n-test")
     return app
