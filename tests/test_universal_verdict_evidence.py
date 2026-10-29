@@ -46,9 +46,7 @@ def client(monkeypatch, tmp_path):
         }
 
     audit_path = tmp_path / "audit" / "provenance_traces.jsonl"
-    return TestClient(
-        create_app(executor=_exec, audit_storage_path=audit_path)
-    )
+    return TestClient(create_app(executor=_exec, audit_storage_path=audit_path))
 
 
 @pytest.fixture
@@ -78,9 +76,7 @@ def _post_uv(client, jv, *, evidence_refs=None, include_refs=False):
     )
 
 
-def test_omitted_evidence_refs_remains_non_reproducible(
-    client, trace_and_verdict
-):
+def test_omitted_evidence_refs_remains_non_reproducible(client, trace_and_verdict):
     _, jv = trace_and_verdict
 
     response = _post_uv(client, jv)
@@ -101,9 +97,7 @@ def test_valid_evidence_refs_are_committed(client, trace_and_verdict):
         }
     ]
 
-    response = _post_uv(
-        client, jv, evidence_refs=refs, include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs=refs, include_refs=True)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -125,9 +119,7 @@ def test_valid_evidence_refs_are_committed(client, trace_and_verdict):
 def test_evidence_refs_must_be_a_list(client, trace_and_verdict):
     _, jv = trace_and_verdict
 
-    response = _post_uv(
-        client, jv, evidence_refs="", include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs="", include_refs=True)
 
     assert response.status_code == 400
     assert response.json()["detail"] == "evidence_refs must be a list"
@@ -136,9 +128,7 @@ def test_evidence_refs_must_be_a_list(client, trace_and_verdict):
 def test_each_evidence_ref_must_be_an_object(client, trace_and_verdict):
     _, jv = trace_and_verdict
 
-    response = _post_uv(
-        client, jv, evidence_refs=["not-an-object"], include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs=["not-an-object"], include_refs=True)
 
     assert response.status_code == 400
     assert response.json()["detail"] == "evidence_refs[0] must be an object"
@@ -177,9 +167,7 @@ def test_ref_hash_must_match_sha256_format(client, trace_and_verdict):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == (
-        "evidence_refs[0].ref_hash invalid (sha256:<64hex>)"
-    )
+    assert response.json()["detail"] == ("evidence_refs[0].ref_hash invalid (sha256:<64hex>)")
 
 
 def test_source_sha256_must_match_sha256_format(client, trace_and_verdict):
@@ -197,6 +185,4 @@ def test_source_sha256_must_match_sha256_format(client, trace_and_verdict):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == (
-        "evidence_refs[0].source_sha256 invalid"
-    )
+    assert response.json()["detail"] == ("evidence_refs[0].source_sha256 invalid")
