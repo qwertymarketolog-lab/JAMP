@@ -144,9 +144,7 @@ def test_evidence_type_must_be_allowed(client, trace_and_verdict):
         }
     ]
 
-    response = _post_uv(
-        client, jv, evidence_refs=refs, include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs=refs, include_refs=True)
 
     assert response.status_code == 400
     assert response.json()["detail"] == "evidence_refs[0].type not allowed"
@@ -162,9 +160,7 @@ def test_ref_hash_must_match_sha256_format(client, trace_and_verdict):
         }
     ]
 
-    response = _post_uv(
-        client, jv, evidence_refs=refs, include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs=refs, include_refs=True)
 
     assert response.status_code == 400
     assert response.json()["detail"] == ("evidence_refs[0].ref_hash invalid (sha256:<64hex>)")
@@ -180,9 +176,7 @@ def test_source_sha256_must_match_sha256_format(client, trace_and_verdict):
         }
     ]
 
-    response = _post_uv(
-        client, jv, evidence_refs=refs, include_refs=True
-    )
+    response = _post_uv(client, jv, evidence_refs=refs, include_refs=True)
 
     assert response.status_code == 400
     assert response.json()["detail"] == ("evidence_refs[0].source_sha256 invalid")
