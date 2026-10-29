@@ -930,6 +930,23 @@ def create_app(
             ),
         }
 
+    @app.get("/v1/jamp-verdict/{trace_id}", dependencies=[Depends(require_api_key)])
+    def get_jamp_verdict(trace_id: str):
+        """Return the persisted signed JampVerdict for a trace_id.
+
+        This is the raw execution verdict. UniversalVerdict envelope is not
+        reconstructed here — spec_ref and criteria_ref are client-supplied at
+        POST /v1/universal-verdict and are not persisted. Use that endpoint
+        to wrap a verdict; use this one to retrieve the persisted original.
+        """
+        stored = persistence.read_verdict_by_id(trace_id)
+        if stored is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "Verdict not found for trace_id"},
+            )
+        return stored
+
     @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
     def get_provenance(trace_id: str):
         trace = persistence.read_trace_by_id(trace_id)
