@@ -53,7 +53,19 @@ def create_test_app():
     app_module.verify_generation = deterministic_e2_fixture
     from jamp.api import create_app
 
-    return create_app(executor=deterministic_executor)
+    app = create_app(executor=deterministic_executor)
+
+    # Pre-#463 main: jamp.api.auth not yet present. After #463 merges,
+    # this guard becomes dead code — cleanup: issue #466.
+    try:
+        from jamp.api.auth import OrganizationContext, require_api_key
+    except ImportError:
+        return app
+
+    app.dependency_overrides[require_api_key] = (
+        lambda: OrganizationContext("b2b-test", "b2b-test")
+    )
+    return app
 
 
 def _request_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
