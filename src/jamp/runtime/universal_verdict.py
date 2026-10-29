@@ -15,9 +15,9 @@ _ALLOWED_RESULTS = frozenset({"VERIFIED", "CONTRADICTED", "INCONCLUSIVE", "PARTI
 
 def _canonical_bytes(payload: dict[str, Any]) -> bytes:
     """Serialize a payload using the single normative v0 canonicalization."""
-    return json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
 
 
 def _sha256_hash(payload: dict[str, Any]) -> str:
@@ -27,9 +27,9 @@ def _sha256_hash(payload: dict[str, Any]) -> str:
 def compute_jamp_verdict_hash(jv: JampVerdict) -> str:
     """Hash the unchanged JampVerdict payload with its signing canonicalization."""
     payload = jv._payload()
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
@@ -64,9 +64,7 @@ class UniversalClassification:
     classification_hash: str = ""
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self, "classification_hash", _sha256_hash({"label": self.label})
-        )
+        object.__setattr__(self, "classification_hash", _sha256_hash({"label": self.label}))
 
 
 @dataclass(frozen=True)
