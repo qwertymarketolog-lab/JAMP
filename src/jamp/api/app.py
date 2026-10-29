@@ -34,6 +34,16 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.qualification import evaluate_model_qualification
+from jamp.runtime.universal_verdict import (
+    CriteriaRef,
+    ExecutionRef,
+    SpecRef,
+    UniversalClassification,
+    UniversalVerdict,
+    VerdictResult,
+    VerifierInfo,
+    compute_jamp_verdict_hash,
+)
 from jamp.runtime.verdict import (
     JampVerdict,
     aggregate_verdict,
@@ -834,6 +844,89 @@ def create_app(
         except (TypeError, ValueError, OverflowError):
             valid = False
         return {"valid": valid}
+
+    @app.post("/v1/universal-verdict", dependencies=[Depends(require_api_key)])
+    def universal_verdict(payload: dict[str, Any]):
+        """Wrap a signed JampVerdict in a UniversalVerdict v0 envelope.
+
+        spec_hash/criteria_hash are SHA-256 of identifier strings, not of
+        document content (v0 semantics). evidence_refs is empty and
+        reproducible=False — v0 does not aggregate evidence.
+        """
+        import hashlib
+        from datetime import UTC, datetime
+
+        jv_payload = payload.get("jamp_verdict")
+        spec_id = (payload.get("spec_id") or "").strip()
+        criteria_id = (payload.get("criteria_id") or "").strip()
+        if not spec_id or not criteria_id:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "spec_id and criteria_id required"},
+            )
+        if not isinstance(jv_payload, dict):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "jamp_verdict must be an object"},
+            )
+
+        signing_key = _verdict_signing_key()
+        if signing_key is None:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "signing key not configured"},
+            )
+
+        try:
+            jv = JampVerdict.from_dict(jv_payload)
+        except (TypeError, ValueError, KeyError):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "invalid jamp_verdict"},
+            )
+        if not jv.verify(signing_key):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "jamp_verdict signature invalid"},
+            )
+
+        result_str = str(jv.aggregate_status)
+        ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+        uv = UniversalVerdict(
+            spec_ref=SpecRef(
+                spec_id=spec_id,
+                spec_hash=hashlib.sha256(spec_id.encode("utf-8")).hexdigest(),
+            ),
+            criteria_ref=CriteriaRef(
+                criteria_id=criteria_id,
+                criteria_hash=hashlib.sha256(criteria_id.encode("utf-8")).hexdigest(),
+            ),
+            execution_ref=ExecutionRef(
+                jamp_verdict_hash=compute_jamp_verdict_hash(jv),
+                execution_status=str(jv.execution_status),
+            ),
+            evidence_refs=(),
+            classification=UniversalClassification(label=result_str),
+            verdict=VerdictResult(result=result_str),
+            verifier=VerifierInfo(
+                version="uv0.1.0",
+                reproducible=False,
+                aggregation_rule_hash=hashlib.sha256(
+                    b"uv0-preserve-jamp-aggregate-status"
+                ).hexdigest(),
+            ),
+            timestamp=ts,
+        )
+
+        return {
+            "universal_verdict": uv.canonical_payload(),
+            "verdict_hash": uv.compute_verdict_hash(),
+            "signature": uv.sign(signing_key.encode("utf-8")),
+            "semantics": (
+                "spec_hash/criteria_hash are SHA-256 of identifiers, not of document content (v0)"
+            ),
+        }
 
     @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
     def get_provenance(trace_id: str):
