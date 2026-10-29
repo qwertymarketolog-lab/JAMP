@@ -902,36 +902,20 @@ def create_app(
             evidence_type = ref.get("type")
             ref_hash = ref.get("ref_hash")
             source_sha256 = ref.get("source_sha256")
-            if (
-                not isinstance(evidence_type, str)
-                or evidence_type not in _EVIDENCE_TYPES
-            ):
+            if not isinstance(evidence_type, str) or evidence_type not in _EVIDENCE_TYPES:
                 return JSONResponse(
                     status_code=400,
                     content={"detail": f"evidence_refs[{i}].type not allowed"},
                 )
-            if (
-                not isinstance(ref_hash, str)
-                or _REF_HASH_RE.fullmatch(ref_hash) is None
-            ):
+            if not isinstance(ref_hash, str) or _REF_HASH_RE.fullmatch(ref_hash) is None:
                 return JSONResponse(
                     status_code=400,
-                    content={
-                        "detail": (
-                            f"evidence_refs[{i}].ref_hash invalid "
-                            "(sha256:<64hex>)"
-                        )
-                    },
+                    content={"detail": (f"evidence_refs[{i}].ref_hash invalid (sha256:<64hex>)")},
                 )
-            if (
-                not isinstance(source_sha256, str)
-                or _REF_HASH_RE.fullmatch(source_sha256) is None
-            ):
+            if not isinstance(source_sha256, str) or _REF_HASH_RE.fullmatch(source_sha256) is None:
                 return JSONResponse(
                     status_code=400,
-                    content={
-                        "detail": f"evidence_refs[{i}].source_sha256 invalid"
-                    },
+                    content={"detail": f"evidence_refs[{i}].source_sha256 invalid"},
                 )
             validated.append(
                 EvidenceRef(
