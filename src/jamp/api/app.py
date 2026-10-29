@@ -702,7 +702,9 @@ def create_app(
                 aggregate_status=aggregate_status,
                 critical_unverified=critical_unverified,
             ).sign(signing_key)
-            response["verdict"] = verdict.to_dict()
+            verdict_dict = verdict.to_dict()
+            persistence.write_verdict(trace["trace_id"], verdict_dict)
+            response["verdict"] = verdict_dict
         return response
 
     def telegram_webhook(payload: dict[str, Any], request: FastAPIRequest):
