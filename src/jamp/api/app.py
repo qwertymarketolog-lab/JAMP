@@ -924,8 +924,7 @@ def create_app(
             "verdict_hash": uv.compute_verdict_hash(),
             "signature": uv.sign(signing_key.encode("utf-8")),
             "semantics": (
-                "spec_hash/criteria_hash are SHA-256 of identifiers, "
-                "not of document content (v0)"
+                "spec_hash/criteria_hash are SHA-256 of identifiers, not of document content (v0)"
             ),
         }
 
