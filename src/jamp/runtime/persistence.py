@@ -64,9 +64,7 @@ class AuditPersistence:
             raise ValueError("Verdict trace_id must not be empty.")
 
         record = {**verdict_payload, "trace_id": trace_id}
-        serialized_entry = (
-            json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n"
-        )
+        serialized_entry = json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n"
         with self.verdicts_path.open("a", encoding="utf-8") as handle:
             handle.write(serialized_entry)
             handle.flush()
