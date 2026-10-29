@@ -101,14 +101,8 @@ def test_evidence_refs_are_immutable_and_execution_jamp_verdict_is_not_modified(
     assert not hasattr(verdict.evidence_refs, "append")
 
 
-
 def test_contract_examples_hash_matches_payload():
-    contract_path = (
-        Path(__file__).parents[1]
-        / "docs"
-        / "research"
-        / "UNIVERSAL-VERDICT-CONTRACT-v0.md"
-    )
+    contract_path = Path(__file__).parents[1] / "docs" / "research" / "UNIVERSAL-VERDICT-CONTRACT-v0.md"
     contract = contract_path.read_text(encoding="utf-8")
     examples = re.findall(
         r"### 8\.\d+ ([^\n]+)\n\n```json\n(.*?)\n```",
