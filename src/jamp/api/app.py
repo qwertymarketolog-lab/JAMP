@@ -36,6 +36,7 @@ from jamp.runtime import (
 from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.runtime.universal_verdict import (
     CriteriaRef,
+    EvidenceRef,
     ExecutionRef,
     SpecRef,
     UniversalClassification,
@@ -82,6 +83,23 @@ def _verdict_signing_key() -> str | None:
     if os.environ.get("JAMP_ENV", "development").lower() in {"production", "prod"}:
         return None
     return "dev-secret"
+
+
+_REF_HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_EVIDENCE_TYPES = frozenset(
+    {
+        "raw_document",
+        "ocr_block",
+        "api_response",
+        "db_row",
+        "cve_record",
+        "vendor_advisory",
+        "deployment_log",
+        "scan_report",
+        "version_check",
+        "patch_receipt",
+    }
+)
 
 
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
@@ -852,8 +870,9 @@ def create_app(
         """Wrap a signed JampVerdict in a UniversalVerdict v0 envelope.
 
         spec_hash/criteria_hash are SHA-256 of identifier strings, not of
-        document content (v0 semantics). evidence_refs is empty and
-        reproducible=False — v0 does not aggregate evidence.
+        document content (v0 semantics). evidence_refs are committed in the
+        canonical payload; reproducible remains False until independent
+        full-chain reproduction is implemented.
         """
         import hashlib
         from datetime import UTC, datetime
@@ -866,6 +885,46 @@ def create_app(
                 status_code=400,
                 content={"detail": "spec_id and criteria_id required"},
             )
+
+        raw_refs = payload.get("evidence_refs", [])
+        if not isinstance(raw_refs, list):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "evidence_refs must be a list"},
+            )
+        validated = []
+        for i, ref in enumerate(raw_refs):
+            if not isinstance(ref, dict):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": f"evidence_refs[{i}] must be an object"},
+                )
+            evidence_type = ref.get("type")
+            ref_hash = ref.get("ref_hash")
+            source_sha256 = ref.get("source_sha256")
+            if not isinstance(evidence_type, str) or evidence_type not in _EVIDENCE_TYPES:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": f"evidence_refs[{i}].type not allowed"},
+                )
+            if not isinstance(ref_hash, str) or _REF_HASH_RE.fullmatch(ref_hash) is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": (f"evidence_refs[{i}].ref_hash invalid (sha256:<64hex>)")},
+                )
+            if not isinstance(source_sha256, str) or _REF_HASH_RE.fullmatch(source_sha256) is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": f"evidence_refs[{i}].source_sha256 invalid"},
+                )
+            validated.append(
+                EvidenceRef(
+                    type=evidence_type,
+                    ref_hash=ref_hash,
+                    source_sha256=source_sha256,
+                )
+            )
+
         if not isinstance(jv_payload, dict):
             return JSONResponse(
                 status_code=400,
@@ -908,12 +967,12 @@ def create_app(
                 jamp_verdict_hash=compute_jamp_verdict_hash(jv),
                 execution_status=str(jv.execution_status),
             ),
-            evidence_refs=(),
+            evidence_refs=tuple(validated),
             classification=UniversalClassification(label=result_str),
             verdict=VerdictResult(result=result_str),
             verifier=VerifierInfo(
-                version="uv0.1.0",
-                reproducible=False,
+                version="uv0.2.0",
+                reproducible=False,  # v0: evidence committed, not reproduced
                 aggregation_rule_hash=hashlib.sha256(
                     b"uv0-preserve-jamp-aggregate-status"
                 ).hexdigest(),
