@@ -34,11 +34,6 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.qualification import evaluate_model_qualification
-from jamp.runtime.verdict import (
-    JampVerdict,
-    aggregate_verdict,
-    critical_unverified_claims,
-)
 from jamp.runtime.universal_verdict import (
     CriteriaRef,
     ExecutionRef,
@@ -48,6 +43,11 @@ from jamp.runtime.universal_verdict import (
     VerifierInfo,
     VerdictResult,
     compute_jamp_verdict_hash,
+)
+from jamp.runtime.verdict import (
+    JampVerdict,
+    aggregate_verdict,
+    critical_unverified_claims,
 )
 from jamp.transport.telegram_updates import TelegramUpdateStore, TelegramUpdateStoreError
 
@@ -854,7 +854,7 @@ def create_app(
         reproducible=False — v0 does not aggregate evidence.
         """
         import hashlib
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         jv_payload = payload.get("jamp_verdict")
         spec_id = (payload.get("spec_id") or "").strip()
@@ -891,7 +891,7 @@ def create_app(
             )
 
         result_str = str(jv.aggregate_status)
-        ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
         uv = UniversalVerdict(
             spec_ref=SpecRef(
