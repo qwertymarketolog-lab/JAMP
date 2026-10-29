@@ -3,6 +3,7 @@
 Marked real_auth: bypass from root conftest must NOT apply, otherwise
 require_api_key is stubbed and 401 cannot be tested.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
