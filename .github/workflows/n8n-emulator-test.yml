@@ -20,6 +20,7 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
       JAMP_ENV: production
+      JAMP_API_KEY_HASH_SECRET: test-hmac-secret-not-for-production
       PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
