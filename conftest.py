@@ -26,9 +26,7 @@ def _auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _bypass_api_key_auth(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-):
+def _bypass_api_key_auth(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch):
     """Default: inject a stub OrganizationContext so legacy tests don't need
     Authorization headers. Tests marked @pytest.mark.real_auth opt out.
 
@@ -52,8 +50,8 @@ def _bypass_api_key_auth(
 
     def _apply_override(app: object) -> None:
         if isinstance(app, FastAPI):
-            app.dependency_overrides[require_api_key] = (
-                lambda: OrganizationContext("test-org", "test")
+            app.dependency_overrides[require_api_key] = lambda: OrganizationContext(
+                "test-org", "test"
             )
 
     original_init = TestClient.__init__
