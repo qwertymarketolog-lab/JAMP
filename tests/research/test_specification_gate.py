@@ -17,7 +17,13 @@ def _digest(value: object) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
-def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tuple[str, dict]:
+def _criterion(
+    *,
+    overlap: bool = False,
+    self_test_failure: bool = False,
+    hypothesis_ref: str = "hypothesis-1",
+    prediction_ref: str = "prediction-1",
+) -> tuple[str, dict]:
     if overlap:
         acceptance = {"field": "x", "op": "in", "value": [1, 2]}
         rejection = {"field": "x", "op": "in", "value": [2, 3]}
@@ -30,8 +36,8 @@ def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tup
     criterion = {
         "criterion_id": "criterion-1",
         "criterion_version": "0",
-        "hypothesis_ref": hypothesis.hypothesis_hash,
-        "prediction_ref": selected_prediction.prediction_hash,
+        "hypothesis_ref": hypothesis_ref,
+        "prediction_ref": prediction_ref,
         "preconditions": [],
         "observation_schema": {"x": "integer"},
         "acceptance_predicate": acceptance,
@@ -91,7 +97,12 @@ def _source(
     elif a2_case == "hash_mismatch":
         hypothesis_records = {hypothesis.hypothesis_hash: alternate_hypothesis}
 
-    criterion_hash, criterion = _criterion(overlap=overlap, self_test_failure=self_test_failure)
+    criterion_hash, criterion = _criterion(
+        overlap=overlap,
+        self_test_failure=self_test_failure,
+        hypothesis_ref=hypothesis.hypothesis_hash,
+        prediction_ref=selected_prediction.prediction_hash,
+    )
     aggregation = {"version": "0", "mode": "deterministic"}
     aggregation_hash = _digest(aggregation)
     criterion_set = {
@@ -106,8 +117,8 @@ def _source(
     specification = {
         "spec_id": "spec-1",
         "spec_version": "0",
-        "hypothesis_ref": "hypothesis-1",
-        "prediction_ref": "prediction-1",
+        "hypothesis_ref": hypothesis.hypothesis_hash,
+        "prediction_ref": selected_prediction.prediction_hash,
         "criterion_set_ref": criterion_set_hash,
         "frozen_at": "2026-09-16T00:00:00Z",
     }
