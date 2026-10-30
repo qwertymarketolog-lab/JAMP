@@ -11,7 +11,7 @@ import os
 import pytest
 
 jcs = pytest.importorskip("jcs", reason="python-jcs reference package is not installed")
-hypothesis = pytest.importorskip("hypothesis", reason="Hypothesis is not installed")
+pytest.importorskip("hypothesis", reason="Hypothesis is not installed")
 
 from hypothesis import given, settings, strategies as st
 
