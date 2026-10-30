@@ -1041,7 +1041,6 @@ def create_app(
             stored_classification_hash = envelope["classification"].get(
                 "classification_hash", ""
             )
-            stored_verdict_hash = envelope["verdict"].get("verdict_hash", "")
         except (KeyError, TypeError):
             return JSONResponse(
                 status_code=500,
@@ -1068,11 +1067,6 @@ def create_app(
                 content={"detail": "stored classification hash mismatch"},
             )
 
-        if uv.verdict.verdict_hash != stored_verdict_hash:
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "stored verdict hash mismatch"},
-            )
 
         if not uv.verify(signing_key.encode("utf-8"), stored_signature):
             return JSONResponse(
