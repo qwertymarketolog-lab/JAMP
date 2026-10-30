@@ -102,6 +102,24 @@ _EVIDENCE_TYPES = frozenset(
 )
 
 
+def _universal_verdict_from_dict(payload: dict[str, Any]) -> UniversalVerdict:
+    """Reconstruct UniversalVerdict from canonical_payload() dict.
+
+    Inverse of canonical_payload(). Lives here (not in universal_verdict.py)
+    to honor the constraint: universal_verdict.py is not modified in this PR.
+    """
+    return UniversalVerdict(
+        spec_ref=SpecRef(**payload["spec_ref"]),
+        criteria_ref=CriteriaRef(**payload["criteria_ref"]),
+        execution_ref=ExecutionRef(**payload["execution_ref"]),
+        evidence_refs=tuple(EvidenceRef(**r) for r in payload["evidence_refs"]),
+        classification=UniversalClassification(**payload["classification"]),
+        verdict=VerdictResult(**payload["verdict"]),
+        verifier=VerifierInfo(**payload["verifier"]),
+        timestamp=payload["timestamp"],
+    )
+
+
 DEFAULT_EVIDENCE = Path(__file__).parents[3] / "tests/fixtures/runtime_evidence_projection.json"
 
 COINGECKO_TICKER_MAP = {
@@ -1009,6 +1027,51 @@ def create_app(
                 status_code=404,
                 content={"detail": "Universal verdict not found for trace_id"},
             )
+
+        signing_key = _verdict_signing_key()
+        if signing_key is None:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "signing key not configured"},
+            )
+
+        try:
+            envelope = stored["universal_verdict"]
+            stored_outer_hash = stored["verdict_hash"]
+            stored_signature = stored["signature"]
+            stored_classification_hash = envelope["classification"].get("classification_hash", "")
+        except (KeyError, TypeError):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored universal verdict missing fields"},
+            )
+
+        try:
+            uv = _universal_verdict_from_dict(envelope)
+        except (TypeError, ValueError, KeyError):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored universal verdict failed to parse"},
+            )
+
+        if uv.compute_verdict_hash() != stored_outer_hash:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored universal verdict hash mismatch"},
+            )
+
+        if uv.classification.classification_hash != stored_classification_hash:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored classification hash mismatch"},
+            )
+
+        if not uv.verify(signing_key.encode("utf-8"), stored_signature):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored universal verdict signature invalid"},
+            )
+
         return stored
 
     @app.get("/v1/jamp-verdict/{trace_id}", dependencies=[Depends(require_api_key)])
@@ -1026,6 +1089,28 @@ def create_app(
                 status_code=404,
                 content={"detail": "Verdict not found for trace_id"},
             )
+
+        signing_key = _verdict_signing_key()
+        if signing_key is None:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "signing key not configured"},
+            )
+
+        try:
+            jv = JampVerdict.from_dict(stored)
+        except (TypeError, ValueError, KeyError):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored verdict failed to parse"},
+            )
+
+        if not jv.verify(signing_key):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored verdict failed integrity check"},
+            )
+
         return stored
 
     @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
