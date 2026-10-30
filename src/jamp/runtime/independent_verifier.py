@@ -177,7 +177,7 @@ def _verify_exported_chains(
             body = {key: value for key, value in record.items() if key != "record_hash"}
             try:
                 expected_hash = "sha256:" + hashlib.sha256(_canonical_bytes(body)).hexdigest()
-            except (TypeError, ValueError, OverflowError):
+            except (TypeError, ValueError, OverflowError, UnicodeError):
                 return False, f"{store_name}[{index}] cannot be canonicalized"
             if not hmac.compare_digest(str(record.get("record_hash")), expected_hash):
                 return False, f"{store_name}[{index}] record_hash mismatch"
@@ -245,7 +245,7 @@ def verify_chain(
     try:
         jv = JampVerdict.from_dict(jamp_verdict)
         jv_valid = jv.verify(secret.decode("utf-8"))
-    except (UnicodeDecodeError, TypeError, ValueError, OverflowError):
+    except (UnicodeDecodeError, TypeError, ValueError, OverflowError, AttributeError):
         jv_valid = False
         jv = None
     if not jv_valid or jv is None:
@@ -272,7 +272,7 @@ def verify_chain(
 
         uv = _universal_verdict_from_dict(envelope["universal_verdict"])
         actual_envelope_hash = uv.compute_verdict_hash()
-    except (ImportError, TypeError, ValueError, KeyError, OverflowError):
+    except (ImportError, TypeError, ValueError, KeyError, OverflowError, AttributeError):
         uv = None
         actual_envelope_hash = ""
     if uv is None or actual_envelope_hash != envelope["verdict_hash"]:
@@ -321,19 +321,25 @@ def verify_chain(
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("aggregate_consistency", "PASS", "verdict result matches aggregate_status"))
 
-    output_digest = trace["execution_details"].get("output_digest")
-    if output_digest is None:
+    execution_details = trace["execution_details"]
+    if "output_digest" not in execution_details:
         checks.append(CheckResult("output_digest", "SKIP", "trace has no execution_details.output_digest"))
         reasons.append("output digest is unavailable")
-    elif not isinstance(output_digest, str) or jv.evidence_hash != output_digest:
+    else:
+        output_digest = execution_details["output_digest"]
+        if not isinstance(output_digest, str) or not output_digest or jv.evidence_hash != output_digest:
         checks.append(CheckResult("output_digest", "FAIL", "JampVerdict evidence_hash differs from output_digest"))
         reasons.append("JampVerdict evidence_hash does not match trace output_digest")
-        _skip_remaining(checks, names[10:], "verification stopped after output digest mismatch")
-        return _report(checks, reasons, "CONTRADICTED")
-    else:
+            _skip_remaining(checks, names[10:], "verification stopped after output digest mismatch")
+            return _report(checks, reasons, "CONTRADICTED")
         checks.append(CheckResult("output_digest", "PASS", "JampVerdict output digest matches trace"))
 
     refs = uv.evidence_refs
+    if evidence_files is not None and not isinstance(evidence_files, dict):
+        checks.append(CheckResult("evidence_content", "FAIL", "evidence_files must be a mapping of hashes to bytes"))
+        reasons.append("evidence_files has invalid structure")
+        _skip_remaining(checks, names[11:], "verification stopped after evidence_files structure failure")
+        return _report(checks, reasons, "CONTRADICTED")
     if not refs:
         checks.append(CheckResult("evidence_content", "SKIP", "no evidence_refs were supplied"))
         reasons.append("raw evidence references are absent")
