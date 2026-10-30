@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import binascii
 import hmac
 import json
 import os
@@ -904,7 +903,7 @@ def create_app(
                     if not isinstance(source_hash, str) or not isinstance(encoded, str):
                         raise ValueError("evidence_files keys and values must be strings")
                     decoded_evidence[source_hash] = base64.b64decode(encoded, validate=True)
-            except (ValueError, TypeError, binascii.Error):
+            except (ValueError, TypeError):
                 return JSONResponse(
                     status_code=400,
                     content={"detail": "evidence_files contains invalid base64"},
