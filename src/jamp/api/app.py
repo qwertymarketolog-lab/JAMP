@@ -101,6 +101,7 @@ _EVIDENCE_TYPES = frozenset(
     }
 )
 
+
 def _universal_verdict_from_dict(payload: dict[str, Any]) -> UniversalVerdict:
     """Reconstruct UniversalVerdict from canonical_payload() dict.
 
@@ -1038,9 +1039,7 @@ def create_app(
             envelope = stored["universal_verdict"]
             stored_outer_hash = stored["verdict_hash"]
             stored_signature = stored["signature"]
-            stored_classification_hash = envelope["classification"].get(
-                "classification_hash", ""
-            )
+            stored_classification_hash = envelope["classification"].get("classification_hash", "")
         except (KeyError, TypeError):
             return JSONResponse(
                 status_code=500,
@@ -1066,7 +1065,6 @@ def create_app(
                 status_code=500,
                 content={"detail": "stored classification hash mismatch"},
             )
-
 
         if not uv.verify(signing_key.encode("utf-8"), stored_signature):
             return JSONResponse(
