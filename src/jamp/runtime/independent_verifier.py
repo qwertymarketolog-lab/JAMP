@@ -3,6 +3,7 @@
 The verifier does not call UniversalVerdict.is_confirmed() and never reads
 persistence. Callers provide raw evidence and exported JSONL records.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -61,9 +62,17 @@ def _structure_is_valid(envelope: Any, jamp_verdict: Any, trace: Any) -> tuple[b
         return False, "envelope, jamp_verdict and trace must be JSON objects"
 
     required_jv = {
-        "trace_id", "status", "provider_model_id", "evidence_hash", "timestamp",
-        "execution_status", "model_verification", "claims", "aggregate_status",
-        "critical_unverified", "signature",
+        "trace_id",
+        "status",
+        "provider_model_id",
+        "evidence_hash",
+        "timestamp",
+        "execution_status",
+        "model_verification",
+        "claims",
+        "aggregate_status",
+        "critical_unverified",
+        "signature",
     }
     if not required_jv.issubset(jamp_verdict):
         return False, "jamp_verdict is missing required fields"
@@ -99,8 +108,14 @@ def _structure_is_valid(envelope: Any, jamp_verdict: Any, trace: Any) -> tuple[b
     if not isinstance(uv_payload, dict):
         return False, "envelope.universal_verdict must be an object"
     required_uv = {
-        "spec_ref", "criteria_ref", "execution_ref", "evidence_refs",
-        "classification", "verdict", "verifier", "timestamp",
+        "spec_ref",
+        "criteria_ref",
+        "execution_ref",
+        "evidence_refs",
+        "classification",
+        "verdict",
+        "verifier",
+        "timestamp",
     }
     if not required_uv.issubset(uv_payload):
         return False, "universal_verdict is missing required fields"
@@ -213,10 +228,18 @@ def verify_chain(
     checks: list[CheckResult] = []
     reasons: list[str] = []
     names = (
-        "secret", "object_structure", "trace_linkage", "jamp_signature",
-        "jamp_verdict_hash", "envelope_hash", "envelope_signature",
-        "classification_consistency", "aggregate_consistency", "output_digest",
-        "evidence_content", "persistence_chain",
+        "secret",
+        "object_structure",
+        "trace_linkage",
+        "jamp_signature",
+        "jamp_verdict_hash",
+        "envelope_hash",
+        "envelope_signature",
+        "classification_consistency",
+        "aggregate_consistency",
+        "output_digest",
+        "evidence_content",
+        "persistence_chain",
     )
 
     if not isinstance(secret, bytes) or not secret:
@@ -362,9 +385,7 @@ def verify_chain(
                 )
             )
             reasons.append("JampVerdict evidence_hash does not match trace output_digest")
-            _skip_remaining(
-                checks, names[10:], "verification stopped after output digest mismatch"
-            )
+            _skip_remaining(checks, names[10:], "verification stopped after output digest mismatch")
             return _report(checks, reasons, "CONTRADICTED")
         checks.append(
             CheckResult("output_digest", "PASS", "JampVerdict output digest matches trace")
