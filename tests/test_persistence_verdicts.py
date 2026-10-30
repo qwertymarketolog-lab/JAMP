@@ -7,7 +7,11 @@ from fastapi.testclient import TestClient
 
 from jamp.api import app as app_module
 from jamp.api.app import create_app
-from jamp.runtime.persistence import AuditPersistence
+from jamp.runtime.persistence import (
+    GENESIS_HASH,
+    AuditPersistence,
+    _record_hash,
+)
 
 
 def test_write_and_read_verdict_round_trip(tmp_path):
@@ -63,10 +67,25 @@ def test_multiple_verdicts_are_appended_without_overwriting(tmp_path):
         for line in persistence.verdicts_path.read_text(encoding="utf-8").splitlines()
     ]
     assert len(records) == 2
-    assert records == [
-        {**first, "trace_id": "trace-1"},
-        {**second, "trace_id": "trace-2"},
-    ]
+
+    # Original payload fields preserved inside both raw records.
+    for record, payload, tid in [
+        (records[0], first, "trace-1"),
+        (records[1], second, "trace-2"),
+    ]:
+        assert record["trace_id"] == tid
+        assert record["status"] == payload["status"]
+        assert record["signature"] == payload["signature"]
+
+    # Chain linkage: first record is genesis, second points to first.
+    assert records[0]["prev_hash"] == GENESIS_HASH
+    assert records[1]["prev_hash"] == records[0]["record_hash"]
+    assert records[0]["record_hash"] == _record_hash(records[0])
+    assert records[1]["record_hash"] == _record_hash(records[1])
+
+    # Public read contract: payload without chain metadata.
+    assert persistence.read_verdict_by_id("trace-1") == {**first, "trace_id": "trace-1"}
+    assert persistence.read_verdict_by_id("trace-2") == {**second, "trace_id": "trace-2"}
 
 
 def test_write_verdict_rejects_empty_trace_id(tmp_path):
