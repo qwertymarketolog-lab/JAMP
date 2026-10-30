@@ -86,6 +86,8 @@ def _source(
     prediction_records = {selected_prediction.prediction_hash: selected_prediction}
     if a2_case == "unresolved":
         hypothesis_records = {}
+    elif a2_case == "prediction_unresolved":
+        prediction_records = {}
     elif a2_case == "hash_mismatch":
         hypothesis_records = {hypothesis.hypothesis_hash: alternate_hypothesis}
 
@@ -181,15 +183,7 @@ def test_a2_broken_prediction_link_maps_to_fail() -> None:
 
 
 def test_a2_prediction_unresolved_maps_to_unknown() -> None:
-    source, ref = _source()
-    source = MappingArtifactSource(
-        specifications=source._specifications,
-        criterion_sets=source._criterion_sets,
-        criteria=source._criteria,
-        aggregation_rules=source._aggregation_rules,
-        hypotheses=source._hypotheses,
-        predictions={},
-    )
+    source, ref = _source(a2_case="prediction_unresolved")
     result = SpecificationGate(source).run_gate(ref)
     assert result.status is GateStatus.UNKNOWN
     assert [item.code for item in result.diagnostics] == ["A2_UNRESOLVED"]
