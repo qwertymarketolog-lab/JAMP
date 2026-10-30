@@ -13,6 +13,9 @@ import re
 from types import MappingProxyType
 from typing import Any, Mapping, Protocol, Sequence
 
+from .hypothesis import HypothesisRecord
+from .prediction import PredictionRecord
+
 from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -27,6 +30,7 @@ _ERROR_CODES = frozenset({
     "VERSION_MISMATCH", "EMPTY_CRITERION_SET", "MISSING_PREDICATE", "MISSING_SELF_TEST",
     "SELF_TEST_FAILURE", "SELF_TEST_AMBIGUITY", "NONDETERMINISTIC_EVALUATION",
     "PREDICATE_OVERLAP", "INCOMPLETE_COVERAGE", "UNRESOLVED_STATE", "FREEZE_BOUNDARY_VIOLATION",
+    "A2_UNRESOLVED", "A2_HASH_MISMATCH", "A2_LINK_BROKEN",
 })
 _RESULTS = ("PASS", "FAIL", "INCONCLUSIVE")
 
@@ -38,6 +42,7 @@ class GateError(ValueError):
 class GateStatus(str, Enum):
     PASS = "GATE_PASS"
     FAIL = "GATE_FAIL"
+    UNKNOWN = "GATE_UNKNOWN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +76,8 @@ class ArtifactSource(Protocol):
     def get_criterion_set(self, criterion_set_hash: str) -> Mapping[str, Any]: ...
     def get_criterion(self, criterion_hash: str) -> Mapping[str, Any]: ...
     def get_aggregation_rule(self, rule_hash: str) -> Mapping[str, Any]: ...
+    def get_hypothesis(self, hypothesis_ref: str) -> HypothesisRecord | None: ...
+    def get_prediction(self, prediction_ref: str) -> PredictionRecord | None: ...
 
 
 class MappingArtifactSource:
@@ -83,11 +90,15 @@ class MappingArtifactSource:
         criterion_sets: Mapping[str, Mapping[str, Any]],
         criteria: Mapping[str, Mapping[str, Any]],
         aggregation_rules: Mapping[str, Mapping[str, Any]],
+        hypotheses: Mapping[str, HypothesisRecord] | None = None,
+        predictions: Mapping[str, PredictionRecord] | None = None,
     ) -> None:
         self._specifications = dict(specifications)
         self._criterion_sets = dict(criterion_sets)
         self._criteria = dict(criteria)
         self._aggregation_rules = dict(aggregation_rules)
+        self._hypotheses = dict(hypotheses or {})
+        self._predictions = dict(predictions or {})
 
     def get_specification(self, spec_hash: str) -> Mapping[str, Any]:
         return self._specifications[spec_hash]
@@ -100,6 +111,12 @@ class MappingArtifactSource:
 
     def get_aggregation_rule(self, rule_hash: str) -> Mapping[str, Any]:
         return self._aggregation_rules[rule_hash]
+
+    def get_hypothesis(self, hypothesis_ref: str) -> HypothesisRecord | None:
+        return self._hypotheses.get(hypothesis_ref)
+
+    def get_prediction(self, prediction_ref: str) -> PredictionRecord | None:
+        return self._predictions.get(prediction_ref)
 
 
 def _hash(value: Any) -> str:
@@ -186,11 +203,46 @@ class SpecificationGate:
             diagnostics.append(_diagnostic("FREEZE_BOUNDARY_VIOLATION", spec_ref.spec_hash, "frozen_at", "execution requires a frozen specification"))
         return tuple(diagnostics)
 
+    def validate_a2_references(self, spec: Mapping[str, Any]) -> tuple[Diagnostic, ...]:
+        """Resolve and verify the immutable Hypothesis/Prediction reference chain."""
+        hypothesis_ref = spec.get("hypothesis_ref")
+        prediction_ref = spec.get("prediction_ref")
+        if not _valid_hash(hypothesis_ref) or not _valid_hash(prediction_ref):
+            return (_diagnostic("SCHEMA_VIOLATION", str(spec.get("spec_hash", "")), "A2 references",
+                                "hypothesis_ref and prediction_ref must be immutable SHA-256 hashes"),)
+        try:
+            hypothesis = self._source.get_hypothesis(hypothesis_ref)
+        except Exception:
+            hypothesis = None
+        if hypothesis is None:
+            return (_diagnostic("A2_UNRESOLVED", hypothesis_ref, "hypothesis_ref",
+                                "hypothesis reference does not resolve"),)
+        try:
+            prediction = self._source.get_prediction(prediction_ref)
+        except Exception:
+            prediction = None
+        if prediction is None:
+            return (_diagnostic("A2_UNRESOLVED", prediction_ref, "prediction_ref",
+                                "prediction reference does not resolve"),)
+        if hypothesis.hypothesis_hash != hypothesis_ref:
+            return (_diagnostic("A2_HASH_MISMATCH", hypothesis_ref, "hypothesis_hash",
+                                "resolved hypothesis hash does not match the requested reference"),)
+        if prediction.prediction_hash != prediction_ref:
+            return (_diagnostic("A2_HASH_MISMATCH", prediction_ref, "prediction_hash",
+                                "resolved prediction hash does not match the requested reference"),)
+        if prediction.hypothesis_ref != hypothesis_ref:
+            return (_diagnostic("A2_LINK_BROKEN", prediction_ref, "prediction.hypothesis_ref",
+                                "prediction does not reference the resolved hypothesis"),)
+        return ()
+
     def validate_referential_integrity(self, spec_ref: SpecificationRef) -> tuple[Diagnostic, ...]:
         diagnostics = list(self.validate_specification(spec_ref))
         if diagnostics:
             return tuple(diagnostics)
         spec = self._source.get_specification(spec_ref.spec_hash)
+        a2_diagnostics = self.validate_a2_references(spec)
+        if a2_diagnostics:
+            return a2_diagnostics
         criterion_set_hash = spec["criterion_set_ref"]
         if not _valid_hash(criterion_set_hash):
             return (_diagnostic("SCHEMA_VIOLATION", criterion_set_hash, "criterion_set_ref", "criterion_set_ref must be an immutable SHA-256 HashLink"),)
@@ -290,7 +342,10 @@ class SpecificationGate:
             diagnostics.extend(self.run_criterion_self_tests(criterion_set_hash))
             diagnostics.extend(self.verify_predicate_coverage(criterion_set_hash))
         unique = tuple(dict.fromkeys(diagnostics))
-        status = GateStatus.FAIL if unique else GateStatus.PASS
+        if any(item.code == "A2_UNRESOLVED" for item in unique):
+            status = GateStatus.UNKNOWN
+        else:
+            status = GateStatus.FAIL if unique else GateStatus.PASS
         hashes = (spec_ref.spec_hash,)
         if not unique:
             hashes += (self._source.get_specification(spec_ref.spec_hash)["criterion_set_ref"],)
