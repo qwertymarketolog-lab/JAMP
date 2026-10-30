@@ -104,7 +104,7 @@ A proven violation is `FAIL`. `PASS` requires every required evidence class, int
 
 ## 6. Remaining pre-freeze gates
 
-- A2 exact reference resolution and compatibility tests: OPEN.
+- A2 exact reference resolution and compatibility tests: IMPLEMENTED IN PR; terminal CI verification pending.
 - JCS V1–V10 plus independent implementation comparison: OPEN.
 - Complete real `example-001` evidence run: PENDING.
 - Q1–Q5 design proposals: remain PROPOSED; this package does not silently ratify them.
