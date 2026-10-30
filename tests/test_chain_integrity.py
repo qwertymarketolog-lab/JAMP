@@ -1,4 +1,5 @@
 """Tests for hash-chain integrity in JSONL persistence."""
+
 import json
 
 import pytest
@@ -20,18 +21,13 @@ AUTH = {"Authorization": "Bearer test-token"}
 
 def _read_records(path):
     return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
 
 
 def _write_records(path, records):
     path.write_text(
-        "\n".join(
-            json.dumps(r, ensure_ascii=False, sort_keys=True) for r in records
-        )
-        + "\n",
+        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in records) + "\n",
         encoding="utf-8",
     )
 
@@ -41,6 +37,7 @@ def _p(tmp_path):
 
 
 # --- chain structure ---
+
 
 def test_first_write_uses_genesis_prev_hash(tmp_path):
     p = _p(tmp_path)
@@ -77,6 +74,7 @@ def test_read_round_trip_after_writes(tmp_path):
 
 # --- tamper detection ---
 
+
 def test_tampered_record_breaks_chain(tmp_path):
     p = _p(tmp_path)
     p.write_verdict("t-1", {"status": "VERIFIED"})
@@ -105,6 +103,7 @@ def test_deleted_middle_record_breaks_chain(tmp_path):
 
 
 # --- legacy compatibility ---
+
 
 def test_legacy_file_without_chain_markers_is_readable(tmp_path):
     p = _p(tmp_path)
@@ -138,6 +137,7 @@ def test_legacy_then_new_write_starts_chain_at_genesis(tmp_path):
 
 # --- API integration ---
 
+
 @pytest.fixture
 def client_and_audit(monkeypatch, tmp_path):
     import jamp.api.app as app_module
@@ -149,13 +149,15 @@ def client_and_audit(monkeypatch, tmp_path):
         lambda _d: ("VERIFIED", {"reason": "CHAIN_TEST"}),
     )
     monkeypatch.setattr(
-        auth_module, "_lookup_by_hash",
+        auth_module,
+        "_lookup_by_hash",
         lambda _h: ("test-org", "test", False),
     )
 
     def _exec(model, payload):
         return {
-            "provider": "stub", "model": model,
+            "provider": "stub",
+            "model": model,
             "provider_response_id": "chain",
             "provider_model_id": model,
             "content": '{"result":"chain"}',
