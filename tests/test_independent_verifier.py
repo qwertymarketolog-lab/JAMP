@@ -185,8 +185,12 @@ def test_tampered_envelope_verdict_hash_is_contradicted() -> None:
     envelope["verdict_hash"] = "sha256:" + "0" * 64
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=chain_records,
+        secret=SECRET,
     )
 
     assert report.verdict == "CONTRADICTED"
@@ -213,9 +217,7 @@ def test_changed_evidence_reference_without_raw_files_is_inconclusive() -> None:
 
 def test_changed_evidence_reference_with_raw_files_is_contradicted() -> None:
     envelope, jv, trace, evidence_files, _ = _valid_case()
-    envelope["universal_verdict"]["evidence_refs"][0]["source_sha256"] = (
-        "sha256:" + "b" * 64
-    )
+    envelope["universal_verdict"]["evidence_refs"][0]["source_sha256"] = "sha256:" + "b" * 64
     _resign_envelope(envelope)
 
     report = verify_chain(
@@ -236,8 +238,12 @@ def test_broken_exported_chain_is_contradicted() -> None:
     chain_records["traces"][0]["prev_hash"] = "sha256:" + "f" * 64
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=chain_records,
+        secret=SECRET,
     )
 
     assert report.verdict == "CONTRADICTED"
@@ -266,8 +272,12 @@ def test_trace_without_output_digest_is_inconclusive() -> None:
     trace["execution_details"] = {}
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=None, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=None,
+        secret=SECRET,
     )
 
     assert report.verdict == "INCONCLUSIVE"
@@ -288,8 +298,12 @@ def test_verifier_never_calls_confirmation_or_storage_reads(
     monkeypatch.setattr(AuditPersistence, "read_universal_verdict_by_id", forbidden)
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=chain_records,
+        secret=SECRET,
     )
 
     assert report.verdict == "VERIFIED"
