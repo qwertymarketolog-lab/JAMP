@@ -11,9 +11,10 @@ import os
 import pytest
 
 jcs = pytest.importorskip("jcs", reason="python-jcs reference package is not installed")
-pytest.importorskip("hypothesis", reason="Hypothesis is not installed")
-
-from hypothesis import given, settings, strategies as st
+hypothesis = pytest.importorskip("hypothesis", reason="Hypothesis is not installed")
+given = hypothesis.given
+settings = hypothesis.settings
+st = hypothesis.strategies
 
 from jamp.research.canonical import canonical_bytes
 from tests.research.canonical.jcs_vectors import CONFORMANCE_VECTORS
