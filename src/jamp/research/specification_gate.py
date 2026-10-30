@@ -13,10 +13,9 @@ import re
 from types import MappingProxyType
 from typing import Any, Mapping, Protocol, Sequence
 
+from .canonical import canonical_bytes
 from .hypothesis import HypothesisRecord
 from .prediction import PredictionRecord
-
-from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_SPEC = ("spec_id", "spec_version", "hypothesis_ref", "prediction_ref", "criterion_set_ref", "spec_hash", "frozen_at")
