@@ -216,6 +216,9 @@ class SpecificationGate:
         if hypothesis is None:
             return (_diagnostic("A2_UNRESOLVED", hypothesis_ref, "hypothesis_ref",
                                 "hypothesis reference does not resolve"),)
+        if hypothesis.hypothesis_hash != hypothesis_ref:
+            return (_diagnostic("A2_HASH_MISMATCH", hypothesis_ref, "hypothesis_hash",
+                                "resolved hypothesis hash does not match the requested reference"),)
         try:
             prediction = self._source.get_prediction(prediction_ref)
         except Exception:
@@ -223,9 +226,6 @@ class SpecificationGate:
         if prediction is None:
             return (_diagnostic("A2_UNRESOLVED", prediction_ref, "prediction_ref",
                                 "prediction reference does not resolve"),)
-        if hypothesis.hypothesis_hash != hypothesis_ref:
-            return (_diagnostic("A2_HASH_MISMATCH", hypothesis_ref, "hypothesis_hash",
-                                "resolved hypothesis hash does not match the requested reference"),)
         if prediction.prediction_hash != prediction_ref:
             return (_diagnostic("A2_HASH_MISMATCH", prediction_ref, "prediction_hash",
                                 "resolved prediction hash does not match the requested reference"),)
