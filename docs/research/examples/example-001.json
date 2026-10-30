@@ -1,0 +1,127 @@
+{
+  "example_id": "example-001",
+  "status": "SCHEMA_ONLY",
+  "reference_status": "PENDING_FIRST_FULL_EVIDENCE_RUN",
+  "scope": {
+    "domain": "b2b_api_integration",
+    "system_boundary": "Telegram webhook -> JAMP Runtime -> OpenRouter -> Telegram response",
+    "conformance_unit": "one_execution",
+    "explicit_exclusions": [
+      "SLA",
+      "latency guarantee",
+      "throughput",
+      "availability",
+      "reliability",
+      "performance qualification"
+    ]
+  },
+  "specification_template": {
+    "spec_id": "UNBOUND_SCHEMA_EXAMPLE",
+    "spec_version": "0.1.0-draft",
+    "scope": {
+      "domain": "b2b_api_integration",
+      "system_boundary": "Telegram webhook -> JAMP Runtime -> OpenRouter -> Telegram response",
+      "conformance_unit": "one_execution",
+      "explicit_exclusions": [
+        "SLA",
+        "latency guarantee",
+        "throughput",
+        "availability",
+        "reliability",
+        "performance qualification"
+      ]
+    },
+    "hypothesis_ref": "TBD_BEFORE_FREEZE",
+    "prediction_ref": "TBD_BEFORE_FREEZE",
+    "criterion_set_ref": "TBD_BEFORE_FREEZE",
+    "preconditions": {
+      "telegram_webhook": {
+        "configured": true,
+        "secret_material": "MUST_NOT_BE_EMBEDDED"
+      },
+      "provider": "openrouter",
+      "requested_model_id": "minimax/minimax-m3.1-flash:free",
+      "actual_model_id": "MUST_BE_CAPTURED_FROM_PROVIDER_RESPONSE"
+    },
+    "observation_schema": {
+      "raw_webhook_payload": {
+        "representation": "original_received_bytes",
+        "required_fields": ["update_id", "message.message_id"]
+      },
+      "jamp_runtime_log": {
+        "representation": "structured_log_records",
+        "required_fields": ["trace_id", "event_timestamp_utc", "event_source"]
+      },
+      "provider_request_export": {
+        "representation": "exact_request_as_sent",
+        "required_fields": ["provider", "requested_model_id", "request_body"]
+      },
+      "provider_response_export": {
+        "representation": "exact_response_as_received",
+        "required_fields": [
+          "response_body",
+          "response_headers",
+          "actual_model_id",
+          "response_snapshot_sha256"
+        ]
+      },
+      "telegram_send_result": {
+        "representation": "telegram_api_result",
+        "required_fields": ["http_status", "api_ok", "outgoing_message_id"]
+      },
+      "execution_timing_export": {
+        "representation": "utc_timeline",
+        "required_fields": [
+          "execution_started_at",
+          "execution_finished_at",
+          "key_step_timestamps",
+          "clock_source"
+        ]
+      }
+    },
+    "evidence_classes": [
+      "raw_webhook_payload",
+      "jamp_runtime_log",
+      "provider_request_export",
+      "provider_response_export",
+      "telegram_send_result",
+      "execution_timing_export"
+    ],
+    "frozen_at": null,
+    "spec_hash": null
+  },
+  "evidence_classes": [
+    "raw_webhook_payload",
+    "jamp_runtime_log",
+    "provider_request_export",
+    "provider_response_export",
+    "telegram_send_result",
+    "execution_timing_export"
+  ],
+  "evidence_refs": "TBD",
+  "historical_partial_evidence": {
+    "classification": "PARTIAL_ONLY_NOT_CONFORMANCE",
+    "workflow_run_id": 39561370652,
+    "job_id": 119093183173,
+    "artifact_id": 12328245109,
+    "trace_id": "trace_78d81146",
+    "requested_model_id": "minimax/minimax-m3.1-flash:free",
+    "actual_model_id_observed_in_job_log": "minimax/minimax-m3.1-flash:free",
+    "qualification": "NOT_GRANTED",
+    "known_gaps": [
+      "Workflow submitted a synthetic Telegram Update payload; it did not establish a real inbound Telegram delivery.",
+      "No complete provider request export with the exact request as sent.",
+      "No complete provider response export including response headers and model metadata.",
+      "No independent Telegram send result with the outgoing Telegram message_id.",
+      "No complete structured runtime log and UTC execution timing export covering all required steps."
+    ]
+  },
+  "outcome_semantics": {
+    "case_status": {
+      "PASS": "All required evidence classes are present, integrity-checked, and all frozen one-run conformance conditions are satisfied.",
+      "FAIL": "A concrete contract violation is established by sufficient evidence.",
+      "UNKNOWN": "Execution or evidence is incomplete/unverified; no conformance PASS or FAIL is emitted."
+    },
+    "boundary": "UNKNOWN is an evidence-acquisition/case status, not a Classification or Verdict. No provenance-valid verdict may be emitted from UNKNOWN."
+  }
+}
