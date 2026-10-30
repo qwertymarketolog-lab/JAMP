@@ -323,16 +323,28 @@ def verify_chain(
 
     execution_details = trace["execution_details"]
     if "output_digest" not in execution_details:
-        checks.append(CheckResult("output_digest", "SKIP", "trace has no execution_details.output_digest"))
+        checks.append(
+            CheckResult("output_digest", "SKIP", "trace has no execution_details.output_digest")
+        )
         reasons.append("output digest is unavailable")
     else:
         output_digest = execution_details["output_digest"]
         if not isinstance(output_digest, str) or not output_digest or jv.evidence_hash != output_digest:
-        checks.append(CheckResult("output_digest", "FAIL", "JampVerdict evidence_hash differs from output_digest"))
-        reasons.append("JampVerdict evidence_hash does not match trace output_digest")
-            _skip_remaining(checks, names[10:], "verification stopped after output digest mismatch")
+            checks.append(
+                CheckResult(
+                    "output_digest",
+                    "FAIL",
+                    "JampVerdict evidence_hash differs from output_digest",
+                )
+            )
+            reasons.append("JampVerdict evidence_hash does not match trace output_digest")
+            _skip_remaining(
+                checks, names[10:], "verification stopped after output digest mismatch"
+            )
             return _report(checks, reasons, "CONTRADICTED")
-        checks.append(CheckResult("output_digest", "PASS", "JampVerdict output digest matches trace"))
+        checks.append(
+            CheckResult("output_digest", "PASS", "JampVerdict output digest matches trace")
+        )
 
     refs = uv.evidence_refs
     if evidence_files is not None and not isinstance(evidence_files, dict):
