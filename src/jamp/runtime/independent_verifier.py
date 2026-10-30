@@ -109,7 +109,7 @@ def _structure_is_valid(envelope: Any, jamp_verdict: Any, trace: Any) -> tuple[b
         ("spec_ref", ("spec_id", "spec_hash")),
         ("criteria_ref", ("criteria_id", "criteria_hash")),
         ("execution_ref", ("jamp_verdict_hash", "execution_status")),
-        ("classification", ("label",)),
+        ("classification", ("label", "classification_hash")),
         ("verdict", ("result",)),
         ("verifier", ("version", "reproducible", "aggregation_rule_hash")),
     ):
@@ -293,9 +293,23 @@ def verify_chain(
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("envelope_signature", "PASS", "UniversalVerdict HMAC-SHA256 is valid"))
 
-    if uv.classification.label != uv.verdict.result:
-        checks.append(CheckResult("classification_consistency", "FAIL", "classification label differs from result"))
-        reasons.append("classification.label does not equal verdict.result")
+    stored_classification_hash = envelope["universal_verdict"]["classification"].get(
+        "classification_hash"
+    )
+    if (
+        uv.classification.label != uv.verdict.result
+        or stored_classification_hash != uv.classification.classification_hash
+    ):
+        checks.append(
+            CheckResult(
+                "classification_consistency",
+                "FAIL",
+                "classification label/result or derived classification hash mismatch",
+            )
+        )
+        reasons.append(
+            "classification label must equal verdict result and its stored hash must match"
+        )
         _skip_remaining(checks, names[8:], "verification stopped after classification mismatch")
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("classification_consistency", "PASS", "classification label matches result"))
