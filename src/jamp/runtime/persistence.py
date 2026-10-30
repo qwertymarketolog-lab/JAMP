@@ -17,9 +17,9 @@ class ChainIntegrityError(RuntimeError):
 
 def _record_canonical_bytes(record: dict[str, Any]) -> bytes:
     body = {k: v for k, v in record.items() if k != "record_hash"}
-    return json.dumps(
-        body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    return json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def _record_hash(record: dict[str, Any]) -> str:
@@ -83,15 +83,12 @@ class AuditPersistence:
             if not has_chain:
                 if chain_started:
                     raise ChainIntegrityError(
-                        f"legacy record after chain started: "
-                        f"trace_id={rec.get('trace_id')!r}"
+                        f"legacy record after chain started: trace_id={rec.get('trace_id')!r}"
                     )
                 continue
             chain_started = True
             if rec.get("prev_hash") != expected_prev:
-                raise ChainIntegrityError(
-                    f"chain broken at trace_id={rec.get('trace_id')!r}"
-                )
+                raise ChainIntegrityError(f"chain broken at trace_id={rec.get('trace_id')!r}")
             if rec.get("record_hash") != _record_hash(rec):
                 raise ChainIntegrityError(
                     f"record_hash mismatch at trace_id={rec.get('trace_id')!r}"
@@ -148,9 +145,7 @@ class AuditPersistence:
         return trace_id
 
     def read_trace_by_id(self, trace_id: str) -> dict[str, Any] | None:
-        return self._read_chained_by_id(
-            self.storage_path, trace_id, last_wins=False
-        )
+        return self._read_chained_by_id(self.storage_path, trace_id, last_wins=False)
 
     def write_verdict(
         self,
@@ -166,9 +161,7 @@ class AuditPersistence:
     def read_verdict_by_id(self, trace_id: str) -> dict[str, Any] | None:
         if not trace_id:
             return None
-        return self._read_chained_by_id(
-            self.verdicts_path, trace_id, last_wins=False
-        )
+        return self._read_chained_by_id(self.verdicts_path, trace_id, last_wins=False)
 
     def write_universal_verdict(self, trace_id: str, payload: dict[str, Any]) -> str:
         """Append-only persistence of a UniversalVerdict envelope.
@@ -184,6 +177,4 @@ class AuditPersistence:
         return trace_id
 
     def read_universal_verdict_by_id(self, trace_id: str) -> dict[str, Any] | None:
-        return self._read_chained_by_id(
-            self.universal_verdicts_path, trace_id, last_wins=True
-        )
+        return self._read_chained_by_id(self.universal_verdicts_path, trace_id, last_wins=True)
