@@ -45,7 +45,11 @@ def _build_chain_record(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _valid_case() -> tuple[
-    dict[str, Any], dict[str, Any], dict[str, Any], dict[str, bytes], dict[str, list[dict[str, Any]]]
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, bytes],
+    dict[str, list[dict[str, Any]]],
 ]:
     trace_id = "trace_independent_001"
     source_sha256 = _source_hash(RAW_EVIDENCE)
