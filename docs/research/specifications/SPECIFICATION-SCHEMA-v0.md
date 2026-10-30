@@ -1,7 +1,7 @@
 # Specification Schema v0
 
-**Status:** Draft / Pre-Freeze
-**Layer:** N1 — Specification
+**Status:** Draft / Pre-Freeze  
+**Layer:** N1 — Specification  
 **Governing contract:** `PROVENANCE-CONTRACT-v0`
 
 ## 1. Purpose
@@ -18,14 +18,29 @@ This schema is subordinate to `PROVENANCE-CONTRACT-v0` and must not be interpret
 Specification:
   spec_id: UUIDv4 / Content-Namespace ID
   spec_version: String (semantic version)
+  scope: ScopeDefinition
   hypothesis_ref: HashLink
   prediction_ref: HashLink
   criterion_set_ref: HashLink
   preconditions: List[ConditionRule]
   observation_schema: SchemaDefinition
+  evidence_classes: NonEmptyList[EvidenceClass]
   frozen_at: ISO8601 Timestamp | null (Draft only)
   spec_hash: SHA-256
 ```
+
+### EvidenceClass v0
+
+The Stage B evidence-class vocabulary for `example-001` is:
+
+- `raw_webhook_payload`
+- `jamp_runtime_log`
+- `provider_request_export`
+- `provider_response_export`
+- `telegram_send_result`
+- `execution_timing_export`
+
+These are evidence-type declarations, not evidence records, hashes, or verdicts. Stage C Raw Evidence v0 is responsible for binding concrete source bytes/records and their `source_sha256` values.
 
 ## 3. Field Semantics
 
@@ -37,13 +52,23 @@ Immutable identity of the Specification object or its content namespace.
 
 Version of the Specification schema/object. A frozen change creates a new version rather than modifying the existing frozen object.
 
+### `scope`
+
+A separately represented, frozen boundary for the research/conformance question. It identifies the domain, system boundary, unit of evaluation, and explicit exclusions. It MUST NOT contain observed results or verdict logic.
+
+For `example-001`, the unit is one execution of:
+
+`Telegram webhook → JAMP Runtime → OpenRouter → Telegram response`.
+
+This is one-run conformance only. It is not an SLA, latency, throughput, availability, reliability, or performance claim.
+
 ### `hypothesis_ref`
 
-Content-addressed reference to one exact immutable Hypothesis object.
+Content-addressed reference to one exact immutable Hypothesis object. The reference value is expected to bind to the exact `hypothesis_hash` emitted by the Hypothesis record.
 
 ### `prediction_ref`
 
-Content-addressed reference to one exact immutable Prediction object.
+Content-addressed reference to one exact immutable Prediction object. The reference value is expected to bind to the exact `prediction_hash` emitted by the Prediction record.
 
 ### `criterion_set_ref`
 
@@ -51,11 +76,23 @@ Content-addressed reference to one exact immutable Criterion Set. The reference 
 
 ### `preconditions`
 
-Frozen protocol/state constraints applicable to the execution. They are data/conditions, not classification predicates.
+Frozen protocol/state constraints applicable to the execution. They are data/conditions, not classification predicates. For external dependencies, preconditions identify the expected provider/service and requested model without embedding credentials.
 
 ### `observation_schema`
 
-Frozen definition of the permitted raw-observation structure. It does not encode acceptance, rejection, or aggregation logic.
+Frozen definition of the permitted raw-observation structure. For `example-001`, it must make observable, at minimum:
+
+- the complete incoming Telegram webhook payload as received, including `update_id` and the applicable incoming `message_id`;
+- the OpenRouter provider, exact requested model identifier, and the model/version identifier actually reported in the provider response;
+- the exact provider request as sent and response as received, including relevant response headers/metadata and a content hash/snapshot reference;
+- the Telegram send result, including HTTP/API status and the returned outgoing Telegram `message_id`;
+- UTC start/end and key-step timestamps, each with an explicit clock/source designation.
+
+These are observation-shape requirements. They do not assert that the historical E2E run already captured all fields.
+
+### `evidence_classes`
+
+A non-empty list declaring the evidence classes required by the protocol. For `example-001`, the list MUST contain all six EvidenceClass v0 values above. This field declares required evidence types only; it does not claim that any evidence has been collected.
 
 ### `frozen_at`
 
@@ -64,6 +101,8 @@ Frozen definition of the permitted raw-observation structure. It does not encode
 ### `spec_hash`
 
 SHA-256 computed from the canonical representation of all Specification fields except `spec_hash` itself. Any modification to a covered field produces a different content hash.
+
+The repository's current `canonical.py` is deterministic JSON serialization, but RFC 8785 JCS conformance has not been established. The hash/canonicalization decision remains pre-freeze; this document does not declare the current serializer JCS-compliant.
 
 ## 4. N1 Invariants
 
@@ -75,10 +114,15 @@ SHA-256 computed from the canonical representation of all Specification fields e
 - **I6:** A modification to a frozen Specification requires a new Specification version and immutable identity/hash.
 - **I7:** `frozen_at = null` is permitted only before freezing; a frozen Specification must contain a concrete timestamp.
 - **I8:** Specification fields must not contain verdict-bearing interpretation introduced after execution begins.
+- **I9:** `scope` is a separate field and remains frozen with the Specification.
+- **I10:** `evidence_classes` declares required evidence types; it is not a substitute for concrete Raw Evidence.
+- **I11:** For `example-001`, all six required evidence classes must be present before one-run conformance can be evaluated.
 
 ## 5. Conformance
 
-The schema conforms to the frozen `PROVENANCE-CONTRACT-v0` requirements for Specification: identity, version, hypothesis/prediction/criterion-set references, freeze timestamp, and content hash.
+The schema preserves the frozen `PROVENANCE-CONTRACT-v0` requirements for Specification: identity, version, hypothesis/prediction/criterion-set references, freeze timestamp, and content hash.
+
+The additional `scope` and `evidence_classes` fields are Stage B extensions accepted by the project owner. They do not modify the frozen provenance contract.
 
 The schema does not define Criterion predicates, Criterion Set aggregation, Classification, or Verdict semantics; those remain separate normative objects.
 
@@ -86,4 +130,10 @@ The schema does not define Criterion predicates, Criterion Set aggregation, Clas
 
 This document is **DRAFT / PRE-FREEZE**.
 
-It must undergo contradiction audit against `PROVENANCE-CONTRACT-v0` before it can be frozen as `SPECIFICATION-SCHEMA-v0`.
+Freeze is blocked until:
+1. A2 verification establishes that Hypothesis and Prediction records and their references are compatible with the N1 contract and are actually resolved by the applicable gate.
+2. JCS V1–V10 are executed and independently checked, or the serialization contract is explicitly retained as non-JCS with a versioned decision.
+3. The `example-001` evidence requirements are backed by a complete real execution; until then the example remains schema-only.
+4. The open Q1–Q5 proposals are resolved by explicit owner decisions or kept outside the frozen contract.
+
+No runtime implementation is authorized by this schema package.
