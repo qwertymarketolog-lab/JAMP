@@ -23,17 +23,24 @@
 
 ### Gap found
 
-The current `ArtifactSource` Protocol in `src/jamp/research/specification_gate.py` exposes resolution methods for Specification, Criterion Set, Criterion, and Aggregation Rule only. It has no `get_hypothesis` or `get_prediction` resolver.
+The `ArtifactSource` Protocol now declares `get_hypothesis(ref)` and `get_prediction(ref)`, returning the immutable `HypothesisRecord` / `PredictionRecord` or `None`. `MappingArtifactSource` provides exact-key lookups and returns `None` for absent records.
 
-The current Specification validation checks required-field presence and the declared Specification hash, but does not independently validate the Hypothesis/Prediction hash format or resolve those two references to the exact records.
+`SpecificationGate.validate_a2_references()` verifies, in order:
+
+1. Both references are lowercase SHA-256 values.
+2. Both records resolve; absence or lookup failure emits `A2_UNRESOLVED`.
+3. The resolved `hypothesis_hash` and `prediction_hash` equal their requested refs; mismatch emits `A2_HASH_MISMATCH`.
+4. `prediction.hypothesis_ref` equals the Specification's `hypothesis_ref`; mismatch emits `A2_LINK_BROKEN`.
+
+The Gate maps `A2_UNRESOLVED` to `GateStatus.UNKNOWN`; `A2_HASH_MISMATCH` and `A2_LINK_BROKEN` map to `GateStatus.FAIL`. This is a research Specification Gate change; it does not modify production runtime or the Frozen Core.
 
 ### A2 outcome
 
-**STRUCTURAL MAPPING: OBSERVED / COMPATIBLE IN PRINCIPLE.**  
-**END-TO-END REFERENCE INTEGRITY: NOT VERIFIED.**  
-**A2 GATE: HOLD.**
+**IMPLEMENTATION: OBSERVED IN PR BRANCH.**  
+**NEGATIVE TESTS: ADDED; CI VERIFICATION PENDING.**  
+**A2 GATE: HOLD UNTIL TERMINAL CI.**
 
-A2 cannot pass on dataclass shape alone. Before N1 freeze, the resolver contract and tests must prove that both references resolve to exact immutable records and that the resolved record hashes match the N1 references. This package adds a RED contract test for the missing resolver surface; it does not implement runtime behavior.
+The contract test now checks the resolver surface, and dedicated Gate tests exercise unresolved Hypothesis, unresolved Prediction, hash mismatch, and broken Prediction→Hypothesis linkage. No A2 PASS is claimed before terminal CI evidence.
 
 ## 3. Canonicalization — JCS V1–V10
 
@@ -41,20 +48,27 @@ Current `src/jamp/research/canonical.py` uses Python `json.dumps` with sorted ke
 
 This is observed deterministic serialization. It is **not evidence of RFC 8785 JCS conformance**.
 
-| Vector | Required verification | Outcome |
-|---|---|---|
-| V1 | `1.0` versus `1` number normalization | NOT RUN |
-| V2 | `1e21` ECMAScript/JCS number formatting | NOT RUN |
-| V3 | `9007199254740993` precision-loss handling | NOT RUN |
-| V4 | Actual control characters versus printable U+007F/U+0080 | NOT RUN |
-| V5 | Valid surrogate-pair handling | NOT RUN |
-| V6 | UTF-16 code-unit object-key ordering | NOT RUN |
-| V7 | Duplicate JSON-key rejection at parse boundary | NOT RUN |
-| V8 | Whitespace/newline invariance after parsing | NOT RUN |
-| V9 | Cross-implementation canonical-byte/hash equality | NOT RUN |
-| V10 | Canonicalization idempotence | NOT RUN |
+Revised diagnostic harness added under `tests/research/canonical/`. Conformance/reference tests are opt-in via `JAMP_RUN_JCS_CONFORMANCE=1`; parser-boundary rejection tests run in the ordinary suite. The harness does not alter `canonical.py`.
 
-**JCS status: OPEN / NOT VERIFIED.** Do not label `canonical.py` JCS-compliant and do not freeze hash semantics on this evidence. Any future result must record the exact vectors, implementation(s), command, exit status, and expected/actual bytes or hashes.
+| Vector | Required verification | Harness treatment | Outcome |
+|---|---|---|---|
+| V1 | `1.0` → `1` | Canonical-byte expected vector | NOT RUN |
+| V2 | `1e21` → `1e+21` | Canonical-byte expected vector | NOT RUN |
+| V3a | `9007199254740993` is outside the safe integer range | Strict parser rejects before hashing | TEST ADDED |
+| V3b | `1e400` must not become Infinity | Strict parser rejects non-finite result | TEST ADDED |
+| V4a | U+001F must be escaped | Valid escaped JSON input | NOT RUN |
+| V4b | U+007F DEL remains literal | Printable-character vector | NOT RUN |
+| V5 | Surrogate pair becomes U+1F600 | UTF-8 expected output | NOT RUN |
+| V6 | UTF-16 code-unit key ordering | U+1F600 sorts before U+FB33 | NOT RUN |
+| V7 | Duplicate JSON keys rejected | Strict `object_pairs_hook` | TEST ADDED |
+| V8 | Whitespace omitted | Canonical-byte expected vector | NOT RUN |
+| V9 | CR/LF string escapes preserved | Canonical-byte expected vector | NOT RUN |
+| V10 | Canonicalization idempotence | Parse → canonicalize → parse → canonicalize | NOT RUN |
+| REF | Independent `python-jcs` comparison | Optional reference + 100 Hypothesis examples | NOT RUN |
+
+The opt-in tests are intentionally outside the default blocking suite while the serializer is known not to have established JCS conformance. The reference test skips if `jcs` or `hypothesis` is unavailable; a skip is not a pass.
+
+**JCS status: OPEN / NOT VERIFIED.** Do not label `canonical.py` JCS-compliant and do not freeze hash semantics on this evidence. Record exact versions, command, exit status, and expected/actual bytes or hashes for any executed run.
 
 ## 4. Example-001 evidence boundary
 
