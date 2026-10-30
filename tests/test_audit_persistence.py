@@ -2,7 +2,11 @@ import json
 
 import pytest
 
-from jamp.runtime.persistence import AuditPersistence
+from jamp.runtime.persistence import (
+    GENESIS_HASH,
+    AuditPersistence,
+    _record_hash,
+)
 from jamp.runtime.provenance import ProvenanceTracker
 
 
@@ -24,11 +28,27 @@ def test_audit_persistence_write_and_read(tmp_path):
 
     assert store.write_trace(trace) == "trace_test_001"
 
+    # Raw file: exactly one record, chain metadata present, chain valid.
     lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
-    assert json.loads(lines[0]) == trace
-    assert store.read_trace_by_id("trace_test_001") == trace
-    assert json.loads(lines[0])["execution_details"]["provider_response_id"] == "gen_test_123"
+    raw = json.loads(lines[0])
+
+    assert raw["prev_hash"] == GENESIS_HASH
+    assert "record_hash" in raw
+    assert raw["record_hash"] == _record_hash(raw)
+
+    # Original payload fields preserved inside the raw record.
+    assert raw["trace_id"] == trace["trace_id"]
+    assert raw["decision"] == trace["decision"]
+    assert raw["frozen_core"] == trace["frozen_core"]
+    assert raw["execution_details"] == trace["execution_details"]
+    assert raw["execution_details"]["provider_response_id"] == "gen_test_123"
+
+    # Public read contract: payload without chain metadata.
+    read = store.read_trace_by_id("trace_test_001")
+    assert read == trace
+    assert "prev_hash" not in read
+    assert "record_hash" not in read
 
 
 def test_audit_persistence_requires_trace_id(tmp_path):
