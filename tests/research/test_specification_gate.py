@@ -96,6 +96,8 @@ def _source(
         prediction_records = {}
     elif a2_case == "hash_mismatch":
         hypothesis_records = {hypothesis.hypothesis_hash: alternate_hypothesis}
+    elif a2_case == "prediction_hash_mismatch":
+        prediction_records = {linked_prediction.prediction_hash: broken_prediction}
 
     criterion_hash, criterion = _criterion(
         overlap=overlap,
@@ -198,3 +200,11 @@ def test_a2_prediction_unresolved_maps_to_unknown() -> None:
     result = SpecificationGate(source).run_gate(ref)
     assert result.status is GateStatus.UNKNOWN
     assert [item.code for item in result.diagnostics] == ["A2_UNRESOLVED"]
+
+
+
+def test_a2_prediction_hash_mismatch_maps_to_fail() -> None:
+    source, ref = _source(a2_case="prediction_hash_mismatch")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.FAIL
+    assert [item.code for item in result.diagnostics] == ["A2_HASH_MISMATCH"]
