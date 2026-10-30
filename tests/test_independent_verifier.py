@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from typing import Any
 
 import pytest
@@ -36,7 +37,7 @@ def _source_hash(content: bytes) -> str:
 def _build_chain_record(payload: dict[str, Any]) -> dict[str, Any]:
     body = {**payload, "prev_hash": GENESIS_HASH}
     record_hash = "sha256:" + hashlib.sha256(
-        __import__("json").dumps(
+        json.dumps(
             body, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
     ).hexdigest()
@@ -106,7 +107,11 @@ def test_valid_full_chain_and_authenticated_endpoint_return_verified(
     monkeypatch.setenv("JAMP_SIGNING_KEY", SECRET_TEXT)
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "test-api-key-hash-secret")
 
-    app = create_app(audit_storage_path=tmp_path / "audit.jsonl")
+    audit_path = tmp_path / "audit.jsonl"
+    unauthenticated = TestClient(create_app(audit_storage_path=audit_path))
+    assert unauthenticated.post("/v1/verify-chain", json={}).status_code == 401
+
+    app = create_app(audit_storage_path=audit_path)
     app.dependency_overrides[require_api_key] = lambda: None
     client = TestClient(app)
     response = client.post(
@@ -129,6 +134,9 @@ def test_valid_full_chain_and_authenticated_endpoint_return_verified(
     assert report["reproducible"] is True
     assert len(report["checks"]) == 12
     assert all(check["status"] == "PASS" for check in report["checks"])
+    assert not audit_path.exists()
+    assert not (tmp_path / "verdicts.jsonl").exists()
+    assert not (tmp_path / "universal_verdicts.jsonl").exists()
 
 
 def test_tampered_jamp_signature_is_contradicted() -> None:
@@ -215,18 +223,21 @@ def test_broken_exported_chain_is_contradicted() -> None:
     assert next(c for c in report.checks if c.name == "persistence_chain").status == "FAIL"
 
 
-def test_missing_secret_returns_refuse() -> None:
-    envelope, jv, trace, evidence_files, chain_records = _valid_case()
+def test_missing_secret_returns_refuse(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setenv("JAMP_ENV", "production")
+    monkeypatch.delenv("JAMP_SIGNING_KEY", raising=False)
+    monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "test-api-key-hash-secret")
+    app = create_app(audit_storage_path=tmp_path / "audit.jsonl")
+    app.dependency_overrides[require_api_key] = lambda: None
 
-    report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=None,
-    )
+    response = TestClient(app).post("/v1/verify-chain", json={})
 
-    assert report.verdict == "REFUSE"
-    assert report.reproducible is False
-    assert report.checks[0].name == "secret"
-    assert report.checks[0].status == "FAIL"
+    assert response.status_code == 200
+    report = response.json()
+    assert report["verdict"] == "REFUSE"
+    assert report["reproducible"] is False
+    assert report["checks"][0]["name"] == "secret"
+    assert report["checks"][0]["status"] == "FAIL"
 
 
 def test_trace_without_output_digest_is_inconclusive() -> None:
