@@ -52,7 +52,7 @@ def test_example_001_scope_is_one_run_not_sla_or_performance() -> None:
 
 
 def test_artifact_source_resolves_exact_hypothesis_and_prediction_records() -> None:
-    # RED by design until A2 is implemented: the current Protocol has no
-    # resolvers for the two immutable N1 references.
+    # The resolver surface is part of the ArtifactSource contract; behavior
+    # and A2 failure semantics are covered in test_specification_gate.py.
     assert callable(getattr(ArtifactSource, "get_hypothesis", None))
     assert callable(getattr(ArtifactSource, "get_prediction", None))
