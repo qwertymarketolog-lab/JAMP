@@ -889,6 +889,15 @@ def create_app(
     def verify_chain_endpoint(payload: dict[str, Any]):
         """Statelessly verify client-supplied verdict, trace, evidence and chain exports."""
         signing_key = _verdict_signing_key()
+        if signing_key is None:
+            return report_to_dict(
+                verify_chain(
+                    envelope=payload.get("envelope"),
+                    jamp_verdict=payload.get("jamp_verdict"),
+                    trace=payload.get("trace"),
+                    secret=None,
+                )
+            )
         encoded_evidence = payload.get("evidence_files")
         decoded_evidence: dict[str, bytes] | None = None
         if encoded_evidence is not None:
