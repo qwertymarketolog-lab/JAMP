@@ -38,11 +38,14 @@ def _source_hash(content: bytes) -> str:
 
 def _build_chain_record(payload: dict[str, Any]) -> dict[str, Any]:
     body = {**payload, "prev_hash": GENESIS_HASH}
-    record_hash = "sha256:" + hashlib.sha256(
-        json.dumps(
-            body, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-        ).encode("utf-8")
-    ).hexdigest()
+    record_hash = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                body, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode("utf-8")
+        ).hexdigest()
+    )
     return {**body, "record_hash": record_hash}
 
 
@@ -76,9 +79,7 @@ def _valid_case() -> tuple[
         spec_ref=SpecRef("spec.v0", "sha256:" + "1" * 64),
         criteria_ref=CriteriaRef("criteria.v0", "sha256:" + "2" * 64),
         execution_ref=ExecutionRef(compute_jamp_verdict_hash(jv), jv.execution_status),
-        evidence_refs=(
-            EvidenceRef("api_response", "sha256:" + "3" * 64, source_sha256),
-        ),
+        evidence_refs=(EvidenceRef("api_response", "sha256:" + "3" * 64, source_sha256),),
         classification=UniversalClassification("VERIFIED"),
         verdict=VerdictResult("VERIFIED"),
         verifier=VerifierInfo("uv0.2.0", False, "sha256:" + "4" * 64),
@@ -150,8 +151,12 @@ def test_tampered_jamp_signature_is_contradicted() -> None:
     jv["signature"] = "0" * 64
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=chain_records,
+        secret=SECRET,
     )
 
     assert report.verdict == "CONTRADICTED"
@@ -163,8 +168,12 @@ def test_tampered_envelope_signature_is_contradicted() -> None:
     envelope["signature"] = "0" * 64
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=chain_records, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=chain_records,
+        secret=SECRET,
     )
 
     assert report.verdict == "CONTRADICTED"
@@ -186,14 +195,16 @@ def test_tampered_envelope_verdict_hash_is_contradicted() -> None:
 
 def test_changed_evidence_reference_without_raw_files_is_inconclusive() -> None:
     envelope, jv, trace, _, _ = _valid_case()
-    envelope["universal_verdict"]["evidence_refs"][0]["source_sha256"] = (
-        "sha256:" + "b" * 64
-    )
+    envelope["universal_verdict"]["evidence_refs"][0]["source_sha256"] = "sha256:" + "b" * 64
     _resign_envelope(envelope)
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace, evidence_files=None,
-        chain_records=None, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=None,
+        chain_records=None,
+        secret=SECRET,
     )
 
     assert report.verdict == "INCONCLUSIVE"
@@ -208,8 +219,12 @@ def test_changed_evidence_reference_with_raw_files_is_contradicted() -> None:
     _resign_envelope(envelope)
 
     report = verify_chain(
-        envelope=envelope, jamp_verdict=jv, trace=trace,
-        evidence_files=evidence_files, chain_records=None, secret=SECRET,
+        envelope=envelope,
+        jamp_verdict=jv,
+        trace=trace,
+        evidence_files=evidence_files,
+        chain_records=None,
+        secret=SECRET,
     )
 
     assert report.verdict == "CONTRADICTED"
