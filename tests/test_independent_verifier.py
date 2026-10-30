@@ -25,6 +25,8 @@ from jamp.runtime.universal_verdict import (
 )
 from jamp.runtime.verdict import JampVerdict
 
+pytestmark = pytest.mark.real_auth
+
 SECRET = b"track-4-test-shared-secret"
 SECRET_TEXT = SECRET.decode("utf-8")
 RAW_EVIDENCE = b"independent verifier raw evidence"
