@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hmac
 import json
 import os
@@ -33,6 +34,7 @@ from jamp.runtime import (
     TaskClassifier,
 )
 from jamp.runtime.persistence import AuditPersistence, ChainIntegrityError
+from jamp.runtime.independent_verifier import report_to_dict, verify_chain
 from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.runtime.universal_verdict import (
     CriteriaRef,
@@ -883,6 +885,40 @@ def create_app(
             valid = False
         return {"valid": valid}
 
+    @app.post("/v1/verify-chain", dependencies=[Depends(require_api_key)])
+    def verify_chain_endpoint(payload: dict[str, Any]):
+        """Statelessly verify client-supplied verdict, trace, evidence and chain exports."""
+        signing_key = _verdict_signing_key()
+        encoded_evidence = payload.get("evidence_files")
+        decoded_evidence: dict[str, bytes] | None = None
+        if encoded_evidence is not None:
+            if not isinstance(encoded_evidence, dict):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "evidence_files must be an object of base64 strings"},
+                )
+            decoded_evidence = {}
+            try:
+                for source_hash, encoded in encoded_evidence.items():
+                    if not isinstance(source_hash, str) or not isinstance(encoded, str):
+                        raise ValueError("evidence_files keys and values must be strings")
+                    decoded_evidence[source_hash] = base64.b64decode(encoded, validate=True)
+            except (ValueError, TypeError):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "evidence_files contains invalid base64"},
+                )
+
+        report = verify_chain(
+            envelope=payload.get("envelope"),
+            jamp_verdict=payload.get("jamp_verdict"),
+            trace=payload.get("trace"),
+            evidence_files=decoded_evidence,
+            chain_records=payload.get("chain_records"),
+            secret=signing_key.encode("utf-8") if signing_key is not None else None,
+        )
+        return report_to_dict(report)
+
     @app.post("/v1/universal-verdict", dependencies=[Depends(require_api_key)])
     def universal_verdict(payload: dict[str, Any]):
         """Wrap a signed JampVerdict in a UniversalVerdict v0 envelope.
@@ -999,6 +1035,7 @@ def create_app(
         )
 
         response_body = {
+            "trace_id": jv.trace_id,
             "universal_verdict": uv.canonical_payload(),
             "verdict_hash": uv.compute_verdict_hash(),
             "signature": uv.sign(signing_key.encode("utf-8")),
