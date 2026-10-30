@@ -270,7 +270,7 @@ def verify_chain(
     try:
         jv = JampVerdict.from_dict(jamp_verdict)
         jv_valid = jv.verify(secret.decode("utf-8"))
-    except (UnicodeDecodeError, TypeError, ValueError, OverflowError, AttributeError):
+    except (UnicodeDecodeError, KeyError, TypeError, ValueError, OverflowError, AttributeError):
         jv_valid = False
         jv = None
     if not jv_valid or jv is None:
