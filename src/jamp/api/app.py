@@ -27,12 +27,12 @@ from jamp.provider.moex_verify import (
 )
 from jamp.provider.openrouter import OpenRouterChatExecutor, OpenRouterError
 from jamp.runtime import (
-    AuditPersistence,
     CapabilityResolver,
     ModelSelector,
     ProvenanceTracker,
     TaskClassifier,
 )
+from jamp.runtime.persistence import AuditPersistence, ChainIntegrityError
 from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.runtime.universal_verdict import (
     CriteriaRef,
@@ -1021,7 +1021,13 @@ def create_app(
         underlying JampVerdict may still exist and be retrievable via
         GET /v1/jamp-verdict/{trace_id}).
         """
-        stored = persistence.read_universal_verdict_by_id(trace_id)
+        try:
+            stored = persistence.read_universal_verdict_by_id(trace_id)
+        except ChainIntegrityError:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored universal verdict chain integrity broken"},
+            )
         if stored is None:
             return JSONResponse(
                 status_code=404,
@@ -1083,7 +1089,13 @@ def create_app(
         POST /v1/universal-verdict and are not persisted. Use that endpoint
         to wrap a verdict; use this one to retrieve the persisted original.
         """
-        stored = persistence.read_verdict_by_id(trace_id)
+        try:
+            stored = persistence.read_verdict_by_id(trace_id)
+        except ChainIntegrityError:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored verdict chain integrity broken"},
+            )
         if stored is None:
             return JSONResponse(
                 status_code=404,
@@ -1115,7 +1127,13 @@ def create_app(
 
     @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
     def get_provenance(trace_id: str):
-        trace = persistence.read_trace_by_id(trace_id)
+        try:
+            trace = persistence.read_trace_by_id(trace_id)
+        except ChainIntegrityError:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "stored trace chain integrity broken"},
+            )
         if trace is None:
             return JSONResponse(status_code=404, content={"detail": "Trace not found"})
         return trace
