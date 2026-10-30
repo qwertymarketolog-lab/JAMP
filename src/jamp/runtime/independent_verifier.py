@@ -230,7 +230,9 @@ def verify_chain(
     if not valid:
         checks.append(CheckResult("object_structure", "FAIL", detail))
         reasons.append(detail)
-        _skip_remaining(checks, names[2:], "verification stopped because input structure is invalid")
+        _skip_remaining(
+            checks, names[2:], "verification stopped because input structure is invalid"
+        )
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("object_structure", "PASS", "required fields and types are valid"))
 
@@ -251,7 +253,9 @@ def verify_chain(
     if not jv_valid or jv is None:
         checks.append(CheckResult("jamp_signature", "FAIL", "JampVerdict HMAC is invalid"))
         reasons.append("JampVerdict signature verification failed")
-        _skip_remaining(checks, names[4:], "verification stopped after JampVerdict signature failure")
+        _skip_remaining(
+            checks, names[4:], "verification stopped after JampVerdict signature failure"
+        )
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("jamp_signature", "PASS", "JampVerdict HMAC-SHA256 is valid"))
 
@@ -265,7 +269,9 @@ def verify_chain(
         reasons.append("execution_ref.jamp_verdict_hash does not match the supplied JampVerdict")
         _skip_remaining(checks, names[5:], "verification stopped after JampVerdict hash failure")
         return _report(checks, reasons, "CONTRADICTED")
-    checks.append(CheckResult("jamp_verdict_hash", "PASS", "JampVerdict canonical payload hash matches"))
+    checks.append(
+        CheckResult("jamp_verdict_hash", "PASS", "JampVerdict canonical payload hash matches")
+    )
 
     try:
         from jamp.api.app import _universal_verdict_from_dict
@@ -276,8 +282,12 @@ def verify_chain(
         uv = None
         actual_envelope_hash = ""
     if uv is None or actual_envelope_hash != envelope["verdict_hash"]:
-        checks.append(CheckResult("envelope_hash", "FAIL", "UniversalVerdict canonical hash mismatch"))
-        reasons.append("UniversalVerdict canonical payload hash does not match envelope.verdict_hash")
+        checks.append(
+            CheckResult("envelope_hash", "FAIL", "UniversalVerdict canonical hash mismatch")
+        )
+        reasons.append(
+            "UniversalVerdict canonical payload hash does not match envelope.verdict_hash"
+        )
         _skip_remaining(checks, names[6:], "verification stopped after envelope hash failure")
         return _report(checks, reasons, "CONTRADICTED")
     checks.append(CheckResult("envelope_hash", "PASS", "complete canonical payload hash matches"))
@@ -291,7 +301,9 @@ def verify_chain(
         reasons.append("UniversalVerdict signature verification failed")
         _skip_remaining(checks, names[7:], "verification stopped after envelope signature failure")
         return _report(checks, reasons, "CONTRADICTED")
-    checks.append(CheckResult("envelope_signature", "PASS", "UniversalVerdict HMAC-SHA256 is valid"))
+    checks.append(
+        CheckResult("envelope_signature", "PASS", "UniversalVerdict HMAC-SHA256 is valid")
+    )
 
     stored_classification_hash = envelope["universal_verdict"]["classification"].get(
         "classification_hash"
@@ -312,14 +324,22 @@ def verify_chain(
         )
         _skip_remaining(checks, names[8:], "verification stopped after classification mismatch")
         return _report(checks, reasons, "CONTRADICTED")
-    checks.append(CheckResult("classification_consistency", "PASS", "classification label matches result"))
+    checks.append(
+        CheckResult("classification_consistency", "PASS", "classification label matches result")
+    )
 
     if uv.verdict.result != jv.aggregate_status:
-        checks.append(CheckResult("aggregate_consistency", "FAIL", "UniversalVerdict result differs from aggregate"))
+        checks.append(
+            CheckResult(
+                "aggregate_consistency", "FAIL", "UniversalVerdict result differs from aggregate"
+            )
+        )
         reasons.append("UniversalVerdict result does not equal JampVerdict aggregate_status")
         _skip_remaining(checks, names[9:], "verification stopped after aggregate mismatch")
         return _report(checks, reasons, "CONTRADICTED")
-    checks.append(CheckResult("aggregate_consistency", "PASS", "verdict result matches aggregate_status"))
+    checks.append(
+        CheckResult("aggregate_consistency", "PASS", "verdict result matches aggregate_status")
+    )
 
     execution_details = trace["execution_details"]
     if "output_digest" not in execution_details:
@@ -329,7 +349,11 @@ def verify_chain(
         reasons.append("output digest is unavailable")
     else:
         output_digest = execution_details["output_digest"]
-        if not isinstance(output_digest, str) or not output_digest or jv.evidence_hash != output_digest:
+        if (
+            not isinstance(output_digest, str)
+            or not output_digest
+            or jv.evidence_hash != output_digest
+        ):
             checks.append(
                 CheckResult(
                     "output_digest",
@@ -348,15 +372,25 @@ def verify_chain(
 
     refs = uv.evidence_refs
     if evidence_files is not None and not isinstance(evidence_files, dict):
-        checks.append(CheckResult("evidence_content", "FAIL", "evidence_files must be a mapping of hashes to bytes"))
+        checks.append(
+            CheckResult(
+                "evidence_content",
+                "FAIL",
+                "evidence_files must be a mapping of hashes to bytes",
+            )
+        )
         reasons.append("evidence_files has invalid structure")
-        _skip_remaining(checks, names[11:], "verification stopped after evidence_files structure failure")
+        _skip_remaining(
+            checks, names[11:], "verification stopped after evidence_files structure failure"
+        )
         return _report(checks, reasons, "CONTRADICTED")
     if not refs:
         checks.append(CheckResult("evidence_content", "SKIP", "no evidence_refs were supplied"))
         reasons.append("raw evidence references are absent")
     elif evidence_files is None:
-        checks.append(CheckResult("evidence_content", "SKIP", "raw evidence files were not supplied"))
+        checks.append(
+            CheckResult("evidence_content", "SKIP", "raw evidence files were not supplied")
+        )
         reasons.append("raw evidence content is unavailable")
     else:
         evidence_error = ""
@@ -373,12 +407,18 @@ def verify_chain(
         if evidence_error:
             checks.append(CheckResult("evidence_content", "FAIL", evidence_error))
             reasons.append(evidence_error)
-            _skip_remaining(checks, names[11:], "verification stopped after evidence content failure")
+            _skip_remaining(
+                checks, names[11:], "verification stopped after evidence content failure"
+            )
             return _report(checks, reasons, "CONTRADICTED")
-        checks.append(CheckResult("evidence_content", "PASS", "all referenced raw evidence hashes match"))
+        checks.append(
+            CheckResult("evidence_content", "PASS", "all referenced raw evidence hashes match")
+        )
 
     if chain_records is None:
-        checks.append(CheckResult("persistence_chain", "SKIP", "exported chain_records were not supplied"))
+        checks.append(
+            CheckResult("persistence_chain", "SKIP", "exported chain_records were not supplied")
+        )
         reasons.append("persistence-chain continuity was not independently checked")
     elif not isinstance(chain_records, dict):
         checks.append(CheckResult("persistence_chain", "FAIL", "chain_records must be an object"))
@@ -388,7 +428,9 @@ def verify_chain(
         chain_valid, chain_detail = _verify_exported_chains(
             chain_records, envelope=envelope, jamp_verdict=jamp_verdict, trace=trace
         )
-        checks.append(CheckResult("persistence_chain", "PASS" if chain_valid else "FAIL", chain_detail))
+        checks.append(
+            CheckResult("persistence_chain", "PASS" if chain_valid else "FAIL", chain_detail)
+        )
         if not chain_valid:
             reasons.append(chain_detail)
             return _report(checks, reasons, "CONTRADICTED")
