@@ -5,7 +5,7 @@
   "specification_schema": {
     "path": "docs/research/specifications/specification-schema-v0.json",
     "json_schema_draft": "2020-12",
-    "file_sha256": "4d32f7dd316c20605090cc6b7a3379973425d2a53852400c521234e31fa5dbed",
+    "file_sha256": "f2bb77b925981ab80a2000a8fdce707d41f3904c6f31b87904a864e1b3c212f6",
     "jcs_sha256": null,
     "jcs_sha256_description": "sha256(canonical_bytes(json.loads(schema_file))) — JCS RFC 8785 canonical form of parsed schema object; independent of file formatting",
     "required_fields": [
@@ -29,9 +29,18 @@
     }
   },
   "spec_id_semantics": {
-    "status": "PENDING_RATIFICATION",
-    "allowed_current_description": "UUIDv4 / Content-Namespace ID",
-    "freeze_blocker": true
+    "status": "RATIFIED",
+    "ratified_date": "2026-10-31",
+    "formula": "spec_id = UUIDv5(spec_id_namespace, canonical_bytes(spec_without_spec_id_spec_hash_frozen_at))",
+    "canonicalization": "jcs-rfc8785",
+    "spec_id_namespace": "5c9426b4-f92f-5742-a2b4-8a244a411708",
+    "namespace_root": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "namespace_root_label": "UUID_NAMESPACE_DNS",
+    "namespace_name": "jamp.dev/specifications/spec-id",
+    "immutable_after_ratification": true,
+    "excluded_from_spec_id": ["spec_id", "spec_hash", "frozen_at"],
+    "freeze_blocker": false,
+    "rationale": "spec_id identifies content, not lifecycle moment. frozen_at excluded so freeze does not invalidate identity or break A2 gate references."
   },
   "canonicalization": {
     "algorithm": "jcs-rfc8785",
