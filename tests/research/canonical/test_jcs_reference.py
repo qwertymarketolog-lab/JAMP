@@ -4,6 +4,7 @@ Install the project dev extra, then run the tests. A missing reference
 implementation or Hypothesis dependency must fail collection, not silently
 skip the independent comparison.
 """
+
 from __future__ import annotations
 
 import jcs
@@ -37,8 +38,9 @@ _json_scalars = (
 )
 _json_values = st.recursive(
     _json_scalars,
-    lambda children: st.lists(children, max_size=5)
-    | st.dictionaries(st.text(), children, max_size=5),
+    lambda children: (
+        st.lists(children, max_size=5) | st.dictionaries(st.text(), children, max_size=5)
+    ),
     max_leaves=20,
 )
 

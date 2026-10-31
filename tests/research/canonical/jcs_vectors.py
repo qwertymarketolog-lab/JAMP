@@ -3,6 +3,7 @@
 Vectors are parsed from JSON bytes before calling canonical_bytes. Reject cases
 are exercised separately at the parser boundary in test_jcs_parsing.py.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

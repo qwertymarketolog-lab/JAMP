@@ -3,6 +3,7 @@
 These diagnostic tests intentionally run in the default suite. Failures are
 preserved as evidence that the current serializer is not yet JCS-conformant.
 """
+
 from __future__ import annotations
 
 import json

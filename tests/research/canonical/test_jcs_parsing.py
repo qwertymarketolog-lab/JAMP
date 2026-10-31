@@ -1,4 +1,5 @@
 """Strict JSON parsing boundary tests for JCS-compatible numeric/key handling."""
+
 from __future__ import annotations
 
 import json
