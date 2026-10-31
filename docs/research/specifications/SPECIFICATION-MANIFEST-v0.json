@@ -1,0 +1,63 @@
+{
+  "manifest_version": "0.1.0",
+  "manifest_status": "PRE_FREEZE",
+  "created_utc": "2026-10-31",
+  "specification_schema": {
+    "path": "docs/research/specifications/specification-schema-v0.json",
+    "json_schema_draft": "2020-12",
+    "file_sha256": "4d32f7dd316c20605090cc6b7a3379973425d2a53852400c521234e31fa5dbed",
+    "jcs_sha256": null,
+    "jcs_sha256_description": "sha256(canonical_bytes(json.loads(schema_file))) — JCS RFC 8785 canonical form of parsed schema object; independent of file formatting",
+    "required_fields": [
+      "spec_id",
+      "spec_version",
+      "hypothesis_ref",
+      "prediction_ref",
+      "criterion_set_ref",
+      "preconditions",
+      "scope",
+      "evidence_classes",
+      "observation_schema",
+      "frozen_at",
+      "spec_hash"
+    ],
+    "ratification": {
+      "q1_q5_ratified": true,
+      "date": "2026-10-31",
+      "reference_pr": 485,
+      "reference_doc": "docs/research/specifications/SPECIFICATION-SCHEMA-v0.md"
+    }
+  },
+  "spec_id_semantics": {
+    "status": "PENDING_RATIFICATION",
+    "allowed_current_description": "UUIDv4 / Content-Namespace ID",
+    "freeze_blocker": true
+  },
+  "canonicalization": {
+    "algorithm": "jcs-rfc8785",
+    "implementation": "src/jamp/research/canonical.py",
+    "backend": "jcs==0.2.1",
+    "verification_evidence": {
+      "pr": 482,
+      "merge_sha": "59a0e96052ee216f3d082e46c023dbe89438e10a",
+      "run": 41169580036,
+      "job": 124444420972,
+      "vectors": "V1-V10 + reference comparison"
+    }
+  },
+  "a2_gate": {
+    "implementation": "src/jamp/research/specification_gate.py",
+    "codes": ["A2_UNRESOLVED", "A2_HASH_MISMATCH", "A2_LINK_BROKEN"],
+    "verification_evidence": {
+      "pr": 481,
+      "merge_sha": "5184faf304610a3107f1e861ca47228eb7bfe068",
+      "run": 41155212024,
+      "job": 124400386151
+    }
+  },
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+  },
+  "manifest_sha256": null
+}
