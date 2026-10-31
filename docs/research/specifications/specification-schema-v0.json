@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jamp.dev/schemas/specification-schema-v0.json",
+  "title": "JAMP Specification v0 (N1 contract)",
+  "description": "Normalized Specification artifact for Stage B. Field semantics and hash rules per docs/research/specifications/SPECIFICATION-SCHEMA-v0.md (addenda 2026-10-31).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_id",
+    "spec_version",
+    "hypothesis_ref",
+    "prediction_ref",
+    "criterion_set_ref",
+    "preconditions",
+    "scope",
+    "evidence_classes",
+    "observation_schema",
+    "frozen_at",
+    "spec_hash"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier per Stage B contract (UUIDv4 or Content-Namespace ID). Exact format pending ratification — see manifest.spec_id_semantics. Freeze blocked until ratified."
+    },
+    "spec_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "hypothesis_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "prediction_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "criterion_set_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "preconditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1 },
+          "value": {},
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["in_scope", "out_of_scope"],
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "out_of_scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "evidence_classes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "observation_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": {
+                "enum": ["string", "number", "integer", "boolean", "object", "array"]
+              },
+              "required": { "type": "boolean", "default": true }
+            }
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+      "description": "ISO8601 timestamp when frozen; null for Draft per Stage B contract. Pattern enforces syntactic form; calendar validity requires FormatChecker (PR-B)."
+    },
+    "spec_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256(canonical_json(spec without {spec_hash})) — matches SpecificationGate._content_hash()"
+    }
+  }
+}
