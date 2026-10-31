@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 
+import pytest
+
 from jamp.research.canonical import canonical_bytes
 from jamp.research.hypothesis import make_hypothesis
 from jamp.research.prediction import PredictionRecord, compute_prediction_hash
@@ -64,6 +66,7 @@ def _source(
     self_test_failure: bool = False,
     bad_spec_hash: bool = False,
     a2_case: str = "valid",
+    missing_spec_field: str | None = None,
 ) -> tuple[MappingArtifactSource, SpecificationRef]:
     hypothesis = make_hypothesis(
         formulation="A2 test hypothesis",
@@ -125,8 +128,26 @@ def _source(
         "hypothesis_ref": hypothesis.hypothesis_hash,
         "prediction_ref": selected_prediction.prediction_hash,
         "criterion_set_ref": criterion_set_hash,
-        "frozen_at": "2026-09-16T00:00:00Z",
+        "preconditions": [
+            {
+                "kind": "runtime",
+                "value": {"python": ">=3.11"},
+                "description": "test precondition",
+            },
+        ],
+        "scope": {
+            "in_scope": ["unit tests for gate"],
+            "out_of_scope": ["production workloads"],
+        },
+        "evidence_classes": ["raw_webhook_payload"],
+        "observation_schema": {
+            "fields": [{"name": "status", "type": "string", "required": True}],
+        },
+        "frozen_at": "2026-10-31T12:00:00Z",
     }
+    if missing_spec_field is not None:
+        del specification[missing_spec_field]
+
     spec_hash = _digest(specification)
     declared_spec_hash = "0" * 64 if bad_spec_hash else spec_hash
     specification["spec_hash"] = declared_spec_hash
@@ -209,3 +230,27 @@ def test_a2_prediction_hash_mismatch_maps_to_fail() -> None:
     result = SpecificationGate(source).run_gate(ref)
     assert result.status is GateStatus.FAIL
     assert [item.code for item in result.diagnostics] == ["A2_HASH_MISMATCH"]
+
+
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "preconditions",
+        "scope",
+        "evidence_classes",
+        "observation_schema",
+    ],
+)
+def test_validate_specification_rejects_missing_n1_field(missing_field: str) -> None:
+    """RED before _REQUIRED_SPEC 7→11; GREEN after."""
+    source, ref = _source(missing_spec_field=missing_field)
+    result = SpecificationGate(source).validate_specification(ref)
+
+    assert result, "expected at least one diagnostic"
+    assert result[0].code == "MISSING_REQUIRED_FIELD", (
+        f"expected MISSING_REQUIRED_FIELD first, got {result[0].code}"
+    )
+    assert missing_field in result[0].description, (
+        f"missing field {missing_field!r} not in description: "
+        f"{result[0].description}"
+    )
