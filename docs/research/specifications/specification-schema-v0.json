@@ -21,8 +21,8 @@
   "properties": {
     "spec_id": {
       "type": "string",
-      "minLength": 1,
-      "description": "Identifier per Stage B contract (UUIDv4 or Content-Namespace ID). Exact format pending ratification — see manifest.spec_id_semantics. Freeze blocked until ratified."
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUIDv5 identifier. spec_id = UUIDv5(spec_id_namespace, canonical_bytes(spec without {spec_id, spec_hash, frozen_at})). Stable across draft and frozen states. spec_id_namespace = 5c9426b4-f92f-5742-a2b4-8a244a411708 (ratified, immutable). See Addendum 3."
     },
     "spec_version": {
       "type": "string",
