@@ -1,0 +1,96 @@
+name: experiment-reproducible-minio
+
+on:
+  push:
+    branches:
+      - experiment/reproducible-minio-2024-11-07
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  reproducible-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout experiment branch
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Record tool versions
+        run: |
+          set -euxo pipefail
+          docker version
+          docker buildx version
+
+      - name: Write experiment Dockerfile
+        run: |
+          cat > Dockerfile.minio-community <<'EOF'
+FROM golang:1.23.2-alpine3.20@sha256:a51f885f812e9579e5f9e85c3b0d2382c2a05e2634e9e5f3089fb23d9b89e3
+ARG MINIO_COMMIT=8a89270fb78d12822a7f5945efcdddf199d7a22a
+ARG BUILD_DATE=1970-01-01T00:00:00Z
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    SOURCE_DATE_EPOCH=0
+RUN apk add --no-cache git ca-certificates
+WORKDIR /src
+RUN git init && \
+    git remote add origin https://github.com/minio/minio.git && \
+    git fetch --depth 1 origin ${MINIO_COMMIT} && \
+    git checkout FETCH_HEAD
+RUN go build -trimpath \
+    -ldflags="-s -w -X github.com/minio/minio/cmd.Version=${BUILD_DATE} -X github.com/minio/minio/cmd.ReleaseTag=RELEASE.REPRODUCIBLE" \
+    -o /go/bin/minio .
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:6ec0273a27490082725841e411b423c911e3c81e8386b2023d57d5308d511110
+COPY --from=builder /go/bin/minio /usr/bin/minio
+EXPOSE 9000 9001
+VOLUME ["/data"]
+ENTRYPOINT ["/usr/bin/minio"]
+CMD ["server", "/data", "--console-address", ":9001"]
+EOF
+
+      - name: Build supplied specification
+        run: |
+          set -o pipefail
+          docker buildx build \
+            --build-arg MINIO_COMMIT=8a89270fb78d12822a7f5945efcdddf199d7a22a \
+            --provenance=mode=max \
+            --sbom=true \
+            --tag ghcr.io/jamp-org/minio-community:reproducible-v1 \
+            --file Dockerfile.minio-community \
+            --output type=docker . 2>&1 | tee build.log
+        continue-on-error: true
+
+      - name: Capture raw evidence
+        if: always()
+        run: |
+          set +e
+          {
+            echo "=== GIT ==="
+            git rev-parse HEAD
+            echo "=== DOCKER ==="
+            docker version
+            docker buildx version
+            echo "=== BUILDX DISK ==="
+            docker buildx du
+            echo "=== IMAGE INSPECT ==="
+            docker image inspect ghcr.io/jamp-org/minio-community:reproducible-v1
+          } 2>&1 | tee evidence.log
+          echo "=== BUILD LOG ==="
+          cat build.log || true
+
+      - name: Upload raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minio-reproducible-build-raw-evidence
+          path: |
+            build.log
+            evidence.log
+          if-no-files-found: warn
