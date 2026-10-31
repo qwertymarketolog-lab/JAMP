@@ -27,6 +27,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install test runner
-        run: python -m pip install pytest
+        run: python -m pip install -e ".[dev]"
       - name: Run P22.1 contract gates
         run: python -m pytest -q tests/research/test_search_space.py
