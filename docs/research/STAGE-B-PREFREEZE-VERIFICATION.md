@@ -111,3 +111,34 @@ A proven violation is `FAIL`. `PASS` requires every required evidence class, int
 - Frozen Core `src/jamp/run.py`: expected blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; branch read-back required before final review.
 
 No runtime implementation or N1 freeze is included in this Stage B package.
+
+
+## Addendum — 2026-10-31 — Q1–Q5 RATIFIED
+
+Ratified at main `4e7909ef`. Owner decisions recorded.
+
+### Q1–Q5 final decisions
+
+| # | Decision |
+|---|---|
+| Q1 | JSON Schema — единственный источник истины. YAML-слой не вводится. |
+| Q2 | Одна Specification = один атомарный research case. Композиция — только через immutable references. |
+| Q3 | Замораживаются 11 нормативных полей: `spec_id, spec_version, hypothesis_ref, prediction_ref, criterion_set_ref, preconditions, scope, evidence_classes, observation_schema, frozen_at, spec_hash`. |
+| Q4 | `spec_hash = SHA-256(canonical_json)`; canonicalization — RFC 8785 JCS. |
+| Q5 | Criterion — отдельный hash-addressed объект; агрегация принадлежит Criterion Set, не Specification. |
+
+### Q4 boundary
+
+JCS ратифицирован как **нормативное требование**. Это отдельно от доказательства соответствия реализации RFC 8785. Evidence о conformance реализации фиксируется per-run; см. JCS harness в #482 (`jcs==0.2.1`, V1–V10 + reference comparison).
+
+Глобальный статус «JCS VERIFIED» этим дополнением не утверждается. Соответствие любого конкретного прогона определяется evidence этого прогона.
+
+### A2 — implementation evidence
+
+A2 `hypothesis_ref` / `prediction_ref` resolution — merged в #481. Три кода отказа реализованы: `A2_UNRESOLVED`, `A2_HASH_MISMATCH`, `A2_LINK_BROKEN`. Evidence: Run `41155212024` / Job `124400386151`, 2147 passed.
+
+### N1 freeze vs Stage C evidence gate
+
+N1 (нормативный контракт Specification) **не блокируется** полнотой evidence example-001.
+
+example-001 остаётся **Stage C conformance gate**. Текущий статус: `SCHEMA_ONLY`, `evidence_refs: TBD`, `reference_status: PENDING_FIRST_FULL_EVIDENCE_RUN`. Ни PASS, ни conformance claim на основании исторического E2E не делается.
