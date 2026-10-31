@@ -176,3 +176,30 @@ Stage B и Stage C — разные gate.
 
 - PASS/FAIL критерии не затрагиваются.
 - Изменения runtime, тестов, `canonical.py`, Frozen Core — не входят.
+
+
+## Addendum — 2026-10-31 — JCS RFC 8785 conformance
+
+Supersedes: прежние утверждения в этом документе о том, что JCS-соответствие
+не установлено.
+
+### Conformance evidence
+
+JCS RFC 8785 ratified через Q4 (Addendum Q1–Q5, PR #485).
+Реализация `canonical.py` использует `jcs.canonicalize()` (backend `jcs==0.2.1`).
+
+Evidence: PR #482, merge `59a0e96052ee216f3d082e46c023dbe89438e10a`,
+Run `41169580036`, Job `124444420972`. V1–V10 conformance + reference
+comparison against independent `jcs` implementation пройдены.
+
+### Граница
+
+Этот статус относится к evidence конкретного прогона на указанном SHA.
+Он не является вечным свойством реализации. Каждый новый прогон JCS harness
+даёт собственное evidence.
+
+### Что не меняется
+
+- Field semantics Q1–Q5 — не затрагиваются.
+- PASS/FAIL критерии — не затрагиваются.
+- Исторические утверждения ниже сохраняются как superseded.
