@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_PATH = REPO_ROOT / "docs/research/specifications/specification-schema-v0.json"
 

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from jamp.research.canonical import canonical_bytes
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST_PATH = REPO_ROOT / "docs/research/specifications/SPECIFICATION-MANIFEST-v0.json"
 SCHEMA_PATH = REPO_ROOT / "docs/research/specifications/specification-schema-v0.json"
