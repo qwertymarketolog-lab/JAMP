@@ -34,7 +34,7 @@ V5 = Vector(
 V6 = Vector(
     "V6",
     b'{"\\uFB33":1,"\\uD83D\\uDE00":2}',
-    '{"😀":2,"\\ufb33":1}'.encode("utf-8"),
+    '{"😀":2,"דּ":1}'.encode("utf-8"),
     "Object keys are ordered by UTF-16 code units, not Unicode code points",
 )
 V8 = Vector(
