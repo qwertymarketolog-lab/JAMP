@@ -22,19 +22,19 @@ V4A = Vector("V4a", b'"\\u001f"', b'"\\u001f"', "U+001F must be escaped")
 V4B = Vector(
     "V4b",
     b'"\\u007f"',
-    '"\x7f"'.encode("utf-8"),
+    '"\x7f"'.encode(),
     "U+007F is literal, not escaped",
 )
 V5 = Vector(
     "V5",
     b'"\\ud83d\\ude00"',
-    '"😀"'.encode("utf-8"),
+    '"😀"'.encode(),
     "A valid UTF-16 surrogate pair becomes one Unicode scalar value",
 )
 V6 = Vector(
     "V6",
     b'{"\\uFB33":1,"\\uD83D\\uDE00":2}',
-    '{"😀":2,"דּ":1}'.encode("utf-8"),
+    '{"😀":2,"דּ":1}'.encode(),
     "Object keys are ordered by UTF-16 code units, not Unicode code points",
 )
 V8 = Vector(

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import jcs
 import pytest
-
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from jamp.research.canonical import canonical_bytes
 from tests.research.canonical.jcs_vectors import CONFORMANCE_VECTORS
