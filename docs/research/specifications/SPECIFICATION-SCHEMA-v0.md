@@ -137,3 +137,32 @@ Freeze is blocked until:
 4. The open Q1–Q5 proposals are resolved by explicit owner decisions or kept outside the frozen contract.
 
 No runtime implementation is authorized by this schema package.
+
+
+## Addendum — 2026-10-31 — N1 freeze conditions clarified
+
+На основании ratification владельца на main `4e7909ef`.
+
+### Уточнение прежней формулировки об example-001
+
+Прежний текст указывал полный example-001 evidence run как обязательное условие N1 freeze. Уточняется:
+
+- N1 freeze требует: Q1–Q5 ratified + A2 conformance + Frozen Core Δ=0 + manifest status recorded.
+- **Полный example-001 evidence run — НЕ условие N1 freeze.**
+- Полнота example-001 — **Stage C gate**.
+
+Обоснование: связка N1 freeze ↔ полный example-001 evidence создаёт цикл (схема не может быть заморожена до полного прогона; полный прогон требует замороженной схемы). N1 freeze и Stage C execution — разные gate.
+
+### Уточнение статуса Q1–Q5
+
+Упоминания `Q1–Q5 PROPOSED` в этом документе superseded ratification от 2026-10-31. Финальные решения — см. `STAGE-B-PREFREEZE-VERIFICATION.md` Addendum 2026-10-31.
+
+### Сохраняемые условия N1 freeze (без изменений)
+
+- Все нормативные ссылки разрешаются (A2 — merged в #481, evidence зафиксировано).
+- `protocol_manifest_sha256` записан со статусом в `annotation-protocol-manifest.json`.
+
+### Что НЕ меняется
+
+- PASS/FAIL критерии этим дополнением не затрагиваются.
+- Никаких изменений runtime, тестов, `canonical.py`, Frozen Core.
