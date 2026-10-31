@@ -1,0 +1,36 @@
+name: R30 Replay Variance Execution
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/r30-replay-variance
+
+permissions:
+  contents: read
+
+jobs:
+  run-r30-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: python -m pip install requests
+
+      - name: Execute R30 Replay Harness
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python -m scripts.research.r30_replay_variance
+
+      - name: Upload R30 Evidence Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: r30-replay-variance-artifact
+          path: artifacts/research/r30_replay_variance.json
