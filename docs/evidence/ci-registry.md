@@ -124,3 +124,88 @@ Diagnostic coverage at this entry: **2/12 VERIFIED; 10/12 CONFIG-ONLY.** The fou
 ## Append log
 
 - 2026-10-31: initial registry created. Records the four mandatory post-merge pipelines and the two diagnostic workflows with terminal SUCCESS on main revision `149badba6bab8a1a1f1f61537462393f6c5ad706`. Diagnostic coverage recorded as 2/12 VERIFIED and 10/12 CONFIG-ONLY. Frozen Core Δ=0.
+
+
+## Known gaps
+
+### Mypy coverage — src/jamp/research/ and tests/research/
+
+Recorded: 2026-11-01 at main `2644857a`.
+
+#### What is not covered
+
+Developer Quality workflow (`Mypy changed Python files` step) runs Mypy only on:
+
+- `tools/*`
+- `templates/jamp-plugin/*`
+
+Changed Python files under `src/jamp/research/` and `tests/research/`
+are not passed to Mypy. `root_files=()` and `template_files=()` in the
+terminal log confirm the step completes without checking these files.
+
+A Developer Quality SUCCESS therefore does not imply Mypy coverage for
+these paths.
+
+#### Baseline measurement
+
+One-off baseline (Push E, commit `b9a25472`):
+
+- Run: 41242791751
+- Job: 124659955539
+- Artifact: 13058281778 (`mypy-baseline.txt`)
+- Command: `mypy` on 4 files from PR #488, using pyproject `[tool.mypy]`
+  (`strict = true`, `files = ["src/jamp"]`, `exclude = ["^tests/"]`,
+  `no_site_packages = true`) without MYPYPATH.
+
+Result: **46 errors in 4 files**.
+
+Distribution by code:
+
+| Code | Count | Classification |
+|---|---|---|
+| `import-not-found` | 10 | config noise (no MYPYPATH, `no_site_packages=true`) |
+| `import-untyped` | 1 | missing stubs for jsonschema |
+| `untyped-decorator` | 6 | strict typing of pytest/jsonschema decorators |
+| `type-arg` | 7 | unparametrized `dict` |
+| `no-any-return` | 6 | Any boundary, requires analysis |
+| `arg-type` | 7 | type mismatches |
+| `operator` | 6 | nullable operands in predicate DSL |
+| `assignment` | 1 | incompatible tuple types |
+| `dict-item` | 2 | test data type mismatches |
+
+Per-file:
+
+- `src/jamp/research/specification_gate.py`: 21
+- `tests/research/test_specification_gate.py`: 6
+- `tests/research/specifications/test_format_checker.py`: 13
+- `tests/research/specifications/test_manifest_integrity.py`: 6
+
+#### What this baseline does and does not mean
+
+- It is not 46 independent runtime defects.
+- 11 errors are configuration noise (import resolution).
+- 13 errors are strict-typing style findings on tests and generic types.
+- 6 `no-any-return` require per-site analysis.
+- 16 errors (`arg-type`, `operator`, `assignment`, `dict-item`) are
+  real static type mismatches.
+
+Of those 16, **13 are in production** `src/jamp/research/specification_gate.py`
+(6 `arg-type`, 6 `operator`, 1 `assignment`). They pre-date the Stage B
+7→11 field change in PR #488 and are not regressions from it.
+
+These findings do not establish runtime bugs. They also do not justify
+declaring the gap harmless.
+
+#### Consequence for N1 freeze
+
+The Mypy coverage gap is orthogonal to the Stage B N1 contract (Q1–Q5,
+Schema v0, Manifest, 11-field enforcement). It does not block N1 freeze.
+
+The gap is tracked separately.
+
+#### Tracked task
+
+- `ci/mypy-research-coverage` — extend Developer Quality Mypy coverage to
+  `src/jamp/research/*` and `tests/research/*`; address the 13 production
+  errors in `specification_gate.py`; re-measure with `MYPYPATH=src` and
+  corrected configuration.
