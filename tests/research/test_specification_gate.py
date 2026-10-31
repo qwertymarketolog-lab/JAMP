@@ -251,6 +251,5 @@ def test_validate_specification_rejects_missing_n1_field(missing_field: str) -> 
         f"expected MISSING_REQUIRED_FIELD first, got {result[0].code}"
     )
     assert missing_field in result[0].description, (
-        f"missing field {missing_field!r} not in description: "
-        f"{result[0].description}"
+        f"missing field {missing_field!r} not in description: {result[0].description}"
     )

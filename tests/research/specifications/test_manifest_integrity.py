@@ -49,9 +49,7 @@ def test_manifest_required_fields_match_schema() -> None:
 def test_spec_id_namespace_reproducible() -> None:
     expected = uuid.UUID("5c9426b4-f92f-5742-a2b4-8a244a411708")
 
-    assert uuid.uuid5(
-        uuid.NAMESPACE_DNS, "jamp.dev/specifications/spec-id"
-    ) == expected
+    assert uuid.uuid5(uuid.NAMESPACE_DNS, "jamp.dev/specifications/spec-id") == expected
 
 
 def test_spec_id_semantics_ratified_in_manifest() -> None:

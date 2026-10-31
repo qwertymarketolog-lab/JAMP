@@ -60,9 +60,7 @@ def test_frozen_at_null_allowed(validator: Draft202012Validator) -> None:
 
 
 def test_frozen_at_valid_timestamp_passes(validator: Draft202012Validator) -> None:
-    assert list(
-        validator.iter_errors(_valid_spec(frozen_at="2026-10-31T12:00:00Z"))
-    ) == []
+    assert list(validator.iter_errors(_valid_spec(frozen_at="2026-10-31T12:00:00Z"))) == []
 
 
 @pytest.mark.parametrize(
@@ -73,9 +71,7 @@ def test_frozen_at_valid_timestamp_passes(validator: Draft202012Validator) -> No
         "2026-10-31",
     ],
 )
-def test_frozen_at_invalid_rejected(
-    validator: Draft202012Validator, bad: str
-) -> None:
+def test_frozen_at_invalid_rejected(validator: Draft202012Validator, bad: str) -> None:
     errors = list(validator.iter_errors(_valid_spec(frozen_at=bad)))
     assert errors, f"expected rejection for {bad!r}"
 
@@ -95,8 +91,6 @@ def test_additional_property_rejected(validator: Draft202012Validator) -> None:
         "5c9426b4-f92f-5742-c2b4-8a244a411708",  # variant nibble = c.
     ],
 )
-def test_spec_id_rejects_non_uuidv5(
-    validator: Draft202012Validator, bad_id: str
-) -> None:
+def test_spec_id_rejects_non_uuidv5(validator: Draft202012Validator, bad_id: str) -> None:
     errors = list(validator.iter_errors(_valid_spec(spec_id=bad_id)))
     assert errors, f"expected rejection for {bad_id!r}"
