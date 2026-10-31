@@ -44,7 +44,10 @@ def _criterion(
         "rejection_predicate": rejection,
         "inconclusive_predicate": inconclusive,
         "self_test": {
-            "pass_case": {"sample": {"x": pass_sample}, "expected": "FAIL" if self_test_failure else "PASS"},
+            "pass_case": {
+                "sample": {"x": pass_sample},
+                "expected": "FAIL" if self_test_failure else "PASS",
+            },
             "fail_case": {"sample": {"x": fail_sample}, "expected": "FAIL"},
             "inconclusive_case": {"sample": {"x": 0}, "expected": "INCONCLUSIVE"},
         },
@@ -173,7 +176,6 @@ def test_run_gate_has_no_experimental_input_parameter() -> None:
     assert tuple(parameters) == ("self", "spec_ref")
 
 
-
 def test_a2_unresolved_maps_to_unknown() -> None:
     source, ref = _source(a2_case="unresolved")
     result = SpecificationGate(source).run_gate(ref)
@@ -200,7 +202,6 @@ def test_a2_prediction_unresolved_maps_to_unknown() -> None:
     result = SpecificationGate(source).run_gate(ref)
     assert result.status is GateStatus.UNKNOWN
     assert [item.code for item in result.diagnostics] == ["A2_UNRESOLVED"]
-
 
 
 def test_a2_prediction_hash_mismatch_maps_to_fail() -> None:

@@ -3,9 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jamp.research.specification_gate import ArtifactSource
-
-
 ROOT = Path(__file__).parents[2]
 
 
@@ -52,6 +49,8 @@ def test_example_001_scope_is_one_run_not_sla_or_performance() -> None:
 
 
 def test_artifact_source_resolves_exact_hypothesis_and_prediction_records() -> None:
+    from jamp.research.specification_gate import ArtifactSource
+
     # The resolver surface is part of the ArtifactSource contract; behavior
     # and A2 failure semantics are covered in test_specification_gate.py.
     assert callable(getattr(ArtifactSource, "get_hypothesis", None))
