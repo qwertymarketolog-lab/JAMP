@@ -1,0 +1,29 @@
+name: TMP mypy baseline
+on:
+  push:
+    branches:
+      - feat/stage-b-specification-gate-n1-fields
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: python -m pip install ".[dev]"
+      - name: mypy baseline (4 files, strict from pyproject)
+        run: |
+          mypy \
+            src/jamp/research/specification_gate.py \
+            tests/research/test_specification_gate.py \
+            tests/research/specifications/test_format_checker.py \
+            tests/research/specifications/test_manifest_integrity.py \
+            > /tmp/mypy-baseline.txt 2>&1 || true
+          cat /tmp/mypy-baseline.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mypy-baseline
+          path: /tmp/mypy-baseline.txt
