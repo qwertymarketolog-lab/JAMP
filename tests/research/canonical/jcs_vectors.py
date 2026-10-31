@@ -22,7 +22,7 @@ V4A = Vector("V4a", b'"\\u001f"', b'"\\u001f"', "U+001F must be escaped")
 V4B = Vector(
     "V4b",
     b'"\\u007f"',
-    '"\x7f"'.encode(),
+    b'"\x7f"',
     "U+007F is literal, not escaped",
 )
 V5 = Vector(
