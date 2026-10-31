@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 
 from jamp.research.canonical import canonical_bytes
+from jamp.research.hypothesis import make_hypothesis
+from jamp.research.prediction import PredictionRecord, compute_prediction_hash
 from jamp.research.specification_gate import (
     GateStatus,
     MappingArtifactSource,
@@ -15,7 +17,13 @@ def _digest(value: object) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
-def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tuple[str, dict]:
+def _criterion(
+    *,
+    overlap: bool = False,
+    self_test_failure: bool = False,
+    hypothesis_ref: str = "hypothesis-1",
+    prediction_ref: str = "prediction-1",
+) -> tuple[str, dict]:
     if overlap:
         acceptance = {"field": "x", "op": "in", "value": [1, 2]}
         rejection = {"field": "x", "op": "in", "value": [2, 3]}
@@ -28,15 +36,18 @@ def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tup
     criterion = {
         "criterion_id": "criterion-1",
         "criterion_version": "0",
-        "hypothesis_ref": "hypothesis-1",
-        "prediction_ref": "prediction-1",
+        "hypothesis_ref": hypothesis_ref,
+        "prediction_ref": prediction_ref,
         "preconditions": [],
         "observation_schema": {"x": "integer"},
         "acceptance_predicate": acceptance,
         "rejection_predicate": rejection,
         "inconclusive_predicate": inconclusive,
         "self_test": {
-            "pass_case": {"sample": {"x": pass_sample}, "expected": "FAIL" if self_test_failure else "PASS"},
+            "pass_case": {
+                "sample": {"x": pass_sample},
+                "expected": "FAIL" if self_test_failure else "PASS",
+            },
             "fail_case": {"sample": {"x": fail_sample}, "expected": "FAIL"},
             "inconclusive_case": {"sample": {"x": 0}, "expected": "INCONCLUSIVE"},
         },
@@ -47,8 +58,56 @@ def _criterion(*, overlap: bool = False, self_test_failure: bool = False) -> tup
     return criterion_hash, {**criterion, "criterion_hash": criterion_hash}
 
 
-def _source(*, overlap: bool = False, self_test_failure: bool = False, bad_spec_hash: bool = False) -> tuple[MappingArtifactSource, SpecificationRef]:
-    criterion_hash, criterion = _criterion(overlap=overlap, self_test_failure=self_test_failure)
+def _source(
+    *,
+    overlap: bool = False,
+    self_test_failure: bool = False,
+    bad_spec_hash: bool = False,
+    a2_case: str = "valid",
+) -> tuple[MappingArtifactSource, SpecificationRef]:
+    hypothesis = make_hypothesis(
+        formulation="A2 test hypothesis",
+        hypothesis_type="SCIENTIFIC",
+        source={"origin": "unit-test"},
+    )
+    alternate_hypothesis = make_hypothesis(
+        formulation="Different A2 test hypothesis",
+        hypothesis_type="SCIENTIFIC",
+        source={"origin": "unit-test"},
+    )
+    linked_prediction_hash = compute_prediction_hash(
+        hypothesis.hypothesis_hash, "test_metric", "INCREASE"
+    )
+    linked_prediction = PredictionRecord(
+        hypothesis.hypothesis_hash, "test_metric", "INCREASE", linked_prediction_hash
+    )
+    broken_prediction_hash = compute_prediction_hash(
+        alternate_hypothesis.hypothesis_hash, "test_metric", "INCREASE"
+    )
+    broken_prediction = PredictionRecord(
+        alternate_hypothesis.hypothesis_hash,
+        "test_metric",
+        "INCREASE",
+        broken_prediction_hash,
+    )
+    selected_prediction = broken_prediction if a2_case == "link_broken" else linked_prediction
+    hypothesis_records = {hypothesis.hypothesis_hash: hypothesis}
+    prediction_records = {selected_prediction.prediction_hash: selected_prediction}
+    if a2_case == "unresolved":
+        hypothesis_records = {}
+    elif a2_case == "prediction_unresolved":
+        prediction_records = {}
+    elif a2_case == "hash_mismatch":
+        hypothesis_records = {hypothesis.hypothesis_hash: alternate_hypothesis}
+    elif a2_case == "prediction_hash_mismatch":
+        prediction_records = {linked_prediction.prediction_hash: broken_prediction}
+
+    criterion_hash, criterion = _criterion(
+        overlap=overlap,
+        self_test_failure=self_test_failure,
+        hypothesis_ref=hypothesis.hypothesis_hash,
+        prediction_ref=selected_prediction.prediction_hash,
+    )
     aggregation = {"version": "0", "mode": "deterministic"}
     aggregation_hash = _digest(aggregation)
     criterion_set = {
@@ -63,8 +122,8 @@ def _source(*, overlap: bool = False, self_test_failure: bool = False, bad_spec_
     specification = {
         "spec_id": "spec-1",
         "spec_version": "0",
-        "hypothesis_ref": "hypothesis-1",
-        "prediction_ref": "prediction-1",
+        "hypothesis_ref": hypothesis.hypothesis_hash,
+        "prediction_ref": selected_prediction.prediction_hash,
         "criterion_set_ref": criterion_set_hash,
         "frozen_at": "2026-09-16T00:00:00Z",
     }
@@ -76,6 +135,8 @@ def _source(*, overlap: bool = False, self_test_failure: bool = False, bad_spec_
         criterion_sets={criterion_set_hash: criterion_set},
         criteria={criterion_hash: criterion},
         aggregation_rules={aggregation_hash: aggregation},
+        hypotheses=hypothesis_records,
+        predictions=prediction_records,
     )
     return source, SpecificationRef("spec-1", "0", declared_spec_hash)
 
@@ -113,3 +174,38 @@ def test_run_gate_has_no_experimental_input_parameter() -> None:
 
     parameters = inspect.signature(SpecificationGate.run_gate).parameters
     assert tuple(parameters) == ("self", "spec_ref")
+
+
+def test_a2_unresolved_maps_to_unknown() -> None:
+    source, ref = _source(a2_case="unresolved")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.UNKNOWN
+    assert [item.code for item in result.diagnostics] == ["A2_UNRESOLVED"]
+
+
+def test_a2_hash_mismatch_maps_to_fail() -> None:
+    source, ref = _source(a2_case="hash_mismatch")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.FAIL
+    assert [item.code for item in result.diagnostics] == ["A2_HASH_MISMATCH"]
+
+
+def test_a2_broken_prediction_link_maps_to_fail() -> None:
+    source, ref = _source(a2_case="link_broken")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.FAIL
+    assert [item.code for item in result.diagnostics] == ["A2_LINK_BROKEN"]
+
+
+def test_a2_prediction_unresolved_maps_to_unknown() -> None:
+    source, ref = _source(a2_case="prediction_unresolved")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.UNKNOWN
+    assert [item.code for item in result.diagnostics] == ["A2_UNRESOLVED"]
+
+
+def test_a2_prediction_hash_mismatch_maps_to_fail() -> None:
+    source, ref = _source(a2_case="prediction_hash_mismatch")
+    result = SpecificationGate(source).run_gate(ref)
+    assert result.status is GateStatus.FAIL
+    assert [item.code for item in result.diagnostics] == ["A2_HASH_MISMATCH"]
