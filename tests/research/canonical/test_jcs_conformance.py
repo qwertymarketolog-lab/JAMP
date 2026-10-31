@@ -1,8 +1,7 @@
-"""Opt-in RFC 8785 conformance probes.
+"""RFC 8785 conformance tests against fixed canonical-byte vectors.
 
-The current canonical.py is not assumed to be JCS. Keep this diagnostic
-harness out of the blocking default suite until a reference-backed decision
-is made. Run explicitly with JAMP_RUN_JCS_CONFORMANCE=1.
+These diagnostic tests intentionally run in the default suite. Failures are
+preserved as evidence that the current serializer is not yet JCS-conformant.
 """
 from __future__ import annotations
 
