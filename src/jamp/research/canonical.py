@@ -47,10 +47,12 @@ def canonical_bytes(value: Any) -> bytes:
     """Return RFC 8785 canonical JSON encoded as UTF-8 bytes."""
     normalized = _normalize(value)
     try:
-        canonical_text = jcs.canonicalize(normalized)
-        if not isinstance(canonical_text, str):
-            raise TypeError("jcs.canonicalize must return str")
-        return canonical_text.encode("utf-8")
+        canonical_output = jcs.canonicalize(normalized)
+        if isinstance(canonical_output, bytes):
+            return canonical_output
+        if isinstance(canonical_output, str):
+            return canonical_output.encode("utf-8")
+        raise TypeError("jcs.canonicalize must return str or bytes")
     except Exception as exc:
         if isinstance(exc, CanonicalizationError):
             raise
