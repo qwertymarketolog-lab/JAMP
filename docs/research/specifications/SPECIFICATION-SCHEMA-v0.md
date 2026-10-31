@@ -203,3 +203,53 @@ comparison against independent `jcs` implementation пройдены.
 - Field semantics Q1–Q5 — не затрагиваются.
 - PASS/FAIL критерии — не затрагиваются.
 - Исторические утверждения ниже сохраняются как superseded.
+
+## Addendum 3 — 2026-10-31 — spec_id semantics RATIFIED (UUIDv5 Content-Namespace)
+
+Ratified at main `0065b668a974f63c47e6abbf2fc17f6f439ea101`.
+
+### Namespace
+
+- root UUID: `6ba7b810-9dad-11d1-80b4-00c04fd430c8` (`UUID_NAMESPACE_DNS`, RFC 4122)
+- name string: `jamp.dev/specifications/spec-id`
+- spec_id_namespace = `UUIDv5(root, name)` = `5c9426b4-f92f-5742-a2b4-8a244a411708`
+- Immutable after this ratification. Not to be regenerated.
+
+### spec_id formula (C1)
+
+```
+
+spec_id = UUIDv5(
+spec_id_namespace,
+canonical_bytes(spec \\ {spec_id, spec_hash, frozen_at})
+)
+
+```
+
+`canonical_bytes` = JCS RFC 8785 (backend `jcs==0.2.1`, `src/jamp/research/canonical.py`), returns UTF-8 bytes.
+
+`frozen_at` is **excluded** from spec_id input. Rationale:
+
+- spec_id identifies the research content, not the moment of freeze.
+- Changing `frozen_at` must not generate a new identity.
+- Otherwise the A2 gate would report `A2_HASH_MISMATCH` after freeze, breaking the chain.
+
+### spec_hash formula (clarified, not changed)
+
+```
+
+spec_hash = sha256(canonical_bytes(spec \\ {spec_hash}))
+
+```
+
+`spec_hash` **includes** `spec_id` and `frozen_at`. It is a versioned content hash, distinct from stable identity.
+
+### Collision semantics
+
+UUIDv5 provides deterministic generation but is not a cryptographic commitment. `spec_hash` (SHA-256) is authoritative for unambiguous content identification. Collision resistance of UUIDv5 relies on the 122-bit random portion and is not formally proven.
+
+### What does not change
+
+- Q1–Q5 field set (11 fields): not modified.
+- PASS/FAIL criteria: not modified.
+- Historical statements remain superseded.
