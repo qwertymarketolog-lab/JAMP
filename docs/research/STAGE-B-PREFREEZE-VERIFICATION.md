@@ -111,3 +111,36 @@ A proven violation is `FAIL`. `PASS` requires every required evidence class, int
 - Frozen Core `src/jamp/run.py`: expected blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; branch read-back required before final review.
 
 No runtime implementation or N1 freeze is included in this Stage B package.
+
+
+## Status update — 2026-10-31
+
+На основании ratification owner на main `4e7909ef`.
+
+### A2 — VERIFIED
+
+Evidence: PR #481, Run `41155212024`, Job `124400386151`, SUCCESS, 2147 passed.
+Реализованы три кода отказа: `A2_UNRESOLVED`, `A2_HASH_MISMATCH`, `A2_LINK_BROKEN`.
+`ArtifactSource.get_hypothesis/get_prediction` присутствуют в main.
+
+### JCS — VERIFIED (per-run evidence)
+
+Evidence: PR #482, Run `41169580036`, Job `124444420972`, SUCCESS, 2176 passed.
+V1–V10 conformance + reference comparison против `jcs==0.2.1` пройдены.
+
+Граница: этот статус относится к evidence конкретного прогона на `7e61ec9`
+и merge `59a0e96`. Он не является вечным свойством реализации; переопределяется
+evidence каждого нового прогона JCS harness.
+
+### Q1–Q5 — RATIFIED
+
+См. Addendum 2026-10-31 в `SPECIFICATION-SCHEMA-v0.md`. Q1–Q5 считаются
+PROPOSED только в исторических записях ниже; ratified-решения superseding.
+
+### N1 freeze vs Stage C
+
+N1 freeze **не блокируется** полнотой example-001.
+example-001 — Stage C gate. Текущий статус: `SCHEMA_ONLY`, `evidence_refs: TBD`.
+Ни PASS, ни conformance claim не делается.
+
+Исторические записи выше сохраняются как есть. Это дополнение их не переписывает.
