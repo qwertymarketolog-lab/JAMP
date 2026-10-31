@@ -113,32 +113,34 @@ A proven violation is `FAIL`. `PASS` requires every required evidence class, int
 No runtime implementation or N1 freeze is included in this Stage B package.
 
 
-## Addendum — 2026-10-31 — Q1–Q5 RATIFIED
+## Status update — 2026-10-31
 
-Ratified at main `4e7909ef`. Owner decisions recorded.
+На основании ratification owner на main `4e7909ef`.
 
-### Q1–Q5 final decisions
+### A2 — VERIFIED
 
-| # | Decision |
-|---|---|
-| Q1 | JSON Schema — единственный источник истины. YAML-слой не вводится. |
-| Q2 | Одна Specification = один атомарный research case. Композиция — только через immutable references. |
-| Q3 | Замораживаются 11 нормативных полей: `spec_id, spec_version, hypothesis_ref, prediction_ref, criterion_set_ref, preconditions, scope, evidence_classes, observation_schema, frozen_at, spec_hash`. |
-| Q4 | `spec_hash = SHA-256(canonical_json)`; canonicalization — RFC 8785 JCS. |
-| Q5 | Criterion — отдельный hash-addressed объект; агрегация принадлежит Criterion Set, не Specification. |
+Evidence: PR #481, Run `41155212024`, Job `124400386151`, SUCCESS, 2147 passed.
+Реализованы три кода отказа: `A2_UNRESOLVED`, `A2_HASH_MISMATCH`, `A2_LINK_BROKEN`.
+`ArtifactSource.get_hypothesis/get_prediction` присутствуют в main.
 
-### Q4 boundary
+### JCS — VERIFIED (per-run evidence)
 
-JCS ратифицирован как **нормативное требование**. Это отдельно от доказательства соответствия реализации RFC 8785. Evidence о conformance реализации фиксируется per-run; см. JCS harness в #482 (`jcs==0.2.1`, V1–V10 + reference comparison).
+Evidence: PR #482, Run `41169580036`, Job `124444420972`, SUCCESS, 2176 passed.
+V1–V10 conformance + reference comparison против `jcs==0.2.1` пройдены.
 
-Глобальный статус «JCS VERIFIED» этим дополнением не утверждается. Соответствие любого конкретного прогона определяется evidence этого прогона.
+Граница: этот статус относится к evidence конкретного прогона на `7e61ec9`
+и merge `59a0e96`. Он не является вечным свойством реализации; переопределяется
+evidence каждого нового прогона JCS harness.
 
-### A2 — implementation evidence
+### Q1–Q5 — RATIFIED
 
-A2 `hypothesis_ref` / `prediction_ref` resolution — merged в #481. Три кода отказа реализованы: `A2_UNRESOLVED`, `A2_HASH_MISMATCH`, `A2_LINK_BROKEN`. Evidence: Run `41155212024` / Job `124400386151`, 2147 passed.
+См. Addendum 2026-10-31 в `SPECIFICATION-SCHEMA-v0.md`. Q1–Q5 считаются
+PROPOSED только в исторических записях ниже; ratified-решения superseding.
 
-### N1 freeze vs Stage C evidence gate
+### N1 freeze vs Stage C
 
-N1 (нормативный контракт Specification) **не блокируется** полнотой evidence example-001.
+N1 freeze **не блокируется** полнотой example-001.
+example-001 — Stage C gate. Текущий статус: `SCHEMA_ONLY`, `evidence_refs: TBD`.
+Ни PASS, ни conformance claim не делается.
 
-example-001 остаётся **Stage C conformance gate**. Текущий статус: `SCHEMA_ONLY`, `evidence_refs: TBD`, `reference_status: PENDING_FIRST_FULL_EVIDENCE_RUN`. Ни PASS, ни conformance claim на основании исторического E2E не делается.
+Исторические записи выше сохраняются как есть. Это дополнение их не переписывает.

@@ -139,30 +139,40 @@ Freeze is blocked until:
 No runtime implementation is authorized by this schema package.
 
 
-## Addendum — 2026-10-31 — N1 freeze conditions clarified
+## Addendum — 2026-10-31 — Q1–Q5 RATIFIED
 
-На основании ratification владельца на main `4e7909ef`.
+Ratified at main `4e7909ef`. Owner decisions recorded.
 
-### Уточнение прежней формулировки об example-001
+### Q1–Q5 final
 
-Прежний текст указывал полный example-001 evidence run как обязательное условие N1 freeze. Уточняется:
+| # | Decision |
+|---|---|
+| Q1 | JSON Schema — единственный источник истины. YAML не вводится. |
+| Q2 | 1 Specification = 1 атомарный research case. Композиция — immutable references. |
+| Q3 | Замораживаются 11 нормативных полей: `spec_id, spec_version, hypothesis_ref, prediction_ref, criterion_set_ref, preconditions, scope, evidence_classes, observation_schema, frozen_at, spec_hash`. Post-hoc метрики не замораживаются. |
+| Q4 | `spec_hash = SHA-256(canonical_json)`, canonicalization — JCS RFC 8785. |
+| Q5 | Criterion — отдельный hash-addressed объект; агрегация — Criterion Set. |
 
-- N1 freeze требует: Q1–Q5 ratified + A2 conformance + Frozen Core Δ=0 + manifest status recorded.
-- **Полный example-001 evidence run — НЕ условие N1 freeze.**
-- Полнота example-001 — **Stage C gate**.
+### Superseding
 
-Обоснование: связка N1 freeze ↔ полный example-001 evidence создаёт цикл (схема не может быть заморожена до полного прогона; полный прогон требует замороженной схемы). N1 freeze и Stage C execution — разные gate.
+Упоминания `Q1–Q5 PROPOSED` в этом документе superseded ratification от
+2026-10-31. Финальные решения — см. эту таблицу. Исторические утверждения
+сохраняются как есть.
 
-### Уточнение статуса Q1–Q5
+### Условия N1 freeze — уточнение
 
-Упоминания `Q1–Q5 PROPOSED` в этом документе superseded ratification от 2026-10-31. Финальные решения — см. `STAGE-B-PREFREEZE-VERIFICATION.md` Addendum 2026-10-31.
+Прежний текст требовал полный example-001 evidence run как условие N1 freeze.
+Уточняется:
 
-### Сохраняемые условия N1 freeze (без изменений)
+- N1 freeze требует: Q1–Q5 ratified + A2 evidence + Frozen Core Δ=0 +
+  `protocol_manifest_sha256` записан со статусом в manifest.
+- **Полный example-001 evidence run — НЕ условие N1 freeze.** Это Stage C gate.
 
-- Все нормативные ссылки разрешаются (A2 — merged в #481, evidence зафиксировано).
-- `protocol_manifest_sha256` записан со статусом в `annotation-protocol-manifest.json`.
+Обоснование: связка «N1 freeze ↔ полный example-001» создаёт цикл (схема
+не может быть заморожена до прогона; прогон требует замороженной схемы).
+Stage B и Stage C — разные gate.
 
-### Что НЕ меняется
+### Что не меняется
 
-- PASS/FAIL критерии этим дополнением не затрагиваются.
-- Никаких изменений runtime, тестов, `canonical.py`, Frozen Core.
+- PASS/FAIL критерии не затрагиваются.
+- Изменения runtime, тестов, `canonical.py`, Frozen Core — не входят.
