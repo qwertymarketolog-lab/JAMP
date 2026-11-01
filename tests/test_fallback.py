@@ -138,7 +138,9 @@ def test_multimodal_fallback_fails_closed_when_no_executor_preserves_blocks():
         "messages": [
             {
                 "role": "user",
-                "content": [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}}],
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}},
+                ],
             }
         ]
     }
