@@ -1,0 +1,176 @@
+name: JAMP Video Probe Harness
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_sha256:
+        description: Expected SHA-256 of the ZIP bundle (64 lowercase hex characters)
+        required: true
+        type: string
+      anymodel_vision_model_id:
+        description: AnyModel model ID with image input support
+        required: true
+        type: string
+      anymodel_audio_model_id:
+        description: AnyModel model ID for the audio transcriptions endpoint
+        required: true
+        type: string
+      openrouter_vision_model_id:
+        description: OpenRouter model ID with image input support
+        required: true
+        type: string
+      openrouter_audio_model_id:
+        description: OpenRouter model ID with audio input support
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  video-probe:
+    name: Execute probes (not qualification)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Prepare evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe-evidence
+          {
+            echo "workflow_run_id=$GITHUB_RUN_ID"
+            echo "workflow_sha=$GITHUB_SHA"
+            echo "started_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "frozen_core_expected=0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          } > probe-evidence/preflight.txt
+
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify Frozen Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD:src/jamp/run.py)"
+          EXPECTED="0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          printf 'frozen_core_actual=%s\n' "$ACTUAL" >> probe-evidence/preflight.txt
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "FROZEN_CORE_DELTA_NONZERO" >> probe-evidence/preflight.txt
+            echo "::error::Frozen Core mismatch"
+            exit 1
+          fi
+          echo "FROZEN_CORE_DELTA=0"
+
+      - name: Validate inputs and secret presence
+        shell: bash
+        env:
+          MEDIA_URL: ${{ secrets.VIDEO_BUNDLE_URL }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
+          ANYMODEL_VISION_MODEL_ID: ${{ inputs.anymodel_vision_model_id }}
+          ANYMODEL_AUDIO_MODEL_ID: ${{ inputs.anymodel_audio_model_id }}
+          OPENROUTER_VISION_MODEL_ID: ${{ inputs.openrouter_vision_model_id }}
+          OPENROUTER_AUDIO_MODEL_ID: ${{ inputs.openrouter_audio_model_id }}
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ipaddress, os
+          from urllib.parse import urlsplit
+          url = urlsplit(os.environ["MEDIA_URL"])
+          if url.scheme != "https" or not url.hostname or url.username or url.password:
+              raise SystemExit("MEDIA_URL must be an HTTPS URL without embedded credentials")
+          try:
+              address = ipaddress.ip_address(url.hostname)
+              if not address.is_global:
+                  raise SystemExit("MEDIA_URL host must not be a private or reserved IP")
+          except ValueError:
+              if url.hostname.lower() == "localhost" or url.hostname.lower().endswith((".local", ".internal")):
+                  raise SystemExit("MEDIA_URL host is not allowed")
+          digest = os.environ["BUNDLE_SHA256"]
+          if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+              raise SystemExit("BUNDLE_SHA256 must be 64 lowercase hexadecimal characters")
+          for name in ("ANYMODEL_VISION_MODEL_ID", "ANYMODEL_AUDIO_MODEL_ID", "OPENROUTER_VISION_MODEL_ID", "OPENROUTER_AUDIO_MODEL_ID"):
+              if not os.environ[name].strip():
+                  raise SystemExit(name + " is required")
+          for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY", "MEDIA_URL"):
+              present = bool(os.environ.get(name))
+              print(name + "_PRESENT=" + str(present).lower())
+              if not present:
+                  raise SystemExit("Required provider secret is missing: " + name)
+          PY
+          {
+            echo "media_url_scheme=https"
+            echo "media_url_value_emitted=false"
+            echo "bundle_sha256_expected=$BUNDLE_SHA256"
+            echo "anymodel_vision_model_id=$ANYMODEL_VISION_MODEL_ID"
+            echo "anymodel_audio_model_id=$ANYMODEL_AUDIO_MODEL_ID"
+            echo "openrouter_vision_model_id=$OPENROUTER_VISION_MODEL_ID"
+            echo "openrouter_audio_model_id=$OPENROUTER_AUDIO_MODEL_ID"
+            echo "provider_secret_values_emitted=false"
+          } >> probe-evidence/preflight.txt
+
+      - name: Download and verify media bundle
+        shell: bash
+        env:
+          MEDIA_URL: ${{ secrets.VIDEO_BUNDLE_URL }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
+        run: |
+          set -euo pipefail
+          BUNDLE_PATH="$RUNNER_TEMP/jamp_video_probe_bundle.zip"
+          if ! curl --proto '=https' --proto-redir '=https' --location --fail --silent \
+              --max-time 180 --max-filesize 52428800 "$MEDIA_URL" \
+              --output "$BUNDLE_PATH" 2>/dev/null; then
+            echo "bundle_download=FAILED" >> probe-evidence/preflight.txt
+            echo "::error::Media bundle download failed (URL and response body suppressed)"
+            exit 1
+          fi
+          ACTUAL="$(sha256sum "$BUNDLE_PATH" | awk '{print $1}')"
+          printf 'bundle_sha256_actual=%s\n' "$ACTUAL" >> probe-evidence/preflight.txt
+          if [[ "$ACTUAL" != "$BUNDLE_SHA256" ]]; then
+            echo "bundle_digest_match=false" >> probe-evidence/preflight.txt
+            echo "::error::Media bundle SHA-256 mismatch"
+            exit 1
+          fi
+          echo "bundle_digest_match=true" >> probe-evidence/preflight.txt
+          echo "bundle_bytes=$(stat -c %s "$BUNDLE_PATH")" >> probe-evidence/preflight.txt
+
+      - name: Install project and harness dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Execute JAMP, AnyModel, and OpenRouter probes
+        shell: bash
+        env:
+          PYTHONPATH: src:.
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANYMODEL_VISION_MODEL_ID: ${{ inputs.anymodel_vision_model_id }}
+          ANYMODEL_AUDIO_MODEL_ID: ${{ inputs.anymodel_audio_model_id }}
+          OPENROUTER_VISION_MODEL_ID: ${{ inputs.openrouter_vision_model_id }}
+          OPENROUTER_AUDIO_MODEL_ID: ${{ inputs.openrouter_audio_model_id }}
+        run: |
+          set -euo pipefail
+          python tools/video_probe/run_video_probe.py \
+            --bundle "$RUNNER_TEMP/jamp_video_probe_bundle.zip" \
+            --output probe-evidence \
+            --anymodel-vision-model "$ANYMODEL_VISION_MODEL_ID" \
+            --anymodel-audio-model "$ANYMODEL_AUDIO_MODEL_ID" \
+            --openrouter-vision-model "$OPENROUTER_VISION_MODEL_ID" \
+            --openrouter-audio-model "$OPENROUTER_AUDIO_MODEL_ID"
+          echo "harness_execution=COMPLETED" >> probe-evidence/preflight.txt
+          echo "qualification=NOT_EVALUATED" >> probe-evidence/preflight.txt
+
+      - name: Upload evidence (media bytes excluded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-video-probe
+          path: probe-evidence/
+          if-no-files-found: warn
+          retention-days: 14

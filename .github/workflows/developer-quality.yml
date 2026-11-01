@@ -86,7 +86,7 @@ jobs:
             done
 
             if ((${#root_files[@]})); then
-              mypy "${root_files[@]}"
+              MYPYPATH=src mypy --config-file=/dev/null --strict --follow-imports=skip --python-version 3.11 "${root_files[@]}"
             fi
 
             if ((${#template_files[@]})); then
