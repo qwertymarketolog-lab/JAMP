@@ -65,6 +65,14 @@ class FallbackChainExecutor:
         return message[:150]
 
     @staticmethod
+    def _requires_content_blocks(payload: dict[str, typing.Any]) -> bool:
+        messages = payload.get("messages")
+        return isinstance(messages, list) and any(
+            isinstance(message, dict) and isinstance(message.get("content"), list)
+            for message in messages
+        )
+
+    @staticmethod
     def _task_profile(payload: dict[str, typing.Any]) -> str | None:
         candidate = payload.get("task_profile") or payload.get("intent")
         return (
@@ -96,7 +104,20 @@ class FallbackChainExecutor:
         self, selected_model: str, payload: dict[str, typing.Any]
     ) -> dict[str, typing.Any]:
         history: list[dict[str, typing.Any]] = []
+        requires_content_blocks = self._requires_content_blocks(payload)
         for index, executor in enumerate(self.executors[: self.max_attempts]):
+            if (
+                requires_content_blocks
+                and getattr(executor, "preserves_content_blocks", False) is not True
+            ):
+                history.append(
+                    {
+                        "provider": type(executor).__name__,
+                        "requested_model": selected_model,
+                        "outcome": "SKIPPED_UNSUPPORTED_CONTENT_BLOCKS",
+                    }
+                )
+                continue
             if index > 0 and not self._is_qualified(selected_model, self._task_profile(payload)):
                 error = RuntimeError("Fallback refused: model is not QUALIFIED for this task.")
                 error.fallback_history = list(history)  # type: ignore[attr-defined]

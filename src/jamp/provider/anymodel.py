@@ -21,6 +21,8 @@ class AnyModelError(RuntimeError):
 class AnyModelChatExecutor:
     """Callable JAMP executor for AnyModel's chat-completions endpoint."""
 
+    preserves_content_blocks = True
+
     def __init__(
         self,
         api_key: str,
@@ -52,7 +54,7 @@ class AnyModelChatExecutor:
         return cls(api_key, chat_url=chat_url, timeout=timeout)
 
     @staticmethod
-    def _messages(payload: dict[str, Any]) -> list[dict[str, str]]:
+    def _messages(payload: dict[str, Any]) -> list[dict[str, Any]]:
         messages = payload.get("messages")
         if messages is None:
             prompt = next(
@@ -77,9 +79,24 @@ class AnyModelChatExecutor:
             content = item.get("content")
             if role not in {"system", "user", "assistant"}:
                 raise AnyModelError("Message role is not supported")
-            if not isinstance(content, str) or not content.strip():
-                raise AnyModelError("Message content must be a non-empty string")
-            normalized.append({"role": role, "content": content})
+            if isinstance(content, str) and content.strip():
+                normalized_content: str | list[dict[str, Any]] = content
+            elif (
+                isinstance(content, list)
+                and content
+                and all(
+                    isinstance(part, dict)
+                    and isinstance(part.get("type"), str)
+                    and part["type"].strip()
+                    for part in content
+                )
+            ):
+                normalized_content = [dict(part) for part in content]
+            else:
+                raise AnyModelError(
+                    "Message content must be a non-empty string or typed content-block list"
+                )
+            normalized.append({"role": role, "content": normalized_content})
         return normalized
 
     def __call__(self, selected_model: str, payload: dict[str, Any]) -> dict[str, Any]:
