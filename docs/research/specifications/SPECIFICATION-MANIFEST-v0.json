@@ -1,12 +1,12 @@
 {
   "manifest_version": "0.1.0",
-  "manifest_status": "PRE_FREEZE",
+  "manifest_status": "FROZEN",
   "created_utc": "2026-10-31",
   "specification_schema": {
     "path": "docs/research/specifications/specification-schema-v0.json",
     "json_schema_draft": "2020-12",
     "file_sha256": "f2bb77b925981ab80a2000a8fdce707d41f3904c6f31b87904a864e1b3c212f6",
-    "jcs_sha256": null,
+    "jcs_sha256": "58297b5967ab1d6af3b18b6c6dc45b3bbfee6f448214b3f617c455e67359e62d",
     "jcs_sha256_description": "sha256(canonical_bytes(json.loads(schema_file))) — JCS RFC 8785 canonical form of parsed schema object; independent of file formatting",
     "required_fields": [
       "spec_id",
@@ -38,7 +38,11 @@
     "namespace_root_label": "UUID_NAMESPACE_DNS",
     "namespace_name": "jamp.dev/specifications/spec-id",
     "immutable_after_ratification": true,
-    "excluded_from_spec_id": ["spec_id", "spec_hash", "frozen_at"],
+    "excluded_from_spec_id": [
+      "spec_id",
+      "spec_hash",
+      "frozen_at"
+    ],
     "freeze_blocker": false,
     "rationale": "spec_id identifies content, not lifecycle moment. frozen_at excluded so freeze does not invalidate identity or break A2 gate references."
   },
@@ -56,7 +60,11 @@
   },
   "a2_gate": {
     "implementation": "src/jamp/research/specification_gate.py",
-    "codes": ["A2_UNRESOLVED", "A2_HASH_MISMATCH", "A2_LINK_BROKEN"],
+    "codes": [
+      "A2_UNRESOLVED",
+      "A2_HASH_MISMATCH",
+      "A2_LINK_BROKEN"
+    ],
     "verification_evidence": {
       "pr": 481,
       "merge_sha": "5184faf304610a3107f1e861ca47228eb7bfe068",
@@ -68,5 +76,5 @@
     "path": "src/jamp/run.py",
     "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
   },
-  "manifest_sha256": null
+  "manifest_sha256": "d0b754ae790ad9f8d99b07dcaca5e4f8648e0ff5bc60fd95166269bac80dc697"
 }

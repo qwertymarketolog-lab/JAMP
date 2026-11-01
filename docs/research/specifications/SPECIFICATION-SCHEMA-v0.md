@@ -253,3 +253,42 @@ UUIDv5 provides deterministic generation but is not a cryptographic commitment. 
 - Q1–Q5 field set (11 fields): not modified.
 - PASS/FAIL criteria: not modified.
 - Historical statements remain superseded.
+
+
+## Addendum 4 — 2026-11-01 — N1 Freeze
+
+N1 (normalized Specification contract) is FROZEN at main `4af4937ab35fa2b81c32a1adb189621232427631`.
+
+### Frozen state
+
+| Field | Value |
+|---|---|
+| manifest_status | FROZEN |
+| specification_schema.file_sha256 | f2bb77b925981ab80a2000a8fdce707d41f3904c6f31b87904a864e1b3c212f6 |
+| specification_schema.jcs_sha256 | 58297b5967ab1d6af3b18b6c6dc45b3bbfee6f448214b3f617c455e67359e62d |
+| manifest_sha256 | d0b754ae790ad9f8d99b07dcaca5e4f8648e0ff5bc60fd95166269bac80dc697 |
+| spec_id_semantics | RATIFIED (per #487), freeze_blocker=false |
+
+### Provenance
+
+Hashes computed by CI on branch `docs/n1-freeze`, commit `1702368`,
+run `41288415582`, job `124794388086`, artifact `n1-freeze-hashes`
+(`13076321661`). Not computed locally.
+
+### What N1 Freeze means
+
+The normalized Specification contract is now closed. Its schema, manifest,
+and JCS canonical hashes are immutable. Any change to Specification
+Schema v0 requires a new manifest version and re-freeze.
+
+### What N1 Freeze does NOT mean
+
+- Stage C (execution evidence) is NOT AUTHORIZED. It requires separate
+  explicit approval.
+- Verdict Architecture (v0.4-RC) remains RATIFIED DESIGN — IMPLEMENTATION
+  PENDING.
+- Recovery flow G2.4 remains RECOVERY_DESIGN_RC, blocked by §17.1 K1-K5.
+- example-001 remains SCHEMA_ONLY, evidence completeness tracked under
+  Stage C.
+
+Stage B (normal specification contract) is closed as of this addendum.
