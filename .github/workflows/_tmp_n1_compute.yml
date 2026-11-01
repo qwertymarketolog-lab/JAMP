@@ -1,0 +1,71 @@
+name: N1 Freeze — temporary hash computation
+
+on:
+  push:
+    branches:
+      - docs/n1-freeze
+
+permissions:
+  contents: read
+
+jobs:
+  compute-n1-freeze-hashes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project and development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+
+      - name: Compute N1 freeze hashes
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import copy
+          import hashlib
+          import json
+          from pathlib import Path
+
+          from jamp.research.canonical import canonical_bytes
+
+          schema_path = Path("docs/research/specifications/specification-schema-v0.json")
+          manifest_path = Path("docs/research/specifications/SPECIFICATION-MANIFEST-v0.json")
+
+          schema = json.loads(schema_path.read_text(encoding="utf-8"))
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+          jcs_sha256 = hashlib.sha256(canonical_bytes(schema)).hexdigest()
+
+          frozen_manifest = copy.deepcopy(manifest)
+          frozen_manifest["manifest_status"] = "FROZEN"
+          frozen_manifest["specification_schema"]["jcs_sha256"] = jcs_sha256
+          frozen_manifest.pop("manifest_sha256", None)
+          manifest_sha256 = hashlib.sha256(
+              canonical_bytes(frozen_manifest)
+          ).hexdigest()
+
+          output = (
+              f"base_sha=4af4937ab35fa2b81c32a1adb189621232427631\n"
+              f"jcs_sha256={jcs_sha256}\n"
+              f"manifest_sha256={manifest_sha256}\n"
+          )
+          print(output, end="")
+          Path("/tmp/n1-hashes.txt").write_text(output, encoding="utf-8")
+          PY
+
+      - name: Upload hash evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: n1-freeze-hashes
+          path: /tmp/n1-hashes.txt
+          if-no-files-found: error
+          retention-days: 14
