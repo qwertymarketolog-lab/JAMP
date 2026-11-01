@@ -4,7 +4,8 @@
 
 - PR: #496 — OPEN / Draft / not merged.
 - Branch: `docs/decision-evidence-map-20261101`.
-- Last inspected head: `c159b224a8b577cfc3ec308b1590497865308ebb`.
+- Current PR head after documentation corrections: `e899576326715b86be59be4f9c20018626a72bf5`.
+- Previous evidence snapshot audited for the 14-run discrepancy: `c159b224a8b577cfc3ec308b1590497865308ebb`.
 - Base: `3917c484e00cc0439695c16362b724d1ddbcc4a2`.
 - Frozen Core: `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; exact match on inspected head, Δ=0.
 - PR scope remains exactly three documentation files. No runtime, tests, workflows, thresholds, policies, dependencies, or Frozen Core changes are authorized.
