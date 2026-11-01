@@ -157,7 +157,8 @@ def _capture_payload(monkeypatch, **kwargs):
     def fake_urlopen(request, **_options):
         captured["payload"] = json.loads(request.data.decode("utf-8"))
         return FakeResponse(
-            b'{"id":"capture-response","model":"provider/model","choices":[{"message":{"content":"ok"}}]}'
+            b'{"id":"capture-response","model":"provider/model",'
+            b'"choices":[{"message":{"content":"ok"}}]}'
         )
 
     monkeypatch.setattr(probe, "urlopen", fake_urlopen)
