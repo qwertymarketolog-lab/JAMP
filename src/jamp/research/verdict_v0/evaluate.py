@@ -72,7 +72,7 @@ def _criterion_set(value: Any) -> tuple[str, list[dict[str, Any]]] | EvaluationR
 
 def evaluate(
     *,
-    spec_ref: str,
+    expected_spec_ref: SpecificationRef,
     gate_result: GateResult,
     gate_sha256: str | None,
     selector_sha256: str | None,
@@ -102,10 +102,16 @@ def evaluate(
         gate_result.spec_ref, SpecificationRef
     ):
         return _refuse("GATE_RESULT_INVALID", "expected SpecificationGate GateResult")
-    if not is_valid_sha256(spec_ref) or gate_result.spec_ref.spec_hash != spec_ref:
+    if (
+        not isinstance(expected_spec_ref, SpecificationRef)
+        or not is_valid_sha256(expected_spec_ref.spec_hash)
+        or gate_result.spec_ref != expected_spec_ref
+    ):
         return _refuse(
-            "SPEC_REF_MISMATCH", "GateResult SpecificationRef hash differs from spec_ref"
+            "SPEC_REF_MISMATCH",
+            f"gate_result.spec_ref={gate_result.spec_ref!r} != expected={expected_spec_ref!r}",
         )
+    spec_ref = expected_spec_ref.spec_hash
     if not isinstance(gate_result.status, GateStatus):
         return _refuse("GATE_STATUS_INVALID", "unrecognized GateStatus")
     if gate_result.status is GateStatus.UNKNOWN:
