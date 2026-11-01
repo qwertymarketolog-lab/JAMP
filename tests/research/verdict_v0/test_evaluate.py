@@ -81,7 +81,7 @@ def _rule() -> dict[str, Any]:
 
 def _call(**updates: Any) -> Verdict | EvaluationRefusal:
     args = {
-        "spec_ref": SPEC,
+        "expected_spec_ref": SpecificationRef("spec-1", "1.0.0", SPEC),
         "gate_result": _gate(),
         "gate_sha256": A,
         "selector_sha256": B,
@@ -152,6 +152,13 @@ def test_unknown_gate_status_refuses():
 
 def test_gate_spec_ref_mismatch_refuses():
     gate = GateResult(GateStatus.PASS, SpecificationRef("other", "1.0.0", "9" * 64), (), ())
+    result = _call(gate_result=gate)
+    assert isinstance(result, EvaluationRefusal)
+    assert result.refusal_reason == "SPEC_REF_MISMATCH"
+
+
+def test_gate_spec_identity_mismatch_refuses_even_when_hash_matches():
+    gate = GateResult(GateStatus.PASS, SpecificationRef("other", "9.9.9", SPEC), (SPEC,), (), "v0")
     result = _call(gate_result=gate)
     assert isinstance(result, EvaluationRefusal)
     assert result.refusal_reason == "SPEC_REF_MISMATCH"
