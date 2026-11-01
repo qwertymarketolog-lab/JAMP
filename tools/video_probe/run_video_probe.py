@@ -208,7 +208,7 @@ def jamp_runtime(frames: list[Path], audio: bytes, output: Path):
     try:
         os.environ["JAMP_API_KEY_HASH_SECRET"] = "video-probe-ephemeral-auth-secret"
         os.environ["JAMP_ENVIRONMENT"] = "local"
-        app = create_app(audit_storage_path=output / "jamp-audit.sqlite")
+        app = create_app(audit_storage_path=output / "jamp-audit.jsonl")
         app.dependency_overrides[require_api_key] = lambda: OrganizationContext(org_id="video-probe", org_name="video-probe")
         with TestClient(app, raise_server_exceptions=False) as client:
             response = client.post("/v1/execute", json=payload)
