@@ -287,7 +287,9 @@ def test_anymodel_transcription_records_transcript_and_audio_digest(monkeypatch)
     assert captured["request"].get_header("Content-type").startswith(
         "multipart/form-data; boundary="
     )
-    assert audio not in captured["request"].data
+    assert audio in captured["request"].data
+    assert base64.b64encode(audio) not in json.dumps(result["request_redacted"]).encode()
+    assert audio.decode() not in json.dumps(result["request_redacted"])
 
 
 def test_main_writes_observation_only_evidence_and_summary(tmp_path, monkeypatch):
