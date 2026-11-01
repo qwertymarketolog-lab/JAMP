@@ -94,7 +94,8 @@ jobs:
                   raise SystemExit("Required provider secret is missing: " + name)
           PY
           {
-            echo "media_url_scheme=https"\n            echo "media_url_value_emitted=false"
+            echo "media_url_scheme=https"
+            echo "media_url_value_emitted=false"
             echo "bundle_sha256_expected=$BUNDLE_SHA256"
             echo "anymodel_model_id=$ANYMODEL_MODEL_ID"
             echo "openrouter_model_id=$OPENROUTER_MODEL_ID"
