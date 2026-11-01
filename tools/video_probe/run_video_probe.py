@@ -106,6 +106,93 @@ def provider_call(provider: str, endpoint: str, key: str, model: str, modality: 
                raw_response_body=text)
     return row
 
+def anymodel_transcription_call(
+    endpoint: str, api_key: str, model: str, audio: bytes
+) -> dict[str, Any]:
+    boundary = "jamp-video-probe-" + digest(audio)[:20]
+    parts = [
+        (
+            "--" + boundary + "\r\n"
+            'Content-Disposition: form-data; name="model"\r\n\r\n'
+            + model + "\r\n"
+        ).encode(),
+        (
+            "--" + boundary + "\r\n"
+            'Content-Disposition: form-data; name="file"; '
+            'filename="audio_excerpt_00_00_30.wav"\r\n'
+            "Content-Type: audio/wav\r\n\r\n"
+        ).encode(),
+        audio,
+        ("\r\n--" + boundary + "--\r\n").encode(),
+    ]
+    body = b"".join(parts)
+    record: dict[str, Any] = {
+        "provider": "anymodel",
+        "modality": "audio_transcription",
+        "requested_model_id": model,
+        "endpoint_host": endpoint.split("/")[2],
+        "request_started_at_utc": now(),
+        "request_sha256": digest(body),
+        "request_bytes": len(body),
+        "request_redacted": {
+            "model": model,
+            "file": {
+                "name": "audio_excerpt_00_00_30.wav",
+                "content_type": "audio/wav",
+                "sha256": digest(audio),
+                "bytes": len(audio),
+                "data_redacted": True,
+            },
+        },
+    }
+    request = Request(
+        endpoint,
+        data=body,
+        headers={
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "multipart/form-data; boundary=" + boundary,
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    started = time.monotonic()
+    try:
+        with urlopen(request, timeout=120) as response:
+            status = response.status
+            raw = response.read()
+            headers = response.headers
+    except HTTPError as exc:
+        status = exc.code
+        raw = exc.read()
+        headers = exc.headers
+    except (URLError, TimeoutError, OSError) as exc:
+        record.update(
+            outcome="TRANSPORT_ERROR",
+            error_type=type(exc).__name__,
+            completed_at_utc=now(),
+            elapsed_seconds=round(time.monotonic() - started, 3),
+        )
+        return record
+
+    response_text = raw.decode("utf-8", errors="replace").replace(api_key, "[REDACTED]")
+    try:
+        decoded = json.loads(response_text)
+    except json.JSONDecodeError:
+        decoded = None
+    record.update(
+        outcome="HTTP_2XX_TRANSCRIPTION_PRESENT" if 200 <= status < 300 and isinstance(decoded, dict)
+        and isinstance(decoded.get("text"), str) else "HTTP_2XX_RESPONSE_WITHOUT_TRANSCRIPTION"
+        if 200 <= status < 300 else "HTTP_ERROR",
+        http_status=status,
+        completed_at_utc=now(),
+        elapsed_seconds=round(time.monotonic() - started, 3),
+        actual_model_id=decoded.get("model") if isinstance(decoded, dict) else None,
+        usage=decoded.get("usage") if isinstance(decoded, dict) else None,
+        raw_response_body=response_text,
+    )
+    return record
+
+
 def jamp_runtime(frames: list[Path], audio: bytes, output: Path):
     from fastapi.testclient import TestClient
     from jamp.api.app import create_app
@@ -150,8 +237,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True, type=Path)
     ap.add_argument("--output", required=True, type=Path)
-    ap.add_argument("--anymodel-model", required=True)
-    ap.add_argument("--openrouter-model", required=True)
+    ap.add_argument("--anymodel-vision-model", required=True)
+    ap.add_argument("--anymodel-audio-model", required=True)
+    ap.add_argument("--openrouter-vision-model", required=True)
+    ap.add_argument("--openrouter-audio-model", required=True)
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     evidence = {"harness": "JAMP Video Probe Harness v0.1", "started_at_utc": now(),
@@ -167,17 +256,71 @@ def main() -> int:
             images.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(frame.read_bytes()).decode()}})
         audio_content = [{"type": "text", "text": "Transcribe and summarize this 30-second audio excerpt."},
                          {"type": "input_audio", "input_audio": {"data": base64.b64encode(audio).decode(), "format": "wav"}}]
-        providers = [
-            ("anymodel", os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"),
-             os.environ.get("ANYMODEL_API_KEY", ""), args.anymodel_model),
-            ("openrouter", os.environ.get("OPENROUTER_CHAT_URL", "https://openrouter.ai/api/v1/chat/completions"),
-             os.environ.get("OPENROUTER_API_KEY", ""), args.openrouter_model)]
-        for provider, endpoint, key, model in providers:
-            for modality, content in (("sampled_frames", images), ("audio_excerpt", audio_content)):
-                if not key:
-                    evidence["tests"].append({"provider": provider, "modality": modality, "requested_model_id": model, "outcome": "SKIPPED_SECRET_MISSING"})
-                else:
-                    evidence["tests"].append(provider_call(provider, endpoint, key, model, modality, content))
+        anymodel_key = os.environ.get("ANYMODEL_API_KEY", "")
+        openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+        if anymodel_key:
+            evidence["tests"].append(
+                provider_call(
+                    "anymodel",
+                    os.environ.get(
+                        "ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"
+                    ),
+                    anymodel_key,
+                    args.anymodel_vision_model,
+                    "sampled_frames",
+                    images,
+                )
+            )
+            evidence["tests"].append(
+                anymodel_transcription_call(
+                    os.environ.get(
+                        "ANYMODEL_TRANSCRIPTION_URL",
+                        "https://anymodel.org/v1/audio/transcriptions",
+                    ),
+                    anymodel_key,
+                    args.anymodel_audio_model,
+                    audio,
+                )
+            )
+        else:
+            evidence["tests"].extend(
+                [
+                    {"provider": "anymodel", "modality": "sampled_frames",
+                     "requested_model_id": args.anymodel_vision_model,
+                     "outcome": "SKIPPED_SECRET_MISSING"},
+                    {"provider": "anymodel", "modality": "audio_transcription",
+                     "requested_model_id": args.anymodel_audio_model,
+                     "outcome": "SKIPPED_SECRET_MISSING"},
+                ]
+            )
+        if openrouter_key:
+            openrouter_url = os.environ.get(
+                "OPENROUTER_CHAT_URL",
+                "https://openrouter.ai/api/v1/chat/completions",
+            )
+            evidence["tests"].append(
+                provider_call(
+                    "openrouter", openrouter_url, openrouter_key,
+                    args.openrouter_vision_model, "sampled_frames", images
+                )
+            )
+            evidence["tests"].append(
+                provider_call(
+                    "openrouter", openrouter_url, openrouter_key,
+                    args.openrouter_audio_model, "audio_excerpt", audio_content
+                )
+            )
+        else:
+            evidence["tests"].extend(
+                [
+                    {"provider": "openrouter", "modality": "sampled_frames",
+                     "requested_model_id": args.openrouter_vision_model,
+                     "outcome": "SKIPPED_SECRET_MISSING"},
+                    {"provider": "openrouter", "modality": "audio_excerpt",
+                     "requested_model_id": args.openrouter_audio_model,
+                     "outcome": "SKIPPED_SECRET_MISSING"},
+                ]
+            )
     evidence["completed_at_utc"] = now()
     evidence["test_count"] = len(evidence["tests"])
     evidence["provider_completion_count"] = sum(x.get("outcome") == "HTTP_2XX_COMPLETION_PRESENT" for x in evidence["tests"])
