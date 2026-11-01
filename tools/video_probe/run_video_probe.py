@@ -1,5 +1,13 @@
 from __future__ import annotations
-import argparse, base64, hashlib, json, os, tempfile, time, wave, zipfile
+import argparse
+import base64
+import hashlib
+import json
+import os
+import tempfile
+import time
+import wave
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -39,7 +47,9 @@ def media_from_bundle(bundle: Path, root: Path):
         raw_audio = src.readframes(count)
     excerpt = root / "audio_excerpt_00_00_30.wav"
     with wave.open(str(excerpt), "wb") as dst:
-        dst.setnchannels(1); dst.setsampwidth(2); dst.setframerate(16000)
+        dst.setnchannels(1)
+        dst.setsampwidth(2)
+        dst.setframerate(16000)
         dst.writeframes(raw_audio)
     audio_bytes = excerpt.read_bytes()
     media = {
