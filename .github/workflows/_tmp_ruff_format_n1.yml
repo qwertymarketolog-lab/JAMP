@@ -1,0 +1,28 @@
+name: TMP ruff format n1
+
+on:
+  push:
+    branches: [docs/n1-freeze]
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "ruff==0.17.3"
+      - name: ruff format --check --diff
+        run: |
+          ruff format --check --diff \
+            tests/research/specifications/test_manifest_integrity.py \
+            > /tmp/ruff-format.diff 2>&1 || true
+          cat /tmp/ruff-format.diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruff-format-diff
+          path: /tmp/ruff-format.diff
