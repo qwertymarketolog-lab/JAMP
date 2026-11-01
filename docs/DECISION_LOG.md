@@ -523,3 +523,26 @@ Add subsequent records below. Never edit the historical findings above.
 - Finding: the previously pending G4 run is now terminal success with its expected evidence artifact. Together with the other 14 terminal-success runs, the complete 15-run PR-associated inventory is terminal.
 - Scope: this verifies the enumerated PR workflow inventory for PR head `1ff1726e...`; it does not establish post-merge CI on `main`, does not change JAMP-DEC-007 baseline status, and does not qualify DEC-002/003/004.
 - Decision: record the complete PR #496 workflow inventory as `VERIFIED`. PR remains OPEN / Draft / unmerged; no merge is authorized.
+
+
+## JAMP-DEC-008 — PR #496 required Ruleset checks — Update 2
+
+- Date: 2026-11-02
+- Previous record: JAMP-DEC-008 — Update 1.
+- Status: `HISTORICAL` — the original `VERIFIED` statement applies only to PR head `1ff1726e909d1479f046af9ce16c1212e5ade589`.
+- Current PR head observed: `c159b224a8b577cfc3ec308b1590497865308ebb`.
+- Finding: the original two required-context results and artifact target the old head. They do not verify required checks for the current head.
+- Decision: preserve Update 1 unchanged as historical evidence; do not carry its VERIFIED claim forward to the current head.
+- Consequence: a new exact-head Ruleset Run → Job → Artifact inspection is required before any current-head required-check claim.
+
+## JAMP-DEC-009 — PR #496 complete workflow inventory — Update 2
+
+- Date: 2026-11-02
+- Previous record: JAMP-DEC-009 — Update 1.
+- Status: `HOLD` — current-head complete workflow inventory is not verified.
+- Previous inventory SHA: `1ff1726e909d1479f046af9ce16c1212e5ade589`.
+- Current PR head SHA: `c159b224a8b577cfc3ec308b1590497865308ebb`.
+- Evidence observed: GitHub API returned 14 workflow-run records associated with the current head; all 14 run-level records reported `completed / success`. This update did not independently fetch the jobs or artifacts for those 14 runs.
+- Finding: the prior claim of 15 runs is valid only for its recorded old head. It is not a current-head inventory and must not be represented as one.
+- Decision: retain Update 1 as an immutable historical record; supersede its applicability to the current head. Do not label the current 14-run set a complete VERIFIED inventory.
+- Consequence: current-head qualification requires each relevant Run → Job → terminal conclusion and artifact (where emitted) to be inspected. PR CI remains distinct from post-merge CI.
