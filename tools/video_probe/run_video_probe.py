@@ -95,6 +95,8 @@ def media_from_bundle(bundle: Path, root: Path) -> tuple[list[Path], bytes, dict
 
 def redact_request(body: bytes) -> dict[str, Any]:
     payload = json.loads(body)
+    if not isinstance(payload, dict):
+        raise ValueError("request JSON must be an object")
     for message in payload.get("messages", []):
         content = message.get("content")
         if not isinstance(content, list):
@@ -162,6 +164,7 @@ def provider_call(
         method="POST",
     )
     started = time.monotonic()
+    headers = None
     try:
         with urlopen(request, timeout=120) as response:
             status = response.status
@@ -170,6 +173,7 @@ def provider_call(
     except HTTPError as exc:
         status = exc.code
         raw = exc.read()
+        headers = exc.headers
     except (URLError, TimeoutError, OSError) as exc:
         record.update(
             outcome="TRANSPORT_ERROR",
