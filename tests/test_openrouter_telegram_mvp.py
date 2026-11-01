@@ -1187,3 +1187,38 @@ def test_fallback_chain_empty_content_exhaustion_returns_inconclusive(monkeypatc
     assert response.json()["status"] == "INCONCLUSIVE"
     assert response.json()["reason"] == "OPENROUTER_EMPTY_CONTENT_RETRY_EXHAUSTED"
     assert response.json()["evidence_status"] == "INCONCLUSIVE"
+
+
+
+def test_openrouter_preserves_typed_multimodal_message_content():
+    from jamp.provider.openrouter import OpenRouterChatExecutor
+
+    content = [
+        {"type": "text", "text": "Describe the media."},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}},
+        {"type": "input_audio", "input_audio": {"data": "AA==", "format": "wav"}},
+    ]
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"observed"}}]}'
+
+    def fake_open(request, timeout):
+        seen["body"] = json.loads(request.data.decode("utf-8"))
+        return Response()
+
+    executor = OpenRouterChatExecutor("test-secret", opener=fake_open)
+    result = executor(
+        "provider/multimodal-model",
+        {"messages": [{"role": "user", "content": content}]},
+    )
+
+    assert seen["body"]["messages"] == [{"role": "user", "content": content}]
+    assert result["content"] == "observed"
