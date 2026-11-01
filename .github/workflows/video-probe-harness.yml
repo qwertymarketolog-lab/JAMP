@@ -3,10 +3,6 @@ name: JAMP Video Probe Harness
 on:
   workflow_dispatch:
     inputs:
-      media_url:
-        description: HTTPS download URL for the prepared jamp_video_probe_bundle.zip
-        required: true
-        type: string
       bundle_sha256:
         description: Expected SHA-256 of the ZIP bundle (64 lowercase hex characters)
         required: true
@@ -64,7 +60,7 @@ jobs:
       - name: Validate inputs and secret presence
         shell: bash
         env:
-          MEDIA_URL: ${{ inputs.media_url }}
+          MEDIA_URL: ${{ secrets.VIDEO_BUNDLE_URL }}
           BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
           ANYMODEL_MODEL_ID: ${{ inputs.anymodel_model_id }}
           OPENROUTER_MODEL_ID: ${{ inputs.openrouter_model_id }}
@@ -91,14 +87,14 @@ jobs:
           for name in ("ANYMODEL_MODEL_ID", "OPENROUTER_MODEL_ID"):
               if not os.environ[name].strip():
                   raise SystemExit(name + " is required")
-          for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY"):
+          for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY", "VIDEO_BUNDLE_URL"):
               present = bool(os.environ.get(name))
               print(name + "_PRESENT=" + str(present).lower())
               if not present:
                   raise SystemExit("Required provider secret is missing: " + name)
           PY
           {
-            echo "media_url_scheme=https"
+            echo "media_url_scheme=https"\n            echo "media_url_value_emitted=false"
             echo "bundle_sha256_expected=$BUNDLE_SHA256"
             echo "anymodel_model_id=$ANYMODEL_MODEL_ID"
             echo "openrouter_model_id=$OPENROUTER_MODEL_ID"
