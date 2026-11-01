@@ -462,3 +462,64 @@ Add subsequent records below. Never edit the historical findings above.
   and `docs/NEXT_ACTION.md` on a dedicated branch and submit a PR.
 - Consequence: no runtime, tests, workflows, thresholds, policies, or
   Frozen Core changes; PR merge remains separately unauthorized.
+
+
+## JAMP-DEC-007 — Baseline CI evidence classification — Update 1
+
+- Date: 2026-11-01 19:11 UTC
+- Previous record: JAMP-DEC-007 — CI Evidence on baseline SHA.
+- Status: `UNKNOWN` (baseline CI qualification not established).
+- Exact SHA: `3917c484e00cc0439695c16362b724d1ddbcc4a2`.
+- Finding: the earlier baseline entry is an enumerated sample of eight workflows. It does not contain a complete ruleset inventory or a complete independently inspectable Run → Job → Artifact evidence package for the baseline SHA. The PR #496 evidence below is on a different SHA and cannot qualify the baseline retroactively.
+- Decision: retain the baseline classification as `UNKNOWN`; do not promote it based on PR #496.
+- Consequence: any future baseline CI claim requires its own exact-SHA ruleset, workflow, job, terminal conclusion, and artifact inspection.
+
+## JAMP-DEC-008 — PR #496 required Ruleset checks — Update 1
+
+- Date: 2026-11-01 19:11 UTC
+- Status: `VERIFIED` — both required branch-protection contexts completed successfully.
+- PR: [#496](https://github.com/qwertymarketolog-lab/JAMP/pull/496), still OPEN / Draft / not merged at inspection.
+- PR head SHA: `1ff1726e909d1479f046af9ce16c1212e5ade589`.
+- Base SHA: `3917c484e00cc0439695c16362b724d1ddbcc4a2`.
+- Ruleset: `23974688`, `JAMP main protection`, active on `refs/heads/main`.
+- Required contexts:
+  - `Research Loop v0 Gate /` — Run `41339990072`, Job `124947758512`, `completed / success`.
+  - `G1 Trusted Lineage` — Run `41339990072`, Job `124947809759`, `completed / success`. This is the G1 job that satisfies the Ruleset context.
+- Required-check artifact: Run `41339990072`, Artifact `13096677088`, `research-loop-v0-evidence`. Its JSON records PR `496`, target SHA `1ff1726e909d1479f046af9ce16c1212e5ade589`, base SHA `3917c484e00cc0439695c16362b724d1ddbcc4a2`, conclusion `success`, and the locked Frozen Core blob.
+- Independent G1 confirmation: separate Run `41339989839` (`pull_request_target`), Job `124947759121`, `completed / success`; no artifact was returned for this separate workflow. This run is corroborative, not the Ruleset job.
+- Frozen Core: `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; exact locked-blob match, Δ=0.
+- Finding: both and only both required Ruleset contexts are verified successful for the PR head. This establishes required-check completion, not authorization to merge and not post-merge CI.
+- Decision: record PR #496 required-check gate as `VERIFIED`. Merge remains a separate decision and is not authorized by this record.
+
+## JAMP-DEC-009 — PR #496 complete workflow inventory — Update 1
+
+- Date: 2026-11-01 19:11 UTC
+- Status: `VERIFIED` — all 15 PR-associated workflow runs inspected for this inventory are terminal `completed / success`.
+- PR head SHA: `1ff1726e909d1479f046af9ce16c1212e5ade589`; all 15 run records report this head SHA and branch `docs/decision-evidence-map-20261101`.
+- Base SHA: `3917c484e00cc0439695c16362b724d1ddbcc4a2`.
+- Run → Job → Conclusion → Artifact inventory:
+
+| Workflow | Run ID | Job ID(s) | Conclusion | Artifact ID(s) |
+|---|---:|---|---|---|
+| Probe coollabsio MinIO immutable digest | 41339989749 | 124947757221 | success | none returned |
+| EXP-18 Field Alignment Diagnostic | 41339989882 | 124947757867 | success | 13096248391 |
+| SBOM | 41339989824 | 124947757255 | success | 13096153732 |
+| P20.5 Hypothesis Lifecycle Diagnostic | 41339989849 | 124947757761 | success | none returned |
+| MCP Integration Test | 41339989925 | 124947758087 | success | none returned |
+| Research Loop v0 Gate | 41339990072 | 124947758512; 124947809759 | both success | 13096677088 |
+| G1 Trusted Lineage (`pull_request_target`) | 41339989839 | 124947759121 | success | none returned |
+| Groq Executor Tests | 41339989783 | 124947757455 | success | none returned |
+| EXP-19 Performance Diagnostic | 41339989902 | 124947757810; 124947757992; 124947757995; 124947758090; 124947758139 | all five success | 13097071968; 13097002128; 13096767836; 13096693226; 13096378167 |
+| EXP-21 Phase 2 Scheduling | 41339989829 | 124947757701 | success | 13097211097 |
+| P20.11 Diagnostic | 41339989736 | 124947757318 | success | none returned |
+| P23.0-B Cold Replay Diagnostic | 41339989984 | 124947758221 | success | none returned |
+| Developer Quality | 41339989791 | 124947757374 | success | none returned |
+| Run Pytest | 41339989715 | 124947757418 | success | 13096527938 |
+| P36.2 G4 MinIO Runtime | 41339989843 | 124947757769 | success | 13097360382 |
+
+- G4 terminal evidence: Run `41339989843`, Job `124947757769`, `completed / success`; log reports `1 passed in 1.45s` for `tests/test_g4_minio_runtime.py`. Artifact `13097360382`, `g4-minio-runtime-evidence`, was uploaded successfully.
+- G4 artifact content: tested merge ref SHA `4719e2ea781d81635544ac882140c937d3c7f44a` (GitHub PR merge ref for head `1ff1726e...` into base `3917c484...`); status `SUCCESS`; storage type `minio`; cursor `0 → 70`; payload and downloaded SHA-256 both `41ff002de6990150cc141e519af8a8e36623933a0904dd4d92fc99298d809c93`; `sha256_match=true`; Frozen Core blob equals locked SHA `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+- Artifact absence: where the table says `none returned`, that is an observation about the artifact API response, not an inferred success signal. Each corresponding job's terminal conclusion was separately fetched as `success`.
+- Finding: the previously pending G4 run is now terminal success with its expected evidence artifact. Together with the other 14 terminal-success runs, the complete 15-run PR-associated inventory is terminal.
+- Scope: this verifies the enumerated PR workflow inventory for PR head `1ff1726e...`; it does not establish post-merge CI on `main`, does not change JAMP-DEC-007 baseline status, and does not qualify DEC-002/003/004.
+- Decision: record the complete PR #496 workflow inventory as `VERIFIED`. PR remains OPEN / Draft / unmerged; no merge is authorized.
