@@ -117,9 +117,9 @@ def test_multimodal_fallback_skips_executor_that_cannot_preserve_content_blocks(
     text_only = TextOnlyExecutor({"provider": "text-only", "content": "must not run"})
     multimodal = MultimodalExecutor({"provider": "multimodal", "content": "observed"})
 
-    result = FallbackChainExecutor(
-        [text_only, multimodal], qualification_checker=qualified
-    )("model-a", payload)
+    result = FallbackChainExecutor([text_only, multimodal], qualification_checker=qualified)(
+        "model-a", payload
+    )
 
     assert text_only.calls == 0
     assert multimodal.calls == 1
@@ -152,9 +152,7 @@ def test_multimodal_fallback_fails_closed_when_no_executor_preserves_blocks():
     second = TextOnlyExecutor({"provider": "also-text-only"})
 
     with pytest.raises(RuntimeError, match="All fallback providers failed") as raised:
-        FallbackChainExecutor([first, second], qualification_checker=qualified)(
-            "model-a", payload
-        )
+        FallbackChainExecutor([first, second], qualification_checker=qualified)("model-a", payload)
 
     assert first.calls == 0
     assert second.calls == 0

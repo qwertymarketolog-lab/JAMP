@@ -79,7 +79,6 @@ def test_executor_refuses_multi_model_selection():
         executor(("model-a", "model-b"), {"prompt": "Hi"})
 
 
-
 def test_executor_preserves_typed_multimodal_message_content():
     content = [
         {"type": "text", "text": "Describe the media."},

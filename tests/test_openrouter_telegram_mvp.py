@@ -1189,7 +1189,6 @@ def test_fallback_chain_empty_content_exhaustion_returns_inconclusive(monkeypatc
     assert response.json()["evidence_status"] == "INCONCLUSIVE"
 
 
-
 def test_openrouter_preserves_typed_multimodal_message_content():
     from jamp.provider.openrouter import OpenRouterChatExecutor
 
