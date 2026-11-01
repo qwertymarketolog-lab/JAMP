@@ -7,12 +7,20 @@ on:
         description: Expected SHA-256 of the ZIP bundle (64 lowercase hex characters)
         required: true
         type: string
-      anymodel_model_id:
-        description: Exact AnyModel multimodal model ID to probe
+      anymodel_vision_model_id:
+        description: AnyModel model ID with image input support
         required: true
         type: string
-      openrouter_model_id:
-        description: Exact OpenRouter multimodal model ID to probe
+      anymodel_audio_model_id:
+        description: AnyModel model ID for the audio transcriptions endpoint
+        required: true
+        type: string
+      openrouter_vision_model_id:
+        description: OpenRouter model ID with image input support
+        required: true
+        type: string
+      openrouter_audio_model_id:
+        description: OpenRouter model ID with audio input support
         required: true
         type: string
 
@@ -62,8 +70,10 @@ jobs:
         env:
           MEDIA_URL: ${{ secrets.VIDEO_BUNDLE_URL }}
           BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
-          ANYMODEL_MODEL_ID: ${{ inputs.anymodel_model_id }}
-          OPENROUTER_MODEL_ID: ${{ inputs.openrouter_model_id }}
+          ANYMODEL_VISION_MODEL_ID: ${{ inputs.anymodel_vision_model_id }}
+          ANYMODEL_AUDIO_MODEL_ID: ${{ inputs.anymodel_audio_model_id }}
+          OPENROUTER_VISION_MODEL_ID: ${{ inputs.openrouter_vision_model_id }}
+          OPENROUTER_AUDIO_MODEL_ID: ${{ inputs.openrouter_audio_model_id }}
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
@@ -84,7 +94,7 @@ jobs:
           digest = os.environ["BUNDLE_SHA256"]
           if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
               raise SystemExit("BUNDLE_SHA256 must be 64 lowercase hexadecimal characters")
-          for name in ("ANYMODEL_MODEL_ID", "OPENROUTER_MODEL_ID"):
+          for name in ("ANYMODEL_VISION_MODEL_ID", "ANYMODEL_AUDIO_MODEL_ID", "OPENROUTER_VISION_MODEL_ID", "OPENROUTER_AUDIO_MODEL_ID"):
               if not os.environ[name].strip():
                   raise SystemExit(name + " is required")
           for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY", "MEDIA_URL"):
@@ -97,8 +107,10 @@ jobs:
             echo "media_url_scheme=https"
             echo "media_url_value_emitted=false"
             echo "bundle_sha256_expected=$BUNDLE_SHA256"
-            echo "anymodel_model_id=$ANYMODEL_MODEL_ID"
-            echo "openrouter_model_id=$OPENROUTER_MODEL_ID"
+            echo "anymodel_vision_model_id=$ANYMODEL_VISION_MODEL_ID"
+            echo "anymodel_audio_model_id=$ANYMODEL_AUDIO_MODEL_ID"
+            echo "openrouter_vision_model_id=$OPENROUTER_VISION_MODEL_ID"
+            echo "openrouter_audio_model_id=$OPENROUTER_AUDIO_MODEL_ID"
             echo "provider_secret_values_emitted=false"
           } >> probe-evidence/preflight.txt
 
@@ -138,15 +150,19 @@ jobs:
           PYTHONPATH: src:.
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANYMODEL_MODEL_ID: ${{ inputs.anymodel_model_id }}
-          OPENROUTER_MODEL_ID: ${{ inputs.openrouter_model_id }}
+          ANYMODEL_VISION_MODEL_ID: ${{ inputs.anymodel_vision_model_id }}
+          ANYMODEL_AUDIO_MODEL_ID: ${{ inputs.anymodel_audio_model_id }}
+          OPENROUTER_VISION_MODEL_ID: ${{ inputs.openrouter_vision_model_id }}
+          OPENROUTER_AUDIO_MODEL_ID: ${{ inputs.openrouter_audio_model_id }}
         run: |
           set -euo pipefail
           python tools/video_probe/run_video_probe.py \
             --bundle "$RUNNER_TEMP/jamp_video_probe_bundle.zip" \
             --output probe-evidence \
-            --anymodel-model "$ANYMODEL_MODEL_ID" \
-            --openrouter-model "$OPENROUTER_MODEL_ID"
+            --anymodel-vision-model "$ANYMODEL_VISION_MODEL_ID" \
+            --anymodel-audio-model "$ANYMODEL_AUDIO_MODEL_ID" \
+            --openrouter-vision-model "$OPENROUTER_VISION_MODEL_ID" \
+            --openrouter-audio-model "$OPENROUTER_AUDIO_MODEL_ID"
           echo "harness_execution=COMPLETED" >> probe-evidence/preflight.txt
           echo "qualification=NOT_EVALUATED" >> probe-evidence/preflight.txt
 
