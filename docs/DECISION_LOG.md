@@ -546,3 +546,15 @@ Add subsequent records below. Never edit the historical findings above.
 - Finding: the prior claim of 15 runs is valid only for its recorded old head. It is not a current-head inventory and must not be represented as one.
 - Decision: retain Update 1 as an immutable historical record; supersede its applicability to the current head. Do not label the current 14-run set a complete VERIFIED inventory.
 - Consequence: current-head qualification requires each relevant Run → Job → terminal conclusion and artifact (where emitted) to be inspected. PR CI remains distinct from post-merge CI.
+
+
+## JAMP-DEC-009 — PR #496 workflow inventory — Update 3
+
+- Date: 2026-11-02
+- Previous record: JAMP-DEC-009 — Update 2.
+- Status: `HOLD` — no terminal CI inventory is verified for the final documentation state.
+- Exact SHA inspected: `803123bd6e529175db22ea772395814ec28b608a` (PR head immediately before this correction).
+- Evidence observed: GitHub API returned 14 workflow runs for that SHA. All 14 were `queued` with no terminal conclusion at inspection. Jobs and artifacts were therefore not available as terminal evidence.
+- Finding: the 14 run-level records previously observed on `c159b224...` belong to an earlier head and cannot qualify this later documentation state. The 15-run inventory remains historical to `1ff1726e...`.
+- Decision: preserve all prior records unchanged. Do not claim CI success or a complete inventory for this SHA.
+- Consequence: the final documentation commit has a new head SHA; its CI must be inspected independently. PR remains Draft and merge is not authorized.
