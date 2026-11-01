@@ -262,7 +262,6 @@ def anymodel_transcription_call(
         with urlopen(request, timeout=120) as response:
             status = response.status
             raw = response.read()
-            headers = response.headers
     except HTTPError as exc:
         status = exc.code
         raw = exc.read()
