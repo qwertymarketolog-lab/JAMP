@@ -33,6 +33,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
       - name: Prepare evidence directory
         shell: bash
         run: |
@@ -44,12 +50,6 @@ jobs:
             echo "started_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "frozen_core_expected=0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
           } > probe-evidence/preflight.txt
-
-      - name: Checkout selected ref
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
 
       - name: Verify Frozen Core
         shell: bash
