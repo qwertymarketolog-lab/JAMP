@@ -107,9 +107,9 @@
                                                             no current-head qualification on c159b224.
 
   JAMP-DEC-009      PR #496 workflow     HOLD              Original 15-run inventory is scoped to
-                    inventory                               1ff1726e; current head c159b224 has
-                                                            14 workflow-run records observed, but
-                                                            no complete Run → Job → Artifact audit.
+                    inventory                               1ff1726e. The 14-run observation on
+                                                            c159b224 is historical; later doc
+                                                            commits have their own pending CI.
 
   -----------------------------------------------------------------------------
 
