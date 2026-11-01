@@ -32,7 +32,9 @@ def extract_safe(bundle: Path, root: Path) -> None:
                 raise ValueError("zip member escapes target")
         zf.extractall(base)
 
-def media_from_bundle(bundle: Path, root: Path):
+def media_from_bundle(
+    bundle: Path, root: Path
+) -> tuple[list[Path], bytes, dict[str, Any]]:
     extract_safe(bundle, root)
     frames = sorted(root.rglob("frame_*.jpg"))
     audios = sorted(root.rglob("audio_16k_mono.wav"))
@@ -75,7 +77,14 @@ def redacted_request(body: bytes) -> dict[str, Any]:
                 part["input_audio"] = {"data_redacted": True, "sha256": digest(raw), "bytes": len(raw), "format": "wav"}
     return obj
 
-def provider_call(provider: str, endpoint: str, key: str, model: str, modality: str, content: list):
+def provider_call(
+    provider: str,
+    endpoint: str,
+    key: str,
+    model: str,
+    modality: str,
+    content: list[dict[str, Any]],
+) -> dict[str, Any]:
     payload = {"model": model, "messages": [{"role": "user", "content": content}], "temperature": 0, "max_tokens": 256}
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
     row = {"provider": provider, "modality": modality, "requested_model_id": model,
@@ -193,7 +202,9 @@ def anymodel_transcription_call(
     return record
 
 
-def jamp_runtime(frames: list[Path], audio: bytes, output: Path):
+def jamp_runtime(
+    frames: list[Path], audio: bytes, output: Path
+) -> dict[str, Any]:
     from fastapi.testclient import TestClient
     from jamp.api.app import create_app
     from jamp.api.auth import OrganizationContext, require_api_key
@@ -243,7 +254,7 @@ def main() -> int:
     ap.add_argument("--openrouter-audio-model", required=True)
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    evidence = {"harness": "JAMP Video Probe Harness v0.1", "started_at_utc": now(),
+    evidence: dict[str, Any] = {"harness": "JAMP Video Probe Harness v0.1", "started_at_utc": now(),
                 "qualification": "NOT_EVALUATED",
                 "scope": "five sampled frames plus first 30 seconds of audio; not full-video understanding",
                 "bundle_sha256": digest(args.bundle.read_bytes()), "tests": []}
@@ -251,10 +262,10 @@ def main() -> int:
         frames, audio, media = media_from_bundle(args.bundle, Path(temp))
         evidence["media"] = media
         evidence["tests"].append(jamp_runtime(frames, audio, args.output))
-        images = [{"type": "text", "text": "Analyze these sampled frames in timestamp order. Describe only visible evidence."}]
+        images: list[dict[str, Any]] = [{"type": "text", "text": "Analyze these sampled frames in timestamp order. Describe only visible evidence."}]
         for frame in frames:
             images.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(frame.read_bytes()).decode()}})
-        audio_content = [{"type": "text", "text": "Transcribe and summarize this 30-second audio excerpt."},
+        audio_content: list[dict[str, Any]] = [{"type": "text", "text": "Transcribe and summarize this 30-second audio excerpt."},
                          {"type": "input_audio", "input_audio": {"data": base64.b64encode(audio).decode(), "format": "wav"}}]
         anymodel_key = os.environ.get("ANYMODEL_API_KEY", "")
         openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
