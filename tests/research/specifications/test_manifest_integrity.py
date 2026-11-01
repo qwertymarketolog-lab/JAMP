@@ -98,3 +98,45 @@ def test_spec_hash_includes_frozen_at() -> None:
     frozen = {**draft, "frozen_at": "2026-10-31T12:00:00Z"}
 
     assert _compute_spec_hash(draft) != _compute_spec_hash(frozen)
+
+
+def test_frozen_manifest_requires_both_hashes() -> None:
+    """FROZEN status requires non-null jcs_sha256 AND manifest_sha256."""
+    manifest = _load_json(MANIFEST_PATH)
+    if manifest["manifest_status"] == "FROZEN":
+        assert manifest["specification_schema"].get("jcs_sha256") is not None, (
+            "FROZEN manifest requires jcs_sha256"
+        )
+        assert manifest.get("manifest_sha256") is not None, (
+            "FROZEN manifest requires manifest_sha256"
+        )
+
+
+def test_jcs_sha256_recomputes_correctly() -> None:
+    """If FROZEN, jcs_sha256 must equal recomputed canonical hash of schema."""
+    manifest = _load_json(MANIFEST_PATH)
+    if manifest["manifest_status"] != "FROZEN":
+        return
+    stored = manifest["specification_schema"]["jcs_sha256"]
+    schema = _load_json(SCHEMA_PATH)
+    actual = hashlib.sha256(canonical_bytes(schema)).hexdigest()
+    assert actual == stored, (
+        "jcs_sha256 mismatch — schema content differs from frozen state.\\n"
+        f"  stored:   {stored}\\n"
+        f"  actual:   {actual}"
+    )
+
+
+def test_manifest_sha256_recomputes_correctly() -> None:
+    """If FROZEN, manifest_sha256 must equal recomputed hash."""
+    manifest = _load_json(MANIFEST_PATH)
+    if manifest["manifest_status"] != "FROZEN":
+        return
+    stored = manifest["manifest_sha256"]
+    proj = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
+    actual = hashlib.sha256(canonical_bytes(proj)).hexdigest()
+    assert actual == stored, (
+        "manifest_sha256 mismatch — manifest content differs from frozen state.\\n"
+        f"  stored:   {stored}\\n"
+        f"  actual:   {actual}"
+    )
