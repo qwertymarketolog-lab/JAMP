@@ -42,9 +42,7 @@ def extract_safe(bundle: Path, root: Path) -> None:
         archive.extractall(base)
 
 
-def media_from_bundle(
-    bundle: Path, root: Path
-) -> tuple[list[Path], bytes, dict[str, Any]]:
+def media_from_bundle(bundle: Path, root: Path) -> tuple[list[Path], bytes, dict[str, Any]]:
     extract_safe(bundle, root)
     frames = sorted(root.rglob("frame_*.jpg"))
     audio_paths = sorted(root.rglob("audio_16k_mono.wav"))
@@ -215,8 +213,7 @@ def anymodel_transcription_call(
     parts = [
         (
             "--" + boundary + "\r\n"
-            'Content-Disposition: form-data; name="model"\r\n\r\n'
-            + model + "\r\n"
+            'Content-Disposition: form-data; name="model"\r\n\r\n' + model + "\r\n"
         ).encode(),
         (
             "--" + boundary + "\r\n"
@@ -279,9 +276,7 @@ def anymodel_transcription_call(
         decoded = json.loads(response_text)
     except json.JSONDecodeError:
         decoded = None
-    has_transcription = (
-        isinstance(decoded, dict) and isinstance(decoded.get("text"), str)
-    )
+    has_transcription = isinstance(decoded, dict) and isinstance(decoded.get("text"), str)
     if 200 <= status < 300 and has_transcription:
         outcome = "HTTP_2XX_TRANSCRIPTION_PRESENT"
     elif 200 <= status < 300:
@@ -301,9 +296,7 @@ def anymodel_transcription_call(
     return record
 
 
-def jamp_runtime(
-    frames: list[Path], audio: bytes, output: Path
-) -> dict[str, Any]:
+def jamp_runtime(frames: list[Path], audio: bytes, output: Path) -> dict[str, Any]:
     from fastapi.testclient import TestClient
 
     from jamp.api.app import create_app
@@ -313,8 +306,7 @@ def jamp_runtime(
         {
             "type": "image_url",
             "image_url": {
-                "url": "data:image/jpeg;base64,"
-                + base64.b64encode(frame.read_bytes()).decode()
+                "url": "data:image/jpeg;base64," + base64.b64encode(frame.read_bytes()).decode()
             },
         }
         for frame in frames
@@ -393,8 +385,7 @@ def main() -> int:
         "started_at_utc": now(),
         "qualification": "NOT_EVALUATED",
         "scope": (
-            "five sampled frames plus first 30 seconds of audio; "
-            "not full-video understanding"
+            "five sampled frames plus first 30 seconds of audio; not full-video understanding"
         ),
         "bundle_sha256": digest(args.bundle.read_bytes()),
         "tests": [],
@@ -441,9 +432,7 @@ def main() -> int:
             evidence["tests"].append(
                 provider_call(
                     "anymodel",
-                    os.environ.get(
-                        "ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"
-                    ),
+                    os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/completions"),
                     anymodel_key,
                     args.anymodel_vision_model,
                     "sampled_frames",
@@ -525,8 +514,7 @@ def main() -> int:
     evidence["completed_at_utc"] = now()
     evidence["test_count"] = len(evidence["tests"])
     evidence["provider_success_count"] = sum(
-        item.get("outcome")
-        in {"HTTP_2XX_COMPLETION_PRESENT", "HTTP_2XX_TRANSCRIPTION_PRESENT"}
+        item.get("outcome") in {"HTTP_2XX_COMPLETION_PRESENT", "HTTP_2XX_TRANSCRIPTION_PRESENT"}
         for item in evidence["tests"]
     )
     evidence_path = args.output / "evidence.json"
