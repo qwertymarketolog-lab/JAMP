@@ -91,3 +91,72 @@ def test_attempts_are_capped_at_five_and_error_is_redacted():
     history = raised.value.fallback_history
     assert len(history) == 5
     assert all("supersecret" not in entry["error"] for entry in history)
+
+
+
+def test_multimodal_fallback_skips_executor_that_cannot_preserve_content_blocks():
+    payload = {
+        "intent": "search_and_extraction",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}},
+                    {"type": "input_audio", "input_audio": {"data": "AA==", "format": "wav"}},
+                ],
+            }
+        ],
+    }
+
+    class TextOnlyExecutor(FakeExecutor):
+        preserves_content_blocks = False
+
+    class MultimodalExecutor(FakeExecutor):
+        preserves_content_blocks = True
+
+    text_only = TextOnlyExecutor({"provider": "text-only", "content": "must not run"})
+    multimodal = MultimodalExecutor({"provider": "multimodal", "content": "observed"})
+
+    result = FallbackChainExecutor(
+        [text_only, multimodal], qualification_checker=qualified
+    )("model-a", payload)
+
+    assert text_only.calls == 0
+    assert multimodal.calls == 1
+    assert result["provider"] == "multimodal"
+    assert result["fallback_history"] == [
+        {
+            "provider": "TextOnlyExecutor",
+            "requested_model": "model-a",
+            "outcome": "SKIPPED_UNSUPPORTED_CONTENT_BLOCKS",
+        }
+    ]
+
+
+def test_multimodal_fallback_fails_closed_when_no_executor_preserves_blocks():
+    payload = {
+        "messages": [
+            {
+                "role": "user",
+                "content": [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}}],
+            }
+        ]
+    }
+
+    class TextOnlyExecutor(FakeExecutor):
+        preserves_content_blocks = False
+
+    first = TextOnlyExecutor({"provider": "text-only"})
+    second = TextOnlyExecutor({"provider": "also-text-only"})
+
+    with pytest.raises(RuntimeError, match="All fallback providers failed") as raised:
+        FallbackChainExecutor([first, second], qualification_checker=qualified)(
+            "model-a", payload
+        )
+
+    assert first.calls == 0
+    assert second.calls == 0
+    assert [entry["outcome"] for entry in raised.value.fallback_history] == [
+        "SKIPPED_UNSUPPORTED_CONTENT_BLOCKS",
+        "SKIPPED_UNSUPPORTED_CONTENT_BLOCKS",
+    ]
