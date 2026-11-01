@@ -1,0 +1,225 @@
+# JAMP Decision Map
+
+Навигатор по состояниям решений JAMP. Файл фиксирует решения,
+доказательность, блокеры и условия перехода. Он не заменяет дорожную
+карту, исследовательские индексы или процессные документы.
+
+-   Roadmap: `docs/ROADMAP_V2.md`
+-   Процесс: `docs/PROCESS-v0.md`
+-   Evidence index: `docs/evidence/README.md`,
+    `docs/research/evidence-index.md`
+-   История решений и доказательств: `docs/DECISION_LOG.md`
+-   Ближайшее действие: `docs/NEXT_ACTION.md`
+
+## Baseline
+
+-   Repository: `qwertymarketolog-lab/JAMP`
+-   Проверенный `main` SHA: `3917c484e00cc0439695c16362b724d1ddbcc4a2`
+-   Recursive Git tree: тот же SHA; `truncated=false`; найдено 94 файла
+    в `docs/`.
+-   `src/jamp/run.py` blob SHA:
+    `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; Frozen Core Δ=0.
+-   Точные пути `docs/DECISION_MAP.md`, `docs/DECISION_LOG.md`,
+    `docs/NEXT_ACTION.md` на baseline отсутствовали.
+-   Срез получен 2026-11-01. После изменения `main` этот baseline
+    необходимо обновить до принятия новых решений.
+
+## Текущий режим
+
+**READ-ONLY AUDIT / DECISION DOCUMENTATION.**
+
+-   Frozen Core остаётся неизменным: `src/jamp/run.py`, ожидаемый blob
+    `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+-   Этот документ сам по себе не разрешает изменение runtime, тестов,
+    CI, порогов, политик или архитектуры.
+-   Latest complete CI snapshot recorded in this map: `26af7157a36783c688f38d438f8a8f92665c7732`.
+-   The current PR head is authoritative in GitHub and is intentionally not self-referenced here; a commit cannot contain its own resulting SHA.
+-   Evidence for an earlier SHA never qualifies a later PR head.
+-   Проектная PAUSE по продуктовой разработке связана с отсутствием
+    подтверждённого buyer/pilot signal. Она не тождественна P0-аудиту
+    tenant isolation.
+-   Закрытие P0 tenant-isolation проверки само по себе не отменяет
+    продуктовую PAUSE и не является автоматическим разрешением на
+    Ed25519, provenance или иные разработки.
+
+## Состояния решений
+
+  -----------------------------------------------------------------------------
+  ID                Тема                 Текущий статус    Что именно
+                                                           установлено
+  ----------------- -------------------- ----------------- --------------------
+  JAMP-DEC-001      Tenant isolation /   HOLD              P0 runtime decision remains HOLD. Documentation publication authorization in LOG Update 3 is an administrative sub-decision, not a change to the tenant-isolation verdict. Структурное
+                    cross-organization                     отсутствие передачи
+                    access                                 organization context
+                                                           в три GET read path
+                                                           обнаружено в коде на
+                                                           baseline. Дополнительно
+                                                           в локальном ревью
+                                                           заявлено отсутствие
+                                                           org/org_id в модели
+                                                           AuditPersistence и
+                                                           методах записи;
+                                                           реальная утечка не
+                                                           воспроизведена.
+
+  JAMP-DEC-002      MOEX pagination      OBSERVED          Локально указаны
+                                                           `provider/moex_history.py`
+                                                           (history.cursor, ~294)
+                                                           и три теста в
+                                                           `tests/test_moex_history.py`;
+                                                           CI/прогон не подтверждены.
+
+  JAMP-DEC-003      `verify-chain`       OBSERVED          Локально указаны
+                    fail-closed без                        `independent_verifier.py:218`
+                    секрета                                и тест no-secret в
+                                                           `test_independent_verifier.py:253`;
+                                                           прогон не подтверждён.
+
+  JAMP-DEC-004      `/v1/execute` и      OBSERVED          Локально указаны
+                    `/execute`                             router stub 501 в
+                                                           `api/router.py:21–56`
+                                                           и отдельный endpoint
+                                                           в `api/app.py`; тесты
+                                                           501-маршрутов не
+                                                           обнаружены в ревью.
+
+  JAMP-DEC-005      Frozen Core Δ=0      VERIFIED          На baseline blob
+                                                           `src/jamp/run.py`
+                                                           совпадает с locked
+                                                           SHA.
+
+  JAMP-DEC-006      PR #324 / P31        HISTORICAL        Исторический
+                                                           материал; не
+                                                           использовать как
+                                                           доказательство
+                                                           текущего состояния
+                                                           `main`.
+
+  JAMP-DEC-007      CI evidence на       UNKNOWN           Baseline qualification is UNKNOWN; the eight-workflow sample is limited and does not establish complete ruleset coverage. Для перечисленных в
+                    baseline             (ограниченный     Decision Log
+                                         охват)            runs/jobs есть
+                                                           терминальные success
+                                                           и проверенные
+                                                           артефакты; полнота
+                                                           относительно всех
+                                                           обязательных
+                                                           rulesets отдельно не
+                                                           установлена.
+  JAMP-DEC-008      PR #496 required     VERIFIED          Both required contexts verified on
+                    Ruleset checks                          exact snapshots c159b224 and 26af7157;
+                                                            see DECISION_LOG Update 4. Later
+                                                            heads require independent checks.
+
+  JAMP-DEC-009      PR #496 workflow     VERIFIED          Complete terminal inventory verified
+                    inventory                               on c159b224 and 26af7157: 14/14 runs,
+                                                            19/19 jobs, 11 artifacts per snapshot.
+                                                            Later heads require independent checks.
+
+  JAMP-DEC-010      PR #496 ancestry     VERIFIED          GitHub PR commits API confirms 13
+                                                            commits from base 3917c484 to
+                                                            verified snapshot 26af7157.
+
+  -----------------------------------------------------------------------------
+
+## Блокеры и ограничения
+
+### P0 --- tenant isolation
+
+-   JAMP-DEC-001 остаётся HOLD до выполнения воспроизводимого
+    интеграционного теста на реальном приложении и фактическом
+    `AuditPersistence` JSONL read/write path.
+-   Дополнительное локальное наблюдение: по сообщённому результату
+    ревью `AuditPersistence` не содержит `organization`/`org_id`, а
+    методы записи не принимают организацию; владение записью не выражено
+    в модели хранения. Это `OBSERVED` по локальному клону, не отдельная
+    независимая проверка GitHub на baseline.
+-   Операционное владение для P0-контроля определяется ключом, под
+    которым запись создана через реальный маршрут приложения. Это
+    происхождение записи в тесте, а не утверждение, что модель данных
+    сохраняет owner/org атрибут.
+-   Если запись A, созданная реальным маршрутом под ключом A, читается
+    ключом B, это воспроизводит нарушение ожидаемой границы доступа;
+    отсутствие сохранённого `org_id` само по себе не делает такой
+    результат `INCONCLUSIVE`.
+-   До такого воспроизведения нельзя объявлять подтверждённую
+    cross-org утечку.
+-   До проверки нельзя объявлять tenant isolation обеспеченной.
+
+### CI
+
+-   CI evidence с baseline SHA не заменяет CI, который должен завершить
+    P0-тест на его собственном commit SHA.
+-   Для P0 CI фиксировать SHA, workflow, run ID, job ID, conclusion и
+    artifact (если workflow его публикует).
+-   Отсутствие run/job/artifact не является PASS.
+-   Известная аномалия `import-historical.yml` с `failure` и `jobs=[]`
+    рассматривается по принятому проектному протоколу как orphaned
+    workflow anomaly, а не как доказательство результата P0.
+
+### Продуктовая PAUSE
+
+-   Техническое закрытие P0 не является buyer/pilot signal.
+-   Решение о возобновлении продуктовой разработки принимается отдельно
+    по критериям проекта; см. roadmap и актуальные project decisions.
+
+## Критерии перехода по JAMP-DEC-001
+
+**Утверждённый объём runtime-теста: 18 контролей** — 6 positive + 6
+cross-org negative + 6 missing-trace (два ключа × три маршрута).
+Решение пользователя от 2026-11-01 19:01 UTC.
+`OWNERSHIP_NOT_MODELED` фиксируется отдельно и не входит в эти 18.
+Это утверждение объёма теста, а не утверждение о его выполнении.
+Публикация документов отдельно разрешена пользователем 2026-11-01 19:02 UTC;
+разрешение не распространяется на код, тестовую реализацию или merge.
+
+1.  Установить фактическую конфигурацию JSONL storage и production write
+    path; не создавать искусственно изолированные хранилища, если
+    приложение в проверяемом режиме использует общий store.
+2.  Создать записи через реальные authenticated create routes;
+    зафиксировать ключ, прошедший реальную API-key authentication. Если
+    для типа записи нет create route, допустим только точный production
+    call path, в котором доказуемо передаётся authenticated request
+    context. Прямой вызов persistence без такой связи означает
+    `INCONCLUSIVE / HOLD` для этого типа записи. Не утверждать, что org
+    context сохраняется в записи.
+3.  Выполнить положительные контроли A→A и B→B для Verdict, Provenance и
+    UniversalVerdict.
+4.  Выполнить отрицательные контроли A→B и B→A для всех трёх read
+    routes; проверить status и отсутствие чужих данных в response body.
+5.  Проверить missing-trace отдельно для каждого из трёх маршрутов.
+    Для `/v1/jamp-verdict/{trace_id}` локально подтверждено ревьюером,
+    что `None` даёт 404; для `/v1/provenance/{trace_id}` и
+    `/v1/universal-verdict/{trace_id}` ожидаемый статус пока UNKNOWN и
+    должен быть установлен по handler/source или фактическому ответу.
+6.  Зафиксировать один из четырёх исходов:
+    -   `OBSERVED: OWNERSHIP_NOT_MODELED` --- в inspected source/model
+        отсутствует атрибут организации/владельца записи или запись
+        write API не принимает org context. Это архитектурное наблюдение,
+        не результат runtime disclosure-теста и не `VERIFIED`.
+    -   `VERIFIED: ISOLATION_ENFORCED` --- все шесть positive controls
+        успешны; все шесть cross-org попыток отказаны без утечки;
+        все шесть missing-record controls (два ключа × три маршрута)
+        соответствуют фактическому контракту;
+        записи созданы через реальные маршруты под соответствующими
+        ключами.
+    -   `VERIFIED: CROSS_ORG_DISCLOSURE_REPRODUCED` --- хотя бы один
+        cross-key запрос получил защищённую запись, созданную через
+        реальный маршрут под другим ключом; сохранены точные запрос,
+        ответ и происхождение записи.
+    -   `INCONCLUSIVE / HOLD` --- setup, реальная аутентификация,
+        write/read path или окружение не позволяют выполнить валидные
+        контроли. Отсутствие org_id в модели само по себе не вынуждает
+        этот исход, если происхождение записи через реальный маршрут
+        можно установить.
+7.  Приложить терминальное CI evidence именно для SHA теста. После этого
+    отдельно рассмотреть решение о remediation; никакое исправление не
+    подразумевается автоматически.
+
+## Правило обновления
+
+-   Не переписывать старые решения задним числом.
+-   Новое доказательство или отмена решения добавляются новой записью в
+    `DECISION_LOG.md` со ссылкой на предыдущую.
+-   Обновлять таблицу этого файла только после появления соответствующей
+    записи с evidence.
+-   `HISTORICAL` --- временная/контекстная метка, а не результат теста.
