@@ -43,5 +43,5 @@ Exit condition: publish the source-backed inspection findings and only then requ
 
 - DEC-007 baseline CI qualification: UNKNOWN.
 - DEC-008 required-check evidence: HISTORICAL; verified only for old PR head `1ff1726e...`.
-- DEC-009 current-head complete workflow inventory: HOLD; 14 run-level records were observed on `c159b224...`, but jobs/artifacts were not independently inspected in this update.
+- DEC-009: HOLD. The 14 runs observed on `c159b224...` are historical to that head. On the immediately preceding documentation head `803123bd...`, 14 workflow runs were queued with no terminal conclusions; this is not CI evidence for the final commit.
 - PR CI does not establish post-merge CI.
