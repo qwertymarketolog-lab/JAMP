@@ -25,8 +25,12 @@ _REQUIRED_SPEC = (
     "hypothesis_ref",
     "prediction_ref",
     "criterion_set_ref",
-    "spec_hash",
+    "preconditions",
+    "scope",
+    "evidence_classes",
+    "observation_schema",
     "frozen_at",
+    "spec_hash",
 )
 _REQUIRED_CRITERION = (
     "criterion_id",
