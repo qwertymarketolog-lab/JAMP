@@ -77,3 +77,26 @@ def test_executor_refuses_multi_model_selection():
     executor = AnyModelChatExecutor("test-secret")
     with pytest.raises(AnyModelError, match="exactly one model"):
         executor(("model-a", "model-b"), {"prompt": "Hi"})
+
+
+
+def test_executor_preserves_typed_multimodal_message_content():
+    content = [
+        {"type": "text", "text": "Describe the media."},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}},
+        {"type": "input_audio", "input_audio": {"data": "AA==", "format": "wav"}},
+    ]
+    observed = {}
+
+    def fake_urlopen(request, timeout):
+        observed["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse(b'{"choices":[{"message":{"content":"observed"}}]}')
+
+    executor = AnyModelChatExecutor("test-secret", opener=fake_urlopen)
+    result = executor(
+        "ag/multimodal-model",
+        {"messages": [{"role": "user", "content": content}]},
+    )
+
+    assert observed["body"]["messages"] == [{"role": "user", "content": content}]
+    assert result["content"] == "observed"
