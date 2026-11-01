@@ -558,3 +558,103 @@ Add subsequent records below. Never edit the historical findings above.
 - Finding: the 14 run-level records previously observed on `c159b224...` belong to an earlier head and cannot qualify this later documentation state. The 15-run inventory remains historical to `1ff1726e...`.
 - Decision: preserve all prior records unchanged. Do not claim CI success or a complete inventory for this SHA.
 - Consequence: the final documentation commit has a new head SHA; its CI must be inspected independently. PR remains Draft and merge is not authorized.
+
+
+## JAMP-DEC-008 — PR #496 required Ruleset checks — Update 3
+
+- Date: 2026-11-02
+- Previous records: JAMP-DEC-008 Updates 1–2.
+- Status: `VERIFIED` for the two exact snapshots listed below; not transferable to later heads.
+- Ruleset: `23974688` (`JAMP main protection`), active on `refs/heads/main`.
+- Required contexts: `Research Loop v0 Gate /` and `G1 Trusted Lineage`.
+
+### Snapshot `c159b224a8b577cfc3ec308b1590497865308ebb`
+
+- Research Loop v0 Gate / — Run `41340676704`, Job `124949799930`, `completed / success`.
+- G1 Trusted Lineage — Run `41340676704`, Job `124949844908`, `completed / success`.
+- Artifact: `13097078041` (`research-loop-v0-evidence`).
+- Both Job IDs above belong to Run `41340676704` on this SHA. Earlier cited G1 Job `124947809759` belongs to a different run and SHA; it is not equivalent evidence for this snapshot.
+
+### Snapshot `26af7157a36783c688f38d438f8a8f92665c7732`
+
+- Research Loop v0 Gate / — Run `41341902656`, Job `124953515108`, `completed / success`.
+- G1 Trusted Lineage — Run `41341902656`, Job `124954132473`, `completed / success`.
+- Artifact: `13098260556` (`research-loop-v0-evidence`).
+
+- Finding: both required Ruleset contexts are terminal success on each named snapshot.
+- Scope: this does not qualify any later PR head and does not establish post-merge CI on `main`.
+- Decision: preserve Updates 1–2 as historical records; use this update for the two explicitly named snapshots only.
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-009 — PR #496 workflow inventory — Update 4
+
+- Date: 2026-11-02
+- Previous records: JAMP-DEC-009 Updates 1–3.
+- Status: `VERIFIED` — complete Run → Job inventory is terminal success on both exact snapshots below.
+- Correction: the previously reported `18` jobs was incorrect. The independently fetched inventory contains `19` jobs: five in EXP-19, two in Research Loop, and twelve single-job runs.
+
+### Snapshot `c159b224a8b577cfc3ec308b1590497865308ebb`
+
+- 14/14 workflow runs: `completed / success`.
+- 19/19 jobs: `completed / success`.
+- 11 artifacts returned across the 14 runs.
+- Run IDs: `41340676779`, `41340676704`, `41340676689`, `41340676658`, `41340676644`, `41340676739`, `41340676655`, `41340676675`, `41340676715`, `41340676745`, `41340676765`, `41340676717`, `41340676700`, `41340676670`.
+- Artifact IDs: EXP-19 `13097445079`, `13097321807`, `13097242168`, `13097172577`, `13096339027`; Research Loop `13097078041`; EXP-18 `13097371042`; SBOM `13096838948`; Run Pytest `13096754405`; EXP-21 `13097272079`; P36.2 G4 `13096613520`.
+- Required-context Run/Job evidence is recorded in JAMP-DEC-008 Update 3.
+
+### Snapshot `26af7157a36783c688f38d438f8a8f92665c7732`
+
+- 14/14 workflow runs: `completed / success`.
+- 19/19 jobs: `completed / success`.
+- 11 artifacts returned across the 14 runs. A prior working count of 12 is superseded by this direct per-run API inventory.
+
+| Workflow | Run ID | Job ID(s) | Conclusion | Artifact ID(s) |
+|---|---:|---|---|---|
+| EXP-21 Phase 2 Scheduling | 41341902611 | 124953515265 | success | 13097319199 |
+| P20.5 Hypothesis Lifecycle Diagnostic | 41341902612 | 124953515413 | success | none returned |
+| EXP-18 Field Alignment Diagnostic | 41341902691 | 124953514984 | success | 13098300291 |
+| P20.11 Diagnostic | 41341902679 | 124953514901 | success | none returned |
+| MCP Integration Test | 41341902709 | 124953515566 | success | none returned |
+| Probe coollabsio MinIO immutable digest | 41341902759 | 124953515635 | success | none returned |
+| Research Loop v0 Gate | 41341902656 | 124953515108; 124954132473 | both success | 13098260556 |
+| SBOM | 41341902626 | 124953515049 | success | 13097896358 |
+| Groq Executor Tests | 41341902692 | 124953514931 | success | none returned |
+| EXP-19 Performance Diagnostic | 41341902697 | 124953514919; 124953515041; 124953515115; 124953515119; 124953515167 | all five success | 13097905692; 13097850827; 13097830864; 13097542350; 13097249851 |
+| Developer Quality | 41341902686 | 124953514996 | success | none returned |
+| P36.2 G4 MinIO Runtime | 41341902630 | 124953514884 | success | 13098270746 |
+| P23.0-B Cold Replay Diagnostic | 41341902720 | 124953515356 | success | none returned |
+| Run Pytest | 41341902721 | 124953515088 | success | 13097986450 |
+
+- Artifact absence is recorded as `none returned`; it is not treated as a failure or as additional success evidence.
+- Required-context Run/Job evidence is recorded in JAMP-DEC-008 Update 3.
+- Finding: all 14 runs and 19 jobs are terminal success on this SHA. The 11 artifacts above were returned by the per-run artifact API.
+- Scope: neither snapshot qualifies a later PR head. PR CI is not post-merge CI.
+- Decision: preserve Updates 1–3 as historical snapshots; this update qualifies only the two exact SHAs named above.
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-010 — PR #496 commit ancestry — Update 1
+
+- Date: 2026-11-02
+- Status: `VERIFIED` — ancestry fetched from GitHub Pull Requests API.
+- PR: `#496`; base SHA `3917c484e00cc0439695c16362b724d1ddbcc4a2`; verified snapshot SHA `26af7157a36783c688f38d438f8a8f92665c7732`.
+- Evidence: `GET /repos/qwertymarketolog-lab/JAMP/pulls/496/commits?per_page=100` returned 13 commits in this order:
+
+1. `80bb1968ac25bc8b96e2c7c94cb72b106f279a6e` — create decision map.
+2. `c861d92af9c406d00fe678362e57dc2a75249813` — create decision log.
+3. `8a387151cd94dae253ef2df27cee9763a1eacecf` — create next action.
+4. `1ff1726e909d1479f046af9ce16c1212e5ade589` — normalize decision map markdown.
+5. `c159b224a8b577cfc3ec308b1590497865308ebb` — record PR CI evidence decisions.
+6. `6016f945b3e3f76f09ef409757bff0619ef37181` — append CI evidence corrections.
+7. `a1d0d3d70754a30f25f29f2ccb10d41d7f3d14c9` — align decision map with evidence states.
+8. `e899576326715b86be59be4f9c20018626a72bf5` — reduce next action to P0 source inspection.
+9. `b957742e8c9f8d9f3e64af137caac0006cf9fe5d` — clarify PR head versus evidence snapshot.
+10. `803123bd6e529175db22ea772395814ec28b608a` — label preceding evidence snapshot.
+11. `11d5710ee19b60894e696a0999ab602ff86a71c1` — record queued CI state.
+12. `4c7a57dd3e312d8071fce77302731c3fee873c41` — scope workflow inventory to historical SHA.
+13. `26af7157a36783c688f38d438f8a8f92665c7732` — clarify CI evidence boundary.
+
+- Finding: 13 commits are present in PR ancestry from the stated base to the verified snapshot.
+- Decision: record ancestry as verified; this does not assert that the PR is merged or authorize merge.
+- Consequence: later commits, including the documentation update that appends this record, are not self-referenced; their resulting SHA is obtained from GitHub.

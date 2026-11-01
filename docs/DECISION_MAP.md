@@ -32,6 +32,9 @@
     `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
 -   Этот документ сам по себе не разрешает изменение runtime, тестов,
     CI, порогов, политик или архитектуры.
+-   Latest complete CI snapshot recorded in this map: `26af7157a36783c688f38d438f8a8f92665c7732`.
+-   The current PR head is authoritative in GitHub and is intentionally not self-referenced here; a commit cannot contain its own resulting SHA.
+-   Evidence for an earlier SHA never qualifies a later PR head.
 -   Проектная PAUSE по продуктовой разработке связана с отсутствием
     подтверждённого buyer/pilot signal. Она не тождественна P0-аудиту
     tenant isolation.
@@ -102,14 +105,19 @@
                                                            обязательных
                                                            rulesets отдельно не
                                                            установлена.
-  JAMP-DEC-008      PR #496 required     HISTORICAL        VERIFIED only for the historical PR head
-                    Ruleset checks                          1ff1726e909d1479f046af9ce16c1212e5ade589;
-                                                            no current-head qualification on c159b224.
+  JAMP-DEC-008      PR #496 required     VERIFIED          Both required contexts verified on
+                    Ruleset checks                          exact snapshots c159b224 and 26af7157;
+                                                            see DECISION_LOG Update 4. Later
+                                                            heads require independent checks.
 
-  JAMP-DEC-009      PR #496 workflow     HOLD              Original 15-run inventory is scoped to
-                    inventory                               1ff1726e. The 14-run observation on
-                                                            c159b224 is historical; later doc
-                                                            commits have their own pending CI.
+  JAMP-DEC-009      PR #496 workflow     VERIFIED          Complete terminal inventory verified
+                    inventory                               on c159b224 and 26af7157: 14/14 runs,
+                                                            19/19 jobs, 11 artifacts per snapshot.
+                                                            Later heads require independent checks.
+
+  JAMP-DEC-010      PR #496 ancestry     VERIFIED          GitHub PR commits API confirms 13
+                                                            commits from base 3917c484 to
+                                                            verified snapshot 26af7157.
 
   -----------------------------------------------------------------------------
 

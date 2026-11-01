@@ -4,8 +4,8 @@
 
 - PR: #496 — OPEN / Draft / not merged.
 - Branch: `docs/decision-evidence-map-20261101`.
-- PR head immediately before the final NEXT_ACTION metadata correction: `e899576326715b86be59be4f9c20018626a72bf5`.
-- Previous evidence snapshot audited for the 14-run discrepancy: `c159b224a8b577cfc3ec308b1590497865308ebb`.
+- Latest complete CI snapshot recorded in this document set: `26af7157a36783c688f38d438f8a8f92665c7732`.
+- The live PR head is read from GitHub; this document deliberately does not self-reference a commit SHA.
 - Base: `3917c484e00cc0439695c16362b724d1ddbcc4a2`.
 - Frozen Core: `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; exact match on inspected head, Δ=0.
 - PR scope remains exactly three documentation files. No runtime, tests, workflows, thresholds, policies, dependencies, or Frozen Core changes are authorized.
@@ -42,6 +42,8 @@ Exit condition: publish the source-backed inspection findings and only then requ
 ## Evidence boundary
 
 - DEC-007 baseline CI qualification: UNKNOWN.
-- DEC-008 required-check evidence: HISTORICAL; verified only for old PR head `1ff1726e...`.
-- DEC-009: HOLD. The 14 runs observed on `c159b224...` are historical to that head. On the immediately preceding documentation head `803123bd...`, 14 workflow runs were queued with no terminal conclusions; this is not CI evidence for the final commit.
+- DEC-008 required-check evidence: VERIFIED only for exact snapshots `c159b224...` and `26af7157...`; it does not qualify a later head.
+- DEC-009 complete inventory: VERIFIED on `c159b224...` and `26af7157...` (14/14 runs, 19/19 jobs, 11 artifacts per snapshot); it does not qualify a later head.
+- The 14 queued runs on `803123bd...` are a historical intermediate state, not the terminal result for `26af7157...`.
+- The next documentation commit created from this snapshot will need its own Run → Job → Artifact inspection.
 - PR CI does not establish post-merge CI.
