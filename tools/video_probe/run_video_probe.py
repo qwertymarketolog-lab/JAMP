@@ -125,8 +125,22 @@ def jamp_runtime(frames: list[Path], audio: bytes, output: Path):
         app.dependency_overrides[require_api_key] = lambda: OrganizationContext(org_id="video-probe", org_name="video-probe")
         with TestClient(app, raise_server_exceptions=False) as client:
             response = client.post("/v1/execute", json=payload)
-        row.update(outcome="HTTP_RESPONSE_CAPTURED", http_status=response.status_code,
-                   response_body=response.text, completed_at_utc=now())
+            try:
+                response_payload = response.json()
+            except ValueError:
+                response_payload = {}
+            trace_id = response_payload.get("trace_id")
+            if isinstance(trace_id, str) and trace_id:
+                provenance_response = client.get("/v1/provenance/" + trace_id)
+                row["provenance_http_status"] = provenance_response.status_code
+                row["provenance_body"] = provenance_response.text
+                row["trace_id"] = trace_id
+        row.update(
+            outcome="HTTP_RESPONSE_CAPTURED",
+            http_status=response.status_code,
+            response_body=response.text,
+            completed_at_utc=now(),
+        )
     except Exception as exc:
         row.update(outcome="RUNTIME_HARNESS_ERROR", error_type=type(exc).__name__,
                    error_message=str(exc)[:400], completed_at_utc=now())
