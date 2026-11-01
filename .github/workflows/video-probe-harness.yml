@@ -87,7 +87,7 @@ jobs:
           for name in ("ANYMODEL_MODEL_ID", "OPENROUTER_MODEL_ID"):
               if not os.environ[name].strip():
                   raise SystemExit(name + " is required")
-          for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY", "VIDEO_BUNDLE_URL"):
+          for name in ("ANYMODEL_API_KEY", "OPENROUTER_API_KEY", "MEDIA_URL"):
               present = bool(os.environ.get(name))
               print(name + "_PRESENT=" + str(present).lower())
               if not present:
@@ -104,7 +104,7 @@ jobs:
       - name: Download and verify media bundle
         shell: bash
         env:
-          MEDIA_URL: ${{ inputs.media_url }}
+          MEDIA_URL: ${{ secrets.VIDEO_BUNDLE_URL }}
           BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
         run: |
           set -euo pipefail
