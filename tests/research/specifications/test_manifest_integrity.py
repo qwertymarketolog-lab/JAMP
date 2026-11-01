@@ -100,7 +100,6 @@ def test_spec_hash_includes_frozen_at() -> None:
     assert _compute_spec_hash(draft) != _compute_spec_hash(frozen)
 
 
-
 def test_frozen_manifest_requires_both_hashes() -> None:
     """FROZEN status requires non-null jcs_sha256 AND manifest_sha256."""
     manifest = _load_json(MANIFEST_PATH)
