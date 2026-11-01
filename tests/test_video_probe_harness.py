@@ -151,6 +151,62 @@ def test_redact_request_removes_image_and_audio_payloads():
     assert audio.decode() not in json.dumps(redacted)
 
 
+def _capture_payload(monkeypatch, **kwargs):
+    captured = {}
+
+    def fake_urlopen(request, **_options):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse(
+            b'{"id":"capture-response","model":"provider/model","choices":[{"message":{"content":"ok"}}]}'
+        )
+
+    monkeypatch.setattr(probe, "urlopen", fake_urlopen)
+    probe.provider_call(
+        endpoint="https://provider.example/v1/chat/completions",
+        api_key="test-secret",
+        model="provider/model",
+        content=[{"type": "text", "text": "x"}],
+        **kwargs,
+    )
+    return captured["payload"]
+
+
+def test_provider_call_default_payload_no_overrides(monkeypatch):
+    captured = _capture_payload(
+        monkeypatch,
+        provider="openrouter",
+        modality="text",
+    )
+
+    assert captured["max_tokens"] == 256
+    assert "reasoning" not in captured
+    assert captured["temperature"] == 0
+
+
+def test_provider_call_vision_overrides(monkeypatch):
+    captured = _capture_payload(
+        monkeypatch,
+        provider="openrouter",
+        modality="sampled_frames",
+        overrides=probe._vision_openrouter_overrides(),
+    )
+
+    assert captured["max_tokens"] == 4096
+    assert captured["reasoning"] == {"effort": "low", "max_tokens": 1024}
+    assert captured["temperature"] == 0
+
+
+def test_provider_call_anymodel_unchanged(monkeypatch):
+    captured = _capture_payload(
+        monkeypatch,
+        provider="anymodel",
+        modality="sampled_frames",
+    )
+
+    assert captured["max_tokens"] == 256
+    assert "reasoning" not in captured
+
+
 class FakeResponse:
     status = 200
     headers = {"x-request-id": "request-123"}
@@ -319,7 +375,7 @@ def test_main_writes_observation_only_evidence_and_summary(tmp_path, monkeypatch
     monkeypatch.setattr(
         probe,
         "provider_call",
-        lambda provider, _endpoint, _key, model, modality, _content: {
+        lambda provider, _endpoint, _key, model, modality, _content, **_kwargs: {
             "provider": provider,
             "requested_model_id": model,
             "modality": modality,

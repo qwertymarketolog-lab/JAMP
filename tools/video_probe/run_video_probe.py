@@ -135,13 +135,17 @@ def provider_call(
     model: str,
     modality: str,
     content: list[dict[str, Any]],
+    *,
+    overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "model": model,
         "messages": [{"role": "user", "content": content}],
         "temperature": 0,
         "max_tokens": 256,
     }
+    if overrides:
+        payload.update(overrides)
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
     record: dict[str, Any] = {
         "provider": provider,
@@ -208,6 +212,18 @@ def provider_call(
         raw_response_body=response_text,
     )
     return record
+
+
+def _vision_openrouter_overrides() -> dict[str, Any]:
+    """Diagnostic override for reasoning-heavy OpenRouter vision models.
+
+    This experiment raises the completion budget and caps reasoning; it does
+    not establish model fitness or runtime qualification.
+    """
+    return {
+        "max_tokens": 4096,
+        "reasoning": {"effort": "low", "max_tokens": 1024},
+    }
 
 
 def anymodel_transcription_call(
@@ -485,6 +501,7 @@ def main() -> int:
                     args.openrouter_vision_model,
                     "sampled_frames",
                     images,
+                    overrides=_vision_openrouter_overrides(),
                 )
             )
             evidence["tests"].append(
