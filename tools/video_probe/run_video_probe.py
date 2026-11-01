@@ -172,7 +172,6 @@ def provider_call(
     except HTTPError as exc:
         status = exc.code
         raw = exc.read()
-        headers = exc.headers
     except (URLError, TimeoutError, OSError) as exc:
         record.update(
             outcome="TRANSPORT_ERROR",
