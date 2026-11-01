@@ -96,9 +96,7 @@ def test_media_from_bundle_rejects_noncanonical_audio(
 def test_media_from_bundle_limits_audio_excerpt_to_30_seconds(tmp_path):
     bundle = make_bundle(tmp_path / "bundle.zip", seconds=35)
 
-    frames, audio_bytes, metadata = probe.media_from_bundle(
-        bundle, tmp_path / "extracted"
-    )
+    frames, audio_bytes, metadata = probe.media_from_bundle(bundle, tmp_path / "extracted")
 
     assert len(frames) == 5
     assert metadata["audio_excerpt"]["duration_seconds"] == 30
@@ -120,8 +118,7 @@ def test_redact_request_removes_image_and_audio_payloads():
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": "data:image/jpeg;base64,"
-                            + base64.b64encode(image).decode()
+                            "url": "data:image/jpeg;base64," + base64.b64encode(image).decode()
                         },
                     },
                     {
@@ -187,10 +184,7 @@ def test_provider_call_records_actual_model_and_redacted_request(monkeypatch):
     content = [
         {
             "type": "image_url",
-            "image_url": {
-                "url": "data:image/jpeg;base64,"
-                + base64.b64encode(image).decode()
-            },
+            "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(image).decode()},
         }
     ]
 
@@ -209,9 +203,10 @@ def test_provider_call_records_actual_model_and_redacted_request(monkeypatch):
     assert result["actual_model_id"] == "provider/actual-model"
     assert result["response_id"] == "response-123"
     assert result["response_request_id"] == "request-123"
-    assert result["request_redacted"]["messages"][0]["content"][0]["image_url"][
-        "data_redacted"
-    ] is True
+    assert (
+        result["request_redacted"]["messages"][0]["content"][0]["image_url"]["data_redacted"]
+        is True
+    )
     assert image.decode() not in json.dumps(result["request_redacted"])
 
 
@@ -284,8 +279,8 @@ def test_anymodel_transcription_records_transcript_and_audio_digest(monkeypatch)
     assert result["actual_model_id"] == "actual-stt"
     assert result["request_redacted"]["file"]["sha256"] == probe.digest(audio)
     assert result["request_redacted"]["file"]["data_redacted"] is True
-    assert captured["request"].get_header("Content-type").startswith(
-        "multipart/form-data; boundary="
+    assert (
+        captured["request"].get_header("Content-type").startswith("multipart/form-data; boundary=")
     )
     assert audio in captured["request"].data
     assert base64.b64encode(audio) not in json.dumps(result["request_redacted"]).encode()
