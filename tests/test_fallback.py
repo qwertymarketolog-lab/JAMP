@@ -93,7 +93,6 @@ def test_attempts_are_capped_at_five_and_error_is_redacted():
     assert all("supersecret" not in entry["error"] for entry in history)
 
 
-
 def test_multimodal_fallback_skips_executor_that_cannot_preserve_content_blocks():
     payload = {
         "intent": "search_and_extraction",
