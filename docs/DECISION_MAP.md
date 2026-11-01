@@ -45,7 +45,7 @@
   ID                Тема                 Текущий статус    Что именно
                                                            установлено
   ----------------- -------------------- ----------------- --------------------
-  JAMP-DEC-001      Tenant isolation /   HOLD              Структурное
+  JAMP-DEC-001      Tenant isolation /   HOLD              P0 runtime decision remains HOLD. Documentation publication authorization in LOG Update 3 is an administrative sub-decision, not a change to the tenant-isolation verdict. Структурное
                     cross-organization                     отсутствие передачи
                     access                                 organization context
                                                            в три GET read path
@@ -92,7 +92,7 @@
                                                            текущего состояния
                                                            `main`.
 
-  JAMP-DEC-007      CI evidence на       OBSERVED          Для перечисленных в
+  JAMP-DEC-007      CI evidence на       UNKNOWN           Baseline qualification is UNKNOWN; the eight-workflow sample is limited and does not establish complete ruleset coverage. Для перечисленных в
                     baseline             (ограниченный     Decision Log
                                          охват)            runs/jobs есть
                                                            терминальные success
@@ -102,6 +102,15 @@
                                                            обязательных
                                                            rulesets отдельно не
                                                            установлена.
+  JAMP-DEC-008      PR #496 required     HISTORICAL        VERIFIED only for the historical PR head
+                    Ruleset checks                          1ff1726e909d1479f046af9ce16c1212e5ade589;
+                                                            no current-head qualification on c159b224.
+
+  JAMP-DEC-009      PR #496 workflow     HOLD              Original 15-run inventory is scoped to
+                    inventory                               1ff1726e; current head c159b224 has
+                                                            14 workflow-run records observed, but
+                                                            no complete Run → Job → Artifact audit.
+
   -----------------------------------------------------------------------------
 
 ## Блокеры и ограничения
