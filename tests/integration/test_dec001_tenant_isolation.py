@@ -189,7 +189,7 @@ async def _create_trace_via_api(
     body = response.json()
     trace_id = body.get("trace_id")
     assert isinstance(trace_id, str) and trace_id
-    stored = audit_store.read_trace_by_id(trace_id)
+    stored = audit_store.read_trace_by_id(trace_id, organization_id=organization["org_id"])
     assert stored is not None, "POST /v1/execute returned a trace that JSONL did not persist"
     assert stored.get("request_id") == request_marker
     return trace_id, request_marker
@@ -237,7 +237,7 @@ async def _create_universal_verdict_via_api(
         f"INCONCLUSIVE JampVerdict: HTTP {response.status_code}: {response.text}"
     )
 
-    stored = audit_store.read_universal_verdict_by_id(trace_id)
+    stored = audit_store.read_universal_verdict_by_id(trace_id, organization_id=organization["org_id"])
     assert stored is not None, (
         "POST /v1/universal-verdict succeeded but the production JSONL record is absent"
     )
@@ -271,10 +271,10 @@ async def _create_verdict_via_execute(
         f"HTTP {response.status_code}: {response.text}"
     )
 
-    trace = audit_store.read_trace_by_id(trace_id)
+    trace = audit_store.read_trace_by_id(trace_id, organization_id=organization["org_id"])
     assert trace is not None, "The execution route did not persist its trace"
 
-    stored_verdict = audit_store.read_verdict_by_id(trace_id)
+    stored_verdict = audit_store.read_verdict_by_id(trace_id, organization_id=organization["org_id"])
     if stored_verdict is not None:
         return trace_id, stored_verdict["evidence_hash"]
 
