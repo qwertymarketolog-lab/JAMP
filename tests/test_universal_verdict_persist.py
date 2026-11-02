@@ -127,6 +127,8 @@ def test_jamp_and_universal_storage_independent(client, trace_and_verdict, tmp_p
 
     assert p.read_verdict_by_id(trace_id, organization_id="test-org") is not None
     assert p.read_universal_verdict_by_id(trace_id, organization_id="test-org") is not None
+    assert p.read_verdict_by_id(trace_id, organization_id="other-org") is None
+    assert p.read_universal_verdict_by_id(trace_id, organization_id="other-org") is None
     assert p.verdicts_path != p.universal_verdicts_path
     assert p.verdicts_path.exists()
     assert p.universal_verdicts_path.exists()
