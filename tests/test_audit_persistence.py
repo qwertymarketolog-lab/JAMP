@@ -75,7 +75,6 @@ def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
         "trace-tenant-scope", organization_id="authenticated-org"
     ) == {
         "trace_id": "trace-tenant-scope",
-        "organization_id": "caller-controlled-org",
         "request_id": "request-marker",
     }
     assert (
