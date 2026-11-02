@@ -7,11 +7,11 @@ No authentication, persistence, or read-path dependency is mocked or patched.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 import hashlib
 import os
 import time
 import uuid
-from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
@@ -237,7 +237,9 @@ async def _create_universal_verdict_via_api(
         f"INCONCLUSIVE JampVerdict: HTTP {response.status_code}: {response.text}"
     )
 
-    stored = audit_store.read_universal_verdict_by_id(trace_id, organization_id=organization["org_id"])
+    stored = audit_store.read_universal_verdict_by_id(
+        trace_id, organization_id=organization["org_id"]
+    )
     assert stored is not None, (
         "POST /v1/universal-verdict succeeded but the production JSONL record is absent"
     )
@@ -274,7 +276,9 @@ async def _create_verdict_via_execute(
     trace = audit_store.read_trace_by_id(trace_id, organization_id=organization["org_id"])
     assert trace is not None, "The execution route did not persist its trace"
 
-    stored_verdict = audit_store.read_verdict_by_id(trace_id, organization_id=organization["org_id"])
+    stored_verdict = audit_store.read_verdict_by_id(
+        trace_id, organization_id=organization["org_id"]
+    )
     if stored_verdict is not None:
         return trace_id, stored_verdict["evidence_hash"]
 

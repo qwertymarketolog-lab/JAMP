@@ -9,7 +9,7 @@ import time
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
@@ -201,7 +201,7 @@ def create_app(
     @app.post("/v1/execute")
     def execute(
         payload: dict[str, Any],
-        organization: OrganizationContext = Depends(require_api_key),
+        organization: Annotated[OrganizationContext, Depends(require_api_key)],
     ):
         request_id = payload.get("request_id")
         try:
@@ -924,7 +924,7 @@ def create_app(
     @app.post("/v1/universal-verdict")
     def universal_verdict(
         payload: dict[str, Any],
-        organization: OrganizationContext = Depends(require_api_key),
+        organization: Annotated[OrganizationContext, Depends(require_api_key)],
     ):
         """Wrap a signed JampVerdict in a UniversalVerdict v0 envelope.
 
@@ -1058,7 +1058,7 @@ def create_app(
     @app.get("/v1/universal-verdict/{trace_id}")
     def get_universal_verdict(
         trace_id: str,
-        organization: OrganizationContext = Depends(require_api_key),
+        organization: Annotated[OrganizationContext, Depends(require_api_key)],
     ):
         """Return the last persisted UniversalVerdict envelope for trace_id.
 
@@ -1131,7 +1131,7 @@ def create_app(
     @app.get("/v1/jamp-verdict/{trace_id}")
     def get_jamp_verdict(
         trace_id: str,
-        organization: OrganizationContext = Depends(require_api_key),
+        organization: Annotated[OrganizationContext, Depends(require_api_key)],
     ):
         """Return the persisted signed JampVerdict for a trace_id.
 
@@ -1179,7 +1179,7 @@ def create_app(
     @app.get("/v1/provenance/{trace_id}")
     def get_provenance(
         trace_id: str,
-        organization: OrganizationContext = Depends(require_api_key),
+        organization: Annotated[OrganizationContext, Depends(require_api_key)],
     ):
         try:
             trace = persistence.read_trace_by_id(trace_id, organization_id=organization.org_id)
