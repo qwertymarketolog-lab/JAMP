@@ -85,12 +85,14 @@ def test_multiple_verdicts_are_appended_without_overwriting(tmp_path):
     assert records[1]["record_hash"] == _record_hash(records[1])
 
     # Public read contract: payload without chain metadata.
-    assert persistence.read_verdict_by_id(
-        "trace-1", organization_id="org-test"
-    ) == {**first, "trace_id": "trace-1"}
-    assert persistence.read_verdict_by_id(
-        "trace-2", organization_id="org-test"
-    ) == {**second, "trace_id": "trace-2"}
+    assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") == {
+        **first,
+        "trace_id": "trace-1",
+    }
+    assert persistence.read_verdict_by_id("trace-2", organization_id="org-test") == {
+        **second,
+        "trace_id": "trace-2",
+    }
 
 
 def test_write_verdict_rejects_empty_trace_id(tmp_path):

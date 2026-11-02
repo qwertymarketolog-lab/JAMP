@@ -71,16 +71,12 @@ def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
 
     raw = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
     assert raw["organization_id"] == "authenticated-org"
-    assert store.read_trace_by_id(
-        "trace-tenant-scope", organization_id="authenticated-org"
-    ) == {
+    assert store.read_trace_by_id("trace-tenant-scope", organization_id="authenticated-org") == {
         "trace_id": "trace-tenant-scope",
         "request_id": "request-marker",
     }
     assert (
-        store.read_trace_by_id(
-            "trace-tenant-scope", organization_id="caller-controlled-org"
-        )
+        store.read_trace_by_id("trace-tenant-scope", organization_id="caller-controlled-org")
         is None
     )
 
@@ -88,9 +84,7 @@ def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
 def test_legacy_trace_without_owner_is_not_tenant_readable(tmp_path):
     path = tmp_path / "provenance_traces.jsonl"
     path.write_text(
-        json.dumps(
-            {"trace_id": "legacy-trace", "status": "REFUSE", "organization_id": "org-test"}
-        )
+        json.dumps({"trace_id": "legacy-trace", "status": "REFUSE", "organization_id": "org-test"})
         + "\n",
         encoding="utf-8",
     )

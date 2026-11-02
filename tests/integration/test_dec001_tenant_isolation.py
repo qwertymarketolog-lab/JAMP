@@ -40,24 +40,12 @@ CONTROL_CASES = [
     pytest.param("trace", "cross_org", "B", "A", id="trace-cross-org-a-to-b"),
     pytest.param("trace", "missing", "A", None, id="trace-missing-org-a"),
     pytest.param("trace", "missing", "B", None, id="trace-missing-org-b"),
-    pytest.param(
-        "universal_verdict", "positive", "A", "A", id="universal-positive-org-a"
-    ),
-    pytest.param(
-        "universal_verdict", "positive", "B", "B", id="universal-positive-org-b"
-    ),
-    pytest.param(
-        "universal_verdict", "cross_org", "A", "B", id="universal-cross-org-b-to-a"
-    ),
-    pytest.param(
-        "universal_verdict", "cross_org", "B", "A", id="universal-cross-org-a-to-b"
-    ),
-    pytest.param(
-        "universal_verdict", "missing", "A", None, id="universal-missing-org-a"
-    ),
-    pytest.param(
-        "universal_verdict", "missing", "B", None, id="universal-missing-org-b"
-    ),
+    pytest.param("universal_verdict", "positive", "A", "A", id="universal-positive-org-a"),
+    pytest.param("universal_verdict", "positive", "B", "B", id="universal-positive-org-b"),
+    pytest.param("universal_verdict", "cross_org", "A", "B", id="universal-cross-org-b-to-a"),
+    pytest.param("universal_verdict", "cross_org", "B", "A", id="universal-cross-org-a-to-b"),
+    pytest.param("universal_verdict", "missing", "A", None, id="universal-missing-org-a"),
+    pytest.param("universal_verdict", "missing", "B", None, id="universal-missing-org-b"),
     pytest.param("verdict", "positive", "A", "A", id="verdict-positive-org-a"),
     pytest.param("verdict", "positive", "B", "B", id="verdict-positive-org-b"),
     pytest.param("verdict", "cross_org", "A", "B", id="verdict-cross-org-b-to-a"),
@@ -292,15 +280,9 @@ async def _create_verdict_via_execute(
         "PROVIDER_NOT_CONFIGURED",
         "SIGNING_KEY_NOT_CONFIGURED",
     }:
-        pytest.skip(
-            "VERIFIED branch not triggered: "
-            f"{reason} (HTTP {response.status_code})"
-        )
+        pytest.skip(f"VERIFIED branch not triggered: {reason} (HTTP {response.status_code})")
     if response.status_code == 200 and evidence_status != "VERIFIED":
-        pytest.skip(
-            "VERIFIED branch not triggered: "
-            f"evidence_status={evidence_status!r}"
-        )
+        pytest.skip(f"VERIFIED branch not triggered: evidence_status={evidence_status!r}")
 
     pytest.fail(
         "Execution reported a VERIFIED-capable result but no Verdict was persisted, "
@@ -318,9 +300,7 @@ async def _create_record(
     if resource == "trace":
         return await _create_trace_via_api(client, organization, audit_store)
     if resource == "universal_verdict":
-        return await _create_universal_verdict_via_api(
-            client, organization, audit_store
-        )
+        return await _create_universal_verdict_via_api(client, organization, audit_store)
     if resource == "verdict":
         return await _create_verdict_via_execute(client, organization, audit_store)
     raise AssertionError(f"Unknown DEC-001 resource type: {resource}")
@@ -337,8 +317,7 @@ def _assert_non_disclosing(
     for protected_value in (trace_id, marker, owner_org_id):
         if protected_value:
             assert protected_value.casefold() not in body, (
-                "Cross-organization response disclosed protected record data: "
-                f"{protected_value!r}"
+                f"Cross-organization response disclosed protected record data: {protected_value!r}"
             )
 
 

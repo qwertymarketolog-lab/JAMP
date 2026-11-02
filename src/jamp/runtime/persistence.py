@@ -29,9 +29,7 @@ def _record_hash(record: dict[str, Any]) -> str:
 def _strip_chain_metadata(record: dict[str, Any]) -> dict[str, Any]:
     # Ownership is persistence metadata, not part of the public record payload.
     return {
-        k: v
-        for k, v in record.items()
-        if k not in CHAIN_METADATA_KEYS and k != "organization_id"
+        k: v for k, v in record.items() if k not in CHAIN_METADATA_KEYS and k != "organization_id"
     }
 
 
