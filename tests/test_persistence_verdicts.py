@@ -25,6 +25,7 @@ def test_write_and_read_verdict_round_trip(tmp_path):
 
     assert persistence.write_verdict("trace-1", payload, organization_id="org-test") == "trace-1"
     assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") == payload
+    assert persistence.read_verdict_by_id("trace-1", organization_id="other-org") is None
     assert persistence.verdicts_path == tmp_path / "verdicts.jsonl"
 
 
