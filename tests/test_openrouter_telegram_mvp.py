@@ -158,14 +158,12 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
     assert calls == []
 
 
-@patch("jamp.api.app.verify_generation")
-def test_telegram_webhook_executes_and_returns_trace(mock_verify, monkeypatch, tmp_path):
+def test_telegram_requires_org_context(monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
-    mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
     monkeypatch.setattr(app_module, "_send_telegram_message", lambda token, chat_id, text: None)
     calls = []
 
@@ -189,15 +187,16 @@ def test_telegram_webhook_executes_and_returns_trace(mock_verify, monkeypatch, t
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
         json={"update_id": 8, "message": {"chat": {"id": 42}, "text": "/search hello"}},
     )
-    assert response.status_code == 200
-    assert response.json()["status"] == "EXECUTE"
-    assert response.json()["trace_id"]
-    assert calls[0]["intent"] == "search_and_extraction"
-    assert calls[0]["prompt"] == "hello"
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "REFUSE",
+        "reason": "ORGANIZATION_CONTEXT_REQUIRED",
+    }
+    assert calls == []
 
 
 @pytest.mark.parametrize("command", ["/search", "/tools"])
-def test_telegram_webhook_sends_hint_for_command_without_prompt(monkeypatch, tmp_path, command):
+def test_telegram_promptless_happy_path(monkeypatch, tmp_path, command):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
@@ -300,13 +299,10 @@ def test_telegram_webhook_ignores_unknown_command(monkeypatch, tmp_path):
     assert sent == []
 
 
-@patch("jamp.api.app.verify_generation")
-def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(
-    mock_verify, monkeypatch, tmp_path
+def test_telegram_webhook_retries_without_consuming_update_without_tenant_context(
+    monkeypatch, tmp_path
 ):
     import jamp.api.app as app_module
-
-    mock_verify.return_value = ("VERIFIED", {"provider_model": "test-model"})
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
@@ -334,14 +330,18 @@ def test_telegram_webhook_duplicate_is_not_executed_again_after_restart(
     )
     duplicate = restarted_client.post("/v1/telegram/webhook", headers=headers, json=update)
 
-    assert first.status_code == 200
-    assert first.json()["status"] == "EXECUTE"
-    assert duplicate.status_code == 200
-    assert duplicate.json() == {
-        "status": "DUPLICATE",
-        "reason": "TELEGRAM_UPDATE_ALREADY_CLAIMED",
-    }
-    assert len(calls) == 1
+    for response in (first, duplicate):
+        assert response.status_code == 503
+        assert response.json() == {
+            "status": "REFUSE",
+            "reason": "ORGANIZATION_CONTEXT_REQUIRED",
+        }
+    assert calls == []
+    # A refused update is not consumed; it can be retried after a trusted
+    # Telegram-to-organization authentication binding is configured.
+    from jamp.transport.telegram_updates import TelegramUpdateStore
+
+    assert TelegramUpdateStore(database_path).claim(800) is True
 
 
 def test_telegram_update_store_claim_is_atomic_under_concurrency(tmp_path):
@@ -359,7 +359,7 @@ def test_telegram_update_store_claim_is_atomic_under_concurrency(tmp_path):
     assert TelegramUpdateStore(tmp_path / "telegram-updates.sqlite3").claim(900) is False
 
 
-def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(monkeypatch, tmp_path):
+def test_telegram_idempotency_unavailable_on_promptless_command(monkeypatch, tmp_path):
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
@@ -374,7 +374,7 @@ def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(monkeypa
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
-        json={"update_id": 901, "message": {"chat": {"id": 42}, "text": "/search hello"}},
+        json={"update_id": 901, "message": {"chat": {"id": 42}, "text": "/search"}},
     )
 
     assert response.status_code == 503

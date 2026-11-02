@@ -41,7 +41,7 @@ def _p(tmp_path):
 
 def test_first_write_uses_genesis_prev_hash(tmp_path):
     p = _p(tmp_path)
-    p.write_verdict("t-1", {"status": "VERIFIED"})
+    p.write_verdict("t-1", {"status": "VERIFIED"}, organization_id="org-test")
 
     recs = _read_records(p.verdicts_path)
     assert len(recs) == 1
@@ -52,8 +52,8 @@ def test_first_write_uses_genesis_prev_hash(tmp_path):
 
 def test_sequential_writes_link_chain(tmp_path):
     p = _p(tmp_path)
-    p.write_verdict("t-1", {"status": "VERIFIED"})
-    p.write_verdict("t-2", {"status": "CONTRADICTED"})
+    p.write_verdict("t-1", {"status": "VERIFIED"}, organization_id="org-test")
+    p.write_verdict("t-2", {"status": "CONTRADICTED"}, organization_id="org-test")
 
     recs = _read_records(p.verdicts_path)
     assert recs[0]["prev_hash"] == GENESIS_HASH
@@ -62,10 +62,10 @@ def test_sequential_writes_link_chain(tmp_path):
 
 def test_read_round_trip_after_writes(tmp_path):
     p = _p(tmp_path)
-    p.write_verdict("t-1", {"status": "VERIFIED"})
-    p.write_verdict("t-2", {"status": "CONTRADICTED"})
+    p.write_verdict("t-1", {"status": "VERIFIED"}, organization_id="org-test")
+    p.write_verdict("t-2", {"status": "CONTRADICTED"}, organization_id="org-test")
 
-    got = p.read_verdict_by_id("t-1")
+    got = p.read_verdict_by_id("t-1", organization_id="org-test")
     assert got == {"trace_id": "t-1", "status": "VERIFIED"}
     # chain metadata is not exposed to callers
     assert "prev_hash" not in got
@@ -77,35 +77,35 @@ def test_read_round_trip_after_writes(tmp_path):
 
 def test_tampered_record_breaks_chain(tmp_path):
     p = _p(tmp_path)
-    p.write_verdict("t-1", {"status": "VERIFIED"})
-    p.write_verdict("t-2", {"status": "CONTRADICTED"})
+    p.write_verdict("t-1", {"status": "VERIFIED"}, organization_id="org-test")
+    p.write_verdict("t-2", {"status": "CONTRADICTED"}, organization_id="org-test")
 
     recs = _read_records(p.verdicts_path)
     recs[0]["status"] = "CONTRADICTED"  # tamper without recomputing record_hash
     _write_records(p.verdicts_path, recs)
 
     with pytest.raises(ChainIntegrityError):
-        p.read_verdict_by_id("t-1")
+        p.read_verdict_by_id("t-1", organization_id="org-test")
 
 
 def test_deleted_middle_record_breaks_chain(tmp_path):
     p = _p(tmp_path)
-    p.write_verdict("t-1", {"status": "VERIFIED"})
-    p.write_verdict("t-2", {"status": "CONTRADICTED"})
-    p.write_verdict("t-3", {"status": "INCONCLUSIVE"})
+    p.write_verdict("t-1", {"status": "VERIFIED"}, organization_id="org-test")
+    p.write_verdict("t-2", {"status": "CONTRADICTED"}, organization_id="org-test")
+    p.write_verdict("t-3", {"status": "INCONCLUSIVE"}, organization_id="org-test")
 
     recs = _read_records(p.verdicts_path)
     del recs[1]  # delete middle
     _write_records(p.verdicts_path, recs)
 
     with pytest.raises(ChainIntegrityError):
-        p.read_verdict_by_id("t-1")
+        p.read_verdict_by_id("t-1", organization_id="org-test")
 
 
 # --- legacy compatibility ---
 
 
-def test_legacy_file_without_chain_markers_is_readable(tmp_path):
+def test_legacy_file_without_tenant_ownership_is_not_readable(tmp_path):
     p = _p(tmp_path)
     p.verdicts_path.parent.mkdir(parents=True, exist_ok=True)
     legacy = [
@@ -114,8 +114,8 @@ def test_legacy_file_without_chain_markers_is_readable(tmp_path):
     ]
     _write_records(p.verdicts_path, legacy)
 
-    got = p.read_verdict_by_id("t-legacy-1")
-    assert got == {"trace_id": "t-legacy-1", "status": "VERIFIED"}
+    got = p.read_verdict_by_id("t-legacy-1", organization_id="org-test")
+    assert got is None  # legacy record has no trustworthy tenant ownership
 
 
 def test_legacy_then_new_write_starts_chain_at_genesis(tmp_path):
@@ -126,13 +126,13 @@ def test_legacy_then_new_write_starts_chain_at_genesis(tmp_path):
         [{"trace_id": "t-legacy-1", "status": "VERIFIED"}],
     )
 
-    p.write_verdict("t-new", {"status": "CONTRADICTED"})
+    p.write_verdict("t-new", {"status": "CONTRADICTED"}, organization_id="org-test")
 
     recs = _read_records(p.verdicts_path)
     assert recs[0].get("prev_hash") is None  # legacy untouched
     assert recs[1]["prev_hash"] == GENESIS_HASH  # new chain starts here
     # chain verifies successfully across legacy + chained mix
-    p.read_verdict_by_id("t-new")
+    p.read_verdict_by_id("t-new", organization_id="org-test")
 
 
 # --- API integration ---
