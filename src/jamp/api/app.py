@@ -13,7 +13,7 @@ from typing import Any
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
-from jamp.api.auth import require_api_key, verify_auth_config
+from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
@@ -198,8 +198,11 @@ def create_app(
         required = resolver.get_required_capabilities(task_profile)
         return {"task_profile": task_profile, "required_capabilities": list(required)}
 
-    @app.post("/v1/execute", dependencies=[Depends(require_api_key)])
-    def execute(payload: dict[str, Any]):
+    @app.post("/v1/execute")
+    def execute(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),
+    ):
         request_id = payload.get("request_id")
         try:
             task_profile = classifier.classify(payload)
@@ -214,7 +217,7 @@ def create_app(
                 request_id=request_id,
                 refusal_reason="UNKNOWN_OR_UNSUPPORTED_TASK",
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             return JSONResponse(
                 status_code=422,
                 content={
@@ -238,7 +241,7 @@ def create_app(
                 request_id=request_id,
                 refusal_reason=reason,
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             return JSONResponse(
                 status_code=503,
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
@@ -254,7 +257,7 @@ def create_app(
                 request_id=request_id,
                 refusal_reason=selected,
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             return {
                 "status": "REFUSE",
                 "reason": selected,
@@ -272,7 +275,7 @@ def create_app(
                 request_id=request_id,
                 refusal_reason=reason,
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             return JSONResponse(
                 status_code=503,
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
@@ -315,7 +318,7 @@ def create_app(
                 }
                 or None,
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             empty_content_exhausted = getattr(exc, "code", None) == "OPENROUTER_EMPTY_CONTENT" or (
                 isinstance(fallback_history, list)
                 and any(
@@ -389,7 +392,7 @@ def create_app(
                         ),
                     },
                 )
-                persistence.write_trace(trace)
+                persistence.write_trace(trace, organization_id=organization.org_id)
                 return JSONResponse(
                     status_code=502,
                     content={
@@ -636,7 +639,7 @@ def create_app(
                     "model_verification": evidence_status,
                 },
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             refusal_content = {
                 "status": "REFUSE",
                 "execution_status": "REFUSE",
@@ -665,7 +668,7 @@ def create_app(
                 refusal_reason=reason,
                 failure_diagnostics={"evidence_status": evidence_status},
             )
-            persistence.write_trace(trace)
+            persistence.write_trace(trace, organization_id=organization.org_id)
             return JSONResponse(
                 status_code=503,
                 content={"status": "REFUSE", "reason": reason, "trace_id": trace["trace_id"]},
@@ -702,7 +705,7 @@ def create_app(
         )
         if isinstance(trace.get("execution_details"), dict):
             trace["execution_details"]["qualification"] = qualification
-        persistence.write_trace(trace)
+        persistence.write_trace(trace, organization_id=organization.org_id)
         response = {
             "status": "EXECUTE",
             "execution_status": "EXECUTE",
@@ -741,7 +744,11 @@ def create_app(
                 critical_unverified=critical_unverified,
             ).sign(signing_key)
             verdict_dict = verdict.to_dict()
-            persistence.write_verdict(trace["trace_id"], verdict_dict)
+            persistence.write_verdict(
+                trace["trace_id"],
+                verdict_dict,
+                organization_id=organization.org_id,
+            )
             response["verdict"] = verdict_dict
         return response
 
@@ -928,8 +935,11 @@ def create_app(
         )
         return report_to_dict(report)
 
-    @app.post("/v1/universal-verdict", dependencies=[Depends(require_api_key)])
-    def universal_verdict(payload: dict[str, Any]):
+    @app.post("/v1/universal-verdict")
+    def universal_verdict(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),
+    ):
         """Wrap a signed JampVerdict in a UniversalVerdict v0 envelope.
 
         spec_hash/criteria_hash are SHA-256 of identifier strings, not of
@@ -1052,14 +1062,18 @@ def create_app(
                 "spec_hash/criteria_hash are SHA-256 of identifiers, not of document content (v0)"
             ),
         }
-        persistence.write_universal_verdict(jv.trace_id, response_body)
+        persistence.write_universal_verdict(
+            jv.trace_id,
+            response_body,
+            organization_id=organization.org_id,
+        )
         return response_body
 
-    @app.get(
-        "/v1/universal-verdict/{trace_id}",
-        dependencies=[Depends(require_api_key)],
-    )
-    def get_universal_verdict(trace_id: str):
+    @app.get("/v1/universal-verdict/{trace_id}")
+    def get_universal_verdict(
+        trace_id: str,
+        organization: OrganizationContext = Depends(require_api_key),
+    ):
         """Return the last persisted UniversalVerdict envelope for trace_id.
 
         Re-POST with the same trace_id creates a new record; this endpoint
@@ -1068,7 +1082,9 @@ def create_app(
         GET /v1/jamp-verdict/{trace_id}).
         """
         try:
-            stored = persistence.read_universal_verdict_by_id(trace_id)
+            stored = persistence.read_universal_verdict_by_id(
+                trace_id, organization_id=organization.org_id
+            )
         except ChainIntegrityError:
             return JSONResponse(
                 status_code=500,
@@ -1126,8 +1142,11 @@ def create_app(
 
         return stored
 
-    @app.get("/v1/jamp-verdict/{trace_id}", dependencies=[Depends(require_api_key)])
-    def get_jamp_verdict(trace_id: str):
+    @app.get("/v1/jamp-verdict/{trace_id}")
+    def get_jamp_verdict(
+        trace_id: str,
+        organization: OrganizationContext = Depends(require_api_key),
+    ):
         """Return the persisted signed JampVerdict for a trace_id.
 
         This is the raw execution verdict. UniversalVerdict envelope is not
@@ -1136,7 +1155,7 @@ def create_app(
         to wrap a verdict; use this one to retrieve the persisted original.
         """
         try:
-            stored = persistence.read_verdict_by_id(trace_id)
+            stored = persistence.read_verdict_by_id(trace_id, organization_id=organization.org_id)
         except ChainIntegrityError:
             return JSONResponse(
                 status_code=500,
@@ -1171,10 +1190,13 @@ def create_app(
 
         return stored
 
-    @app.get("/v1/provenance/{trace_id}", dependencies=[Depends(require_api_key)])
-    def get_provenance(trace_id: str):
+    @app.get("/v1/provenance/{trace_id}")
+    def get_provenance(
+        trace_id: str,
+        organization: OrganizationContext = Depends(require_api_key),
+    ):
         try:
-            trace = persistence.read_trace_by_id(trace_id)
+            trace = persistence.read_trace_by_id(trace_id, organization_id=organization.org_id)
         except ChainIntegrityError:
             return JSONResponse(
                 status_code=500,
