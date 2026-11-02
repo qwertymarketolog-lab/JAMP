@@ -700,3 +700,15 @@ All eight applicable workflow runs fetched for exact main SHA `c6e5c989a7d5f6ecf
 - Finding: the enumerated post-merge workflow inventory is terminal success. This does not upgrade the four skipped Verdict controls or establish full tenant isolation.
 - Decision: record PR #498 merge and post-merge CI as VERIFIED; retain DEC-001 full qualification at HOLD / INCONCLUSIVE pending real Verdict positive and cross-organization controls.
 - Consequence: no claim of complete tenant-isolation qualification. Continue with separately scoped engineering follow-ups; preserve Frozen Core.
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-011 — Agent Supply Chain (aitmpl + SkillSpector) — OBSERVED proposal
+
+- Date: 2026-11-02
+- Status: `OBSERVED / PROPOSED` — not accepted, not scheduled, and not part of the active P0/P1/P2 scope.
+- Source: user's message on 2026-11-02 at 14:02:55 UTC, beginning: “Сайт для тех, кто работает в Claude Code…”. The original ChatGPT message permalink was not present in the retrievable project record; no URL is fabricated here.
+- Observation: the user raised aitmpl and SkillSpector as a possible Agent Supply Chain direction for JAMP.
+- Decision boundary: this entry records the proposal only. No research, installation, dependency addition, repository change, or qualification claim is authorized by this record.
+- Next decision: product owner decides whether Agent Supply Chain becomes a future direction. Only after an explicit affirmative decision may a separately scoped read-only review begin, followed by component selection, SkillSpector evaluation, and evidence-ledger work.
+- If not selected: leave this proposal OBSERVED / PROPOSED; DEC-001 remains `HOLD` (`14/18` measured, four Verdict controls skipped due to `PROVIDER_NOT_CONFIGURED`; Verdict qualification remains `INCONCLUSIVE`).
