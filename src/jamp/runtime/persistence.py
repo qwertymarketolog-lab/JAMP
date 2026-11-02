@@ -27,7 +27,18 @@ def _record_hash(record: dict[str, Any]) -> str:
 
 
 def _strip_chain_metadata(record: dict[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in record.items() if k not in CHAIN_METADATA_KEYS}
+    # Ownership is persistence metadata, not part of the public record payload.
+    return {
+        k: v
+        for k, v in record.items()
+        if k not in CHAIN_METADATA_KEYS and k != "organization_id"
+    }
+
+
+def _require_organization_id(organization_id: str) -> str:
+    if not isinstance(organization_id, str) or not organization_id.strip():
+        raise ValueError("organization_id must be a non-empty string")
+    return organization_id
 
 
 class AuditPersistence:
@@ -119,13 +130,20 @@ class AuditPersistence:
         path: Path,
         trace_id: str,
         *,
+        organization_id: str,
         last_wins: bool,
     ) -> dict[str, Any] | None:
+        organization_id = _require_organization_id(organization_id)
         records = self._read_all_records(path)
         self._verify_chain(records)
         match: dict[str, Any] | None = None
         for rec in records:
-            if rec.get("trace_id") != trace_id:
+            # Legacy records without authenticated ownership are intentionally
+            # invisible. There is no fallback lookup by trace_id alone.
+            if (
+                rec.get("trace_id") != trace_id
+                or rec.get("organization_id") != organization_id
+            ):
                 continue
             if last_wins:
                 match = rec
@@ -137,44 +155,94 @@ class AuditPersistence:
 
     # ---- public write/read ----
 
-    def write_trace(self, trace_payload: dict[str, Any]) -> str:
+    def write_trace(
+        self,
+        trace_payload: dict[str, Any],
+        *,
+        organization_id: str,
+    ) -> str:
         trace_id = trace_payload.get("trace_id", "")
         if not trace_id:
             raise ValueError("Trace payload missing required 'trace_id' field.")
-        self._append_chained(self.storage_path, trace_payload)
+        owner_id = _require_organization_id(organization_id)
+        # Authenticated context is authoritative even if payload contains a
+        # conflicting organization_id value.
+        record = {**trace_payload, "organization_id": owner_id}
+        self._append_chained(self.storage_path, record)
         return trace_id
 
-    def read_trace_by_id(self, trace_id: str) -> dict[str, Any] | None:
-        return self._read_chained_by_id(self.storage_path, trace_id, last_wins=False)
+    def read_trace_by_id(
+        self,
+        trace_id: str,
+        *,
+        organization_id: str,
+    ) -> dict[str, Any] | None:
+        return self._read_chained_by_id(
+            self.storage_path,
+            trace_id,
+            organization_id=organization_id,
+            last_wins=False,
+        )
 
     def write_verdict(
         self,
         trace_id: str,
         verdict_payload: dict[str, Any],
+        *,
+        organization_id: str,
     ) -> str:
         if not trace_id:
             raise ValueError("Verdict trace_id must not be empty.")
-        record = {**verdict_payload, "trace_id": trace_id}
+        owner_id = _require_organization_id(organization_id)
+        record = {
+            **verdict_payload,
+            "trace_id": trace_id,
+            "organization_id": owner_id,
+        }
         self._append_chained(self.verdicts_path, record)
         return trace_id
 
-    def read_verdict_by_id(self, trace_id: str) -> dict[str, Any] | None:
+    def read_verdict_by_id(
+        self,
+        trace_id: str,
+        *,
+        organization_id: str,
+    ) -> dict[str, Any] | None:
         if not trace_id:
             return None
-        return self._read_chained_by_id(self.verdicts_path, trace_id, last_wins=False)
+        return self._read_chained_by_id(
+            self.verdicts_path,
+            trace_id,
+            organization_id=organization_id,
+            last_wins=False,
+        )
 
-    def write_universal_verdict(self, trace_id: str, payload: dict[str, Any]) -> str:
-        """Append-only persistence of a UniversalVerdict envelope.
-
-        Re-POST with the same trace_id appends a new record;
-        read_universal_verdict_by_id returns the last matching record.
-        """
+    def write_universal_verdict(
+        self,
+        trace_id: str,
+        payload: dict[str, Any],
+        *,
+        organization_id: str,
+    ) -> str:
+        """Append-only persistence of a tenant-owned UniversalVerdict envelope."""
         if not trace_id:
             raise ValueError("write_universal_verdict requires non-empty trace_id")
+        owner_id = _require_organization_id(organization_id)
         body = dict(payload)
         body["trace_id"] = trace_id
+        body["organization_id"] = owner_id
         self._append_chained(self.universal_verdicts_path, body)
         return trace_id
 
-    def read_universal_verdict_by_id(self, trace_id: str) -> dict[str, Any] | None:
-        return self._read_chained_by_id(self.universal_verdicts_path, trace_id, last_wins=True)
+    def read_universal_verdict_by_id(
+        self,
+        trace_id: str,
+        *,
+        organization_id: str,
+    ) -> dict[str, Any] | None:
+        return self._read_chained_by_id(
+            self.universal_verdicts_path,
+            trace_id,
+            organization_id=organization_id,
+            last_wins=True,
+        )
