@@ -88,7 +88,7 @@ def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
 def test_legacy_trace_without_owner_is_not_tenant_readable(tmp_path):
     path = tmp_path / "provenance_traces.jsonl"
     path.write_text(
-        json.dumps({"trace_id": "legacy-trace", "status": "REFUSE"}) + "\\n",
+        json.dumps({"trace_id": "legacy-trace", "status": "REFUSE"}) + "\n",
         encoding="utf-8",
     )
     store = AuditPersistence(path)
