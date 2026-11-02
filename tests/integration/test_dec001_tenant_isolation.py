@@ -153,16 +153,16 @@ def audit_store(audit_path) -> AuditPersistence:
 async def client(audit_path) -> AsyncIterator[AsyncClient]:
     """Run create_app through an actual ASGI transport and its startup hooks."""
     app = create_app()
-    await app.router.startup()
-    try:
+    # ASGITransport deliberately does not manage lifespan. Enter the router's
+    # ASGI lifespan context explicitly; APIRouter has no startup()/shutdown()
+    # methods, and the context also guarantees shutdown when the test exits.
+    async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(
             transport=transport,
             base_url="http://jamp.test",
         ) as test_client:
             yield test_client
-    finally:
-        await app.router.shutdown()
 
 
 def _headers(organization: dict[str, str]) -> dict[str, str]:
