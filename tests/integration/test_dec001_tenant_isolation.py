@@ -24,7 +24,6 @@ from jamp.db import get_connection, init_schema, release_connection
 from jamp.runtime.persistence import AuditPersistence
 from jamp.runtime.verdict import JampVerdict
 
-
 pytestmark = [
     pytest.mark.real_auth,
     pytest.mark.skipif(
