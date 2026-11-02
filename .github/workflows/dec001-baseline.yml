@@ -77,15 +77,16 @@ jobs:
               pytest_exit = -1
 
           counts = {
-              "declared": expected, "executed": 0, "passed": 0,
+              "declared": expected, "collected": 0, "passed": 0,
               "failed": 0, "errors": 0, "skipped": 0,
               "pytest_exit_code": pytest_exit,
+              "collection_complete": False,
               "measurement_status": "INCOMPLETE",
           }
           try:
               root = ET.parse("dec001-baseline.xml").getroot()
               cases = list(root.iter("testcase"))
-              counts["executed"] = len(cases)
+              counts["collected"] = len(cases)
               for case in cases:
                   if case.find("failure") is not None:
                       counts["failed"] += 1
@@ -95,7 +96,21 @@ jobs:
                       counts["skipped"] += 1
                   else:
                       counts["passed"] += 1
-              if len(cases) == expected and pytest_exit in (0, 1):
+
+              # Include suite-level error totals as a second guard against
+              # collection/setup errors that are not represented as cases.
+              suite_errors = [
+                  int(node.attrib.get("errors", "0"))
+                  for node in root.iter()
+                  if node.tag in {"testsuite", "testsuites"}
+              ]
+              counts["errors"] = max(
+                  counts["errors"], max(suite_errors, default=0)
+              )
+              counts["collection_complete"] = (
+                  len(cases) == expected and pytest_exit in (0, 1)
+              )
+              if counts["collection_complete"] and counts["errors"] == 0:
                   counts["measurement_status"] = "COMPLETE"
           except Exception as exc:
               counts["parse_error"] = str(exc)
@@ -124,10 +139,16 @@ jobs:
           if not path.is_file():
               raise SystemExit("INCOMPLETE: measurement summary is missing")
           summary = json.loads(path.read_text(encoding="utf-8"))
-          if summary.get("measurement_status") != "COMPLETE":
+          if (
+              summary.get("measurement_status") != "COMPLETE"
+              or summary.get("collection_complete") is not True
+              or summary.get("collected") != 18
+              or summary.get("errors", 0) != 0
+          ):
               raise SystemExit(
-                  "INCOMPLETE: expected 18 collected controls and pytest exit "
-                  "code 0 or 1; inspect dec001-summary.json"
+                  "INCOMPLETE: require 18 collected controls, normal pytest "
+                  "completion, and zero setup/collection errors; inspect "
+                  "dec001-summary.json"
               )
           PY
       - name: Write job summary
