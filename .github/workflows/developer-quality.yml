@@ -22,16 +22,6 @@ jobs:
           cache: "pip"
       - name: Install isolated developer environment
         run: python -m pip install ".[dev]"
-      - name: TEMPORARY Ruff I001 diagnostic
-        shell: bash
-        run: |
-          ruff --version
-          set +e
-          ruff check --select I001 --diff tests/integration/test_dec001_tenant_isolation.py
-          diagnostic_exit=$?
-          set -e
-          echo "RUFF_I001_DIAGNOSTIC_EXIT_CODE=${diagnostic_exit}"
-          exit 0
       - name: Run architectural isolation tests
         env:
           PYTHONPATH: src
