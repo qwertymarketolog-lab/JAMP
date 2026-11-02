@@ -143,6 +143,7 @@ class AuditPersistence:
             if (
                 rec.get("trace_id") != trace_id
                 or rec.get("organization_id") != organization_id
+                or not CHAIN_METADATA_KEYS.issubset(rec)
             ):
                 continue
             if last_wins:
