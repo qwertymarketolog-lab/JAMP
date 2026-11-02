@@ -792,6 +792,22 @@ def create_app(
                     "reason": "TELEGRAM_UPDATE_ID_REQUIRED",
                 },
             )
+
+        # Telegram's webhook secret and chat allowlist do not establish an
+        # API-key OrganizationContext. DEC-001 forbids creating tenant records
+        # without that authenticated owner, so leave executable updates
+        # unclaimed and refuse until a trusted Telegram-to-org auth binding exists.
+        if isinstance(text_value, str) and text_value.strip():
+            command, _, prompt = text_value.strip().partition(" ")
+            if command in {"/search", "/tools"} and prompt.strip():
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "status": "REFUSE",
+                        "reason": "ORGANIZATION_CONTEXT_REQUIRED",
+                    },
+                )
+
         try:
             claimed = telegram_update_store.claim(request_id)
         except TelegramUpdateStoreError:
@@ -834,45 +850,15 @@ def create_app(
                 _send_telegram_message(bot_token, chat_id, hint)
             return {"status": "HINT_SENT"}
 
-        result = execute(
-            {
-                **profile,
-                "prompt": prompt.strip(),
-                "request_id": f"telegram:{request_id}",
-            }
+        # The executable-command guard above is fail-closed. Keep this
+        # defensive branch in case command parsing is extended independently.
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "REFUSE",
+                "reason": "ORGANIZATION_CONTEXT_REQUIRED",
+            },
         )
-        if isinstance(result, JSONResponse):
-            try:
-                result_body = json.loads(result.body.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                result_body = {"status": "REFUSE", "reason": "RUNTIME_RESPONSE_INVALID"}
-        else:
-            result_body = result
-        status = result_body.get("status", "REFUSE")
-        trace_id = result_body.get("trace_id", "unknown")
-        if status == "EXECUTE":
-            output = result_body.get("output")
-            if isinstance(output, dict):
-                reply_text = output.get("content")
-                if not isinstance(reply_text, str):
-                    reply_text = json.dumps(output, ensure_ascii=False)
-            else:
-                reply_text = str(output or "")
-        else:
-            reply_text = f"REFUSE: {result_body.get('reason', 'EXECUTION_BLOCKED')}"
-        reply_text = f"{reply_text[:3500]}\n\ntrace_id: {trace_id}"
-        try:
-            _send_telegram_message(bot_token, chat_id, reply_text)
-        except Exception:
-            return JSONResponse(
-                status_code=502,
-                content={
-                    "status": "REFUSE",
-                    "reason": "TELEGRAM_DELIVERY_FAILED",
-                    "trace_id": trace_id,
-                },
-            )
-        return {"status": status, "trace_id": trace_id}
 
     # FastAPI is imported lazily inside create_app; with postponed annotations,
     # resolve the locally imported Request class before route registration.
