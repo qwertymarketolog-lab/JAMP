@@ -658,3 +658,38 @@ Add subsequent records below. Never edit the historical findings above.
 - Finding: 13 commits are present in PR ancestry from the stated base to the verified snapshot.
 - Decision: record ancestry as verified; this does not assert that the PR is merged or authorize merge.
 - Consequence: later commits, including the documentation update that appends this record, are not self-referenced; their resulting SHA is obtained from GitHub.
+
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-001 — Tenant-scoped access as the target architecture — Update 5
+
+- Date: 2026-11-02
+- Previous decision: JAMP-DEC-001, including the 18-control P0 integration-test specification.
+- Authorization: explicit user decision on 2026-11-02 04:36:48 UTC: “Разрешаю зафиксировать tenant-scoped доступ как целевой архитектурный контракт JAMP.”
+- Decision status: `ACCEPTED — TARGET ARCHITECTURE`.
+- Runtime/security verification status: `HOLD` (unchanged).
+
+### Target access contract
+
+1. **Organization is the security boundary.** Every runtime record exposed through tenant-scoped read APIs belongs to exactly one organization.
+2. **Ownership is established at authenticated write time.** The canonical `organization_id` is derived from the organization context resolved by the real API-key authentication path. A caller-supplied organization identifier is not authoritative.
+3. **Ownership is persisted with the record.** Trace, Verdict, and UniversalVerdict persistence must carry the organization ownership needed for subsequent authorization. Missing authenticated organization context fails closed; the write must not silently create an unowned record that is later readable through tenant routes.
+4. **Reads are tenant-scoped.** Each read resolves the caller's organization from the authenticated API key and looks up the record by both organization and trace identifier (or an equivalent storage-enforced compound ownership key).
+5. **Trace identifiers are selectors, not credentials.** Knowledge or possession of a `trace_id` alone never grants access. There is no global-by-trace fallback from a tenant-scoped endpoint.
+6. **No inferred ownership for legacy records.** A record without trustworthy persisted ownership is not exposed through tenant-scoped reads until ownership is established through an independently trustworthy migration/provenance process. Do not assign an organization from trace ID, request ID, filename, or guesswork.
+7. **Cross-tenant denial is non-disclosing.** A caller from organization A must not obtain organization B's record or record-specific payload/evidence. Exact HTTP status remains governed by the explicit API contract; this decision does not silently choose 403 versus 404.
+
+### Consequences and boundaries
+
+- This is an accepted target architecture, not evidence that current code enforces it.
+- The previously recorded source observations about missing organization propagation/persistence remain unchanged.
+- Actual cross-organization disclosure remains `UNKNOWN` until reproduced; isolation remains unverified until the required positive and negative controls pass.
+- JAMP-DEC-001 therefore remains `HOLD` for runtime/security qualification.
+- The existing 18-control P0 specification remains in force: six positive, six cross-organization negative, and six missing-record controls. `OWNERSHIP_NOT_MODELED` remains a separate architecture observation.
+- No implementation, schema migration, legacy-record attribution, test execution, CI run, remediation, merge, or Frozen Core change is authorized by this decision.
+- Frozen Core invariant remains `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`, expected `Δ=0`.
+
+### Next gate
+
+Complete the already-defined read-only source/storage inspection, then request separate authorization for the 18-control integration-test implementation. Any implementation proposal must realize this target contract without weakening the existing evidence or fail-closed rules.
