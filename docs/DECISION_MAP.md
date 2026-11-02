@@ -125,6 +125,16 @@
 
 ### P0 --- tenant isolation
 
+**Accepted target architecture — JAMP-DEC-001, DECISION_LOG Update 5 (2026-11-02):**
+
+- Tenant-scoped access is the target contract; each runtime record exposed by tenant APIs belongs to exactly one organization.
+- Ownership is derived from authenticated API-key OrganizationContext at write time and persisted with the record. Caller-supplied organization identifiers are not authoritative.
+- Every read is scoped by authenticated organization plus trace identifier. A trace_id alone is never an access credential; no global-by-trace fallback is permitted.
+- Records without trustworthy persisted ownership are not exposed through tenant-scoped reads until independently trustworthy ownership is established.
+- Cross-tenant requests must not disclose another organization's record or record-specific payload. Exact HTTP status remains a separate API-contract detail.
+- This is an accepted design target, **not verified runtime enforcement**. JAMP-DEC-001 runtime/security qualification remains HOLD; the 18-control P0 test specification remains unchanged.
+
+
 -   JAMP-DEC-001 остаётся HOLD до выполнения воспроизводимого
     интеграционного теста на реальном приложении и фактическом
     `AuditPersistence` JSONL read/write path.
