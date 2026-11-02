@@ -158,7 +158,7 @@ def test_telegram_webhook_checks_secret_and_chat_before_execution(monkeypatch):
     assert calls == []
 
 
-def test_telegram_webhook_refuses_execution_without_tenant_context(monkeypatch, tmp_path):
+def test_telegram_requires_org_context(monkeypatch, tmp_path):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
@@ -196,7 +196,7 @@ def test_telegram_webhook_refuses_execution_without_tenant_context(monkeypatch, 
 
 
 @pytest.mark.parametrize("command", ["/search", "/tools"])
-def test_telegram_webhook_sends_hint_for_command_without_prompt(monkeypatch, tmp_path, command):
+def test_telegram_promptless_happy_path(monkeypatch, tmp_path, command):
     import jamp.api.app as app_module
 
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
@@ -359,7 +359,7 @@ def test_telegram_update_store_claim_is_atomic_under_concurrency(tmp_path):
     assert TelegramUpdateStore(tmp_path / "telegram-updates.sqlite3").claim(900) is False
 
 
-def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(monkeypatch, tmp_path):
+def test_telegram_idempotency_unavailable_on_promptless_command(monkeypatch, tmp_path):
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "configured-secret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "bot-token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
@@ -374,7 +374,7 @@ def test_telegram_webhook_fails_closed_when_update_store_is_unavailable(monkeypa
     response = client.post(
         "/v1/telegram/webhook",
         headers={"X-Telegram-Bot-Api-Secret-Token": "configured-secret"},
-        json={"update_id": 901, "message": {"chat": {"id": 42}, "text": "/search hello"}},
+        json={"update_id": 901, "message": {"chat": {"id": 42}, "text": "/search"}},
     )
 
     assert response.status_code == 503
