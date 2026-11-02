@@ -1,0 +1,163 @@
+name: DEC-001 baseline (measurement, non-gating)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/integration/test_dec001_tenant_isolation.py'
+      - '.github/workflows/dec001-baseline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: 18 controls — tenant isolation baseline
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jamp
+          POSTGRES_PASSWORD: jamp_test
+          POSTGRES_DB: jamp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jamp -d jamp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      JAMP_DATABASE_URL: postgresql://jamp:jamp_test@localhost:5432/jamp_test
+      JAMP_API_KEY_HASH_SECRET: ci-dec001-baseline-secret
+      JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+      - name: Prepare audit directory
+        run: mkdir -p /tmp/jamp/audit
+      - name: Run 18 controls (measurement)
+        id: run
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          pytest tests/integration/test_dec001_tenant_isolation.py \
+            -v -rA --junitxml=dec001-baseline.xml \
+            2>&1 | tee dec001-baseline.log
+          PYTEST_EXIT=${PIPESTATUS[0]}
+          echo "pytest_exit_code=${PYTEST_EXIT}" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${PYTEST_EXIT}" > dec001-exit.txt
+          # pytest exit 1 is a measured assertion failure, not workflow failure.
+          # Exit 2+ (interrupt/internal/usage/no tests) is rejected below.
+          exit 0
+      - name: Extract counts and measurement status
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+
+          expected = 18
+          try:
+              pytest_exit = int(os.environ.get("PYTEST_EXIT", ""))
+          except (TypeError, ValueError):
+              pytest_exit = -1
+
+          counts = {
+              "declared": expected, "executed": 0, "passed": 0,
+              "failed": 0, "errors": 0, "skipped": 0,
+              "pytest_exit_code": pytest_exit,
+              "measurement_status": "INCOMPLETE",
+          }
+          try:
+              root = ET.parse("dec001-baseline.xml").getroot()
+              cases = list(root.iter("testcase"))
+              counts["executed"] = len(cases)
+              for case in cases:
+                  if case.find("failure") is not None:
+                      counts["failed"] += 1
+                  elif case.find("error") is not None:
+                      counts["errors"] += 1
+                  elif case.find("skipped") is not None:
+                      counts["skipped"] += 1
+                  else:
+                      counts["passed"] += 1
+              if len(cases) == expected and pytest_exit in (0, 1):
+                  counts["measurement_status"] = "COMPLETE"
+          except Exception as exc:
+              counts["parse_error"] = str(exc)
+
+          counts["workflow_execution"] = (
+              "measurement_recorded" if counts["measurement_status"] == "COMPLETE"
+              else "measurement_incomplete"
+          )
+          with open("dec001-summary.json", "w", encoding="utf-8") as f:
+              json.dump(counts, f, indent=2)
+              f.write("\n")
+          with open("dec001-measurement-status.txt", "w", encoding="utf-8") as f:
+              f.write(counts["measurement_status"] + "\n")
+          print(json.dumps(counts, indent=2))
+          PY
+        env:
+          PYTEST_EXIT: ${{ steps.run.outputs.pytest_exit_code }}
+      - name: Validate measurement completeness
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("dec001-summary.json")
+          if not path.is_file():
+              raise SystemExit("INCOMPLETE: measurement summary is missing")
+          summary = json.loads(path.read_text(encoding="utf-8"))
+          if summary.get("measurement_status") != "COMPLETE":
+              raise SystemExit(
+                  "INCOMPLETE: expected 18 collected controls and pytest exit "
+                  "code 0 or 1; inspect dec001-summary.json"
+              )
+          PY
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## DEC-001 baseline — measurement"
+            echo ""
+            echo "**measurement_status:** $(cat dec001-measurement-status.txt 2>/dev/null || echo INCOMPLETE)"
+            echo "**pytest_exit_code:** ${{ steps.run.outputs.pytest_exit_code }}"
+            echo ""
+            echo "JSON summary:"
+            cat dec001-summary.json 2>/dev/null || echo "(summary not available)"
+            echo ""
+            echo "> Green means all 18 controls were collected and measurement recorded."
+            echo "> It does **not** mean tenant isolation works."
+            echo "> pytest exit 1 = assertion failures; exit 5 = no tests collected."
+            echo "> All-skipped suites normally return exit 0; inspect Skipped."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dec001-baseline-${{ github.sha }}
+          path: |
+            dec001-baseline.xml
+            dec001-baseline.log
+            dec001-summary.json
+            dec001-exit.txt
+            dec001-measurement-status.txt
+          if-no-files-found: warn
+          retention-days: 90
