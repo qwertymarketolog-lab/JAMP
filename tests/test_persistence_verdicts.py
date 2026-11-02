@@ -23,22 +23,22 @@ def test_write_and_read_verdict_round_trip(tmp_path):
         "aggregate_status": "VERIFIED",
     }
 
-    assert persistence.write_verdict("trace-1", payload) == "trace-1"
-    assert persistence.read_verdict_by_id("trace-1") == payload
+    assert persistence.write_verdict("trace-1", payload, organization_id="org-test") == "trace-1"
+    assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") == payload
     assert persistence.verdicts_path == tmp_path / "verdicts.jsonl"
 
 
 def test_unknown_verdict_returns_none(tmp_path):
     persistence = AuditPersistence(tmp_path / "provenance_traces.jsonl")
 
-    assert persistence.read_verdict_by_id("missing-trace") is None
+    assert persistence.read_verdict_by_id("missing-trace", organization_id="org-test") is None
 
 
 def test_missing_verdict_file_returns_none(tmp_path):
     persistence = AuditPersistence(tmp_path / "provenance_traces.jsonl")
 
     assert not persistence.verdicts_path.exists()
-    assert persistence.read_verdict_by_id("trace-1") is None
+    assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") is None
 
 
 def test_trace_and_verdict_storage_are_independent(tmp_path):
@@ -46,11 +46,11 @@ def test_trace_and_verdict_storage_are_independent(tmp_path):
     trace = {"trace_id": "trace-1", "status": "EXECUTE"}
     verdict = {"trace_id": "trace-1", "status": "VERIFIED", "signature": "sig"}
 
-    persistence.write_trace(trace)
-    persistence.write_verdict("trace-1", verdict)
+    persistence.write_trace(trace, organization_id="org-test")
+    persistence.write_verdict("trace-1", verdict, organization_id="org-test")
 
-    assert persistence.read_trace_by_id("trace-1") == trace
-    assert persistence.read_verdict_by_id("trace-1") == verdict
+    assert persistence.read_trace_by_id("trace-1", organization_id="org-test") == trace
+    assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") == verdict
     assert persistence.storage_path != persistence.verdicts_path
 
 
@@ -59,8 +59,8 @@ def test_multiple_verdicts_are_appended_without_overwriting(tmp_path):
     first = {"status": "VERIFIED", "signature": "sig-1"}
     second = {"status": "INCONCLUSIVE", "signature": "sig-2"}
 
-    persistence.write_verdict("trace-1", first)
-    persistence.write_verdict("trace-2", second)
+    persistence.write_verdict("trace-1", first, organization_id="org-test")
+    persistence.write_verdict("trace-2", second, organization_id="org-test")
 
     records = [
         json.loads(line)
@@ -84,15 +84,15 @@ def test_multiple_verdicts_are_appended_without_overwriting(tmp_path):
     assert records[1]["record_hash"] == _record_hash(records[1])
 
     # Public read contract: payload without chain metadata.
-    assert persistence.read_verdict_by_id("trace-1") == {**first, "trace_id": "trace-1"}
-    assert persistence.read_verdict_by_id("trace-2") == {**second, "trace_id": "trace-2"}
+    assert persistence.read_verdict_by_id("trace-1", organization_id="org-test") == {**first, "trace_id": "trace-1"}
+    assert persistence.read_verdict_by_id("trace-2", organization_id="org-test") == {**second, "trace_id": "trace-2"}
 
 
 def test_write_verdict_rejects_empty_trace_id(tmp_path):
     persistence = AuditPersistence(tmp_path / "provenance_traces.jsonl")
 
     with pytest.raises(ValueError, match="trace_id"):
-        persistence.write_verdict("", {"status": "VERIFIED"})
+        persistence.write_verdict("", {"status": "VERIFIED"}, organization_id="org-test")
 
 
 def test_explicit_trace_id_overrides_payload_trace_id(tmp_path):
@@ -101,13 +101,14 @@ def test_explicit_trace_id_overrides_payload_trace_id(tmp_path):
     persistence.write_verdict(
         "trace-authoritative",
         {"trace_id": "trace-untrusted", "status": "VERIFIED"},
+        organization_id="org-test",
     )
 
-    assert persistence.read_verdict_by_id("trace-authoritative") == {
+    assert persistence.read_verdict_by_id("trace-authoritative", organization_id="org-test") == {
         "trace_id": "trace-authoritative",
         "status": "VERIFIED",
     }
-    assert persistence.read_verdict_by_id("trace-untrusted") is None
+    assert persistence.read_verdict_by_id("trace-untrusted", organization_id="org-test") is None
 
 
 def test_execute_persists_signed_verdict(tmp_path, monkeypatch):
@@ -137,6 +138,6 @@ def test_execute_persists_signed_verdict(tmp_path, monkeypatch):
     verdict = body["verdict"]
     assert verdict["trace_id"] == body["trace_id"]
     assert verdict["signature"]
-    stored = AuditPersistence(storage_path).read_verdict_by_id(body["trace_id"])
+    stored = AuditPersistence(storage_path).read_verdict_by_id(body["trace_id"], organization_id="test-org")
     assert stored == verdict
     assert stored["aggregate_status"] == body["aggregate_status"]
