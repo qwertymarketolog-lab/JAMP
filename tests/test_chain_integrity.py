@@ -105,7 +105,7 @@ def test_deleted_middle_record_breaks_chain(tmp_path):
 # --- legacy compatibility ---
 
 
-def test_legacy_file_without_chain_markers_is_readable(tmp_path):
+def test_legacy_file_without_tenant_ownership_is_not_readable(tmp_path):
     p = _p(tmp_path)
     p.verdicts_path.parent.mkdir(parents=True, exist_ok=True)
     legacy = [
