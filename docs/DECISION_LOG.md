@@ -658,3 +658,45 @@ Add subsequent records below. Never edit the historical findings above.
 - Finding: 13 commits are present in PR ancestry from the stated base to the verified snapshot.
 - Decision: record ancestry as verified; this does not assert that the PR is merged or authorize merge.
 - Consequence: later commits, including the documentation update that appends this record, are not self-referenced; their resulting SHA is obtained from GitHub.
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-001 — Tenant Isolation — Update 6 (PR #498 merged; post-merge CI)
+
+- Date: 2026-11-02
+- Status: `HOLD` for full tenant-isolation qualification; implementation merge and enumerated post-merge CI are separately verified.
+- Main SHA: `c6e5c989a7d5f6ecfa89366bb3abad16ca6624a9`.
+- PR: [#498](https://github.com/qwertymarketolog-lab/JAMP/pull/498), merged by squash; merge commit `c6e5c989a7d5f6ecfa89366bb3abad16ca6624a9`.
+- Frozen Core: `src/jamp/run.py` blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; exact locked-blob match, `Δ=0`.
+
+### DEC-001 measurement on PR HEAD
+
+- Measurement workflow: DEC-001 baseline Run `41453863758`, Job `125305496915`, terminal `completed / success`, Artifact `13146565793`.
+- Measurement: 18 controls collected; 14 passed; 0 failed; 0 errors; 4 skipped.
+- Trace: 6/6 passed.
+- UniversalVerdict: 6/6 passed.
+- Verdict missing-record controls: 2/2 passed.
+- Verdict positive/cross-organization controls: 4 skipped because the real VERIFIED execution path was unavailable (`PROVIDER_NOT_CONFIGURED`, HTTP 503).
+- Interpretation: the measurement completed normally, but the four skipped Verdict controls remain untested. This is partial implementation/test evidence, not full tenant-isolation qualification. Do not label `ISOLATION_ENFORCED` VERIFIED. Verdict qualification remains `INCONCLUSIVE / HOLD`.
+- Provider configuration and completion of the skipped Verdict controls are separate follow-up work, outside PR #498's implementation scope.
+
+### Post-merge Run → Job → Artifact evidence
+
+All eight applicable workflow runs fetched for exact main SHA `c6e5c989a7d5f6ecfa89366bb3abad16ca6624a9` are terminal `completed / success`; all 12 fetched jobs are terminal success. Artifact absence is recorded as `none returned`, not inferred evidence. The known orphaned `import-historical.yml` run `41458989586` returned `failure` with `jobs=[]`; it is the documented orphaned-workflow anomaly and is excluded from this applicable inventory.
+
+| Workflow | Run ID | Job ID(s) | Conclusion | Artifact ID(s) |
+|---|---:|---|---|---|
+| SBOM | 41458992097 | 125322884401 (`sbom`) | success | 13147743427 (`jamp-sbom`) |
+| P36.2 G4 MinIO Runtime | 41458991973 | 125322884334 (`g4-minio-runtime`) | success | 13148970002 (`g4-minio-runtime-evidence`) |
+| P23.0-B Cold Replay Diagnostic | 41458992079 | 125322885012 (`p23-0-b`) | success | none returned |
+| Run Pytest | 41458992173 | 125322885483 (`test`) | success | 13148702044 (`p17-6-experiment-report`) |
+| Developer Quality | 41458992026 | 125322884302 (`quality`) | success | none returned |
+| P20.11 Diagnostic | 41458991965 | 125322883954 (`diagnostic`) | success | none returned |
+| EXP-19 Performance Diagnostic | 41458992077 | 125322885080; 125322885234; 125322885400; 125322885469; 125322885622 | all five success | 13148710862; 13148681688; 13148591089; 13147998345; 13146939697 |
+| P20.5 Hypothesis Lifecycle Diagnostic | 41458992058 | 125322884369 (`diagnostic`) | success | none returned |
+
+- G4 terminal log: `tests/test_g4_minio_runtime.py` — `1 passed in 1.80s`; MinIO health endpoint became available; bucket setup succeeded; evidence artifact uploaded (525 bytes; SHA-256 of artifact ZIP `c5b7c881565ec9e29a51bfceb676a565f85df09122580ee8284c26d34c02fff1`).
+- Main ref was re-fetched before preparing this update and pointed to the exact SHA above.
+- Finding: the enumerated post-merge workflow inventory is terminal success. This does not upgrade the four skipped Verdict controls or establish full tenant isolation.
+- Decision: record PR #498 merge and post-merge CI as VERIFIED; retain DEC-001 full qualification at HOLD / INCONCLUSIVE pending real Verdict positive and cross-organization controls.
+- Consequence: no claim of complete tenant-isolation qualification. Continue with separately scoped engineering follow-ups; preserve Frozen Core.
