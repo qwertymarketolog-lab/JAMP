@@ -141,10 +141,12 @@ def evaluate(
     if manifest.get("request_count") != 100:
         raise ValueError("generation manifest request_count must be exactly 100")
     if (
-        manifest.get("successful_requests", 0) + manifest.get("failed_requests", 0)
+        manifest.get("successful_requests", 0)
+        + manifest.get("abstained_requests", 0)
+        + manifest.get("failed_requests", 0)
         != 100
     ):
-        raise ValueError("generation manifest success/failure counts must total 100")
+        raise ValueError("generation manifest success/abstention/failure counts must total 100")
 
     ground_truth = {
         item.get("sample_id"): item
@@ -156,6 +158,21 @@ def evaluate(
     response_ids = [
         item.get("sample_id") for item in response_samples if isinstance(item, dict)
     ]
+    successful_count = sum(
+        item.get("request_status") == "SUCCESS" for item in response_samples
+        if isinstance(item, dict)
+    )
+    abstained_count = sum(
+        item.get("request_status") == "ABSTAINED" for item in response_samples
+        if isinstance(item, dict)
+    )
+    if (
+        manifest.get("successful_requests") != successful_count
+        or manifest.get("abstained_requests", 0) != abstained_count
+        or manifest.get("failed_requests")
+        != len(response_samples) - successful_count - abstained_count
+    ):
+        raise ValueError("generation manifest request counts do not match response statuses")
     if len(response_ids) != 100 or len(set(response_ids)) != 100:
         raise ValueError("LLM response sample IDs must be 100 unique values")
     if set(response_ids) != set(ground_truth):
@@ -182,13 +199,63 @@ def evaluate(
             )
             continue
         actual = _ground_truth(label)
-        if sample.get("request_status") != "SUCCESS":
+        request_status = sample.get("request_status")
+        if request_status == "ABSTAINED":
+            package_name = truth.get("package_name")
+            if (
+                sample.get("package_name") != package_name
+                or sample.get("prompt") != truth.get("prompt")
+            ):
+                results.append(
+                    {
+                        "sample_id": sample_id,
+                        "package_name": package_name,
+                        "ground_truth": "HALLUCINATION" if actual else "CLEAN",
+                        "actual_hallucination": actual,
+                        "generation_status": "ABSTAINED",
+                        "baseline_verdict": "INCONCLUSIVE",
+                        "jamp_verdict": "INCONCLUSIVE",
+                        "reason": "model_input_identity_mismatch",
+                    }
+                )
+                continue
+            code = sample.get("code")
+            if not isinstance(code, str) or code.strip():
+                raise ValueError("ABSTAINED response must contain an empty code string")
+            package_exists = truth.get("pypi_exists")
+            if not isinstance(package_exists, bool):
+                raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
+            baseline = _baseline_verdict(code, package_exists)
+            provenance = check_provenance(package_name)
+            signature = {
+                "status": "INCONCLUSIVE",
+                "reason": "model_abstained_no_candidate_code",
+            }
+            verdict = _jamp_verdict(provenance, signature)
+            results.append(
+                {
+                    "sample_id": sample_id,
+                    "package_name": package_name,
+                    "prompt": truth.get("prompt"),
+                    "ground_truth": "HALLUCINATION" if actual else "CLEAN",
+                    "actual_hallucination": actual,
+                    "generation_status": "ABSTAINED",
+                    "baseline_verdict": baseline,
+                    "jamp_verdict": verdict,
+                    "provenance": provenance,
+                    "signature": signature,
+                    "reason": "model_abstained",
+                }
+            )
+            continue
+        if request_status != "SUCCESS":
             results.append(
                 {
                     "sample_id": sample_id,
                     "package_name": truth.get("package_name"),
                     "ground_truth": "HALLUCINATION" if actual else "CLEAN",
                     "actual_hallucination": actual,
+                    "generation_status": request_status,
                     "baseline_verdict": "INCONCLUSIVE",
                     "jamp_verdict": "INCONCLUSIVE",
                     "reason": sample.get("failure_reason", "generation_not_successful"),
@@ -243,6 +310,7 @@ def evaluate(
                 "prompt": truth.get("prompt"),
                 "ground_truth": "HALLUCINATION" if actual else "CLEAN",
                 "actual_hallucination": actual,
+                "generation_status": "SUCCESS",
                 "baseline_verdict": baseline,
                 "jamp_verdict": verdict,
                 "provenance": provenance,
@@ -270,6 +338,9 @@ def evaluate(
         != row["actual_hallucination"]
         for row in paired
     )
+    abstained_results = [
+        row for row in results if row.get("generation_status") == "ABSTAINED"
+    ]
     report = {
         "schema_version": "jamp-hunt-evaluation-v0.3",
         "evidence_class": "LIVE_LLM_WITH_LIVE_PYPI_PACKAGE_EXISTENCE_LABELS",
@@ -280,6 +351,16 @@ def evaluate(
         "attempted_sample_count": len(results),
         "successful_generation_count": manifest.get("successful_requests"),
         "failed_generation_count": manifest.get("failed_requests"),
+        "abstained_generation_count": manifest.get("abstained_requests", 0),
+        "abstention_summary": {
+            "count": len(abstained_results),
+            "nonexistent_package_count": sum(
+                row["actual_hallucination"] is True for row in abstained_results
+            ),
+            "existing_package_count": sum(
+                row["actual_hallucination"] is False for row in abstained_results
+            ),
+        },
         "baseline": _accuracy(results, "baseline_verdict", baseline=True),
         "jamp": _accuracy(results, "jamp_verdict"),
         "inconclusive_count": sum(
