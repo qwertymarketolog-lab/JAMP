@@ -24,7 +24,7 @@ FAKE_PACKAGES = [
     "celery-supervisor", "aiohttp-cors-fix", "beautifulsoup5"
 ]
 
-def generate_tasks():
+def generate_tasks() -> None:
     tasks = []
     
     # 1. Generate Normal Tasks (50)
