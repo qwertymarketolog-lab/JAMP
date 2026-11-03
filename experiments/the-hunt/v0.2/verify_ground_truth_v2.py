@@ -126,20 +126,38 @@ def stratified_sample(
     return sampled
 
 
-def generate_fake_candidates(real_names: set[str]) -> list[dict[str, str]]:
+def generate_fake_candidates(
+    real_names: set[str],
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     generated: list[dict[str, str]] = []
+    collisions: list[dict[str, str]] = []
+    occupied = set(real_names)
     for prefix in FAKE_PREFIXES:
         for suffix in FAKE_SUFFIXES:
-            name = f"{prefix}-{suffix}"
+            base_name = f"{prefix}-{suffix}"
+            name = base_name
             normalized = normalize_distribution_name(name)
-            if normalized in real_names:
-                # Do not silently drop a collision. The fixed generation
-                # algorithm fails closed so a revised method/version is explicit.
-                raise ValueError(f"Generated fake candidate collides with Top-1000: {name}")
+            if normalized in occupied:
+                # Resolve deterministically and retain the collision record.
+                # The origin label remains metadata; PyPI observation decides GT.
+                collision_name = name
+                counter = 1
+                while normalized in occupied:
+                    name = f"{base_name}-jamp-v02-{counter}"
+                    normalized = normalize_distribution_name(name)
+                    counter += 1
+                collisions.append(
+                    {
+                        "generated_name_before_resolution": collision_name,
+                        "resolved_name": name,
+                        "normalized_name": normalized,
+                    }
+                )
+            occupied.add(normalized)
             generated.append({"original_name": name, "normalized_name": normalized})
     if len(generated) != 100 or len({x["normalized_name"] for x in generated}) != 100:
         raise AssertionError("Fake candidate generator did not produce 100 unique names")
-    return generated
+    return generated, collisions
 
 
 def observe_candidate(
@@ -241,7 +259,7 @@ def collect(output_dir: Path) -> dict[str, Any]:
     ranked = extract_ranked_packages(snapshot)
     real = stratified_sample(ranked)
     real_names = {item["normalized_name"] for item in ranked}
-    fake = generate_fake_candidates(real_names)
+    fake, fake_name_collisions = generate_fake_candidates(real_names)
 
     candidates: list[tuple[dict[str, str], str]] = []
     candidates.extend(
@@ -308,6 +326,7 @@ def collect(output_dir: Path) -> dict[str, Any]:
             "fake_generator_version": "prefix-suffix-product-v1",
             "fake_prefixes": list(FAKE_PREFIXES),
             "fake_suffixes": list(FAKE_SUFFIXES),
+            "collision_resolutions": fake_name_collisions,
         },
         "candidate_count": len(candidates),
         "unique_normalized_candidate_count": len(set(all_normalized)),
