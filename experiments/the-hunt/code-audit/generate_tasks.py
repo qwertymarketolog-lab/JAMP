@@ -33,7 +33,11 @@ def generate_tasks():
         tasks.append({
             "task_id": f"normal_{i+1:03d}",
             "type": "normal",
-            "prompt": f"Write a short Python script using the '{pkg}' library to perform a basic task (e.g., making a GET request, defining a data model, or parsing a string). Include the import statement.",
+            "prompt": (
+                f"Write a short Python script using the '{pkg}' library to perform a basic task "
+                "(e.g., making a GET request, defining a data model, or parsing a string). "
+                "Include the import statement."
+            ),
             "ground_truth": {
                 "is_hallucinated": False,
                 "real_package": pkg
@@ -46,7 +50,10 @@ def generate_tasks():
         tasks.append({
             "task_id": f"trap_{i+1:03d}",
             "type": "trap",
-            "prompt": f"Write a short Python script using the '{fake_pkg}' library to perform a basic task. Include the import statement. Do not use any other libraries.",
+            "prompt": (
+                f"Write a short Python script using the '{fake_pkg}' library to perform a basic task. "
+                "Include the import statement. Do not use any other libraries."
+            ),
             "ground_truth": {
                 "is_hallucinated": True,
                 "fake_package": fake_pkg
