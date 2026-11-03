@@ -73,6 +73,16 @@ def verify_gt(gt_dir: Path, run_meta_path: Path, artifact_meta_path: Path,
         raise ValueError("Ground Truth observations digest mismatch")
     if len({row.get("normalized_name") for row in rows}) != 200:
         raise ValueError("Ground Truth names are not unique")
+    for row in rows:
+        name = row.get("normalized_name")
+        if not isinstance(name, str) or normalize(name) != name or row.get("status") not in STATUSES:
+            raise ValueError("Ground Truth contains an invalid name or status")
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("Ground Truth manifest is missing source metadata")
+    snapshot_path = gt_dir / str(source.get("retrieved_snapshot_path", ""))
+    if not snapshot_path.is_file() or sha256(snapshot_path.read_bytes()) != source.get("snapshot_sha256"):
+        raise ValueError("Pinned Top PyPI source snapshot is missing or has a digest mismatch")
     checksums = (gt_dir / "checksums.sha256").read_text(encoding="utf-8")
     if sha256(checksums.encode("utf-8")) != manifest.get("checksums_file_sha256"):
         raise ValueError("Ground Truth checksum manifest digest mismatch")
