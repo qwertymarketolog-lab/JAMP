@@ -243,16 +243,16 @@ def analyze_wheel(
                         if isinstance(target, ast.Name):
                             module_bindings[module].add(target.id)
 
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Name) and node.id == "TYPE_CHECKING":
+            for ast_node in ast.walk(tree):
+                if isinstance(ast_node, ast.Name) and ast_node.id == "TYPE_CHECKING":
                     type_checking_hits.append(name)
                 if (
-                    isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                    and node.name == "__getattr__"
+                    isinstance(ast_node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and ast_node.name == "__getattr__"
                 ):
                     getattr_hits.append(name)
-                if isinstance(node, ast.Call):
-                    function = node.func
+                if isinstance(ast_node, ast.Call):
+                    function = ast_node.func
                     if (
                         isinstance(function, ast.Name)
                         and function.id == "recreate_module"
@@ -261,13 +261,13 @@ def analyze_wheel(
                         and function.attr == "recreate_module"
                     ):
                         recreate_hits.append(name)
-                        for keyword in node.keywords:
+                        for keyword in ast_node.keywords:
                             if keyword.arg == "by_module":
                                 try:
                                     mapping: Any = ast.literal_eval(keyword.value)
                                 except (ValueError, TypeError, SyntaxError):
                                     recreate_mapping_hits.append(
-                                        f"{name}:{node.lineno}: by_module is nonliteral"
+                                        f"{name}:{ast_node.lineno}: by_module is nonliteral"
                                     )
                                 else:
                                     if isinstance(mapping, dict):
@@ -280,12 +280,12 @@ def analyze_wheel(
                                                 )
                                             ):
                                                 recreate_mapping_hits.append(
-                                                    f"{name}:{node.lineno}: "
+                                                    f"{name}:{ast_node.lineno}: "
                                                     f"{module_name} -> {symbols}"
                                                 )
-                if isinstance(node, ast.ClassDef) and node.name == "LazyModule":
+                if isinstance(ast_node, ast.ClassDef) and ast_node.name == "LazyModule":
                     lazy_module_hits.append(name)
-                if isinstance(node, ast.ClassDef) and node.name == "Celery":
+                if isinstance(ast_node, ast.ClassDef) and ast_node.name == "Celery":
                     celery_class_hits.append(name)
 
             for line_number, line in enumerate(source.splitlines(), start=1):
@@ -365,8 +365,8 @@ def analyze_wheel(
         print(line)
     if parse_errors:
         print("\nAST_PARSE_ERRORS:")
-        for error in parse_errors:
-            print(error)
+        for parse_error in parse_errors:
+            print(parse_error)
     return report
 
 
@@ -384,7 +384,7 @@ def main() -> int:
                 failed = True
         except Exception as error:  # retain a per-target failure in the evidence
             failed = True
-            failure = {
+            failure: dict[str, object] = {
                 "package": package,
                 "version": version,
                 "error_type": type(error).__name__,
