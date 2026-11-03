@@ -145,7 +145,7 @@ class PairedEvaluationTests(unittest.TestCase):
                 "input_origin": "SYNTHETIC_CONTROL_INPUT",
                 "input_context": {
                     "prompt_text": "Write code using pkg-000",
-                    "source_code": "import pkg_000\\nprint(pkg_000.__name__)",
+                    "source_code": "import pkg_000\nprint(pkg_000.__name__)",
                     "import_distribution_map": {"pkg_000": "pkg-000"},
                 },
             }
