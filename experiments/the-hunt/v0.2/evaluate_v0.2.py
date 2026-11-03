@@ -211,19 +211,115 @@ def exact_mcnemar(b: int, c: int) -> float:
     return min(1.0, 2.0 * tail)
 
 
-def load_jamp_cache(path: Path, gt_manifest: dict[str, Any]) -> dict[str, str]:
+def load_jamp_cache(
+    path: Path,
+    gt_manifest: dict[str, Any],
+    *,
+    evaluation_mode: str = "PRE_REVEAL_INDEPENDENT",
+) -> dict[str, str]:
     cache = load_json(path)
-    if cache.get("evidence_class") != "JAMP_INDEPENDENT_REGISTRY_CACHE":
-        raise ValueError(
-            "JAMP cache must be a separately acquired "
-            "JAMP_INDEPENDENT_REGISTRY_CACHE artifact"
-        )
     if cache.get("ground_truth_source_observations_sha256") == gt_manifest.get(
         "observations_file_sha256"
     ):
         raise ValueError("JAMP cache is derived from the Ground Truth snapshot (circular)")
-    if cache.get("acquired_before_ground_truth_reveal") is not True:
-        raise ValueError("JAMP cache must attest it was acquired before GT reveal")
+
+    if evaluation_mode == "PRE_REVEAL_INDEPENDENT":
+        # Preserve the original pre-reveal contract without weakening it.
+        if cache.get("evidence_class") != "JAMP_INDEPENDENT_REGISTRY_CACHE":
+            raise ValueError(
+                "JAMP cache must be a separately acquired "
+                "JAMP_INDEPENDENT_REGISTRY_CACHE artifact"
+            )
+        if cache.get("acquired_before_ground_truth_reveal") is not True:
+            raise ValueError("JAMP cache must attest it was acquired before GT reveal")
+    elif evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK":
+        if cache.get("schema_version") != "jamp-hunt-post-reveal-cache-v0.2":
+            raise ValueError("Unsupported POST-REVEAL cache schema")
+        if cache.get("evidence_class") != "JAMP_POST_REVEAL_INDEPENDENT_REGISTRY_RECHECK":
+            raise ValueError("POST-REVEAL mode requires its explicit evidence_class")
+        if cache.get("evaluation_mode") != evaluation_mode:
+            raise ValueError("POST-REVEAL cache mode does not match evaluator mode")
+        if cache.get("acquisition_phase") != "POST_REVEAL":
+            raise ValueError("POST-REVEAL cache must declare acquisition_phase=POST_REVEAL")
+        if cache.get("acquired_before_ground_truth_reveal") is True:
+            raise ValueError("POST-REVEAL cache cannot claim pre-reveal acquisition")
+        if cache.get("ground_truth_workflow_run_id") is None or cache.get(
+            "ground_truth_artifact_id"
+        ) is None:
+            raise ValueError("POST-REVEAL cache is missing source run/artifact identity")
+        try:
+            started = datetime.fromisoformat(cache["collection_started_at_utc"])
+            completed = datetime.fromisoformat(cache["ground_truth_workflow_completed_at_utc"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("POST-REVEAL cache has invalid acquisition chronology") from exc
+        if started <= completed:
+            raise ValueError("POST-REVEAL collection did not start after GT workflow completion")
+
+        cache_dir = path.parent
+        observations_path = cache_dir / "observations.jsonl"
+        checksums_path = cache_dir / "checksums.sha256"
+        if not observations_path.is_file() or not checksums_path.is_file():
+            raise ValueError("POST-REVEAL cache evidence files are missing")
+        observations_bytes = observations_path.read_bytes()
+        checksums_bytes = checksums_path.read_bytes()
+        if sha256_bytes(observations_bytes) != cache.get("observations_file_sha256"):
+            raise ValueError("POST-REVEAL observations digest mismatch")
+        if sha256_bytes(checksums_bytes) != cache.get("checksums_file_sha256"):
+            raise ValueError("POST-REVEAL checksums manifest digest mismatch")
+        observations = load_jsonl(observations_path)
+        if len(observations) != cache.get("candidate_count"):
+            raise ValueError("POST-REVEAL observation count differs from manifest")
+        seen: set[str] = set()
+        observed_packages: dict[str, str] = {}
+        expected_raw: set[str] = set()
+        for item in observations:
+            name = item.get("normalized_name")
+            status = item.get("status")
+            if not isinstance(name, str) or normalize_distribution_name(name) != name:
+                raise ValueError("POST-REVEAL observation has invalid normalized name")
+            if name in seen or status not in ALL_GT:
+                raise ValueError("POST-REVEAL observations contain duplicate names or invalid status")
+            seen.add(name)
+            observed_packages[name] = status
+            raw_path = item.get("raw_response_path")
+            digest = item.get("raw_response_sha256")
+            if raw_path is None:
+                if digest is not None:
+                    raise ValueError("POST-REVEAL raw digest exists without a path")
+                if status in DEFINITIVE_GT:
+                    raise ValueError("Definitive POST-REVEAL observation lacks raw response")
+            else:
+                relative = Path(raw_path)
+                if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "raw_responses":
+                    raise ValueError("Unsafe POST-REVEAL raw response path")
+                raw_file = cache_dir / relative
+                if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
+                    raise ValueError(f"POST-REVEAL raw response digest mismatch: {raw_path}")
+                expected_raw.add(relative.as_posix())
+        checksum_paths: set[str] = set()
+        for line in checksums_bytes.decode("utf-8").splitlines():
+            if not line.strip():
+                continue
+            digest, relative_name = line.split("  ", 1)
+            relative = Path(relative_name)
+            if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "raw_responses":
+                raise ValueError("Unsafe POST-REVEAL checksum path")
+            raw_file = cache_dir / relative
+            if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
+                raise ValueError(f"POST-REVEAL checksum mismatch: {relative_name}")
+            checksum_paths.add(relative.as_posix())
+        actual_raw = {
+            item.relative_to(cache_dir).as_posix()
+            for item in (cache_dir / "raw_responses").glob("*")
+            if item.is_file()
+        }
+        if checksum_paths != expected_raw or actual_raw != expected_raw:
+            raise ValueError("POST-REVEAL raw-response files and checksum manifest differ")
+        if cache.get("packages") != observed_packages:
+            raise ValueError("POST-REVEAL package map differs from raw observations")
+    else:
+        raise ValueError(f"Unsupported evaluation mode: {evaluation_mode}")
+
     entries = cache.get("packages")
     if not isinstance(entries, dict):
         raise ValueError("JAMP cache must contain a packages object")
@@ -288,10 +384,18 @@ def jamp_predict(input_context: dict[str, Any], cache: dict[str, str]) -> dict[s
     }
 
 
-def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path) -> dict[str, Any]:
+def evaluate(
+    gt_dir: Path,
+    tasks_path: Path,
+    cache_path: Path,
+    output_path: Path,
+    *,
+    evaluation_mode: str = "PRE_REVEAL_INDEPENDENT",
+) -> dict[str, Any]:
     gt_manifest, gt_rows = verify_ground_truth_lock(gt_dir)
     gt_by_name = {row["normalized_name"]: row for row in gt_rows}
-    cache = load_jamp_cache(cache_path, gt_manifest)
+    cache_manifest = load_json(cache_path)
+    cache = load_jamp_cache(cache_path, gt_manifest, evaluation_mode=evaluation_mode)
     tasks = load_jsonl(tasks_path)
     if not tasks:
         raise ValueError("Paired evaluation requires at least one task")
@@ -393,6 +497,14 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
     report = {
         "schema_version": "jamp-hunt-paired-evaluation-v0.2",
         "evidence_class": "SYNTHETIC_CONTROL_EVALUATION",
+        "evaluation_mode": evaluation_mode,
+        "cache_evidence_class": cache_manifest.get("evidence_class"),
+        "cache_acquisition_phase": cache_manifest.get("acquisition_phase", "PRE_REVEAL_ATTESTED"),
+        "cache_manifest_sha256": sha256_bytes(cache_path.read_bytes()),
+        "cache_ground_truth_workflow_run_id": cache_manifest.get("ground_truth_workflow_run_id"),
+        "cache_ground_truth_artifact_id": cache_manifest.get("ground_truth_artifact_id"),
+        "cache_collection_started_at_utc": cache_manifest.get("collection_started_at_utc"),
+        "cache_collection_completed_at_utc": cache_manifest.get("collection_completed_at_utc"),
         "input_origin": "SYNTHETIC_CONTROL_INPUT",
         "interpretation_limit": (
             "Synthetic control inputs are not real LLM outputs and do not measure "
@@ -448,11 +560,19 @@ def main() -> None:
     parser.add_argument("--ground-truth-dir", type=Path, default=Path("ground_truth"))
     parser.add_argument("--tasks", type=Path, required=True, help="Paired tasks JSONL")
     parser.add_argument(
-        "--jamp-cache", type=Path, required=True, help="Independent pre-GT JAMP cache JSON"
+        "--jamp-cache", type=Path, required=True, help="JAMP cache manifest JSON"
+    )
+    parser.add_argument(
+        "--evaluation-mode",
+        choices=("PRE_REVEAL_INDEPENDENT", "POST_REVEAL_INDEPENDENT_RECHECK"),
+        default="PRE_REVEAL_INDEPENDENT",
     )
     parser.add_argument("--output", type=Path, default=Path("results/paired_evaluation.json"))
     args = parser.parse_args()
-    result = evaluate(args.ground_truth_dir, args.tasks, args.jamp_cache, args.output)
+    result = evaluate(
+        args.ground_truth_dir, args.tasks, args.jamp_cache, args.output,
+        evaluation_mode=args.evaluation_mode,
+    )
     print(json.dumps(result, indent=2))
 
 
