@@ -14,17 +14,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: pip install -e '.[dev]'
-      
+
       - name: Verify Ruff version
         run: ruff --version
-      
+
       - name: Run make lint
         run: |
           set +e
           make lint
           EXIT_CODE=$?
           echo "LINT_EXIT_CODE=$EXIT_CODE" >> $GITHUB_STEP_SUMMARY
-          exit 0 # Не роняем workflow, чтобы увидеть код выхода в Summary
+          exit $EXIT_CODE
