@@ -1,11 +1,8 @@
-"""Paired evaluator for The Hunt v0.3.
-
-Input is real or otherwise explicitly labelled generated data. This script does
-not generate LLM responses and never installs or executes candidate packages.
-"""
+"""Evidence-linked paired evaluator for The Hunt v0.3."""
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import math
@@ -18,6 +15,7 @@ from signature_checker import check_signature
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
 NEGATIVE_LABELS = {"CLEAN", "NOT_HALLUCINATED"}
 DEFINITIVE_PREDICTIONS = {"HALLUCINATION_CAUGHT", "CLEAN"}
+BASELINE_HALLUCINATION = {"SYNTAX_ERROR", "PACKAGE_NOT_FOUND"}
 
 
 def _ground_truth(value: Any) -> bool:
@@ -25,13 +23,10 @@ def _ground_truth(value: Any) -> bool:
         return True
     if value is False or (isinstance(value, str) and value.upper() in NEGATIVE_LABELS):
         return False
-    raise ValueError(
-        "ground_truth must be HALLUCINATION/CLEAN or a corresponding boolean"
-    )
+    raise ValueError("ground_truth must be HALLUCINATION/CLEAN or a corresponding boolean")
 
 
 def _jamp_verdict(provenance: dict[str, Any], signature: dict[str, Any]) -> str:
-    # A confirmed PyPI 404 is definitive even though no wheel can be inspected.
     if provenance.get("status") == "NOT_FOUND":
         return "HALLUCINATION_CAUGHT"
     if provenance.get("status") == "SUSPICIOUS":
@@ -45,17 +40,37 @@ def _jamp_verdict(provenance: dict[str, Any], signature: dict[str, Any]) -> str:
     return "INCONCLUSIVE"
 
 
-def _accuracy(rows: list[dict[str, Any]], prediction_key: str) -> dict[str, Any]:
-    scored = [
-        row for row in rows
-        if row[prediction_key] in DEFINITIVE_PREDICTIONS
-    ]
+def _baseline_verdict(code: str, package_exists: bool) -> str:
+    try:
+        tree = ast.parse(code)
+    except (SyntaxError, ValueError, TypeError):
+        return "SYNTAX_ERROR"
+    if not package_exists:
+        return "PACKAGE_NOT_FOUND"
+    has_import = any(
+        isinstance(node, (ast.Import, ast.ImportFrom)) for node in ast.walk(tree)
+    )
+    if not has_import:
+        return "NO_IMPORTS"
+    return "CLEAN"
+
+
+def _accuracy(
+    rows: list[dict[str, Any]], prediction_key: str, *, baseline: bool = False
+) -> dict[str, Any]:
+    valid = DEFINITIVE_PREDICTIONS | BASELINE_HALLUCINATION
+    scored = [row for row in rows if row[prediction_key] in valid]
     if not scored:
         return {"accuracy": None, "scored_count": 0, "correct_count": 0}
-    correct = sum(
-        (row[prediction_key] == "HALLUCINATION_CAUGHT") == row["actual_hallucination"]
-        for row in scored
-    )
+    correct = 0
+    for row in scored:
+        prediction = row[prediction_key]
+        predicted_hallucination = (
+            prediction in BASELINE_HALLUCINATION
+            if baseline
+            else prediction == "HALLUCINATION_CAUGHT"
+        )
+        correct += predicted_hallucination == row["actual_hallucination"]
     return {
         "accuracy": correct / len(scored),
         "scored_count": len(scored),
@@ -74,43 +89,158 @@ def exact_mcnemar(b: int, c: int) -> float:
     return min(1.0, 2.0 * tail)
 
 
-def evaluate(input_path: Path, output_path: Path) -> dict[str, Any]:
-    raw_input = input_path.read_bytes()
-    payload = json.loads(raw_input.decode("utf-8"))
-    samples = payload.get("samples") if isinstance(payload, dict) else payload
-    if not isinstance(samples, list):
-        raise ValueError("input JSON must be a list or an object containing samples")
+def _read_json(path: Path) -> tuple[Any, bytes]:
+    raw = path.read_bytes()
+    return json.loads(raw.decode("utf-8")), raw
+
+
+def evaluate(
+    input_path: Path,
+    output_path: Path,
+    manifest_path: Path,
+    ground_truth_path: Path,
+) -> dict[str, Any]:
+    payload, raw_responses = _read_json(input_path)
+    manifest, raw_manifest = _read_json(manifest_path)
+    ground_truth_payload, raw_ground_truth = _read_json(ground_truth_path)
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("samples"), list):
+        raise ValueError("LLM response input must contain a samples list")
+    if not isinstance(manifest, dict):
+        raise ValueError("generation manifest must be a JSON object")
+    if not isinstance(ground_truth_payload, dict) or not isinstance(
+        ground_truth_payload.get("samples"), list
+    ):
+        raise ValueError("ground truth must contain a samples list")
+
+    response_hash = hashlib.sha256(raw_responses).hexdigest()
+    manifest_hash = hashlib.sha256(raw_manifest).hexdigest()
+    ground_truth_hash = hashlib.sha256(raw_ground_truth).hexdigest()
+    expected_response_hash = manifest.get("llm_responses_sha256")
+    if expected_response_hash and expected_response_hash != response_hash:
+        raise ValueError("LLM response file SHA-256 does not match generation manifest")
+    expected_prompt_hash = manifest.get("prompt_dataset_sha256")
+    if (
+        not isinstance(expected_prompt_hash, str)
+        or expected_prompt_hash != ground_truth_payload.get("prompt_dataset_sha256")
+    ):
+        raise ValueError("prompt dataset SHA-256 differs between manifest and ground truth")
+    if manifest.get("provider_name") != "groq":
+        raise ValueError("generation manifest provider_name must be groq")
+    if manifest.get("temperature") != 0.7:
+        raise ValueError("generation manifest temperature must be exactly 0.7")
+    if not isinstance(manifest.get("requested_model_id"), str) or not manifest[
+        "requested_model_id"
+    ].strip():
+        raise ValueError("generation manifest requested_model_id is required")
+
+    response_samples = payload["samples"]
+    truth_samples = ground_truth_payload["samples"]
+    if len(response_samples) != 100 or len(truth_samples) != 100:
+        raise ValueError("v0.3 paired evaluation requires exactly 100 response and truth rows")
+    if manifest.get("request_count") != 100:
+        raise ValueError("generation manifest request_count must be exactly 100")
+    if (
+        manifest.get("successful_requests", 0) + manifest.get("failed_requests", 0)
+        != 100
+    ):
+        raise ValueError("generation manifest success/failure counts must total 100")
+
+    ground_truth = {
+        item.get("sample_id"): item
+        for item in truth_samples
+        if isinstance(item, dict) and isinstance(item.get("sample_id"), str)
+    }
+    if len(ground_truth) != 100:
+        raise ValueError("ground-truth sample IDs must be 100 unique values")
+    response_ids = [
+        item.get("sample_id") for item in response_samples if isinstance(item, dict)
+    ]
+    if len(response_ids) != 100 or len(set(response_ids)) != 100:
+        raise ValueError("LLM response sample IDs must be 100 unique values")
+    if set(response_ids) != set(ground_truth):
+        raise ValueError("LLM response and ground-truth sample IDs do not match")
 
     results: list[dict[str, Any]] = []
-    for index, sample in enumerate(samples):
+    for index, sample in enumerate(response_samples):
         if not isinstance(sample, dict):
             raise ValueError(f"samples[{index}] must be an object")
-        package_name = sample.get("package_name")
-        prompt = sample.get("prompt")
-        code = sample.get("code")
-        if not isinstance(prompt, str):
-            raise ValueError(f"samples[{index}].prompt must be a string")
-        if not isinstance(package_name, str) or not package_name.strip():
-            raise ValueError(f"samples[{index}].package_name is required")
-        if not isinstance(code, str):
-            raise ValueError(f"samples[{index}].code must be a string")
-        actual = _ground_truth(sample.get("ground_truth"))
+        sample_id = sample.get("sample_id")
+        truth = ground_truth[sample_id]
+        label = truth.get("ground_truth")
+        if label == "INCONCLUSIVE" or truth.get("pypi_exists") is None:
+            results.append(
+                {
+                    "sample_id": sample_id,
+                    "package_name": truth.get("package_name"),
+                    "ground_truth": "INCONCLUSIVE",
+                    "actual_hallucination": None,
+                    "baseline_verdict": "INCONCLUSIVE",
+                    "jamp_verdict": "INCONCLUSIVE",
+                    "reason": "ground_truth_inconclusive",
+                }
+            )
+            continue
+        actual = _ground_truth(label)
+        if sample.get("request_status") != "SUCCESS":
+            results.append(
+                {
+                    "sample_id": sample_id,
+                    "package_name": truth.get("package_name"),
+                    "ground_truth": "HALLUCINATION" if actual else "CLEAN",
+                    "actual_hallucination": actual,
+                    "baseline_verdict": "INCONCLUSIVE",
+                    "jamp_verdict": "INCONCLUSIVE",
+                    "reason": sample.get("failure_reason", "generation_not_successful"),
+                }
+            )
+            continue
 
+        package_name = truth.get("package_name")
+        if (
+            sample.get("package_name") != package_name
+            or sample.get("prompt") != truth.get("prompt")
+        ):
+            results.append(
+                {
+                    "sample_id": sample_id,
+                    "package_name": package_name,
+                    "ground_truth": "HALLUCINATION" if actual else "CLEAN",
+                    "actual_hallucination": actual,
+                    "baseline_verdict": "INCONCLUSIVE",
+                    "jamp_verdict": "INCONCLUSIVE",
+                    "reason": "model_input_identity_mismatch",
+                }
+            )
+            continue
+
+        code = sample.get("code")
+        if not isinstance(code, str) or not code.strip():
+            results.append(
+                {
+                    "sample_id": sample_id,
+                    "package_name": package_name,
+                    "ground_truth": "HALLUCINATION" if actual else "CLEAN",
+                    "actual_hallucination": actual,
+                    "baseline_verdict": "INCONCLUSIVE",
+                    "jamp_verdict": "INCONCLUSIVE",
+                    "reason": "missing_or_unparseable_generated_code",
+                }
+            )
+            continue
+
+        package_exists = truth.get("pypi_exists")
+        if not isinstance(package_exists, bool):
+            raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
+        baseline = _baseline_verdict(code, package_exists)
         provenance = check_provenance(package_name)
         signature = check_signature(code, package_name)
         verdict = _jamp_verdict(provenance, signature)
-        baseline = (
-            "HALLUCINATION_CAUGHT"
-            if provenance.get("status") == "NOT_FOUND"
-            else "CLEAN"
-            if provenance.get("evidence", {}).get("pypi_exists") is True
-            else "INCONCLUSIVE"
-        )
         results.append(
             {
-                "sample_id": sample.get("sample_id", sample.get("id", f"sample-{index + 1:04d}")),
+                "sample_id": sample_id,
                 "package_name": package_name,
-                "prompt": prompt,
+                "prompt": truth.get("prompt"),
                 "ground_truth": "HALLUCINATION" if actual else "CLEAN",
                 "actual_hallucination": actual,
                 "baseline_verdict": baseline,
@@ -121,29 +251,43 @@ def evaluate(input_path: Path, output_path: Path) -> dict[str, Any]:
         )
 
     paired = [
-        row for row in results
-        if row["baseline_verdict"] in DEFINITIVE_PREDICTIONS
+        row
+        for row in results
+        if row["baseline_verdict"] in (DEFINITIVE_PREDICTIONS | BASELINE_HALLUCINATION)
         and row["jamp_verdict"] in DEFINITIVE_PREDICTIONS
+        and row["actual_hallucination"] is not None
     ]
     jamp_only = sum(
         (row["jamp_verdict"] == "HALLUCINATION_CAUGHT") == row["actual_hallucination"]
-        and (row["baseline_verdict"] == "HALLUCINATION_CAUGHT") != row["actual_hallucination"]
+        and (row["baseline_verdict"] in BASELINE_HALLUCINATION)
+        != row["actual_hallucination"]
         for row in paired
     )
     baseline_only = sum(
-        (row["baseline_verdict"] == "HALLUCINATION_CAUGHT") == row["actual_hallucination"]
-        and (row["jamp_verdict"] == "HALLUCINATION_CAUGHT") != row["actual_hallucination"]
+        (row["baseline_verdict"] in BASELINE_HALLUCINATION)
+        == row["actual_hallucination"]
+        and (row["jamp_verdict"] == "HALLUCINATION_CAUGHT")
+        != row["actual_hallucination"]
         for row in paired
     )
     report = {
         "schema_version": "jamp-hunt-evaluation-v0.3",
-        "evidence_class": payload.get("evidence_class", "UNSPECIFIED_INPUT")
-        if isinstance(payload, dict) else "UNSPECIFIED_INPUT",
-        "input_sha256": hashlib.sha256(raw_input).hexdigest(),
+        "evidence_class": "LIVE_LLM_WITH_LIVE_PYPI_PACKAGE_EXISTENCE_LABELS",
+        "qualification": "NOT_GRANTED",
+        "generation_manifest_sha256": manifest_hash,
+        "llm_responses_sha256": response_hash,
+        "ground_truth_sha256": ground_truth_hash,
         "attempted_sample_count": len(results),
-        "baseline": _accuracy(results, "baseline_verdict"),
+        "successful_generation_count": manifest.get("successful_requests"),
+        "failed_generation_count": manifest.get("failed_requests"),
+        "baseline": _accuracy(results, "baseline_verdict", baseline=True),
         "jamp": _accuracy(results, "jamp_verdict"),
-        "inconclusive_count": sum(row["jamp_verdict"] == "INCONCLUSIVE" for row in results),
+        "inconclusive_count": sum(
+            row["jamp_verdict"] == "INCONCLUSIVE" for row in results
+        ),
+        "ground_truth_inconclusive_count": sum(
+            row["ground_truth"] == "INCONCLUSIVE" for row in results
+        ),
         "paired_scored_count": len(paired),
         "mcnemar_exact_two_sided": {
             "jamp_correct_baseline_incorrect": jamp_only,
@@ -163,13 +307,12 @@ def evaluate(input_path: Path, output_path: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path, help="JSON file with LLM samples")
-    parser.add_argument(
-        "--output", type=Path, default=Path("results_v0.3.json"),
-        help="output report path (default: results_v0.3.json)",
-    )
+    parser.add_argument("--input", type=Path, default=Path("llm_responses_v3.json"))
+    parser.add_argument("--manifest", type=Path, default=Path("generation_manifest.json"))
+    parser.add_argument("--ground-truth", type=Path, default=Path("ground_truth_v3.json"))
+    parser.add_argument("--output", type=Path, default=Path("results_v0.3.json"))
     args = parser.parse_args()
-    report = evaluate(args.input, args.output)
+    report = evaluate(args.input, args.output, args.manifest, args.ground_truth)
     print(
         json.dumps(
             {
@@ -177,6 +320,7 @@ def main() -> int:
                 "attempted_sample_count": report["attempted_sample_count"],
                 "paired_scored_count": report["paired_scored_count"],
                 "inconclusive_count": report["inconclusive_count"],
+                "qualification": report["qualification"],
             },
             sort_keys=True,
         )

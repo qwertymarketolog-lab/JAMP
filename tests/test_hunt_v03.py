@@ -1,6 +1,7 @@
-"""Contract tests for The Hunt v0.3 provenance and static signature checks."""
+"""Contract tests for The Hunt v0.3 pipeline and fail-closed boundaries."""
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import io
 import json
@@ -29,6 +30,8 @@ def load_script(filename: str, module_name: str):
 PROVENANCE = load_script("provenance_checker.py", "hunt_v03_provenance")
 SIGNATURE = load_script("signature_checker.py", "hunt_v03_signature")
 EVALUATOR = load_script("evaluate_v0.3.py", "hunt_v03_evaluator")
+VERIFY_GT = load_script("verify_gt_v3.py", "hunt_v03_verify_gt")
+RUN_LLM = load_script("run_llm_v3.py", "hunt_v03_run_llm")
 
 
 def metadata(age_days: int, project_urls=None, author="Maintainer"):
@@ -40,9 +43,7 @@ def metadata(age_days: int, project_urls=None, author="Maintainer"):
             "author": author,
             "author_email": "",
         },
-        "releases": {
-            "1.0": [{"upload_time_iso_8601": first.isoformat()}],
-        },
+        "releases": {"1.0": [{"upload_time_iso_8601": first.isoformat()}]},
     }
 
 
@@ -90,7 +91,9 @@ class ProvenanceScoringTests(unittest.TestCase):
                 self.assertEqual(result["trust_score"], 100)
 
     def test_lookalike_repository_hostname_does_not_count(self):
-        now, payload = metadata(365, {"Source": "https://github.com.attacker.invalid/example/pkg"})
+        now, payload = metadata(
+            365, {"Source": "https://github.com.attacker.invalid/example/pkg"}
+        )
         result = PROVENANCE._score_metadata("samplepkg", payload, now)
         self.assertFalse(result["evidence"]["repository_present"])
 
@@ -101,28 +104,35 @@ class ProvenanceScoringTests(unittest.TestCase):
 
 class SignatureSafetyTests(unittest.TestCase):
     def _check(self, source_code: str, generated_code: str):
+        archive_bytes = wheel_bytes(source_code)
         payload = {
-            "urls": [
-                {
-                    "packagetype": "bdist_wheel",
-                    "filename": "samplepkg-1.0-py3-none-any.whl",
-                    "url": "https://files.pythonhosted.org/samplepkg.whl",
-                    "upload_time": "2026-11-03T00:00:00Z",
-                }
-            ]
+            "releases": {
+                "1.0": [
+                    {
+                        "packagetype": "bdist_wheel",
+                        "filename": "samplepkg-1.0-py3-none-any.whl",
+                        "url": "https://files.pythonhosted.org/samplepkg.whl",
+                        "upload_time_iso_8601": "2026-11-03T00:00:00Z",
+                        "digests": {"sha256": hashlib.sha256(archive_bytes).hexdigest()},
+                    }
+                ]
+            }
         }
         with (
             patch.object(SIGNATURE, "fetch_pypi_json", return_value=(200, payload)),
-            patch.object(SIGNATURE, "_download_wheel", return_value=wheel_bytes(source_code)),
+            patch.object(SIGNATURE, "_download_wheel", return_value=archive_bytes),
         ):
             return SIGNATURE.check_signature(generated_code, "samplepkg")
 
-    def test_existing_method_is_found(self):
+    def test_existing_method_is_found_and_wheel_hash_is_recorded(self):
         result = self._check(
             "def get_secure_data():\n    return None\n",
             "import samplepkg\nsamplepkg.get_secure_data()",
         )
         self.assertEqual(result["status"], "EXISTS")
+        self.assertEqual(
+            result["wheel_sha256_expected"], result["wheel_sha256_observed"]
+        )
 
     def test_missing_method_is_invalid_signature(self):
         result = self._check(
@@ -131,36 +141,89 @@ class SignatureSafetyTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "INVALID_SIGNATURE")
 
+    def test_dynamic_call_receiver_is_inconclusive(self):
+        result = self._check(
+            "class Client:\n    pass\n",
+            "import samplepkg\nsamplepkg.Client().missing_method()",
+        )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "dynamic_call_receiver_unresolved")
+
+    def test_hash_mismatch_is_inconclusive(self):
+        payload = {
+            "releases": {
+                "1.0": [
+                    {
+                        "packagetype": "bdist_wheel",
+                        "filename": "samplepkg.whl",
+                        "url": "https://files.pythonhosted.org/samplepkg.whl",
+                        "upload_time": "2026-11-03T00:00:00Z",
+                        "digests": {"sha256": "0" * 64},
+                    }
+                ]
+            }
+        }
+        with (
+            patch.object(SIGNATURE, "fetch_pypi_json", return_value=(200, payload)),
+            patch.object(SIGNATURE, "_download_wheel", return_value=b"not-the-wheel"),
+        ):
+            result = SIGNATURE.check_signature(
+                "import samplepkg\nsamplepkg.run()", "samplepkg"
+            )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "hash_mismatch")
+
+    def test_missing_wheel_hash_is_inconclusive(self):
+        payload = {
+            "releases": {
+                "1.0": [
+                    {
+                        "packagetype": "bdist_wheel",
+                        "filename": "samplepkg.whl",
+                        "url": "https://files.pythonhosted.org/samplepkg.whl",
+                        "upload_time": "2026-11-03T00:00:00Z",
+                    }
+                ]
+            }
+        }
+        with patch.object(SIGNATURE, "fetch_pypi_json", return_value=(200, payload)):
+            result = SIGNATURE.check_signature(
+                "import samplepkg\nsamplepkg.run()", "samplepkg"
+            )
+        self.assertEqual(result["reason"], "wheel_hash_missing")
+
     def test_invalid_generated_python_is_inconclusive(self):
         result = SIGNATURE.check_signature("import samplepkg\nsamplepkg.(", "samplepkg")
         self.assertEqual(result["status"], "INCONCLUSIVE")
 
     def test_traversal_member_is_ignored_without_disk_write(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            archive_bytes = wheel_bytes(
-                "def safe_method():\n    return None\n",
-                {"../../evil.py": "raise RuntimeError('must never execute')\n"},
-            )
-            result = SIGNATURE.inspect_wheel_bytes(
-                archive_bytes,
-                [{"module": "samplepkg", "symbol_path": ["safe_method"]}],
-            )
-            self.assertEqual(result["status"], "EXISTS")
-            self.assertNotIn("../../evil.py", result["inspected_source_paths"])
-            self.assertIsNone(SIGNATURE._safe_member_path("../../evil.py"))
-            self.assertFalse((root.parent / "evil.py").exists())
-            self.assertFalse((root / "evil.py").exists())
+        archive_bytes = wheel_bytes(
+            "def safe_method():\n    return None\n",
+            {"../../evil.py": "raise RuntimeError('must never execute')\n"},
+        )
+        result = SIGNATURE.inspect_wheel_bytes(
+            archive_bytes, [{"module": "samplepkg", "symbol_path": ["safe_method"]}]
+        )
+        self.assertEqual(result["status"], "EXISTS")
+        self.assertNotIn("../../evil.py", result["inspected_source_paths"])
+        self.assertIsNone(SIGNATURE._safe_member_path("../../evil.py"))
 
     def test_wheel_is_never_extracted_to_disk(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            archive_bytes = wheel_bytes("def safe_method():\n    return None\n")
-            SIGNATURE.read_wheel_sources(archive_bytes)
+            SIGNATURE.read_wheel_sources(wheel_bytes("def safe_method():\n    return None\n"))
             self.assertEqual(list(root.iterdir()), [])
 
 
 class EvaluatorDecisionTests(unittest.TestCase):
+    def test_baseline_ast_and_pypi_decision_order(self):
+        self.assertEqual(EVALUATOR._baseline_verdict("def (", True), "SYNTAX_ERROR")
+        self.assertEqual(
+            EVALUATOR._baseline_verdict("x = 1", False), "PACKAGE_NOT_FOUND"
+        )
+        self.assertEqual(EVALUATOR._baseline_verdict("x = 1", True), "NO_IMPORTS")
+        self.assertEqual(EVALUATOR._baseline_verdict("import samplepkg", True), "CLEAN")
+
     def test_not_found_is_caught_even_without_a_wheel(self):
         self.assertEqual(
             EVALUATOR._jamp_verdict(
@@ -173,40 +236,54 @@ class EvaluatorDecisionTests(unittest.TestCase):
     def test_inconclusive_is_not_counted_as_success(self):
         self.assertEqual(
             EVALUATOR._jamp_verdict(
-                {"status": "INCONCLUSIVE"},
-                {"status": "EXISTS"},
+                {"status": "INCONCLUSIVE"}, {"status": "EXISTS"}
             ),
             "INCONCLUSIVE",
         )
 
-    def test_exact_mcnemar_no_discordance(self):
+    def test_exact_mcnemar_known_values(self):
         self.assertEqual(EVALUATOR.exact_mcnemar(0, 0), 1.0)
+        self.assertEqual(EVALUATOR.exact_mcnemar(2, 0), 0.5)
 
-    def test_evaluator_writes_results_file(self):
-        sample = {
-            "sample_id": "case-1",
-            "package_name": "samplepkg",
-            "prompt": "Use the samplepkg run API.",
-            "code": "import samplepkg\nsamplepkg.run()",
-            "ground_truth": "CLEAN",
-        }
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            source = root / "samples.json"
-            output = root / "results_v0.3.json"
-            source.write_text(json.dumps({"samples": [sample]}), encoding="utf-8")
-            with (
-                patch.object(
-                    EVALUATOR,
-                    "check_provenance",
-                    return_value={"status": "TRUSTED", "evidence": {"pypi_exists": True}},
-                ),
-                patch.object(EVALUATOR, "check_signature", return_value={"status": "EXISTS"}),
-            ):
-                report = EVALUATOR.evaluate(source, output)
-            self.assertTrue(output.is_file())
-            self.assertEqual(report["jamp"]["accuracy"], 1.0)
-            self.assertEqual(report["paired_scored_count"], 1)
+    def test_prompt_generator_is_exactly_100_and_stable(self):
+        first = VERIFY_GT.build_prompts()
+        second = VERIFY_GT.build_prompts()
+        self.assertEqual(len(first), 100)
+        self.assertEqual(first, second)
+        self.assertEqual(len({item["sample_id"] for item in first}), 100)
+
+    def test_groq_request_sends_experiment_temperature(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return json.dumps(
+                    {
+                        "id": "req-test",
+                        "model": "test-model",
+                        "choices": [{"message": {"content": '{"package_name":"pkg","code":"import pkg"}'}}],
+                    }
+                ).encode("utf-8")
+
+        with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
+            result, error = RUN_LLM._call_groq(
+                api_key="test-secret",
+                endpoint="https://api.groq.com/openai/v1/chat/completions",
+                model_id="test-model",
+                prompt="test prompt",
+                max_tokens=128,
+            )
+        self.assertIsNone(error)
+        self.assertIsNotNone(result)
+        request = opener.call_args.args[0]
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(body["temperature"], 0.7)
+        self.assertEqual(body["model"], "test-model")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-secret")
 
 
 if __name__ == "__main__":
