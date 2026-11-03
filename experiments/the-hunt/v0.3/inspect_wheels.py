@@ -246,9 +246,11 @@ def analyze_wheel(
             for node in ast.walk(tree):
                 if isinstance(node, ast.Name) and node.id == "TYPE_CHECKING":
                     type_checking_hits.append(name)
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if node.name == "__getattr__":
-                        getattr_hits.append(name)
+                if (
+                    isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and node.name == "__getattr__"
+                ):
+                    getattr_hits.append(name)
                 if isinstance(node, ast.Call):
                     function = node.func
                     if (
@@ -281,11 +283,10 @@ def analyze_wheel(
                                                     f"{name}:{node.lineno}: "
                                                     f"{module_name} -> {symbols}"
                                                 )
-                if isinstance(node, ast.ClassDef):
-                    if node.name == "LazyModule":
-                        lazy_module_hits.append(name)
-                    if node.name == "Celery":
-                        celery_class_hits.append(name)
+                if isinstance(node, ast.ClassDef) and node.name == "LazyModule":
+                    lazy_module_hits.append(name)
+                if isinstance(node, ast.ClassDef) and node.name == "Celery":
+                    celery_class_hits.append(name)
 
             for line_number, line in enumerate(source.splitlines(), start=1):
                 if any(
