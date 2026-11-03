@@ -139,10 +139,10 @@ def verify_ground_truth(output_dir: Path | None = None) -> dict[str, Any]:
     }
     destination.mkdir(parents=True, exist_ok=True)
     (destination / "ground_truth.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "chr(10)", encoding="utf-8"
+        json.dumps(report, indent=2, sort_keys=True) + chr(10), encoding="utf-8"
     )
     (destination / "valid_fakes.json").write_text(
-        json.dumps(verified_fakes, indent=2) + "chr(10)", encoding="utf-8"
+        json.dumps(verified_fakes, indent=2) + chr(10), encoding="utf-8"
     )
     print(json.dumps(report, indent=2, sort_keys=True))
     return report
