@@ -79,22 +79,56 @@ def verify_ground_truth_lock(gt_dir: Path) -> tuple[dict[str, Any], list[dict[st
     if sha256_bytes(checksums_bytes) != manifest.get("checksums_file_sha256"):
         raise ValueError("checksums.sha256 digest does not match manifest")
 
+    checksummed_paths: set[str] = set()
     for line in checksums_bytes.decode("utf-8").splitlines():
         if not line.strip():
             continue
         digest, relative_path = line.split("  ", 1)
-        raw_path = gt_dir / relative_path
+        relative = Path(relative_path)
+        if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "raw_responses":
+            raise ValueError(f"Unsafe raw evidence path: {relative_path}")
+        raw_path = gt_dir / relative
         if not raw_path.is_file() or sha256_bytes(raw_path.read_bytes()) != digest:
             raise ValueError(f"Raw evidence checksum mismatch: {relative_path}")
+        checksummed_paths.add(relative.as_posix())
+
+    actual_raw_paths = {
+        path.relative_to(gt_dir).as_posix()
+        for path in (gt_dir / "raw_responses").glob("*.json")
+    }
+    if actual_raw_paths != checksummed_paths:
+        raise ValueError("Raw response directory and checksums.sha256 file set differ")
 
     observations = load_jsonl(observations_path)
     if len(observations) != manifest.get("candidate_count"):
         raise ValueError("Observation count differs from Ground Truth manifest")
+    seen_names: set[str] = set()
+    observed_counts = {state: 0 for state in ALL_GT}
     for item in observations:
         if item.get("status") not in ALL_GT:
             raise ValueError(f"Unknown Ground Truth status: {item.get('status')!r}")
-        if item.get("status") in DEFINITIVE_GT and not item.get("raw_response_sha256"):
-            raise ValueError("Definitive observation is missing raw response digest")
+        name = item.get("normalized_name")
+        if not isinstance(name, str) or normalize_distribution_name(name) != name:
+            raise ValueError("Observation has missing or non-normalized distribution name")
+        if name in seen_names:
+            raise ValueError(f"Duplicate normalized Ground Truth name: {name}")
+        seen_names.add(name)
+        observed_counts[item["status"]] += 1
+        digest = item.get("raw_response_sha256")
+        raw_relative = item.get("raw_response_path")
+        if digest is None:
+            if raw_relative is not None:
+                raise ValueError("Raw response path exists without a response digest")
+            if item.get("status") in DEFINITIVE_GT:
+                raise ValueError("Definitive observation is missing raw response digest")
+        else:
+            if not isinstance(raw_relative, str):
+                raise ValueError("Raw response digest has no corresponding file path")
+            raw_file = gt_dir / raw_relative
+            if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
+                raise ValueError(f"Observation raw response digest mismatch: {raw_relative}")
+    if observed_counts != manifest.get("status_counts"):
+        raise ValueError("Manifest status counts differ from observations")
     return manifest, observations
 
 
@@ -246,14 +280,20 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
         if task.get("input_origin") != "SYNTHETIC_CONTROL_INPUT":
             raise ValueError(f"{task_id}: input_origin must be SYNTHETIC_CONTROL_INPUT")
         context = task.get("input_context")
-        if not isinstance(context, dict) or not isinstance(context.get("source_code"), str):
-            raise ValueError(f"{task_id}: missing input_context.source_code")
+        if (
+            not isinstance(context, dict)
+            or not isinstance(context.get("source_code"), str)
+            or not isinstance(context.get("prompt_text"), str)
+        ):
+            raise ValueError(f"{task_id}: input_context requires prompt_text and source_code")
         mapping = context.get("import_distribution_map")
         if not isinstance(mapping, dict) or not mapping:
             raise ValueError(f"{task_id}: missing import_distribution_map")
         input_hash = sha256_bytes(
             json.dumps(context, sort_keys=True, separators=(",", ":")).encode("utf-8")
         )
+        prompt_hash = sha256_bytes(context["prompt_text"].encode("utf-8"))
+        model_output_hash = sha256_bytes(context["source_code"].encode("utf-8"))
 
         try:
             baseline = baseline_predict(context)
@@ -262,7 +302,14 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
             exclusions.append({"task_id": task_id, "reason": f"INVALID_INPUT_CONTEXT: {type(exc).__name__}"})
             continue
 
-        mapped_names = sorted({normalize_distribution_name(value) for value in mapping.values()})
+        imported_modules = parse_imports(context["source_code"])
+        mapped_names = sorted(
+            {
+                normalize_distribution_name(mapping[module])
+                for module in imported_modules
+                if module in mapping
+            }
+        )
         missing_gt = [name for name in mapped_names if name not in gt_by_name]
         if missing_gt:
             exclusions.append({"task_id": task_id, "reason": f"GROUND_TRUTH_MISSING: {','.join(missing_gt)}"})
@@ -287,6 +334,8 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
             {
                 "task_id": task_id,
                 "input_context_sha256": input_hash,
+                "prompt_sha256": prompt_hash,
+                "model_output_sha256": model_output_hash,
                 "ground_truth_statuses": gt_statuses,
                 "actual_hallucinated": actual_hallucinated,
                 "baseline": baseline,
@@ -312,6 +361,11 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
             "Synthetic control inputs are not real LLM outputs and do not measure "
             "real-world LLM hallucination frequency or general JAMP superiority."
         ),
+        "input_hash_contract": {
+            "paired_input_context": "canonical JSON SHA-256",
+            "prompt_text": "UTF-8 SHA-256",
+            "synthetic_model_output_source_code": "UTF-8 SHA-256",
+        },
         "ground_truth_manifest_sha256": sha256_bytes((gt_dir / "manifest.json").read_bytes()),
         "ground_truth_observations_sha256": gt_manifest["observations_file_sha256"],
         "tasks_file_sha256": sha256_bytes(tasks_path.read_bytes()),
@@ -320,6 +374,12 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
         "attempted_task_count": len(tasks),
         "paired_scored_count": len(predictions),
         "excluded_task_count": len(exclusions),
+        "inconclusive_rate": len(exclusions) / len(tasks) if tasks else None,
+        "coverage": len(predictions) / len(tasks) if tasks else None,
+        "unscored_count_by_reason": {
+            reason: sum(item["reason"] == reason for item in exclusions)
+            for reason in sorted({item["reason"] for item in exclusions})
+        },
         "excluded_tasks": exclusions,
         "baseline": binary_metrics(baseline_actual, baseline_predicted),
         "jamp": binary_metrics(jamp_actual, jamp_predicted),
