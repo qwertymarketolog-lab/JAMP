@@ -568,7 +568,9 @@ def evaluate(
         "cache_ground_truth_workflow_run_id": cache_manifest.get("ground_truth_workflow_run_id"),
         "cache_ground_truth_artifact_id": cache_manifest.get("ground_truth_artifact_id"),
         "cache_ground_truth_artifact_digest": cache_manifest.get("ground_truth_artifact_digest"),
-        "cache_ground_truth_workflow_head_sha": cache_manifest.get("ground_truth_workflow_head_sha"),
+        "cache_ground_truth_workflow_head_sha": cache_manifest.get(
+            "ground_truth_workflow_head_sha"
+        ),
         "cache_ground_truth_workflow_completed_at_utc": cache_manifest.get(
             "ground_truth_workflow_completed_at_utc"
         ),
