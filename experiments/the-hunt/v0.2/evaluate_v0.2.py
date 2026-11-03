@@ -283,6 +283,9 @@ def load_jamp_cache(
             observed_packages[name] = status
             raw_path = item.get("raw_response_path")
             digest = item.get("raw_response_sha256")
+            if item.get("endpoint") != f"https://pypi.org/pypi/{name}/json":
+                raise ValueError(f"POST-REVEAL endpoint mismatch for {name}")
+            raw_body: bytes | None = None
             if raw_path is None:
                 if digest is not None:
                     raise ValueError("POST-REVEAL raw digest exists without a path")
@@ -295,7 +298,32 @@ def load_jamp_cache(
                 raw_file = cache_dir / relative
                 if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
                     raise ValueError(f"POST-REVEAL raw response digest mismatch: {raw_path}")
+                raw_body = raw_file.read_bytes()
                 expected_raw.add(relative.as_posix())
+
+            http_status = item.get("http_status")
+            if http_status == 404:
+                derived_status = "NOT_FOUND_ON_PYPI"
+            elif http_status == 200 and raw_body is not None:
+                try:
+                    payload = json.loads(raw_body)
+                    info = payload.get("info") if isinstance(payload, dict) else None
+                    response_name = info.get("name") if isinstance(info, dict) else None
+                    if not isinstance(response_name, str):
+                        derived_status = "INCONCLUSIVE"
+                    elif normalize_distribution_name(response_name) != name:
+                        derived_status = "AMBIGUOUS"
+                    else:
+                        derived_status = "EXISTS_ON_PYPI"
+                except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+                    derived_status = "INCONCLUSIVE"
+            else:
+                derived_status = "INCONCLUSIVE"
+            if status != derived_status:
+                raise ValueError(
+                    f"POST-REVEAL status does not match raw HTTP evidence for {name}: "
+                    f"{status!r} != {derived_status!r}"
+                )
         checksum_paths: set[str] = set()
         for line in checksums_bytes.decode("utf-8").splitlines():
             if not line.strip():
@@ -317,6 +345,12 @@ def load_jamp_cache(
             raise ValueError("POST-REVEAL raw-response files and checksum manifest differ")
         if cache.get("packages") != observed_packages:
             raise ValueError("POST-REVEAL package map differs from raw observations")
+        expected_counts = {
+            state: sum(value == state for value in observed_packages.values())
+            for state in ALL_GT
+        }
+        if cache.get("status_counts") != expected_counts:
+            raise ValueError("POST-REVEAL status counts differ from observations")
     else:
         raise ValueError(f"Unsupported evaluation mode: {evaluation_mode}")
 
@@ -399,6 +433,16 @@ def evaluate(
     tasks = load_jsonl(tasks_path)
     if not tasks:
         raise ValueError("Paired evaluation requires at least one task")
+    if evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK":
+        if len(tasks) != 200 or set(cache) != set(gt_by_name):
+            raise ValueError("POST-REVEAL evaluation requires 200 tasks and a complete 200-name cache")
+        task_names: list[str] = []
+        for task in tasks:
+            context = task.get("input_context", {})
+            mapping = context.get("import_distribution_map", {})
+            task_names.extend(normalize_distribution_name(value) for value in mapping.values())
+        if len(task_names) != 200 or len(set(task_names)) != 200 or set(task_names) != set(gt_by_name):
+            raise ValueError("POST-REVEAL tasks must map one-to-one to all 200 Ground Truth names")
 
     predictions: list[dict[str, Any]] = []
     exclusions: list[dict[str, str]] = []
@@ -509,6 +553,12 @@ def evaluate(
         "interpretation_limit": (
             "Synthetic control inputs are not real LLM outputs and do not measure "
             "real-world LLM hallucination frequency or general JAMP superiority."
+            + (
+                " POST-REVEAL registry observations are not a blind pre-reveal cache "
+                "and cannot establish pre-reveal independence."
+                if evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK"
+                else ""
+            )
         ),
         "input_hash_contract": {
             "paired_input_context": "canonical JSON SHA-256",
