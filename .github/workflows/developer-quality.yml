@@ -68,11 +68,11 @@ jobs:
               esac
             done
 
-            if (("${#root_files[@]}")); then
+            if ((${#root_files[@]})); then
               MYPYPATH=src mypy --config-file=/dev/null --strict --follow-imports=skip --python-version 3.11 "${root_files[@]}"
             fi
 
-            if (("${#src_files[@]}")); then
+            if ((${#src_files[@]})); then
               MYPYPATH=src mypy --config-file=pyproject.toml "${src_files[@]}"
             fi
 
