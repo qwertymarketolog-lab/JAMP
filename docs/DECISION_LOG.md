@@ -712,3 +712,40 @@ All eight applicable workflow runs fetched for exact main SHA `c6e5c989a7d5f6ecf
 - Decision boundary: this entry records the proposal only. No research, installation, dependency addition, repository change, or qualification claim is authorized by this record.
 - Next decision: product owner decides whether Agent Supply Chain becomes a future direction. Only after an explicit affirmative decision may a separately scoped read-only review begin, followed by component selection, SkillSpector evaluation, and evidence-ledger work.
 - If not selected: leave this proposal OBSERVED / PROPOSED; DEC-001 remains `HOLD` (`14/18` measured, four Verdict controls skipped due to `PROVIDER_NOT_CONFIGURED`; Verdict qualification remains `INCONCLUSIVE`).
+
+
+------------------------------------------------------------------------
+
+## JAMP-DEC-012 — Stage Status Registry — Initial snapshot
+
+- Date: 2026-11-03
+- Status: `OBSERVED` — transcription of the status declarations in `docs/ROADMAP_V2.md`; this entry does not independently qualify runtime behavior.
+- Source SHA: `9085acafaeb8dceb974fe5e23e38dac9f29f9163` (ROADMAP_V2.md blob `a6c38945fae309849449cd9284dc39c6469185b5`; STATUS.md blob `775816995ae2e09af776f3db07acb8765f67d091`).
+- Rule: a Stage may move to `VERIFIED` only when its exact scope has terminal Run → Job → Artifact evidence on the relevant SHA. Historical evidence remains historical; a planned stage remains planned.
+
+| Stage | Roadmap status at source SHA | Evidence recorded by ROADMAP_V2.md | Registry disposition |
+|---|---|---|---|
+| 1 — MVP (Telegram Integration) | NOT VERIFIED IN CURRENT MAIN | No sufficient current-main evidence chain cited in STATUS.md. | NOT VERIFIED |
+| 2 — E2 (Fail-Closed Verdict) | NOT VERIFIED IN CURRENT MAIN | Roadmap requires contract, tests, and terminal CI evidence; none is established by the roadmap itself. | NOT VERIFIED |
+| 3 — Data Experiments (Financial & Stock) | HISTORICAL EVIDENCE; SCOPE LIMITED | Commit `733342bbd572c1f740080f4f68139f01b66c1c42`; Run `40226538958`; Job `121268992609`; Artifact `12611043936`. | HISTORICAL; not current-main qualification |
+| 4 — MCP Guard | NOT VERIFIED IN CURRENT MAIN | No source/test/terminal evidence chain cited in the roadmap. | NOT VERIFIED |
+| 5 — Signed Verdict (JampVerdict) | NOT VERIFIED IN CURRENT MAIN | HMAC-SHA256 implementation, format, verification, and tests are not established by the roadmap. | NOT VERIFIED |
+| 6 — Qualification Engine (E3) | HISTORICAL, BOUNDED MVP EVIDENCE | Financial Audit on commit `733342bbd572c1f740080f4f68139f01b66c1c42`; reported 5/5, score 1.0 for GLM on `synthetic_financial_extraction_v1`. | HISTORICAL; bounded synthetic set only |
+| 7 — Trust Layer API (B2B Endpoint) | PLANNED | Design and implementation of execute/verify endpoints are future work. | PLANNED |
+| 8 — Production MCP & Real Integrations | PLANNED | Real integrations require explicit permissions and independent output verification. | PLANNED |
+| 9 — The First B2B Pilot (Financial/Data Audit) | PLANNED | Real scenario, baseline, error/false-positive/time/economic measurements required. | PLANNED |
+| 10 — Scaling & Commercialization | PLANNED | Benchmark expansion, persistence, UI, access, retention, SLO and responsibility boundaries are future work. | PLANNED |
+
+### Issue mapping note — #376
+
+Issue #376 is titled “Roadmap: Stage 3 — The Hunt (Proving real-world value)”. Its body proposes three alternative experiment paths (code audit, financial/data extraction, and tool security/MCP), then requires scenario selection and protocol/metrics. The roadmap's Stage 3 label is “Data Experiments (Financial & Stock)”. These descriptions overlap through financial/data extraction but are not textually identical. Therefore #376 is a candidate Stage-3 execution issue, not a proven one-to-one mapping; confirm scope against the selected scenario before starting it. Do not rename the roadmap stage from the issue title or infer that #376 is exclusively a financial/stock experiment.
+
+### Limits and next transitions
+
+- This is a status registry snapshot, not a new verification run and not a claim that any Stage works in production.
+- The current `STATUS.md` is a research Track A / P18.4 / P24-B snapshot and does not independently qualify Stages 1–10.
+- No Stage is marked `VERIFIED` in this registry.
+- Update this registry only by a subsequent append-only DEC-012 update with exact source SHA and evidence references. Do not silently rewrite this snapshot.
+- Related open work reviewed on 2026-11-03: #501 (local lint entry point), #464 (Mypy changed-file routing), #466 (cleanup explicitly gated on #463), #363 (research/design only), and #469 (diagnostic artifact follow-up; explicitly not blocking #463). Their issue bodies do not themselves qualify any roadmap Stage.
+
+Decision: preserve the roadmap's evidence boundary. No Stage promotion, product launch, or production-readiness claim is authorized by this registry entry.
