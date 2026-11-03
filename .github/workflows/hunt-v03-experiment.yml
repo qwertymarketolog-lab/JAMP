@@ -3,10 +3,24 @@ name: The Hunt v0.3 - Real LLM Experiment
 on:
   workflow_dispatch:
     inputs:
-      groq_model:
-        description: Exact Groq model ID to use; it is recorded in the generation manifest
+      provider:
+        description: OpenAI-compatible provider
+        required: true
+        type: choice
+        options: [groq, anymodel]
+      model:
+        description: Exact provider model ID
         required: true
         type: string
+      base_url:
+        description: Provider API base URL (blank uses provider default)
+        required: false
+        type: string
+      limit:
+        description: "1 for transport control; 100 for paired evaluation"
+        required: true
+        type: choice
+        options: ["1", "100"]
 
 permissions:
   contents: read
@@ -18,55 +32,66 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Validate pinned model input
+      - name: Validate experiment inputs and selected secret
         env:
-          GROQ_MODEL: ${{ inputs.groq_model }}
+          PROVIDER: ${{ inputs.provider }}
+          MODEL: ${{ inputs.model }}
+          LIMIT: ${{ inputs.limit }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "${GROQ_MODEL//[[:space:]]/}" ]]; then
-            echo "::error::workflow_dispatch input groq_model must not be empty"
+          [[ -n "${MODEL//[[:space:]]/}" ]] || { echo "::error::model must not be empty"; exit 1; }
+          [[ "$LIMIT" == "1" || "$LIMIT" == "100" ]] || { echo "::error::limit must be 1 or 100"; exit 1; }
+          if [[ "$PROVIDER" == "anymodel" && -z "$ANYMODEL_API_KEY" ]]; then
+            echo "::error::ANYMODEL_API_KEY repository secret is missing"
             exit 1
           fi
-          printf 'Pinned Groq model: %s\n' "$GROQ_MODEL"
-
+          if [[ "$PROVIDER" == "groq" && -z "$GROQ_API_KEY" ]]; then
+            echo "::error::GROQ_API_KEY repository secret is missing"
+            exit 1
+          fi
+          printf 'Provider: %s\nModel: %s\nLimit: %s\n' "$PROVIDER" "$MODEL" "$LIMIT"
       - name: 1. Generate Ground Truth (PyPI)
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/verify_gt_v3.py \
             --prompts experiments/the-hunt/v0.3/data/prompts.json \
             --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json
-
-      - name: 2. Generate Real LLM Responses (Groq)
+      - name: 2. Generate Provider Responses
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GROQ_MODEL: ${{ inputs.groq_model }}
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          PROVIDER: ${{ inputs.provider }}
+          MODEL: ${{ inputs.model }}
+          BASE_URL: ${{ inputs.base_url }}
+          LIMIT: ${{ inputs.limit }}
         run: |
           set -euo pipefail
-          python experiments/the-hunt/v0.3/run_llm_v3.py \
-            --prompts experiments/the-hunt/v0.3/data/prompts.json \
-            --responses experiments/the-hunt/v0.3/data/llm_responses_v3.json \
-            --manifest experiments/the-hunt/v0.3/data/generation_manifest.json
-
-      - name: 3. Paired Evaluation (JAMP vs Baseline)
+          args=(--provider "$PROVIDER" --model "$MODEL" --limit "$LIMIT"
+            --prompts experiments/the-hunt/v0.3/data/prompts.json
+            --responses experiments/the-hunt/v0.3/data/llm_responses_v3.json
+            --manifest experiments/the-hunt/v0.3/data/generation_manifest.json)
+          if [[ -n "$BASE_URL" ]]; then args+=(--base-url "$BASE_URL"); fi
+          python experiments/the-hunt/v0.3/run_llm_v3.py "${args[@]}"
+      - name: 3. Paired Evaluation (100 samples only)
+        if: inputs.limit == '100'
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/evaluate_v0.3.py \
             --input experiments/the-hunt/v0.3/data/llm_responses_v3.json \
             --manifest experiments/the-hunt/v0.3/data/generation_manifest.json \
             --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json \
-            --output experiments/the-hunt/v0.3/results/results_v0.3.json
-
+            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json
       - name: Upload Full Evidence Bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: the-hunt-v0.3-evidence
-          path: experiments/the-hunt/v0.3/
+          path: experiments/the-hunt/v0.3/data/
           if-no-files-found: warn
           retention-days: 90

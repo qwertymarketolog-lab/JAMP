@@ -125,8 +125,8 @@ def evaluate(
         or expected_prompt_hash != ground_truth_payload.get("prompt_dataset_sha256")
     ):
         raise ValueError("prompt dataset SHA-256 differs between manifest and ground truth")
-    if manifest.get("provider_name") != "groq":
-        raise ValueError("generation manifest provider_name must be groq")
+    if manifest.get("provider_name") not in {"groq", "anymodel"}:
+        raise ValueError("generation manifest provider_name must be groq or anymodel")
     if manifest.get("temperature") != 0.7:
         raise ValueError("generation manifest temperature must be exactly 0.7")
     if not isinstance(manifest.get("requested_model_id"), str) or not manifest[
