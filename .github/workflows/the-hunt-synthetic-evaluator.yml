@@ -12,9 +12,9 @@ concurrency:
 
 jobs:
   evaluate:
-    name: Run paired evaluator against synthetic fixture
+    name: Verify PyPI ground truth and run paired evaluator
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout selected ref
         uses: actions/checkout@v4
@@ -26,18 +26,28 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run evaluator (live PyPI, no OpenRouter)
+      - name: Verify candidate ground truth against live PyPI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/code-audit/verify_ground_truth.py > ground-truth-verification.log
+
+      - name: Run strict paired evaluator
         shell: bash
         run: |
           set -euo pipefail
           python experiments/the-hunt/code-audit/evaluate.py > evaluator-report.json
           cat evaluator-report.json
 
-      - name: Upload evaluator report
+      - name: Upload evidence bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: the-hunt-synthetic-evaluator-report
-          path: evaluator-report.json
+          name: the-hunt-methodology-evidence
+          path: |
+            ground-truth-verification.log
+            evaluator-report.json
+            experiments/the-hunt/code-audit/ground_truth.json
+            experiments/the-hunt/code-audit/valid_fakes.json
           if-no-files-found: warn
           retention-days: 14
