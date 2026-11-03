@@ -42,29 +42,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -v tests/research/exp18/test_audit_export.py
-      - name: Ruff changed Python files
-        shell: bash
-        run: |
-          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
-          if ((${#files[@]})); then
-            ruff check "${files[@]}"
-
-            format_files=()
-            for file in "${files[@]}"; do
-              case "$file" in
-                src/jamp/domain/causal.py|src/jamp/domain/consistency.py|src/jamp/domain/event.py|src/jamp/domain/replay.py|src/jamp/events/dag.py|src/jamp/p17/evaluator.py|src/jamp/p17/experiment_report.py|src/jamp/p17/pattern_index.py|src/jamp/p17/policy_event.py|src/jamp/p17/policy_guided_search.py)
-                  ;;
-                *)
-                  format_files+=("$file")
-                  ;;
-              esac
-            done
-            if ((${#format_files[@]})); then
-              ruff format --check "${format_files[@]}"
-            fi
-          else
-            echo "No Python files changed."
-          fi
+      - name: Run Ruff with baseline
+        run: make lint
 
       - name: Mypy changed Python files
         shell: bash
