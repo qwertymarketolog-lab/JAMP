@@ -47,8 +47,13 @@ def read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def verify_gt(gt_dir: Path, run_meta_path: Path, artifact_meta_path: Path,
-              expected_run_id: int, expected_artifact_id: int) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+def verify_gt(
+    gt_dir: Path,
+    run_meta_path: Path,
+    artifact_meta_path: Path,
+    expected_run_id: int,
+    expected_artifact_id: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
     manifest = read_json(gt_dir / "manifest.json")
     rows = [
         json.loads(line)
@@ -57,7 +62,11 @@ def verify_gt(gt_dir: Path, run_meta_path: Path, artifact_meta_path: Path,
     ]
     run_meta = read_json(run_meta_path)
     artifact_meta = read_json(artifact_meta_path)
-    if run_meta.get("id") != expected_run_id or run_meta.get("status") != "completed" or run_meta.get("conclusion") != "success":
+    if (
+        run_meta.get("id") != expected_run_id
+        or run_meta.get("status") != "completed"
+        or run_meta.get("conclusion") != "success"
+    ):
         raise ValueError("Ground Truth workflow run is not the expected completed SUCCESS run")
     if artifact_meta.get("id") != expected_artifact_id or artifact_meta.get("expired") is not False:
         raise ValueError("Ground Truth artifact ID mismatch or artifact expired")
@@ -65,23 +74,38 @@ def verify_gt(gt_dir: Path, run_meta_path: Path, artifact_meta_path: Path,
         raise ValueError("Ground Truth artifact does not belong to the selected workflow run")
     if run_meta.get("head_sha") != artifact_meta.get("workflow_run", {}).get("head_sha"):
         raise ValueError("Ground Truth run/artifact SHA mismatch")
-    if manifest.get("schema_version") != "jamp-hunt-ground-truth-v0.2" or manifest.get("evidence_class") != "LIVE_REGISTRY_OBSERVATIONS":
+    if (
+        manifest.get("schema_version") != "jamp-hunt-ground-truth-v0.2"
+        or manifest.get("evidence_class") != "LIVE_REGISTRY_OBSERVATIONS"
+    ):
         raise ValueError("Unsupported Ground Truth manifest")
-    if manifest.get("collection_complete") is not True or manifest.get("candidate_count") != 200 or len(rows) != 200:
+    if (
+        manifest.get("collection_complete") is not True
+        or manifest.get("candidate_count") != 200
+        or len(rows) != 200
+    ):
         raise ValueError("Ground Truth Lock is incomplete")
-    if sha256((gt_dir / "observations.jsonl").read_bytes()) != manifest.get("observations_file_sha256"):
+    observations_path = gt_dir / "observations.jsonl"
+    if sha256(observations_path.read_bytes()) != manifest.get("observations_file_sha256"):
         raise ValueError("Ground Truth observations digest mismatch")
     if len({row.get("normalized_name") for row in rows}) != 200:
         raise ValueError("Ground Truth names are not unique")
     for row in rows:
         name = row.get("normalized_name")
-        if not isinstance(name, str) or normalize(name) != name or row.get("status") not in STATUSES:
+        if (
+            not isinstance(name, str)
+            or normalize(name) != name
+            or row.get("status") not in STATUSES
+        ):
             raise ValueError("Ground Truth contains an invalid name or status")
     source = manifest.get("source")
     if not isinstance(source, dict):
         raise ValueError("Ground Truth manifest is missing source metadata")
     snapshot_path = gt_dir / str(source.get("retrieved_snapshot_path", ""))
-    if not snapshot_path.is_file() or sha256(snapshot_path.read_bytes()) != source.get("snapshot_sha256"):
+    if (
+        not snapshot_path.is_file()
+        or sha256(snapshot_path.read_bytes()) != source.get("snapshot_sha256")
+    ):
         raise ValueError("Pinned Top PyPI source snapshot is missing or has a digest mismatch")
     checksums = (gt_dir / "checksums.sha256").read_text(encoding="utf-8")
     if sha256(checksums.encode("utf-8")) != manifest.get("checksums_file_sha256"):
@@ -99,7 +123,10 @@ def verify_gt(gt_dir: Path, run_meta_path: Path, artifact_meta_path: Path,
     identity_path = gt_dir / "execution-identity.txt"
     if identity_path.exists():
         identity = identity_path.read_text(encoding="utf-8")
-        if f"workflow_run_id={expected_run_id}" not in identity or f"checked_out_sha={run_meta.get('head_sha')}" not in identity:
+        if (
+            f"workflow_run_id={expected_run_id}" not in identity
+            or f"checked_out_sha={run_meta.get('head_sha')}" not in identity
+        ):
             raise ValueError("Ground Truth execution identity does not match GitHub run")
     return manifest, rows, run_meta
 
@@ -209,7 +236,10 @@ def prepare(gt_dir: Path, tasks_path: Path, cache_path: Path,
         json.dumps(item, sort_keys=True, ensure_ascii=False) + "\n" for item in observations
     ).encode("utf-8")
     (cache_path / "observations.jsonl").write_bytes(observations_bytes)
-    status_counts = {status: sum(item["status"] == status for item in observations) for status in sorted(STATUSES)}
+    status_counts = {
+        status: sum(item["status"] == status for item in observations)
+        for status in sorted(STATUSES)
+    }
     cache_manifest = {
         "schema_version": SCHEMA,
         "evidence_class": EVIDENCE_CLASS,
@@ -244,9 +274,15 @@ def prepare(gt_dir: Path, tasks_path: Path, cache_path: Path,
         "raw_response_missing_count": len(observations) - len(checksum_lines),
         "packages": packages,
     }
-    manifest_bytes = (json.dumps(cache_manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+    manifest_text = json.dumps(
+        cache_manifest, indent=2, sort_keys=True, ensure_ascii=False
+    ) + "\n"
+    manifest_bytes = manifest_text.encode("utf-8")
     (cache_path / "manifest.json").write_bytes(manifest_bytes)
-    (cache_path / "tasks_file.sha256").write_text(sha256(tasks_bytes) + "  " + tasks_path.name + "\n", encoding="utf-8")
+    tasks_digest_line = f"{sha256(tasks_bytes)}  {tasks_path.name}\n"
+    (cache_path / "tasks_file.sha256").write_text(
+        tasks_digest_line, encoding="utf-8"
+    )
     return {
         "task_count": len(tasks),
         "cache_candidate_count": len(observations),
