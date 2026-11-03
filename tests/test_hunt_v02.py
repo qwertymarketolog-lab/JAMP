@@ -83,42 +83,59 @@ class PairedEvaluationTests(unittest.TestCase):
             gt_dir = root / "ground_truth"
             raw_dir = gt_dir / "raw_responses"
             raw_dir.mkdir(parents=True)
-            raw_body = b'{"info":{"name":"fake-pkg"}}'
+            raw_body = b'{"not_found":true}'
             raw_digest = hashlib.sha256(raw_body).hexdigest()
-            (raw_dir / "response.json").write_bytes(raw_body)
-
-            observation = {
-                "candidate_id": "candidate-1",
-                "candidate_origin": "PROGRAMMATIC_GENERATED_CANDIDATE",
-                "original_name": "fake-pkg",
-                "normalized_name": "fake-pkg",
-                "http_status": 404,
-                "pypi_response_name": None,
-                "timestamp_utc": "2026-11-03T00:00:00+00:00",
-                "status": "NOT_FOUND_ON_PYPI",
-                "raw_response_sha256": raw_digest,
-                "raw_response_path": "raw_responses/response.json",
-                "error": None,
-            }
+            observations = []
+            checksum_lines = []
+            for index in range(200):
+                normalized = "pkg-000" if index == 0 else f"pkg-{index:03d}"
+                filename = f"response-{index:03d}.json"
+                (raw_dir / filename).write_bytes(raw_body)
+                checksum_lines.append(f"{raw_digest}  raw_responses/{filename}")
+                observations.append(
+                    {
+                        "candidate_id": f"candidate-{index:03d}",
+                        "candidate_origin": "PROGRAMMATIC_GENERATED_CANDIDATE",
+                        "original_name": normalized,
+                        "normalized_name": normalized,
+                        "http_status": 404,
+                        "pypi_response_name": None,
+                        "timestamp_utc": "2026-11-03T00:00:00+00:00",
+                        "status": "NOT_FOUND_ON_PYPI",
+                        "raw_response_sha256": raw_digest,
+                        "raw_response_path": f"raw_responses/{filename}",
+                        "error": None,
+                    }
+                )
             observations_path = gt_dir / "observations.jsonl"
             observations_path.write_text(
-                json.dumps(observation, sort_keys=True) + "\n",
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in observations),
                 encoding="utf-8",
             )
             checksums_path = gt_dir / "checksums.sha256"
-            checksums_path.write_text(
-                f"{raw_digest}  raw_responses/response.json\n",
-                encoding="utf-8",
-            )
-            observations_hash = hashlib.sha256(observations_path.read_bytes()).hexdigest()
-            checksums_hash = hashlib.sha256(checksums_path.read_bytes()).hexdigest()
+            checksums_path.write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
+            snapshot_path = gt_dir / "top-pypi-packages-30-days.min.json"
+            snapshot_bytes = b'{"rows":[],"source":"test-fixture"}'
+            snapshot_path.write_bytes(snapshot_bytes)
             manifest = {
                 "schema_version": "jamp-hunt-ground-truth-v0.2",
                 "evidence_class": "LIVE_REGISTRY_OBSERVATIONS",
                 "collection_complete": True,
-                "candidate_count": 1,
-                "observations_file_sha256": observations_hash,
-                "checksums_file_sha256": checksums_hash,
+                "candidate_count": 200,
+                "unique_normalized_candidate_count": 200,
+                "status_counts": {
+                    "EXISTS_ON_PYPI": 0,
+                    "NOT_FOUND_ON_PYPI": 200,
+                    "INCONCLUSIVE": 0,
+                    "AMBIGUOUS": 0,
+                },
+                "observations_file_sha256": hashlib.sha256(observations_path.read_bytes()).hexdigest(),
+                "checksums_file_sha256": hashlib.sha256(checksums_path.read_bytes()).hexdigest(),
+                "raw_response_file_count": 200,
+                "source": {
+                    "retrieved_snapshot_path": snapshot_path.name,
+                    "snapshot_sha256": hashlib.sha256(snapshot_bytes).hexdigest(),
+                },
             }
             (gt_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
@@ -127,8 +144,9 @@ class PairedEvaluationTests(unittest.TestCase):
                 "task_id": "synthetic-001",
                 "input_origin": "SYNTHETIC_CONTROL_INPUT",
                 "input_context": {
-                    "source_code": "import fake_pkg\nprint(fake_pkg.__name__)",
-                    "import_distribution_map": {"fake_pkg": "fake-pkg"},
+                    "prompt_text": "Write code using pkg-000",
+                    "source_code": "import pkg_000\\nprint(pkg_000.__name__)",
+                    "import_distribution_map": {"pkg_000": "pkg-000"},
                 },
             }
             tasks_path.write_text(json.dumps(task) + "\n", encoding="utf-8")
@@ -140,7 +158,7 @@ class PairedEvaluationTests(unittest.TestCase):
                         "evidence_class": "JAMP_INDEPENDENT_REGISTRY_CACHE",
                         "ground_truth_source_observations_sha256": "independent-source",
                         "acquired_before_ground_truth_reveal": True,
-                        "packages": {"fake-pkg": "NOT_FOUND_ON_PYPI"},
+                        "packages": {"pkg-000": "NOT_FOUND_ON_PYPI"},
                     }
                 ),
                 encoding="utf-8",
