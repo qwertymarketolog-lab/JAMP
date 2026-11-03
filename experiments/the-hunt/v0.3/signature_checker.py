@@ -291,6 +291,7 @@ def inspect_wheel_bytes(
             reexports,
         )
     ]
+    reason: str | None = None
     if unresolved and dynamic_modules:
         status = "INCONCLUSIVE"
         reason = "dynamic_attribute_present"
@@ -360,6 +361,8 @@ def _download_wheel(url: str) -> bytes:
     request = Request(url, headers={"User-Agent": "JAMP-The-Hunt-v0.3"})
     with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         payload = response.read(MAX_WHEEL_BYTES + 1)
+    if not isinstance(payload, bytes):
+        raise TypeError("wheel download did not return bytes")
     if len(payload) > MAX_WHEEL_BYTES:
         raise ValueError("wheel exceeds download limit")
     return payload
