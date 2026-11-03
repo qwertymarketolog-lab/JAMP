@@ -145,3 +145,16 @@ This PR is specification-only.
 - No runtime, router, Product Matrix, API, dependency, workflow, or test changes are authorized by this specification PR.
 - `src/jamp/run.py` is strictly out of scope.
 - Subsequent implementation is a separate stage and must follow this contract without weakening its evidence requirements.
+## 6. Limitations of v0.2 (Control Experiment)
+
+This experiment is explicitly designed as a **Control Experiment (Pipeline Validation)**. It validates the end-to-end execution of the evidence pipeline, but it does **not** prove the capability of JAMP to detect real LLM hallucinations.
+
+- **Tautological Ground Truth:** Both JAMP and the Ground Truth verification query the exact same external registry (PyPI API) for package existence. Therefore, JAMP's accuracy on this dataset is tautological (it will be near 100% by design).
+- **Synthetic Inputs:** The model outputs (`llm_output`) are synthetically generated for the purpose of pipeline testing. They are marked as `SYNTHETIC_CONTROL_INPUT` and do not represent real LLM generation behavior.
+- **Deferred Capabilities:** Core JAMP capabilities such as Provenance analysis (package age, author reputation), Signature verification (does the API method actually exist?), and AST analysis (detecting `eval`/`exec`) are deferred to the v0.3 benchmark.
+
+**Success Criteria for v0.2:**
+1. 100% pipeline coverage (no unhandled exceptions).
+2. Valid SHA-256 checksums for all raw PyPI responses.
+3. Correct paired-scoring logic and exclusion of `INCONCLUSIVE` tasks.
+4. Full evidence artifact generated and uploaded.
