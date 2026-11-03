@@ -49,7 +49,7 @@ def _parse_completion(content: str) -> tuple[str | None, str | None]:
 
 def _call_groq(
     *, api_key: str, endpoint: str, model_id: str, prompt: str, max_tokens: int
-) -> tuple[dict[str, object] | None, str | None]:
+) -> tuple[dict[str, object] | None, str | None, dict[str, object] | None]:
     body = json.dumps(
         {
             "model": model_id,
@@ -75,27 +75,49 @@ def _call_groq(
         with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             raw = response.read()
     except HTTPError as exc:
-        return None, f"HTTP_{exc.code}"
+        diagnostics: dict[str, object] = {"provider_http_status": exc.code}
+        try:
+            error_body = exc.read(4096).decode("utf-8", errors="replace")
+        except OSError as read_error:
+            error_body = ""
+            diagnostics["provider_error_body_read_failure"] = type(read_error).__name__
+        if api_key:
+            error_body = error_body.replace(api_key, "[REDACTED]")
+        diagnostics["provider_error_body"] = error_body
+        try:
+            parsed_error = json.loads(error_body)
+        except json.JSONDecodeError:
+            parsed_error = None
+        if isinstance(parsed_error, dict):
+            diagnostics["provider_error_json"] = parsed_error
+        headers = exc.headers or {}
+        content_type = headers.get("Content-Type")
+        request_id = headers.get("x-request-id") or headers.get("request-id")
+        if content_type:
+            diagnostics["provider_content_type"] = content_type
+        if request_id:
+            diagnostics["provider_request_id"] = request_id
+        return None, f"HTTP_{exc.code}", diagnostics
     except (URLError, TimeoutError, OSError) as exc:
-        return None, type(exc).__name__
+        return None, type(exc).__name__, None
     try:
         decoded = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        return None, "INVALID_PROVIDER_JSON"
+        return None, "INVALID_PROVIDER_JSON", None
     if not isinstance(decoded, dict):
-        return None, "INVALID_PROVIDER_RESPONSE"
+        return None, "INVALID_PROVIDER_RESPONSE", None
     choices = decoded.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
-        return None, "MISSING_COMPLETION"
+        return None, "MISSING_COMPLETION", None
     message = choices[0].get("message")
     content = message.get("content") if isinstance(message, dict) else None
     if not isinstance(content, str):
-        return None, "MISSING_COMPLETION_CONTENT"
+        return None, "MISSING_COMPLETION_CONTENT", None
     return {
         "content": content,
         "provider_response_id": decoded.get("id"),
         "provider_model_id": decoded.get("model"),
-    }, None
+    }, None, None
 
 
 def main() -> int:
@@ -155,7 +177,7 @@ def main() -> int:
         ):
             raise ValueError("each prompt requires sample_id, package_name, and prompt")
         request_timestamp = datetime.now(UTC).isoformat()
-        response, failure = _call_groq(
+        response, failure, provider_error = _call_groq(
             api_key=api_key,
             endpoint=endpoint,
             model_id=model_id,
@@ -163,16 +185,29 @@ def main() -> int:
             max_tokens=max_tokens,
         )
         if failure or response is None:
-            results.append(
-                {
-                    "sample_id": sample_id,
-                    "package_name": package_name,
-                    "prompt": prompt,
-                    "request_status": "FAILED",
-                    "failure_reason": failure or "unknown_provider_failure",
-                    "request_timestamp_utc": request_timestamp,
-                }
-            )
+            failure_record: dict[str, object] = {
+                "sample_id": sample_id,
+                "package_name": package_name,
+                "prompt": prompt,
+                "request_status": "FAILED",
+                "failure_reason": failure or "unknown_provider_failure",
+                "request_timestamp_utc": request_timestamp,
+            }
+            if provider_error is not None:
+                failure_record["provider_error"] = provider_error
+                print(
+                    json.dumps(
+                        {
+                            "event": "groq_request_failed",
+                            "sample_id": sample_id,
+                            "failure_reason": failure,
+                            "provider_error": provider_error,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                )
+            results.append(failure_record)
             continue
 
         returned_model = response.get("provider_model_id")
@@ -269,6 +304,12 @@ def main() -> int:
             sort_keys=True,
         )
     )
+    if successful == 0:
+        print(
+            "CRITICAL: All Groq requests failed. "
+            "Check API key, model ID, or endpoint."
+        )
+        return 1
     return 0
 
 
