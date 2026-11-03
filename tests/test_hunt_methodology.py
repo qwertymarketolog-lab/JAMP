@@ -1,11 +1,11 @@
-"""Regression tests for The Hunt ground-truth and paired scoring helpers."""
+"""Regression tests for The Hunt ground-truth verification."""
 
 import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
