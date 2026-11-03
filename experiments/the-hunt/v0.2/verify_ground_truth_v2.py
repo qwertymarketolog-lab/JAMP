@@ -168,7 +168,8 @@ def observe_candidate(
 ) -> dict[str, Any]:
     original = candidate["original_name"]
     normalized = normalize_distribution_name(original)
-    candidate_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"jamp-hunt-v0.2:{candidate_origin}:{normalized}"))
+    candidate_identity = f"jamp-hunt-v0.2:{candidate_origin}:{normalized}"
+    candidate_id = str(uuid.uuid5(uuid.NAMESPACE_URL, candidate_identity))
     url = PYPI_API_TEMPLATE.format(name=quote(normalized, safe=""))
     observed_at = utc_now()
     http_status: int | None = None

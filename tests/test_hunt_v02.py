@@ -129,7 +129,9 @@ class PairedEvaluationTests(unittest.TestCase):
                     "INCONCLUSIVE": 0,
                     "AMBIGUOUS": 0,
                 },
-                "observations_file_sha256": hashlib.sha256(observations_path.read_bytes()).hexdigest(),
+                "observations_file_sha256": hashlib.sha256(
+                    observations_path.read_bytes()
+                ).hexdigest(),
                 "checksums_file_sha256": hashlib.sha256(checksums_path.read_bytes()).hexdigest(),
                 "raw_response_file_count": 200,
                 "source": {

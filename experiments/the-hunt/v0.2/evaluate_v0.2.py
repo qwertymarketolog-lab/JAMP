@@ -242,9 +242,17 @@ def baseline_predict(input_context: dict[str, Any]) -> dict[str, Any]:
     source_code = input_context["source_code"]
     imports = parse_imports(source_code)
     mapping = input_context["import_distribution_map"]
-    mapped = sorted({normalize_distribution_name(mapping[module]) for module in imports if module in mapping})
+    mapped = sorted(
+        normalize_distribution_name(mapping[module])
+        for module in imports
+        if module in mapping
+    )
     if not mapped:
-        return {"status": "INVALID_UNSCORABLE", "prediction_hallucinated": None, "imports": sorted(imports)}
+        return {
+            "status": "INVALID_UNSCORABLE",
+            "prediction_hallucinated": None,
+            "imports": sorted(imports),
+        }
     # Syntax-only negative control: valid syntax plus a mapped target import
     # always predicts that the imported package exists.
     return {
@@ -258,7 +266,11 @@ def baseline_predict(input_context: dict[str, Any]) -> dict[str, Any]:
 def jamp_predict(input_context: dict[str, Any], cache: dict[str, str]) -> dict[str, Any]:
     imports = parse_imports(input_context["source_code"])
     mapping = input_context["import_distribution_map"]
-    mapped = sorted({normalize_distribution_name(mapping[module]) for module in imports if module in mapping})
+    mapped = sorted(
+        normalize_distribution_name(mapping[module])
+        for module in imports
+        if module in mapping
+    )
     if not mapped:
         return {"status": "INVALID_UNSCORABLE", "prediction_hallucinated": None}
     statuses = {name: cache.get(name, "INCONCLUSIVE") for name in mapped}
@@ -319,7 +331,9 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
             baseline = baseline_predict(context)
             jamp = jamp_predict(context, cache)
         except (SyntaxError, KeyError, TypeError) as exc:
-            exclusions.append({"task_id": task_id, "reason": f"INVALID_INPUT_CONTEXT: {type(exc).__name__}"})
+            exclusions.append(
+                {"task_id": task_id, "reason": f"INVALID_INPUT_CONTEXT: {type(exc).__name__}"}
+            )
             continue
 
         imported_modules = parse_imports(context["source_code"])
@@ -332,7 +346,9 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
         )
         missing_gt = [name for name in mapped_names if name not in gt_by_name]
         if missing_gt:
-            exclusions.append({"task_id": task_id, "reason": f"GROUND_TRUTH_MISSING: {','.join(missing_gt)}"})
+            exclusions.append(
+                {"task_id": task_id, "reason": f"GROUND_TRUTH_MISSING: {','.join(missing_gt)}"}
+            )
             continue
         gt_statuses = {name: gt_by_name[name]["status"] for name in mapped_names}
         if any(value in {"INCONCLUSIVE", "AMBIGUOUS"} for value in gt_statuses.values()):
@@ -365,7 +381,8 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
         )
 
     baseline_correct = [
-        actual == predicted for actual, predicted in zip(baseline_actual, baseline_predicted, strict=True)
+        actual == predicted
+        for actual, predicted in zip(baseline_actual, baseline_predicted, strict=True)
     ]
     jamp_correct = [
         actual == predicted for actual, predicted in zip(jamp_actual, jamp_predicted, strict=True)
@@ -430,10 +447,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ground-truth-dir", type=Path, default=Path("ground_truth"))
     parser.add_argument("--tasks", type=Path, required=True, help="Paired tasks JSONL")
-    parser.add_argument("--jamp-cache", type=Path, required=True, help="Independent pre-GT JAMP cache JSON")
+    parser.add_argument(
+        "--jamp-cache", type=Path, required=True, help="Independent pre-GT JAMP cache JSON"
+    )
     parser.add_argument("--output", type=Path, default=Path("results/paired_evaluation.json"))
     args = parser.parse_args()
-    print(json.dumps(evaluate(args.ground_truth_dir, args.tasks, args.jamp_cache, args.output), indent=2))
+    result = evaluate(args.ground_truth_dir, args.tasks, args.jamp_cache, args.output)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
