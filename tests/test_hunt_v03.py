@@ -391,5 +391,95 @@ class GroqFailureHandlingTests(unittest.TestCase):
             self.assertEqual(manifest["failed_requests"], 100)
 
 
+
+    def test_anymodel_control_mode_records_one_http_200_response(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prompts_path = root / "prompts.json"
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            prompts_path.write_text(
+                json.dumps({"samples": [
+                    {
+                        "sample_id": f"sample-{i}",
+                        "package_name": f"package-{i}",
+                        "prompt": f"prompt-{i}",
+                    }
+                    for i in range(100)
+                ]}),
+                encoding="utf-8",
+            )
+            response = {
+                "content": '{"package_name":"package-0","code":"import package_0"}',
+                "provider_response_id": "control-id",
+                "provider_model_id": "ds/deepseek-v4-pro",
+                "http_status": 200,
+            }
+            argv = [
+                "run_llm_v3.py", "--provider", "anymodel",
+                "--model", "ds/deepseek-v4-pro", "--limit", "1",
+                "--prompts", str(prompts_path), "--responses", str(responses_path),
+                "--manifest", str(manifest_path),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
+                patch.object(
+                    RUN_LLM, "_call_anymodel", return_value=(response, None, None)
+                ) as call,
+                patch("sys.stdout", new_callable=io.StringIO),
+            ):
+                self.assertEqual(RUN_LLM.main(), 0)
+            call.assert_called_once()
+            control = json.loads((root / "control_response.json").read_text(encoding="utf-8"))
+            self.assertEqual(control["http_status"], 200)
+            self.assertEqual(control["provider_model_id"], "ds/deepseek-v4-pro")
+            self.assertEqual(control["request_status"], "SUCCESS")
+            self.assertEqual(control["qualification"], "NOT_GRANTED")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["provider_name"], "anymodel")
+            self.assertEqual(manifest["request_count"], 1)
+            self.assertTrue(responses_path.is_file())
+
+    def test_anymodel_request_uses_exact_openai_compatible_endpoint(self):
+        class FakeResponse:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return json.dumps({
+                    "id": "am-control",
+                    "model": "ds/deepseek-v4-pro",
+                    "choices": [
+                        {
+                            "message": {
+                                "content": '{"package_name":"pkg","code":"import pkg"}'
+                            }
+                        }
+                    ],
+                }).encode("utf-8")
+
+        with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
+            result, error, diagnostics = RUN_LLM._call_anymodel(
+                api_key="test-anymodel-secret",
+                endpoint="https://anymodel.org/v1/chat/completions",
+                model_id="ds/deepseek-v4-pro",
+                prompt="test prompt",
+                max_tokens=128,
+            )
+        self.assertIsNone(error)
+        self.assertIsNone(diagnostics)
+        self.assertEqual(result["http_status"], 200)
+        self.assertEqual(result["provider_model_id"], "ds/deepseek-v4-pro")
+        self.assertEqual(
+            opener.call_args.args[0].full_url,
+            "https://anymodel.org/v1/chat/completions",
+        )
+
 if __name__ == "__main__":
     unittest.main()
