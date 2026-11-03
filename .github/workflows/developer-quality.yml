@@ -62,7 +62,7 @@ jobs:
                 src/jamp/*)
                   src_files+=("$file")
                   ;;
-                tools/*|experiments/the-hunt/code-audit/*)
+                tools/*|experiments/the-hunt/code-audit/*|experiments/the-hunt/v0.3/*)
                   root_files+=("$file")
                   ;;
               esac
