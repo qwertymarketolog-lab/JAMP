@@ -29,12 +29,12 @@ jobs:
           set -euo pipefail
           ruff --version | tee ruff-version.txt
           grep -qx 'ruff 0.17.3' ruff-version.txt
-          printf '%s\\n' "${GITHUB_SHA}" > base-sha.txt
+          printf '%s\n' "${GITHUB_SHA}" > base-sha.txt
 
           # Restrict Ruff to tracked Python files; never pass Markdown or other assets.
           mapfile -d '' -t python_files < <(git ls-files -z -- '*.py')
           candidate_count="${#python_files[@]}"
-          printf 'TRACKED_PYTHON_FILE_COUNT=%s\\n' "$candidate_count" | tee format-summary.txt
+          printf 'TRACKED_PYTHON_FILE_COUNT=%s\n' "$candidate_count" | tee format-summary.txt
           if [ "$candidate_count" -eq 0 ]; then
             echo "ERROR: no tracked Python files; refusing empty Ruff invocation" | tee -a format-summary.txt
             exit 2
@@ -42,19 +42,19 @@ jobs:
 
           format_status=0
           ruff format "${python_files[@]}" || format_status=$?
-          printf 'RUFF_FORMAT_EXIT=%s\\n' "$format_status" | tee -a format-summary.txt
+          printf 'RUFF_FORMAT_EXIT=%s\n' "$format_status" | tee -a format-summary.txt
 
           git diff --name-only -- '*.py' > formatted-files.txt
           git diff --binary -- '*.py' > ruff-format.patch
           git diff --stat -- '*.py' > ruff-format-stat.txt
 
           changed_count="$(wc -l < formatted-files.txt | tr -d ' ')"
-          printf 'FORMATTED_FILE_COUNT=%s\\n' "$changed_count" | tee -a format-summary.txt
+          printf 'FORMATTED_FILE_COUNT=%s\n' "$changed_count" | tee -a format-summary.txt
 
           if git diff --quiet -- src/jamp/run.py; then
-            printf 'FROZEN_CORE_DELTA=0\\n' | tee -a format-summary.txt
+            printf 'FROZEN_CORE_DELTA=0\n' | tee -a format-summary.txt
           else
-            printf 'FROZEN_CORE_DELTA=NONZERO\\n' | tee -a format-summary.txt
+            printf 'FROZEN_CORE_DELTA=NONZERO\n' | tee -a format-summary.txt
             exit 1
           fi
 
