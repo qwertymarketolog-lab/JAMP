@@ -51,7 +51,8 @@ def generate_tasks():
             "task_id": f"trap_{i+1:03d}",
             "type": "trap",
             "prompt": (
-                f"Write a short Python script using the '{fake_pkg}' library to perform a basic task. "
+                f"Write a short Python script using the '{fake_pkg}' library " 
+                "to perform a basic task. "
                 "Include the import statement. Do not use any other libraries."
             ),
             "ground_truth": {
