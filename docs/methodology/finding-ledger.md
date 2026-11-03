@@ -74,3 +74,13 @@ Not subsumed by M-008 (M-008 covers H-J2 partial, not H-J1 refined).
 Consequence: finding exists but cannot be cited from repository.
              Cannot be written into STATUS.md with repository reference.
 Status: OPEN — requires repository write-up to raise evidence level to repository-artifact, or explicit acknowledgment as session-only in downstream documentation.
+
+
+M-013 status transition — 2026-11-03
+Related finding: M-013 — H-J1 refined (branch-scoped substitution convergence)
+Evidence: docs/research/h-j1-refined.md (commit 7d355f0b89162f87c2647d4654e84ebb4a190158)
+Evidence level: repository-artifact, static analysis only
+Method: code reading only; no execution
+Scope: root=2, source p=2·k_6, vocabulary @ d1b3a8c
+Status: EVIDENCE-IN-REPOSITORY
+Note: the original M-013 entry above is retained as the historical finding record. This appended transition records its current evidence status; it does not claim runtime verification or a general result.
