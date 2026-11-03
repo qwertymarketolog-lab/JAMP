@@ -242,6 +242,102 @@ class EvaluatorDecisionTests(unittest.TestCase):
             "INCONCLUSIVE",
         )
 
+    def test_abstained_rows_are_explicit_and_provenance_remains_evaluable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            ground_truth_path = root / "ground_truth.json"
+            prompt_hash = "a" * 64
+            responses = []
+            truths = []
+            for index in range(100):
+                nonexistent = index < 80
+                package = f"probe-{index}" if nonexistent else f"clean-{index}"
+                prompt = f"prompt-{index}"
+                sample_id = f"sample-{index}"
+                responses.append(
+                    {
+                        "sample_id": sample_id,
+                        "package_name": package,
+                        "prompt": prompt,
+                        "request_status": "ABSTAINED",
+                        "failure_reason": None,
+                        "code": "",
+                    }
+                )
+                truths.append(
+                    {
+                        "sample_id": sample_id,
+                        "package_name": package,
+                        "prompt": prompt,
+                        "ground_truth": "HALLUCINATION" if nonexistent else "CLEAN",
+                        "pypi_exists": not nonexistent,
+                    }
+                )
+            response_bytes = (
+                json.dumps(
+                    {"samples": responses},
+                    indent=2,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+                + "\n"
+            ).encode("utf-8")
+            responses_path.write_bytes(response_bytes)
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "llm_responses_sha256": hashlib.sha256(response_bytes).hexdigest(),
+                        "prompt_dataset_sha256": prompt_hash,
+                        "provider_name": "anymodel",
+                        "temperature": 0.7,
+                        "requested_model_id": "test/model",
+                        "request_count": 100,
+                        "successful_requests": 0,
+                        "abstained_requests": 100,
+                        "failed_requests": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            ground_truth_path.write_text(
+                json.dumps(
+                    {"prompt_dataset_sha256": prompt_hash, "samples": truths}
+                ),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(
+                    EVALUATOR,
+                    "check_provenance",
+                    side_effect=lambda package: {
+                        "status": "NOT_FOUND" if package.startswith("probe-") else "TRUSTED"
+                    },
+                ),
+                patch.object(
+                    EVALUATOR,
+                    "check_signature",
+                    side_effect=AssertionError("abstained rows must not inspect code"),
+                ) as signature_check,
+            ):
+                report = EVALUATOR.evaluate(
+                    responses_path, root / "report.json", manifest_path, ground_truth_path
+                )
+            self.assertEqual(report["abstained_generation_count"], 100)
+            self.assertEqual(
+                report["abstention_summary"],
+                {
+                    "count": 100,
+                    "nonexistent_package_count": 80,
+                    "existing_package_count": 20,
+                },
+            )
+            self.assertEqual(report["baseline"]["scored_count"], 80)
+            self.assertEqual(report["jamp"]["scored_count"], 80)
+            self.assertEqual(report["paired_scored_count"], 80)
+            signature_check.assert_not_called()
+
     def test_exact_mcnemar_known_values(self):
         self.assertEqual(EVALUATOR.exact_mcnemar(0, 0), 1.0)
         self.assertEqual(EVALUATOR.exact_mcnemar(2, 0), 0.5)
@@ -391,6 +487,67 @@ class GroqFailureHandlingTests(unittest.TestCase):
             self.assertEqual(manifest["failed_requests"], 100)
 
 
+
+    def test_empty_code_response_is_abstained_not_failed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prompts_path = root / "prompts.json"
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            prompts_path.write_text(
+                json.dumps(
+                    {
+                        "samples": [
+                            {
+                                "sample_id": f"sample-{index}",
+                                "package_name": f"package-{index}",
+                                "prompt": f"prompt-{index}",
+                            }
+                            for index in range(100)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            response = {
+                "content": '{"package_name":"package-0","code":""}',
+                "provider_response_id": "abstention-id",
+                "provider_model_id": "test/model",
+                "http_status": 200,
+            }
+            argv = [
+                "run_llm_v3.py",
+                "--provider",
+                "anymodel",
+                "--model",
+                "test/model",
+                "--limit",
+                "1",
+                "--prompts",
+                str(prompts_path),
+                "--responses",
+                str(responses_path),
+                "--manifest",
+                str(manifest_path),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
+                patch.object(
+                    RUN_LLM, "_call_anymodel", return_value=(response, None, None)
+                ),
+                patch("sys.stdout", new_callable=io.StringIO),
+            ):
+                self.assertEqual(RUN_LLM.main(), 0)
+            row = json.loads(responses_path.read_text(encoding="utf-8"))["samples"][0]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            control = json.loads((root / "control_response.json").read_text(encoding="utf-8"))
+            self.assertEqual(row["request_status"], "ABSTAINED")
+            self.assertEqual(row["code"], "")
+            self.assertEqual(manifest["successful_requests"], 0)
+            self.assertEqual(manifest["abstained_requests"], 1)
+            self.assertEqual(manifest["failed_requests"], 0)
+            self.assertEqual(control["request_status"], "ABSTAINED")
 
     def test_anymodel_control_mode_records_one_http_200_response(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -193,8 +193,10 @@ def main() -> int:
             provider_model_ids.add(returned_model)
         package, code = _parse_completion(content) if isinstance(content, str) else (None, None)
         status, reason = "SUCCESS", None
-        if package != package_name or code is None or not code.strip():
+        if package != package_name or code is None:
             status, reason = "MALFORMED_RESPONSE", "completion_not_valid_expected_json"
+        elif not code.strip():
+            status, reason = "ABSTAINED", None
         if returned_model != model_id:
             status = "MODEL_ID_MISMATCH"
             reason = "provider_returned_model_differs_from_requested_model"
@@ -221,6 +223,8 @@ def main() -> int:
     args.responses.write_bytes(response_bytes)
     response_hash = hashlib.sha256(response_bytes).hexdigest()
     successful = sum(row["request_status"] == "SUCCESS" for row in results)
+    abstained = sum(row["request_status"] == "ABSTAINED" for row in results)
+    failed = len(results) - successful - abstained
     manifest = {
         "schema_version": "jamp-hunt-generation-manifest-v0.3",
         "experiment_id": f"hunt-v03-{started_at}",
@@ -235,7 +239,8 @@ def main() -> int:
         "max_completion_tokens": max_tokens, "prompt_dataset_sha256": prompt_hash,
         "generation_timestamp_utc": started_at,
         "completion_timestamp_utc": datetime.now(UTC).isoformat(),
-        "successful_requests": successful, "failed_requests": len(results) - successful,
+        "successful_requests": successful, "abstained_requests": abstained,
+        "failed_requests": failed,
         "request_count": len(results), "llm_responses_sha256": response_hash,
         "llm_responses_file": args.responses.name,
     }
@@ -261,8 +266,9 @@ def main() -> int:
     print(json.dumps({"provider": provider, "requested_model_id": model_id,
         "provider_model_id": manifest["provider_model_id"], "temperature": TEMPERATURE,
         "request_count": len(results), "successful_requests": successful,
-        "failed_requests": len(results) - successful, "limit": args.limit}, sort_keys=True))
-    return 0 if successful == len(results) else 1
+        "abstained_requests": abstained, "failed_requests": failed,
+        "limit": args.limit}, sort_keys=True))
+    return 0 if failed == 0 else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())
