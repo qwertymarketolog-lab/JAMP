@@ -69,6 +69,17 @@ def verify_ground_truth_lock(gt_dir: Path) -> tuple[dict[str, Any], list[dict[st
         raise ValueError("Ground Truth manifest has unexpected evidence_class")
     if manifest.get("collection_complete") is not True:
         raise ValueError("Ground Truth collection is not marked complete")
+    if manifest.get("candidate_count") != 200:
+        raise ValueError("The Hunt v0.2 Ground Truth Lock must contain exactly 200 candidates")
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("Ground Truth manifest is missing source snapshot metadata")
+    snapshot_path = gt_dir / str(source.get("retrieved_snapshot_path", ""))
+    if (
+        not snapshot_path.is_file()
+        or sha256_bytes(snapshot_path.read_bytes()) != source.get("snapshot_sha256")
+    ):
+        raise ValueError("Pinned Top PyPI source snapshot is missing or has a digest mismatch")
 
     observations_bytes = observations_path.read_bytes()
     expected_observations_hash = manifest.get("observations_file_sha256")
@@ -100,8 +111,8 @@ def verify_ground_truth_lock(gt_dir: Path) -> tuple[dict[str, Any], list[dict[st
         raise ValueError("Raw response directory and checksums.sha256 file set differ")
 
     observations = load_jsonl(observations_path)
-    if len(observations) != manifest.get("candidate_count"):
-        raise ValueError("Observation count differs from Ground Truth manifest")
+    if len(observations) != 200:
+        raise ValueError("Ground Truth observations must contain exactly 200 rows")
     seen_names: set[str] = set()
     observed_counts = {state: 0 for state in ALL_GT}
     for item in observations:
@@ -124,7 +135,14 @@ def verify_ground_truth_lock(gt_dir: Path) -> tuple[dict[str, Any], list[dict[st
         else:
             if not isinstance(raw_relative, str):
                 raise ValueError("Raw response digest has no corresponding file path")
-            raw_file = gt_dir / raw_relative
+            raw_relative_path = Path(raw_relative)
+            if (
+                raw_relative_path.is_absolute()
+                or ".." in raw_relative_path.parts
+                or raw_relative_path.as_posix() not in checksummed_paths
+            ):
+                raise ValueError("Observation raw response path is unsafe or unchecksummed")
+            raw_file = gt_dir / raw_relative_path
             if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
                 raise ValueError(f"Observation raw response digest mismatch: {raw_relative}")
     if observed_counts != manifest.get("status_counts"):
@@ -263,6 +281,8 @@ def evaluate(gt_dir: Path, tasks_path: Path, cache_path: Path, output_path: Path
     gt_by_name = {row["normalized_name"]: row for row in gt_rows}
     cache = load_jamp_cache(cache_path, gt_manifest)
     tasks = load_jsonl(tasks_path)
+    if not tasks:
+        raise ValueError("Paired evaluation requires at least one task")
 
     predictions: list[dict[str, Any]] = []
     exclusions: list[dict[str, str]] = []
