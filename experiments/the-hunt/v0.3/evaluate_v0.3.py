@@ -350,7 +350,7 @@ def evaluate(
         "attempted_sample_count": len(results),
         "successful_generation_count": manifest.get("successful_requests"),
         "failed_generation_count": manifest.get("failed_requests"),
-        "abstained_generation_count": manifest.get("abstained_requests"),
+        "abstained_generation_count": manifest.get("abstained_requests", 0),
         "abstention_summary": {
             "count": len(abstained_results),
             "nonexistent_package_count": sum(
