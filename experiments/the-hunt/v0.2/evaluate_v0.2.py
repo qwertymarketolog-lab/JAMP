@@ -222,6 +222,11 @@ def load_jamp_cache(
         "observations_file_sha256"
     ):
         raise ValueError("JAMP cache is derived from the Ground Truth snapshot (circular)")
+    if evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK":
+        if cache.get("ground_truth_observations_sha256") != gt_manifest.get(
+            "observations_file_sha256"
+        ):
+            raise ValueError("POST-REVEAL cache is not bound to the selected Ground Truth snapshot")
 
     if evaluation_mode == "PRE_REVEAL_INDEPENDENT":
         # Preserve the original pre-reveal contract without weakening it.
