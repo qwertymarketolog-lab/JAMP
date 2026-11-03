@@ -53,7 +53,9 @@ def _external_distributions(code: str) -> set[str]:
     """Return normalized distribution names for external imports in code."""
     tree = ast.parse(_clean_code(code))
     return {
-        re.sub(r"[-_.]+", "-", MODULE_DISTRIBUTION_ALIASES.get(module, module)).lower()
+        re.sub(
+            r"[-_.]+", "-", MODULE_DISTRIBUTION_ALIASES.get(module, module)
+        ).lower()
         for module in _imports(tree)
         if module not in STDLIB_MODULES
     }
@@ -263,7 +265,10 @@ def evaluate() -> dict[str, Any]:
                 "target_registry_status": target_status,
                 "imported_distributions": sorted(imported_packages),
                 "import_registry_statuses": import_statuses,
-                "ground_truth_scope": "all external imported distributions present on PyPI at observation time",
+                "ground_truth_scope": (
+                    "all external imported distributions present on PyPI "
+                    "at observation time"
+                ),
                 "status": "SCORED_PAIR" if paired else "INCONCLUSIVE_FOR_BOTH",
                 "baseline": baseline,
                 "jamp": jamp,
