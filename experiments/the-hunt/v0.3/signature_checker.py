@@ -23,7 +23,13 @@ MAX_SOURCE_BYTES = 10 * 1024 * 1024
 TIMEOUT_SECONDS = 30
 ImportAliases = dict[str, tuple[str, tuple[str, ...]]]
 CallRecords = list[dict[str, Any]]
-SymbolIndex = tuple[\n    set[str],\n    dict[str, set[str]],\n    dict[str, dict[str, set[str]]],\n    dict[str, dict[str, tuple[str, str]]],\n    set[str],\n]
+SymbolIndex = tuple[
+    set[str],
+    dict[str, set[str]],
+    dict[str, dict[str, set[str]]],
+    dict[str, dict[str, tuple[str, str]]],
+    set[str],
+]
 
 
 def _dotted_name(node: ast.AST) -> tuple[str, list[str]] | None:
