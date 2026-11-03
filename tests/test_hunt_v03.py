@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -278,7 +279,7 @@ class EvaluatorDecisionTests(unittest.TestCase):
                 ).encode("utf-8")
 
         with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
-            result, error = RUN_LLM._call_groq(
+            result, error, diagnostics = RUN_LLM._call_groq(
                 api_key="test-secret",
                 endpoint="https://api.groq.com/openai/v1/chat/completions",
                 model_id="test-model",
@@ -286,12 +287,108 @@ class EvaluatorDecisionTests(unittest.TestCase):
                 max_tokens=128,
             )
         self.assertIsNone(error)
+        self.assertIsNone(diagnostics)
         self.assertIsNotNone(result)
         request = opener.call_args.args[0]
         body = json.loads(request.data.decode("utf-8"))
         self.assertEqual(body["temperature"], 0.7)
         self.assertEqual(body["model"], "test-model")
         self.assertEqual(request.get_header("Authorization"), "Bearer test-secret")
+
+
+class GroqFailureHandlingTests(unittest.TestCase):
+    def test_http_error_body_is_preserved_and_api_key_redacted(self):
+        body = json.dumps(
+            {
+                "error": {
+                    "message": "invalid credential test-secret",
+                    "type": "invalid_request_error",
+                }
+            }
+        ).encode("utf-8")
+        error = RUN_LLM.HTTPError(
+            "https://api.groq.com/openai/v1/chat/completions",
+            404,
+            "Not Found",
+            {"Content-Type": "application/json", "x-request-id": "req-404"},
+            io.BytesIO(body),
+        )
+        with patch.object(RUN_LLM, "urlopen", side_effect=error):
+            response, failure, diagnostics = RUN_LLM._call_groq(
+                api_key="test-secret",
+                endpoint="https://api.groq.com/openai/v1/chat/completions",
+                model_id="missing-model",
+                prompt="test prompt",
+                max_tokens=128,
+            )
+        self.assertIsNone(response)
+        self.assertEqual(failure, "HTTP_404")
+        self.assertIsNotNone(diagnostics)
+        self.assertEqual(diagnostics["provider_http_status"], 404)
+        self.assertEqual(diagnostics["provider_request_id"], "req-404")
+        self.assertIn("[REDACTED]", diagnostics["provider_error_body"])
+        self.assertNotIn("test-secret", diagnostics["provider_error_body"])
+        self.assertEqual(
+            diagnostics["provider_error_json"]["error"]["message"],
+            "invalid credential [REDACTED]",
+        )
+
+    def test_zero_successful_requests_returns_failure_after_writing_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prompts_path = root / "prompts.json"
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            prompts_path.write_text(
+                json.dumps(
+                    {
+                        "samples": [
+                            {
+                                "sample_id": f"sample-{index}",
+                                "package_name": f"package-{index}",
+                                "prompt": f"prompt-{index}",
+                            }
+                            for index in range(100)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            argv = [
+                "run_llm_v3.py",
+                "--prompts",
+                str(prompts_path),
+                "--responses",
+                str(responses_path),
+                "--manifest",
+                str(manifest_path),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(
+                    os.environ,
+                    {
+                        "GROQ_API_KEY": "test-secret",
+                        "GROQ_MODEL": "missing-model",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "_call_groq",
+                    return_value=(
+                        None,
+                        "HTTP_404",
+                        {"provider_http_status": 404, "provider_error_body": "not found"},
+                    ),
+                ),
+                patch("sys.stdout", new_callable=io.StringIO),
+            ):
+                self.assertEqual(RUN_LLM.main(), 1)
+            self.assertTrue(responses_path.is_file())
+            self.assertTrue(manifest_path.is_file())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["successful_requests"], 0)
+            self.assertEqual(manifest["failed_requests"], 100)
 
 
 if __name__ == "__main__":
