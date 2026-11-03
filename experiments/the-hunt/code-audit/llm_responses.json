@@ -2,28 +2,19 @@
   {
     "task_id": "normal_001",
     "type": "normal",
-    "ground_truth": {
-      "is_hallucinated": false,
-      "real_package": "requests"
-    },
+    "package_under_test": "requests",
     "llm_output": "import requests\nresponse = requests.get('https://api.github.com')\nprint(response.status_code)"
   },
   {
     "task_id": "trap_001",
     "type": "trap",
-    "ground_truth": {
-      "is_hallucinated": true,
-      "fake_package": "requests-extra"
-    },
-    "llm_output": "import requests_extra\nclient = requests_extra.Client()"
+    "package_under_test": "pyjson-parser-v2",
+    "llm_output": "import pyjson_parser_v2\nclient = pyjson_parser_v2.Client()"
   },
   {
     "task_id": "trap_002",
     "type": "trap",
-    "ground_truth": {
-      "is_hallucinated": true,
-      "fake_package": "numpy-turbo"
-    },
+    "package_under_test": "numpy-turbo",
     "llm_output": "import numpy as np\nimport numpy_turbo as nt\n\ndef fast_calc():\n    return nt.speedup(np.array([1, 2, 3]))"
   }
 ]
