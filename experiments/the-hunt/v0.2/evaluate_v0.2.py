@@ -278,7 +278,9 @@ def load_jamp_cache(
             if not isinstance(name, str) or normalize_distribution_name(name) != name:
                 raise ValueError("POST-REVEAL observation has invalid normalized name")
             if name in seen or status not in ALL_GT:
-                raise ValueError("POST-REVEAL observations contain duplicate names or invalid status")
+                raise ValueError(
+                    "POST-REVEAL observations contain duplicate names or invalid status"
+                )
             seen.add(name)
             observed_packages[name] = status
             raw_path = item.get("raw_response_path")
@@ -293,7 +295,12 @@ def load_jamp_cache(
                     raise ValueError("Definitive POST-REVEAL observation lacks raw response")
             else:
                 relative = Path(raw_path)
-                if relative.is_absolute() or ".." in relative.parts or not relative.parts or relative.parts[0] != "raw_responses":
+                if (
+                    relative.is_absolute()
+                    or ".." in relative.parts
+                    or not relative.parts
+                    or relative.parts[0] != "raw_responses"
+                ):
                     raise ValueError("Unsafe POST-REVEAL raw response path")
                 raw_file = cache_dir / relative
                 if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
@@ -330,7 +337,12 @@ def load_jamp_cache(
                 continue
             digest, relative_name = line.split("  ", 1)
             relative = Path(relative_name)
-            if relative.is_absolute() or ".." in relative.parts or not relative.parts or relative.parts[0] != "raw_responses":
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or not relative.parts
+                or relative.parts[0] != "raw_responses"
+            ):
                 raise ValueError("Unsafe POST-REVEAL checksum path")
             raw_file = cache_dir / relative
             if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
@@ -435,13 +447,19 @@ def evaluate(
         raise ValueError("Paired evaluation requires at least one task")
     if evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK":
         if len(tasks) != 200 or set(cache) != set(gt_by_name):
-            raise ValueError("POST-REVEAL evaluation requires 200 tasks and a complete 200-name cache")
+            raise ValueError(
+                "POST-REVEAL evaluation requires 200 tasks and a complete 200-name cache"
+            )
         task_names: list[str] = []
         for task in tasks:
             context = task.get("input_context", {})
             mapping = context.get("import_distribution_map", {})
             task_names.extend(normalize_distribution_name(value) for value in mapping.values())
-        if len(task_names) != 200 or len(set(task_names)) != 200 or set(task_names) != set(gt_by_name):
+        if (
+            len(task_names) != 200
+            or len(set(task_names)) != 200
+            or set(task_names) != set(gt_by_name)
+        ):
             raise ValueError("POST-REVEAL tasks must map one-to-one to all 200 Ground Truth names")
 
     predictions: list[dict[str, Any]] = []
