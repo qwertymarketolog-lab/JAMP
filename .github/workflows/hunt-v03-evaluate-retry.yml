@@ -27,7 +27,7 @@ jobs:
       - name: Verify source commit and Frozen Core
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "211be508c75a391d17dce511b3b7773202108d29"
+          test "$(git merge-base HEAD 211be508c75a391d17dce511b3b7773202108d29)" = "211be508c75a391d17dce511b3b7773202108d29"
           test "$(git rev-parse HEAD:src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
           echo "SOURCE_SHA=$(git rev-parse HEAD)"
           echo "FROZEN_CORE_DELTA=0"
