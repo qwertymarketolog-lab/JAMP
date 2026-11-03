@@ -400,7 +400,11 @@ class GroqFailureHandlingTests(unittest.TestCase):
             manifest_path = root / "manifest.json"
             prompts_path.write_text(
                 json.dumps({"samples": [
-                    {"sample_id": f"sample-{i}", "package_name": f"package-{i}", "prompt": f"prompt-{i}"}
+                    {
+                        "sample_id": f"sample-{i}",
+                        "package_name": f"package-{i}",
+                        "prompt": f"prompt-{i}",
+                    }
                     for i in range(100)
                 ]}),
                 encoding="utf-8",
@@ -420,7 +424,9 @@ class GroqFailureHandlingTests(unittest.TestCase):
             with (
                 patch.object(sys, "argv", argv),
                 patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
-                patch.object(RUN_LLM, "_call_anymodel", return_value=(response, None, None)) as call,
+                patch.object(
+                    RUN_LLM, "_call_anymodel", return_value=(response, None, None)
+                ) as call,
                 patch("sys.stdout", new_callable=io.StringIO),
             ):
                 self.assertEqual(RUN_LLM.main(), 0)
@@ -449,7 +455,13 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 return json.dumps({
                     "id": "am-control",
                     "model": "ds/deepseek-v4-pro",
-                    "choices": [{"message": {"content": '{"package_name":"pkg","code":"import pkg"}'}}],
+                    "choices": [
+                        {
+                            "message": {
+                                "content": '{"package_name":"pkg","code":"import pkg"}'
+                            }
+                        }
+                    ],
                 }).encode("utf-8")
 
         with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
@@ -464,7 +476,10 @@ class GroqFailureHandlingTests(unittest.TestCase):
         self.assertIsNone(diagnostics)
         self.assertEqual(result["http_status"], 200)
         self.assertEqual(result["provider_model_id"], "ds/deepseek-v4-pro")
-        self.assertEqual(opener.call_args.args[0].full_url, "https://anymodel.org/v1/chat/completions")
+        self.assertEqual(
+            opener.call_args.args[0].full_url,
+            "https://anymodel.org/v1/chat/completions",
+        )
 
 if __name__ == "__main__":
     unittest.main()
