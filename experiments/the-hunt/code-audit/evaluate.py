@@ -197,6 +197,8 @@ def evaluate() -> dict[str, Any]:
 
         normalized_target = re.sub(r"[-_.]+", "-", package).lower()
         target_status = observed_status.get(normalized_target, "INCONCLUSIVE")
+        if not isinstance(task_type, str):
+            raise ValueError(f"{task_id}: unsupported fixture type {task_type!r}.")
         expected_target_status = {
             "normal": "EXISTS_ON_PYPI",
             "trap": "NOT_FOUND_ON_PYPI",
@@ -254,7 +256,7 @@ def evaluate() -> dict[str, Any]:
         baseline_prediction = _baseline_prediction(baseline)
         jamp_prediction = _jamp_prediction(jamp)
         paired = baseline_prediction is not None and jamp_prediction is not None
-        if paired:
+        if baseline_prediction is not None and jamp_prediction is not None:
             baseline_pairs.append((baseline_prediction, actual_all_imports_exist))
             jamp_pairs.append((jamp_prediction, actual_all_imports_exist))
 
