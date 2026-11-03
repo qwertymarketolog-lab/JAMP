@@ -6,22 +6,58 @@ from pathlib import Path
 
 BASELINE_FILE = Path(".ruff-baseline.json")
 
+
+def get_repo_root() -> str:
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return out.stdout.strip()
+    except Exception:
+        return str(Path.cwd())
+
+
+REPO_ROOT = get_repo_root()
+
+
 def get_fingerprint(diag: dict) -> str:
     filename = Path(diag["filename"]).as_posix()
-    # Strip any absolute prefix up to the repository-relative path.
-    parts = filename.split("/")
-    for i, part in enumerate(parts):
-        if part in ("src", "tests", "tools", "track_a", "docs", "experiments", "experiments_b2b"):
-            filename = "/".join(parts[i:])
-            break
+
+    # 1. Если путь абсолютный и начинается с корня репозитория — отрезаем корень
+    if filename.startswith(REPO_ROOT):
+        filename = filename[len(REPO_ROOT) :].lstrip("/")
+    # 2. Фолбэк для старых абсолютных путей (на случай несовпадения корня)
+    elif filename.startswith("/"):
+        parts = filename.split("/")
+        # Ищем первый индекс, с которого начинается реальная структура проекта
+        for i, part in enumerate(parts):
+            if part in (
+                "src",
+                "tests",
+                "tools",
+                "track_a",
+                "docs",
+                "experiments",
+                ".agents",
+                "scripts",
+            ):
+                filename = "/".join(parts[i:])
+                break
+
     return f"{filename}:{diag['code']}:{diag['message']}"
+
+
 def get_current_errors_raw() -> list[dict]:
     result = subprocess.run(
         ["ruff", "check", ".", "--output-format=json"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode not in (0, 1):
-        print(f"❌ FATAL: Ruff execution failed (code {result.returncode})")
+        print(f"❌ FATAL: Ruff execution failed with exit code {result.returncode}")
         print(result.stderr)
         sys.exit(2)
     try:
@@ -30,9 +66,10 @@ def get_current_errors_raw() -> list[dict]:
         print("❌ FATAL: Failed to parse Ruff JSON output.")
         sys.exit(2)
 
+
 def load_baseline_raw() -> list[dict]:
     if not BASELINE_FILE.exists():
-        print(f"❌ FATAL: {BASELINE_FILE} missing. Run 'make lint-update'.")
+        print(f"❌ FATAL: {BASELINE_FILE} not found.")
         sys.exit(2)
     try:
         return json.loads(BASELINE_FILE.read_text())
@@ -40,10 +77,15 @@ def load_baseline_raw() -> list[dict]:
         print(f"❌ FATAL: {BASELINE_FILE} is corrupted.")
         sys.exit(2)
 
+
 def update_baseline():
     current_raw = get_current_errors_raw()
     current = Counter(get_fingerprint(d) for d in current_raw)
-    baseline = Counter(get_fingerprint(d) for d in load_baseline_raw()) if BASELINE_FILE.exists() else Counter()
+    baseline = (
+        Counter(get_fingerprint(d) for d in load_baseline_raw())
+        if BASELINE_FILE.exists()
+        else Counter()
+    )
 
     new_errors = current - baseline
     fixed_errors = baseline - current
@@ -51,9 +93,9 @@ def update_baseline():
     print("📊 Baseline Delta Report:")
     print(f"  Total errors now: {sum(current.values())}")
     print(f"  Total errors in old baseline: {sum(baseline.values())}")
-    
+
     if new_errors:
-        print(f"  ⚠️  {sum(new_errors.values())} errors ADDED:")
+        print(f"  ⚠️  {sum(new_errors.values())} errors ADDED (new debt):")
         for fp, count in new_errors.items():
             print(f"    +{count} {fp}")
     if fixed_errors:
@@ -63,6 +105,7 @@ def update_baseline():
 
     BASELINE_FILE.write_text(json.dumps(current_raw, indent=2) + "\n")
     print(f"✅ Baseline updated. Review {BASELINE_FILE} before committing!")
+
 
 def check_baseline():
     current_raw = get_current_errors_raw()
@@ -78,8 +121,12 @@ def check_baseline():
             print(f"  +{count} {fp}")
         sys.exit(1)
 
-    print(f"✅ No new lint errors. ({sum(current.values())} debt, {sum(fixed_errors.values())} fixed)")
+    print(
+        f"✅ No new lint errors. ({sum(current.values())} total debt, "
+        f"{sum(fixed_errors.values())} fixed)"
+    )
     sys.exit(0)
+
 
 if __name__ == "__main__":
     if "--update" in sys.argv:
