@@ -248,7 +248,8 @@ def prepare(gt_dir: Path, tasks_path: Path, cache_path: Path,
             "This cache was acquired after the Ground Truth Lock workflow completed. "
             "It is an independent later registry observation, not a blind pre-reveal cache."
         ),
-        "ground_truth_source_observations_sha256": gt_manifest["observations_file_sha256"],
+        "ground_truth_source_observations_sha256": None,
+        "ground_truth_observations_sha256": gt_manifest["observations_file_sha256"],
         "ground_truth_manifest_sha256": sha256((gt_dir / "manifest.json").read_bytes()),
         "ground_truth_workflow_run_id": gt_run_id,
         "ground_truth_workflow_head_sha": run_meta["head_sha"],
