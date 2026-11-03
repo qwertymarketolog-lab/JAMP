@@ -107,7 +107,19 @@ jobs:
           test -n "$IDENTITY"
           cp "$IDENTITY" "$GT_DIR/execution-identity.txt"
           echo "GROUND_TRUTH_DIR=$GT_DIR" >> "$GITHUB_ENV"
-          sha256sum "$GT_ROOT/ground-truth-artifact.zip" | tee "$GT_ROOT/downloaded-artifact.sha256"
+          ACTUAL_DIGEST="$(sha256sum "$GT_ROOT/ground-truth-artifact.zip" | awk '{print $1}')"
+          EXPECTED_DIGEST="$(python - "$GT_ROOT/ground-truth-artifact-metadata.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          digest = json.loads(Path(sys.argv[1]).read_text()).get("digest")
+          if not isinstance(digest, str) or not digest.startswith("sha256:"):
+              raise SystemExit("Ground Truth artifact metadata has no SHA-256 digest")
+          print(digest.removeprefix("sha256:"))
+          PY
+          )"
+          test "$ACTUAL_DIGEST" = "$EXPECTED_DIGEST"
+          printf '%s  %s\\n' "$ACTUAL_DIGEST" "$GT_ROOT/ground-truth-artifact.zip" | tee "$GT_ROOT/downloaded-artifact.sha256"
           echo "Ground Truth directory: $GT_DIR"
 
       - name: Prepare synthetic paired tasks and collect independent POST-REVEAL cache
