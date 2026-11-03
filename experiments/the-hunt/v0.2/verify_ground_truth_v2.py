@@ -245,6 +245,19 @@ def write_json(path: Path, value: Any) -> None:
 def collect(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = output_dir / "raw_responses"
+    existing_evidence = [
+        output_dir / "manifest.json",
+        output_dir / "observations.jsonl",
+        output_dir / "checksums.sha256",
+        output_dir / "top-pypi-packages-30-days.min.json",
+    ]
+    if any(path.exists() for path in existing_evidence) or (
+        raw_dir.exists() and any(raw_dir.iterdir())
+    ):
+        raise FileExistsError(
+            "Ground Truth output directory already contains evidence; "
+            "use a new run directory instead of mutating a locked snapshot"
+        )
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     collection_started = utc_now()
@@ -322,6 +335,9 @@ def collect(output_dir: Path) -> dict[str, Any]:
                 for start in range(1, 1001, 100)
             ],
             "selected_real_ranks": [int(item["source_rank"]) for item, _ in candidates[:100]],
+            "selected_real_normalized_names": [
+                item["normalized_name"] for item, _ in candidates[:100]
+            ],
             "fake_method": "Cartesian product of fixed 10 prefixes and 10 suffixes",
             "fake_generator_version": "prefix-suffix-product-v1",
             "fake_prefixes": list(FAKE_PREFIXES),
