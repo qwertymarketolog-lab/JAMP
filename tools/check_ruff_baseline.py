@@ -3,6 +3,7 @@ import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Any, cast
 
 BASELINE_FILE = Path(".ruff-baseline.json")
 
@@ -23,7 +24,7 @@ def get_repo_root() -> str:
 REPO_ROOT = get_repo_root()
 
 
-def get_fingerprint(diag: dict) -> str:
+def get_fingerprint(diag: dict[str, Any]) -> str:
     filename = Path(diag["filename"]).as_posix()
 
     # 1. Если путь абсолютный и начинается с корня репозитория — отрезаем корень
@@ -50,7 +51,7 @@ def get_fingerprint(diag: dict) -> str:
     return f"{filename}:{diag['code']}:{diag['message']}"
 
 
-def get_current_errors_raw() -> list[dict]:
+def get_current_errors_raw() -> list[dict[str, Any]]:
     result = subprocess.run(
         ["ruff", "check", ".", "--output-format=json"],
         capture_output=True,
@@ -61,24 +62,24 @@ def get_current_errors_raw() -> list[dict]:
         print(result.stderr)
         sys.exit(2)
     try:
-        return json.loads(result.stdout) if result.stdout.strip() else []
+        return cast(list[dict[str, Any]], json.loads(result.stdout)) if result.stdout.strip() else []
     except json.JSONDecodeError:
         print("❌ FATAL: Failed to parse Ruff JSON output.")
         sys.exit(2)
 
 
-def load_baseline_raw() -> list[dict]:
+def load_baseline_raw() -> list[dict[str, Any]]:
     if not BASELINE_FILE.exists():
         print(f"❌ FATAL: {BASELINE_FILE} not found.")
         sys.exit(2)
     try:
-        return json.loads(BASELINE_FILE.read_text())
+        return cast(list[dict[str, Any]], json.loads(BASELINE_FILE.read_text()))
     except json.JSONDecodeError:
         print(f"❌ FATAL: {BASELINE_FILE} is corrupted.")
         sys.exit(2)
 
 
-def update_baseline():
+def update_baseline() -> None:
     current_raw = get_current_errors_raw()
     current = Counter(get_fingerprint(d) for d in current_raw)
     baseline = (
@@ -107,7 +108,7 @@ def update_baseline():
     print(f"✅ Baseline updated. Review {BASELINE_FILE} before committing!")
 
 
-def check_baseline():
+def check_baseline() -> None:
     current_raw = get_current_errors_raw()
     current = Counter(get_fingerprint(d) for d in current_raw)
     baseline = Counter(get_fingerprint(d) for d in load_baseline_raw())
