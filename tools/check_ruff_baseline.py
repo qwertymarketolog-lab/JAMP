@@ -62,7 +62,11 @@ def get_current_errors_raw() -> list[dict[str, Any]]:
         print(result.stderr)
         sys.exit(2)
     try:
-        return cast(list[dict[str, Any]], json.loads(result.stdout)) if result.stdout.strip() else []
+        if not result.stdout.strip():
+            return []
+        return cast(
+            list[dict[str, Any]], json.loads(result.stdout)
+        )
     except json.JSONDecodeError:
         print("❌ FATAL: Failed to parse Ruff JSON output.")
         sys.exit(2)
