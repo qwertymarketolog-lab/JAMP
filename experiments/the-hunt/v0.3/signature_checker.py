@@ -23,7 +23,7 @@ MAX_SOURCE_BYTES = 10 * 1024 * 1024
 TIMEOUT_SECONDS = 30
 ImportAliases = dict[str, tuple[str, tuple[str, ...]]]
 CallRecords = list[dict[str, Any]]
-SymbolIndex = tuple[set[str], dict[str, set[str]], dict[str, dict[str, set[str]]]]
+SymbolIndex = tuple[\n    set[str],\n    dict[str, set[str]],\n    dict[str, dict[str, set[str]]],\n    dict[str, dict[str, tuple[str, str]]],\n    set[str],\n]
 
 
 def _dotted_name(node: ast.AST) -> tuple[str, list[str]] | None:
@@ -145,6 +145,8 @@ def _build_symbol_index(sources: dict[str, str]) -> SymbolIndex:
     modules: set[str] = set()
     functions: dict[str, set[str]] = {}
     classes: dict[str, dict[str, set[str]]] = {}
+    reexports: dict[str, dict[str, tuple[str, str]]] = {}
+    dynamic_modules: set[str] = set()
     for path, source in sources.items():
         module = _module_name(path)
         if module is None:
@@ -153,9 +155,12 @@ def _build_symbol_index(sources: dict[str, str]) -> SymbolIndex:
         modules.add(module)
         functions[module] = set()
         classes[module] = {}
+        reexports[module] = {}
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 functions[module].add(node.name)
+                if node.name == "__getattr__":
+                    dynamic_modules.add(module)
             elif isinstance(node, ast.ClassDef):
                 methods = {
                     child.name
@@ -163,7 +168,27 @@ def _build_symbol_index(sources: dict[str, str]) -> SymbolIndex:
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
                 }
                 classes[module][node.name] = methods
-    return modules, functions, classes
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    package = (
+                        module
+                        if path.endswith("/__init__.py")
+                        else module.rpartition(".")[0]
+                    )
+                    package_parts = package.split(".") if package else []
+                    if node.level > 1:
+                        package_parts = package_parts[: -(node.level - 1)]
+                    target_module = ".".join(
+                        [*package_parts, *(node.module.split(".") if node.module else [])]
+                    )
+                else:
+                    target_module = node.module or ""
+                for alias in node.names:
+                    if alias.name == "*":
+                        continue
+                    exported_name = alias.asname or alias.name
+                    reexports[module][exported_name] = (target_module, alias.name)
+    return modules, functions, classes, reexports, dynamic_modules
 
 
 def _symbol_exists(
@@ -172,26 +197,46 @@ def _symbol_exists(
     modules: set[str],
     functions: dict[str, set[str]],
     classes: dict[str, dict[str, set[str]]],
+    reexports: dict[str, dict[str, tuple[str, str]]],
 ) -> bool:
     if not symbol_path:
         return False
-    for split in range(len(symbol_path)):
-        module = ".".join([base_module, *symbol_path[:split]])
-        symbol = symbol_path[split:]
-        if module not in modules:
-            continue
-        if len(symbol) == 1 and (
-            symbol[0] in functions.get(module, set())
-            or symbol[0] in classes.get(module, {})
-        ):
-            return True
-        if (
-            len(symbol) == 2
-            and symbol[0] in classes.get(module, {})
-            and symbol[1] in classes[module][symbol[0]]
-        ):
-            return True
-    return False
+
+    def resolve(
+        module_name: str,
+        path: list[str],
+        visited: set[tuple[str, tuple[str, ...]]],
+    ) -> bool:
+        key = (module_name, tuple(path))
+        if key in visited:
+            return False
+        visited.add(key)
+        for split in range(len(path)):
+            candidate_module = ".".join([module_name, *path[:split]])
+            remaining = path[split:]
+            if candidate_module not in modules:
+                continue
+            if len(remaining) == 1 and (
+                remaining[0] in functions.get(candidate_module, set())
+                or remaining[0] in classes.get(candidate_module, {})
+            ):
+                return True
+            if (
+                len(remaining) == 2
+                and remaining[0] in classes.get(candidate_module, {})
+                and remaining[1] in classes[candidate_module][remaining[0]]
+            ):
+                return True
+            exported = reexports.get(candidate_module, {}).get(remaining[0])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module and resolve(
+                    target_module, [target_symbol, *remaining[1:]], visited
+                ):
+                    return True
+        return False
+
+    return resolve(base_module, symbol_path, set())
 
 
 def inspect_wheel_bytes(
@@ -209,8 +254,17 @@ def inspect_wheel_bytes(
             "unsupported_calls": unsupported_calls,
         }
     try:
+        with zipfile.ZipFile(io.BytesIO(wheel_bytes)) as archive:
+            binary_members = [
+                member.filename
+                for member in archive.infolist()
+                if not member.is_dir()
+                and member.filename.lower().endswith((".so", ".pyd"))
+            ]
         sources = read_wheel_sources(wheel_bytes)
-        modules, functions, classes = _build_symbol_index(sources)
+        modules, functions, classes, reexports, dynamic_modules = _build_symbol_index(
+            sources
+        )
     except (OSError, UnicodeDecodeError, ValueError, zipfile.BadZipFile, SyntaxError):
         return {"status": "INCONCLUSIVE", "reason": "wheel_source_unreadable"}
     if not calls:
@@ -223,17 +277,40 @@ def inspect_wheel_bytes(
         call
         for call in calls
         if not _symbol_exists(
-            call["module"], call["symbol_path"], modules, functions, classes
+            call["module"],
+            call["symbol_path"],
+            modules,
+            functions,
+            classes,
+            reexports,
         )
     ]
+    if unresolved and dynamic_modules:
+        status = "INCONCLUSIVE"
+        reason = "dynamic_attribute_present"
+    elif unresolved and binary_members:
+        status = "INCONCLUSIVE"
+        reason = "binary_extension_not_inspected"
+    elif unresolved and any(
+        call["symbol_path"]
+        and call["symbol_path"][0] in reexports.get(call["module"], {})
+        for call in unresolved
+    ):
+        status = "INCONCLUSIVE"
+        reason = "unresolved_reexport"
+    else:
+        status = "INVALID_SIGNATURE" if unresolved else "EXISTS"
+        reason = "symbol_missing" if unresolved else None
     return {
-        "status": "INVALID_SIGNATURE" if unresolved else "EXISTS",
-        "reason": "symbol_missing" if unresolved else None,
+        "status": status,
+        "reason": reason,
         "calls": calls,
         "unresolved_calls": unresolved,
         "unsupported_calls": [],
         "inspected_module_count": len(modules),
         "inspected_source_paths": sorted(sources),
+        "binary_extension_count": len(binary_members),
+        "dynamic_getattr_modules": sorted(dynamic_modules),
     }
 
 
