@@ -1,0 +1,92 @@
+name: The Hunt v0.3 - Evaluate Existing Artifact (retry)
+
+on:
+  push:
+    branches:
+      - exp/hunt-v03-evaluate-artifact-41687341751-retry
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify source commit and Frozen Core
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "211be508c75a391d17dce511b3b7773202108d29"
+          test "$(git rev-parse HEAD:src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          echo "SOURCE_SHA=$(git rev-parse HEAD)"
+          echo "FROZEN_CORE_DELTA=0"
+
+      - name: Download and verify existing generation artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/qwertymarketolog-lab/JAMP/actions/artifacts/13257610773/zip \
+            -o hunt-v03-artifact.zip
+          echo "9e0ff74b4f3450044224fc457ef9dae8f831c77773852dc9bf985a846be7c5a3  hunt-v03-artifact.zip" | sha256sum --check
+          mkdir -p experiments/the-hunt/v0.3/data
+          unzip -q hunt-v03-artifact.zip -d experiments/the-hunt/v0.3/data
+          test -s experiments/the-hunt/v0.3/data/generation_manifest.json
+          test -s experiments/the-hunt/v0.3/data/llm_responses_v3.json
+          test -s experiments/the-hunt/v0.3/data/ground_truth_v3.json
+
+      - name: Run paired evaluation without new model requests
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/evaluate_v0.3.py \
+            --input experiments/the-hunt/v0.3/data/llm_responses_v3.json \
+            --manifest experiments/the-hunt/v0.3/data/generation_manifest.json \
+            --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json \
+            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("experiments/the-hunt/v0.3/data/results/results_v0.3.json").read_text())
+          summary = {
+              "qualification": report["qualification"],
+              "attempted_sample_count": report["attempted_sample_count"],
+              "successful_generation_count": report["successful_generation_count"],
+              "abstained_generation_count": report["abstained_generation_count"],
+              "failed_generation_count": report["failed_generation_count"],
+              "paired_scored_count": report["paired_scored_count"],
+              "inconclusive_count": report["inconclusive_count"],
+              "baseline": report["baseline"],
+              "jamp": report["jamp"],
+              "mcnemar_exact_two_sided": report["mcnemar_exact_two_sided"],
+              "abstention_summary": report["abstention_summary"],
+          }
+          Path("experiments/the-hunt/v0.3/data/results/evaluation_summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\\n"
+          )
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v03-evaluation-41687341751-retry
+          path: |
+            experiments/the-hunt/v0.3/data/results/results_v0.3.json
+            experiments/the-hunt/v0.3/data/results/evaluation_summary.json
+          if-no-files-found: warn
+          retention-days: 30
