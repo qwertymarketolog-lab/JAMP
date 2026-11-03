@@ -168,7 +168,7 @@ def evaluate(
     )
     if (
         manifest.get("successful_requests") != successful_count
-        or manifest.get("abstained_requests") != abstained_count
+        or manifest.get("abstained_requests", 0) != abstained_count
         or manifest.get("failed_requests") != len(response_samples) - successful_count - abstained_count
     ):
         raise ValueError("generation manifest request counts do not match response statuses")
