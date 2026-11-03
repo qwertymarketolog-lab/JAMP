@@ -75,7 +75,7 @@ jobs:
               "abstention_summary": report["abstention_summary"],
           }
           Path("experiments/the-hunt/v0.3/data/results/evaluation_summary.json").write_text(
-              json.dumps(summary, indent=2, sort_keys=True) + "\\n"
+              json.dumps(summary, indent=2, sort_keys=True) + "\n"
           )
           print(json.dumps(summary, indent=2, sort_keys=True))
           PY
