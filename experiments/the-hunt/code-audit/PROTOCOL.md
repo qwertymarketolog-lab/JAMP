@@ -24,3 +24,9 @@ Standard LLMs frequently hallucinate non-existent Python libraries or misreprese
 3. Execute 100 prompts with JAMP interception.
 4. Manually review discrepancies.
 5. Log results in `RESULTS.md`.
+## Future-Proofing (Zero Trust Architecture)
+To prevent the system from being bypassed by new hallucination patterns, JAMP uses a dynamic approach:
+1. **Dynamic Fuzzing:** Generating new fake package names on the fly (e.g., adding suffixes to real packages) rather than relying on a static blacklist.
+2. **Real-time Verification:** JAMP will query actual package registries (PyPI, npm) and documentation sources. A package exists only if there is external evidence.
+3. **Sandbox Execution:** Testing the generated code's installability and executability in an isolated environment. If it doesn't install, it's a hallucination.
+4. **Adversarial Red Teaming:** Continuously pitting a generative agent against JAMP to find and patch bypasses.
