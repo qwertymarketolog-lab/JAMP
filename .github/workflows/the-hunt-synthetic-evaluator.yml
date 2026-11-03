@@ -1,0 +1,43 @@
+name: The Hunt Synthetic Evaluator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: the-hunt-synthetic-evaluator-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Run paired evaluator against synthetic fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run evaluator (live PyPI, no OpenRouter)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/code-audit/evaluate.py > evaluator-report.json
+          cat evaluator-report.json
+
+      - name: Upload evaluator report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-hunt-synthetic-evaluator-report
+          path: evaluator-report.json
+          if-no-files-found: warn
+          retention-days: 14
