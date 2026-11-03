@@ -18,7 +18,6 @@ from jamp.research.replay import (
 )
 
 
-
 def _state(value: int) -> dict[str, int]:
     return {"value": value}
 
@@ -106,7 +105,9 @@ def test_gate_07_multi_event_causal_replay() -> None:
 def test_gate_08_topological_order_is_preserved() -> None:
     initial, first, second = _chain()
     trace = project_replay(initial, [second, first], _transition)
-    assert trace.ordered_event_ids.index(first.event_id) < trace.ordered_event_ids.index(second.event_id)
+    assert trace.ordered_event_ids.index(first.event_id) < trace.ordered_event_ids.index(
+        second.event_id
+    )
 
 
 def test_gate_09_same_dag_produces_identical_trace() -> None:
@@ -118,9 +119,10 @@ def test_gate_09_same_dag_produces_identical_trace() -> None:
 
 def test_gate_10_input_arrival_order_independence() -> None:
     initial, first, second = _chain()
-    assert project_replay(initial, [first, second], _transition).trace_hash == project_replay(
-        initial, [second, first], _transition
-    ).trace_hash
+    assert (
+        project_replay(initial, [first, second], _transition).trace_hash
+        == project_replay(initial, [second, first], _transition).trace_hash
+    )
 
 
 def test_gate_11_parent_dependency_is_enforced() -> None:

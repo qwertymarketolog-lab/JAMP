@@ -3,6 +3,7 @@
 This file deliberately contains only pre-execution controls. It does not run
 EXP-09, select thresholds from data, or freeze an experiment specification.
 """
+
 from __future__ import annotations
 
 from statistics import median
@@ -11,6 +12,7 @@ import pytest
 
 
 # R2.9a: mathematical contract
+
 
 def relative_effects(values: list[float]) -> tuple[float, float]:
     """Return (median(r_i), p_+) for a fixed, non-empty sample."""
@@ -51,12 +53,12 @@ def test_r29a_median_and_p_plus(values, expected_median, expected_p_plus) -> Non
 @pytest.mark.parametrize(
     ("values", "expected"),
     [
-        ([0.1, 0.2, 0.3, 0.4], "PASS"),                    # m > 0, p_+ > 0.5
-        ([0.4, 0.3, -0.1, -0.2], "INCONCLUSIVE"),          # m > 0, p_+ = 0.5
-        ([0.1, 0.2, -0.3, -0.4], "INCONCLUSIVE"),          # m < 0, p_+ = 0.5
-        ([-0.1, -0.2, -0.3, -0.4], "FAIL"),                # m < 0, p_+ < 0.5
-        ([-0.2, -0.1, 0.1, 0.2], "INCONCLUSIVE"),          # m = 0, p_+ = 0.5
-        ([-0.3, -0.1, 0.1, 0.3], "INCONCLUSIVE"),          # m = 0, p_+ = 0.5
+        ([0.1, 0.2, 0.3, 0.4], "PASS"),  # m > 0, p_+ > 0.5
+        ([0.4, 0.3, -0.1, -0.2], "INCONCLUSIVE"),  # m > 0, p_+ = 0.5
+        ([0.1, 0.2, -0.3, -0.4], "INCONCLUSIVE"),  # m < 0, p_+ = 0.5
+        ([-0.1, -0.2, -0.3, -0.4], "FAIL"),  # m < 0, p_+ < 0.5
+        ([-0.2, -0.1, 0.1, 0.2], "INCONCLUSIVE"),  # m = 0, p_+ = 0.5
+        ([-0.3, -0.1, 0.1, 0.3], "INCONCLUSIVE"),  # m = 0, p_+ = 0.5
     ],
 )
 def test_r29b_classifier_boundary_matrix(values, expected) -> None:
@@ -77,7 +79,9 @@ def test_r29b_classifier_is_complete_and_pairwise_disjoint() -> None:
 # R2.9c: S0 is an execution invariant, not a scientific verdict.
 
 
-def validate_s0_invariant(*, merge_count: int, control_expanded: int, treatment_expanded: int) -> None:
+def validate_s0_invariant(
+    *, merge_count: int, control_expanded: int, treatment_expanded: int
+) -> None:
     """Reject a no-merge paired execution if the twins expand differently."""
     if merge_count == 0 and control_expanded != treatment_expanded:
         raise ValueError("EXECUTION_INVALID: S0 control/treatment expanded_nodes mismatch")

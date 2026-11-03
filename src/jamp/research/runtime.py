@@ -5,6 +5,7 @@ no scientific inference, storage, networking, filesystem access, or production
 domain dependency. Runtime identity is derived solely from canonical research
 inputs and content-addressed upstream identities.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,10 +18,18 @@ from typing import Any, Mapping, Sequence
 from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({
-    "timestamp", "uuid", "memory_address", "environment", "local_path",
-    "hostname", "pid", "process_id",
-})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 
 
 class RuntimeErrorBase(ValueError):
@@ -128,18 +137,32 @@ def _verify_artifact(artifact: Any, expected_hash: str) -> None:
 def _reference_values(artifact: Any) -> set[str]:
     values: set[str] = set()
     for name in (
-        "question_hash", "plan_hash", "execution_hash", "result_hash",
-        "interpretation_hash", "consensus_hash", "revision_hash",
-        "parent_question_hash", "parent_hypothesis_hash", "trigger_reference",
+        "question_hash",
+        "plan_hash",
+        "execution_hash",
+        "result_hash",
+        "interpretation_hash",
+        "consensus_hash",
+        "revision_hash",
+        "parent_question_hash",
+        "parent_hypothesis_hash",
+        "trigger_reference",
     ):
         value = getattr(artifact, name, None)
         if isinstance(value, str):
             values.add(value)
     exported = _artifact_export(artifact)
     for name in (
-        "question_hash", "plan_hash", "execution_hash", "result_hash",
-        "interpretation_hash", "consensus_hash", "revision_hash",
-        "parent_question_hash", "parent_hypothesis_hash", "trigger_reference",
+        "question_hash",
+        "plan_hash",
+        "execution_hash",
+        "result_hash",
+        "interpretation_hash",
+        "consensus_hash",
+        "revision_hash",
+        "parent_question_hash",
+        "parent_hypothesis_hash",
+        "trigger_reference",
     ):
         value = exported.get(name)
         if isinstance(value, str):
@@ -194,7 +217,9 @@ def compute_runtime_hash(
     artifact_hashes: Mapping[RuntimeStage | str, str],
 ) -> str:
     stages = tuple(x.value if isinstance(x, RuntimeStage) else x for x in transitions)
-    normalized = {str(k.value if isinstance(k, RuntimeStage) else k): v for k, v in artifact_hashes.items()}
+    normalized = {
+        str(k.value if isinstance(k, RuntimeStage) else k): v for k, v in artifact_hashes.items()
+    }
     material = {
         "context": _thaw(_freeze(context)),
         "transitions": list(stages),
@@ -214,7 +239,9 @@ class ResearchRuntime:
 
     def __post_init__(self) -> None:
         context = _freeze(self.context)
-        transitions = tuple(RuntimeStage(x) if not isinstance(x, RuntimeStage) else x for x in self.transitions)
+        transitions = tuple(
+            RuntimeStage(x) if not isinstance(x, RuntimeStage) else x for x in self.transitions
+        )
         artifacts = _freeze(self.artifact_hashes)
         provenance = _freeze(self.provenance)
         _validate_transitions(transitions)
@@ -241,20 +268,29 @@ class ResearchRuntime:
         return self.transitions
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({
-            "context": _thaw(self.context),
-            "transitions": [x.value for x in self.transitions],
-            "artifact_hashes": {k.value: v for k, v in self.artifact_hashes.items()},
-            "provenance": _thaw(self.provenance),
-            "status": self.status.value,
-            "runtime_hash": self.runtime_hash,
-        })
+        return MappingProxyType(
+            {
+                "context": _thaw(self.context),
+                "transitions": [x.value for x in self.transitions],
+                "artifact_hashes": {k.value: v for k, v in self.artifact_hashes.items()},
+                "provenance": _thaw(self.provenance),
+                "status": self.status.value,
+                "runtime_hash": self.runtime_hash,
+            }
+        )
 
     @classmethod
     def from_export(cls, payload: Mapping[str, Any]) -> "ResearchRuntime":
         if not isinstance(payload, Mapping):
             raise RuntimeIntegrityError("invalid runtime export")
-        required = {"context", "transitions", "artifact_hashes", "provenance", "status", "runtime_hash"}
+        required = {
+            "context",
+            "transitions",
+            "artifact_hashes",
+            "provenance",
+            "status",
+            "runtime_hash",
+        }
         if set(payload) != required:
             raise RuntimeIntegrityError("invalid runtime export schema")
         return cls(

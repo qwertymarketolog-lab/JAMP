@@ -1,4 +1,5 @@
 """Canonical EventNode representation for the JAMP State History."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

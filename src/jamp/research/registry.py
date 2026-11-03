@@ -80,11 +80,13 @@ class ArtifactRegistry:
 
         index_entry: dict[str, Any] = {"trace_hash": result.trace_hash}
         if trace is not None:
-            index_entry.update({
-                "initial_state_hash": trace.initial_state_hash,
-                "ordered_event_ids": tuple(trace.ordered_event_ids),
-                "resulting_state_hash": trace.resulting_state_hash,
-            })
+            index_entry.update(
+                {
+                    "initial_state_hash": trace.initial_state_hash,
+                    "ordered_event_ids": tuple(trace.ordered_event_ids),
+                    "resulting_state_hash": trace.resulting_state_hash,
+                }
+            )
         frozen_entry = MappingProxyType(index_entry)
         self._artifacts[result.result_hash] = _Artifact(result, trace)
         self._index[result.result_hash] = frozen_entry
@@ -113,7 +115,9 @@ class ArtifactRegistry:
 
     def snapshot(self) -> Mapping[str, ResearchResult]:
         """Return a deterministic immutable result-address snapshot."""
-        return MappingProxyType({key: self._artifacts[key].result for key in sorted(self._artifacts)})
+        return MappingProxyType(
+            {key: self._artifacts[key].result for key in sorted(self._artifacts)}
+        )
 
     def export(self) -> Mapping[str, Any]:
         """Return a deterministic serializable registry representation."""

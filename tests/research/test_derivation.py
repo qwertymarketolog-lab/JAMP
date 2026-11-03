@@ -43,16 +43,22 @@ def _registry(*seeds: str):
 
 def test_01_schema_validity():
     registry = _registry("a")
-    artifact = derive_evidence(registry, [next(iter(registry.snapshot()))], "OBSERVATION", "1", {}, {"x": 1})
+    artifact = derive_evidence(
+        registry, [next(iter(registry.snapshot()))], "OBSERVATION", "1", {}, {"x": 1}
+    )
     assert artifact.analysis_type == "OBSERVATION"
     assert artifact.algorithm_version == "1"
-    inference = derive_evidence(registry, list(registry.snapshot()), "INFERENCE", "1", {"premises": ["p1"]}, {"x": 1})
+    inference = derive_evidence(
+        registry, list(registry.snapshot()), "INFERENCE", "1", {"premises": ["p1"]}, {"x": 1}
+    )
     assert inference.analysis_type == "INFERENCE"
 
 
 def test_02_structural_immutability():
     registry = _registry("a")
-    artifact = derive_evidence(registry, list(registry.snapshot()), "OBSERVATION", "1", {"x": 1}, {"x": 1})
+    artifact = derive_evidence(
+        registry, list(registry.snapshot()), "OBSERVATION", "1", {"x": 1}, {"x": 1}
+    )
     with pytest.raises(FrozenInstanceError):
         artifact.analysis_type = "COMPARISON"
     with pytest.raises(TypeError):
@@ -64,8 +70,11 @@ def test_03_valid_derived_hash():
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {"a": 1}, {"x": 1})
     assert artifact.derived_evidence_hash == compute_derived_evidence_hash(
-        artifact.source_hashes, artifact.analysis_type, artifact.algorithm_version,
-        artifact.parameters, artifact.result
+        artifact.source_hashes,
+        artifact.analysis_type,
+        artifact.algorithm_version,
+        artifact.parameters,
+        artifact.result,
     )
 
 
@@ -119,7 +128,10 @@ def test_10_complete_provenance_preserved():
     assert source["state_anchors"]
     composition = compose_results(registry, hashes)
     derived = derive_evidence(registry, [composition], "AGGREGATION", "1", {}, {"n": 2})
-    assert derived.provenance["sources"][composition.composition_hash]["result_hashes"] == composition.result_hashes
+    assert (
+        derived.provenance["sources"][composition.composition_hash]["result_hashes"]
+        == composition.result_hashes
+    )
 
 
 def test_11_result_hash_preserved():
@@ -141,14 +153,20 @@ def test_13_event_identity_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert tuple(artifact.provenance["sources"][h]["event_ids"]) == registry.index[h]["ordered_event_ids"]
+    assert (
+        tuple(artifact.provenance["sources"][h]["event_ids"])
+        == registry.index[h]["ordered_event_ids"]
+    )
 
 
 def test_14_state_anchors_preserved():
     registry = _registry("a")
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
-    assert tuple(artifact.provenance["sources"][h]["state_anchors"]) == (registry.index[h]["initial_state_hash"], registry.index[h]["resulting_state_hash"])
+    assert tuple(artifact.provenance["sources"][h]["state_anchors"]) == (
+        registry.index[h]["initial_state_hash"],
+        registry.index[h]["resulting_state_hash"],
+    )
 
 
 def test_15_registry_tampering_detected():
@@ -170,8 +188,17 @@ def test_16_unordered_semantics_are_deterministic():
 def test_17_ordered_semantics_are_explicit():
     registry = _registry("a", "b")
     hashes = list(registry.snapshot())
-    left = derive_evidence(registry, hashes, "COMPARISON", "1", {"ordered": True}, {"order": hashes})
-    right = derive_evidence(registry, list(reversed(hashes)), "COMPARISON", "1", {"ordered": True}, {"order": list(reversed(hashes))})
+    left = derive_evidence(
+        registry, hashes, "COMPARISON", "1", {"ordered": True}, {"order": hashes}
+    )
+    right = derive_evidence(
+        registry,
+        list(reversed(hashes)),
+        "COMPARISON",
+        "1",
+        {"ordered": True},
+        {"order": list(reversed(hashes))},
+    )
     assert left.derived_evidence_hash != right.derived_evidence_hash
 
 
@@ -212,7 +239,15 @@ def test_22_payload_tampering_detected():
     h = next(iter(registry.snapshot()))
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
     with pytest.raises(DerivationIntegrityError):
-        artifact.__class__(artifact.source_hashes, artifact.analysis_type, artifact.algorithm_version, artifact.parameters, {"x": 2}, artifact.provenance, artifact.derived_evidence_hash)
+        artifact.__class__(
+            artifact.source_hashes,
+            artifact.analysis_type,
+            artifact.algorithm_version,
+            artifact.parameters,
+            {"x": 2},
+            artifact.provenance,
+            artifact.derived_evidence_hash,
+        )
 
 
 def test_23_source_substitution_rejected():
@@ -238,6 +273,7 @@ def test_25_no_filesystem_network_or_domain_dependency():
     artifact = derive_evidence(registry, [h], "OBSERVATION", "1", {}, {"x": 1})
     assert artifact
     import jamp.research.derivation as derivation
+
     assert "socket" not in derivation.__dict__
     assert "requests" not in derivation.__dict__
 
@@ -245,7 +281,16 @@ def test_25_no_filesystem_network_or_domain_dependency():
 def test_26_cross_runtime_deterministic_reproduction():
     registry = _registry("a", "b")
     hashes = list(registry.snapshot())
-    artifact = derive_evidence(registry, hashes, "AGGREGATION", "1", {"ordered": False}, {"mean": 1})
+    artifact = derive_evidence(
+        registry, hashes, "AGGREGATION", "1", {"ordered": False}, {"mean": 1}
+    )
     exported = artifact.export()
-    recreated = derive_evidence(registry, exported["source_hashes"], exported["analysis_type"], exported["algorithm_version"], exported["parameters"], exported["result"])
+    recreated = derive_evidence(
+        registry,
+        exported["source_hashes"],
+        exported["analysis_type"],
+        exported["algorithm_version"],
+        exported["parameters"],
+        exported["result"],
+    )
     assert recreated.derived_evidence_hash == artifact.derived_evidence_hash

@@ -22,7 +22,9 @@ from jamp.research.causal import (
 )
 
 
-def make_event(*, sequence: int = 0, parents: tuple[str, ...] = (), payload: dict | None = None) -> CausalEvent:
+def make_event(
+    *, sequence: int = 0, parents: tuple[str, ...] = (), payload: dict | None = None
+) -> CausalEvent:
     return CausalEvent(
         event_type="observation",
         sequence=sequence,
@@ -76,7 +78,9 @@ def test_gate_06_payload_change_changes_event_id() -> None:
 
 def test_gate_07_parent_reference_is_structural() -> None:
     parent = make_event(sequence=0)
-    child = CausalEvent("observation", 1, (parent.event_id,), replay_hash({"state": 1}), {"value": 1})
+    child = CausalEvent(
+        "observation", 1, (parent.event_id,), replay_hash({"state": 1}), {"value": 1}
+    )
     pool = validate_event_pool([parent, child])
     assert pool[child.event_id].parent_ids == (parent.event_id,)
 
@@ -139,7 +143,9 @@ def test_gate_13_event_type_tamper_breaks_identity_verification() -> None:
 
 def test_gate_14_parent_tamper_breaks_identity_verification() -> None:
     parent = make_event(sequence=0, payload={"root": True})
-    child = CausalEvent("observation", 1, (parent.event_id,), replay_hash({"state": 1}), {"value": 1})
+    child = CausalEvent(
+        "observation", 1, (parent.event_id,), replay_hash({"state": 1}), {"value": 1}
+    )
     object.__setattr__(child, "parent_ids", ("f" * 64,))
     assert child.verify_integrity() is False
     with pytest.raises(CausalIntegrityError):

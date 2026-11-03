@@ -1,4 +1,5 @@
 """Deterministic Dynamic Policy Adaptor for P17.3."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,7 +36,11 @@ class PolicyWeights:
             raise ValueError("floor violation")
         if abs(sum(values.values()) - total_budget) > _EPS:
             raise ValueError("budget must be normalized")
-        return cls(tuple(sorted((str(k), float(v)) for k, v in values.items())), float(total_budget), float(min_weight))
+        return cls(
+            tuple(sorted((str(k), float(v)) for k, v in values.items())),
+            float(total_budget),
+            float(min_weight),
+        )
 
     def as_dict(self) -> Mapping[str, float]:
         return MappingProxyType(dict(self.values))
@@ -87,8 +92,7 @@ class DynamicPolicyAdaptor:
             # receives an equal share of the non-floor budget.
             uniform = 1.0 / len(scores)
             shares = {
-                name: (1.0 - exploitation_pressure) * shares[name]
-                + exploitation_pressure * uniform
+                name: (1.0 - exploitation_pressure) * shares[name] + exploitation_pressure * uniform
                 for name in sorted(scores)
             }
 

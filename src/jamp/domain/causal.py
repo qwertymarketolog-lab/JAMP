@@ -1,4 +1,5 @@
 """Pure causal ordering and vector-clock primitives for JAMP P16.2."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,7 +31,9 @@ class VectorClock:
         if normalized != self.components:
             raise ValueError("VectorClock components must be canonically sorted.")
         if any(not key or value < 0 for key, value in normalized):
-            raise ValueError("VectorClock components must contain non-negative values and non-empty keys.")
+            raise ValueError(
+                "VectorClock components must contain non-negative values and non-empty keys."
+            )
         if len({key for key, _ in normalized}) != len(normalized):
             raise ValueError("VectorClock components must contain unique event IDs.")
 

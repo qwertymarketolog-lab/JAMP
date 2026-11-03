@@ -1,4 +1,5 @@
 """Event DAG construction and the P16.1 formal history boundary."""
+
 from __future__ import annotations
 
 from typing import Any

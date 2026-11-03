@@ -3,6 +3,7 @@
 The search boundary consumes an already-computed immutable policy state. It does
 not own policy adaptation, replay, or historical EventDAG mutation.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -64,7 +65,9 @@ class PolicyGuidedSearch:
                 raise ValueError("policy_event does not bind to the supplied policy")
             policy_event_id = policy_event.event_id
 
-        effective_weights = tuple(sorted((str(name), float(value)) for name, value in values.items()))
+        effective_weights = tuple(
+            sorted((str(name), float(value)) for name, value in values.items())
+        )
         # The trajectory is a canonical execution binding, not a second policy
         # calculation: identical Genesis + policy + causal event produce the
         # identical trajectory; changing the active policy changes the digest.

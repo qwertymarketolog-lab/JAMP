@@ -33,4 +33,6 @@ def test_jamp_core_has_no_commercial_or_frontend_imports() -> None:
             for name in names:
                 if _module_root(name) in FORBIDDEN_ROOTS:
                     violations.append(f"{path.relative_to(ROOT)} -> {name}")
-    assert not violations, "JAMP core imports forbidden commercial/boundary modules:\n" + "\n".join(violations)
+    assert not violations, "JAMP core imports forbidden commercial/boundary modules:\n" + "\n".join(
+        violations
+    )

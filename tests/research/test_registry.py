@@ -29,7 +29,9 @@ def make_result(*, payload=None, provenance=None):
         trace,
         "finding",
         payload if payload is not None else {"answer": 42},
-        provenance if provenance is not None else {
+        provenance
+        if provenance is not None
+        else {
             "source": "test",
             "operation": "p20.1",
             "version": "1",
@@ -138,9 +140,11 @@ def test_gate_11_provenance_mismatch_rejection():
     object.__setattr__(bad, "trace_hash", result.trace_hash)
     object.__setattr__(bad, "result_type", result.result_type)
     object.__setattr__(bad, "result_payload", result.result_payload)
-    object.__setattr__(bad, "provenance", MappingProxyType({
-        "source": "tampered", "operation": "p20.1", "version": "1"
-    }))
+    object.__setattr__(
+        bad,
+        "provenance",
+        MappingProxyType({"source": "tampered", "operation": "p20.1", "version": "1"}),
+    )
     object.__setattr__(bad, "result_hash", result.result_hash)
     with pytest.raises(RegistryIntegrityError):
         registry.register(bad)
@@ -198,7 +202,15 @@ def test_gate_16_cross_runtime_independence():
 
 def test_gate_17_forbidden_runtime_metadata_exclusion():
     source = inspect.getsource(importlib.import_module("jamp.research.registry"))
-    forbidden = ("timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid")
+    forbidden = (
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+    )
     assert not any(token in source for token in forbidden)
 
 

@@ -3,6 +3,7 @@
 Test-first contract: this file is intentionally added before the CLI
 implementation and defines the 40-gate public contract.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,13 +45,48 @@ def make_objects(session: ResearchSession):
     # upstream chain while keeping the CLI independent of concrete engines.
     return {
         H["question"]: {"kind": "question", "question_hash": H["question"], "plan_hash": H["plan"]},
-        H["plan"]: {"kind": "plan", "plan_hash": H["plan"], "question_hash": H["question"], "execution_hash": H["execution"]},
-        H["execution"]: {"kind": "execution", "execution_hash": H["execution"], "plan_hash": H["plan"], "result_hash": H["result"]},
-        H["result"]: {"kind": "result", "result_hash": H["result"], "execution_hash": H["execution"], "interpretation_hash": H["interpretation"]},
-        H["interpretation"]: {"kind": "interpretation", "interpretation_hash": H["interpretation"], "result_hash": H["result"], "claim_hash": H["claim"]},
-        H["claim"]: {"kind": "claim", "claim_hash": H["claim"], "interpretation_hash": H["interpretation"], "consensus_hash": H["consensus"]},
-        H["consensus"]: {"kind": "consensus", "consensus_hash": H["consensus"], "claim_hash": H["claim"], "revision_hash": H["revision"]},
-        H["revision"]: {"kind": "revision", "revision_hash": H["revision"], "consensus_hash": H["consensus"], "question_hash": H["question"]},
+        H["plan"]: {
+            "kind": "plan",
+            "plan_hash": H["plan"],
+            "question_hash": H["question"],
+            "execution_hash": H["execution"],
+        },
+        H["execution"]: {
+            "kind": "execution",
+            "execution_hash": H["execution"],
+            "plan_hash": H["plan"],
+            "result_hash": H["result"],
+        },
+        H["result"]: {
+            "kind": "result",
+            "result_hash": H["result"],
+            "execution_hash": H["execution"],
+            "interpretation_hash": H["interpretation"],
+        },
+        H["interpretation"]: {
+            "kind": "interpretation",
+            "interpretation_hash": H["interpretation"],
+            "result_hash": H["result"],
+            "claim_hash": H["claim"],
+        },
+        H["claim"]: {
+            "kind": "claim",
+            "claim_hash": H["claim"],
+            "interpretation_hash": H["interpretation"],
+            "consensus_hash": H["consensus"],
+        },
+        H["consensus"]: {
+            "kind": "consensus",
+            "consensus_hash": H["consensus"],
+            "claim_hash": H["claim"],
+            "revision_hash": H["revision"],
+        },
+        H["revision"]: {
+            "kind": "revision",
+            "revision_hash": H["revision"],
+            "consensus_hash": H["consensus"],
+            "question_hash": H["question"],
+        },
     }
 
 
@@ -61,6 +97,7 @@ def cli():
 
 
 # 01–10 CLI Core
+
 
 def test_01_cli_schema_and_parser_valid(cli):
     parser = build_parser()
@@ -120,6 +157,7 @@ def test_10_output_is_runtime_independent(cli):
 
 # 11–20 Session Inspection
 
+
 def test_11_inspect_accepts_valid_session_hash(cli):
     obj, session = cli
     assert session.session_hash in obj.inspect(session.session_hash)
@@ -178,6 +216,7 @@ def test_20_inspection_preserves_canonical_identity(cli):
 
 # 21–28 Lineage
 
+
 def test_21_lineage_accepts_content_addressed_identifier(cli):
     obj, _ = cli
     assert H["result"] in obj.lineage(H["result"])
@@ -204,7 +243,12 @@ def test_24_full_p19_p20_p21_provenance_is_visible(cli):
 def test_25_causal_order_is_preserved(cli):
     obj, _ = cli
     out = obj.lineage(H["question"])
-    assert out.index(H["question"]) < out.index(H["plan"]) < out.index(H["execution"]) < out.index(H["result"])
+    assert (
+        out.index(H["question"])
+        < out.index(H["plan"])
+        < out.index(H["execution"])
+        < out.index(H["result"])
+    )
 
 
 def test_26_revision_lineage_is_preserved(cli):
@@ -226,6 +270,7 @@ def test_28_cyclic_lineage_is_rejected(cli):
 
 
 # 29–34 Verification & Export
+
 
 def test_29_verify_checks_session_identity(cli):
     obj, session = cli
@@ -267,6 +312,7 @@ def test_34_export_round_trip_preserves_session_hash(cli):
 
 # 35–40 Adversarial & Isolation
 
+
 def test_35_invalid_hash_injection_is_rejected(cli):
     obj, _ = cli
     with pytest.raises(CLIError):
@@ -275,7 +321,9 @@ def test_35_invalid_hash_injection_is_rejected(cli):
 
 def test_36_path_injection_is_rejected_without_filesystem_access(cli, monkeypatch):
     obj, _ = cli
-    monkeypatch.setattr("builtins.open", lambda *a, **k: (_ for _ in ()).throw(AssertionError("filesystem access")))
+    monkeypatch.setattr(
+        "builtins.open", lambda *a, **k: (_ for _ in ()).throw(AssertionError("filesystem access"))
+    )
     with pytest.raises(CLIError):
         obj.export("../session")
 
@@ -288,7 +336,9 @@ def test_37_runtime_metadata_injection_is_rejected(cli):
 
 def test_38_network_access_is_prohibited(cli, monkeypatch):
     obj, session = cli
-    monkeypatch.setattr(socket, "socket", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network access")))
+    monkeypatch.setattr(
+        socket, "socket", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network access"))
+    )
     assert obj.verify(session.session_hash) is True
 
 
@@ -308,5 +358,9 @@ def test_40_cli_cannot_mutate_p21_core(cli):
 
 
 def test_meta_exactly_40_gate_tests():
-    tests = [name for name, value in globals().items() if name.startswith("test_") and name[5:7].isdigit()]
+    tests = [
+        name
+        for name, value in globals().items()
+        if name.startswith("test_") and name[5:7].isdigit()
+    ]
     assert len(tests) == 40

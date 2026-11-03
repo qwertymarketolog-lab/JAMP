@@ -111,7 +111,9 @@ def test_gate_09_payload_tamper_breaks_identity() -> None:
 
 def test_gate_10_provenance_tamper_breaks_identity() -> None:
     result = make_result()
-    object.__setattr__(result, "provenance", {"source": "tampered", "operation": "measurement", "version": "1"})
+    object.__setattr__(
+        result, "provenance", {"source": "tampered", "operation": "measurement", "version": "1"}
+    )
     assert result.verify_integrity() is False
     with pytest.raises(ResultIntegrityError):
         result.verify()
@@ -162,7 +164,9 @@ def test_gate_17_runtime_contamination_excluded_from_hash() -> None:
     with pytest.raises(ResultProvenanceError):
         make_result(provenance=contaminated)
     clean_a = make_result(provenance=PROVENANCE)
-    clean_b = make_result(provenance={"version": "1", "operation": "measurement", "source": "experiment"})
+    clean_b = make_result(
+        provenance={"version": "1", "operation": "measurement", "source": "experiment"}
+    )
     assert clean_a.result_hash == clean_b.result_hash
 
 

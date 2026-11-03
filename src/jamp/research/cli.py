@@ -3,6 +3,7 @@
 The module owns no scientific semantics and performs no I/O. Callers inject
 already-resolved immutable sessions and content-addressed object exports.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,8 +16,29 @@ from typing import Any, Mapping, Sequence
 from .session import ResearchSession
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_KINDS = ("question", "plan", "execution", "result", "interpretation", "claim", "consensus", "revision")
-_RUNTIME_KEYS = {"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id", "runtime", "host", "platform"}
+_KINDS = (
+    "question",
+    "plan",
+    "execution",
+    "result",
+    "interpretation",
+    "claim",
+    "consensus",
+    "revision",
+)
+_RUNTIME_KEYS = {
+    "timestamp",
+    "uuid",
+    "memory_address",
+    "environment",
+    "local_path",
+    "hostname",
+    "pid",
+    "process_id",
+    "runtime",
+    "host",
+    "platform",
+}
 
 
 class CLIError(ValueError):
@@ -76,7 +98,9 @@ class ResearchCLI:
     source_semantics = frozenset()
     imports = frozenset({"jamp.research.session"})
 
-    def __init__(self, sessions: Mapping[str, ResearchSession], objects: Mapping[str, Mapping[str, Any]]):
+    def __init__(
+        self, sessions: Mapping[str, ResearchSession], objects: Mapping[str, Mapping[str, Any]]
+    ):
         self.sessions = dict(sessions)
         self.objects = {k: copy.deepcopy(dict(v)) for k, v in objects.items()}
         self._snapshots = {k: copy.deepcopy(v) for k, v in self.objects.items()}
@@ -98,12 +122,14 @@ class ResearchCLI:
 
     def inspect(self, session_hash: str) -> str:
         session = self._session(session_hash)
-        return _json({
-            "session_hash": session.session_hash,
-            "metadata": session.metadata,
-            "status": session.status,
-            "indexes": session.indexes,
-        })
+        return _json(
+            {
+                "session_hash": session.session_hash,
+                "metadata": session.metadata,
+                "status": session.status,
+                "indexes": session.indexes,
+            }
+        )
 
     def render_metadata(self, metadata: Mapping[str, Any]) -> str:
         _reject_runtime(metadata)
@@ -129,8 +155,16 @@ class ResearchCLI:
             identity = self._object_hash(obj, key)
             graph.setdefault(identity, set())
             for field, value in obj.items():
-                if field.endswith("_hash") and field != "artifact_hash" and field != f"{obj.get('kind')}_hash":
-                    if isinstance(value, str) and _HASH_RE.fullmatch(value) and value in self.objects:
+                if (
+                    field.endswith("_hash")
+                    and field != "artifact_hash"
+                    and field != f"{obj.get('kind')}_hash"
+                ):
+                    if (
+                        isinstance(value, str)
+                        and _HASH_RE.fullmatch(value)
+                        and value in self.objects
+                    ):
                         graph[identity].add(value)
                         graph[value].add(identity)
         return graph
@@ -159,14 +193,22 @@ class ResearchCLI:
             reachable.add(node)
             queue.extend(sorted(graph.get(node, ())))
         rank = {kind: i for i, kind in enumerate(_KINDS)}
+
         def kind_of(ref: str) -> str:
             return next((k for k in _KINDS if ref in self._refs_for_kind(k)), "unknown")
+
         ordered = sorted(reachable, key=lambda ref: (rank.get(kind_of(ref), 99), ref))
         return "\n".join(ordered)
 
     def _refs_for_kind(self, kind: str) -> tuple[str, ...]:
         suffix = f"{kind}_hash"
-        return tuple(sorted(key for key, obj in self.objects.items() if obj.get(suffix) == key and obj.get("kind") == kind))
+        return tuple(
+            sorted(
+                key
+                for key, obj in self.objects.items()
+                if obj.get(suffix) == key and obj.get("kind") == kind
+            )
+        )
 
     def verify(self, session_hash: str, *, require_objects: bool = False) -> bool:
         session = self._session(session_hash)
@@ -198,7 +240,9 @@ def main(argv: Sequence[str] | None = None, *, cli: ResearchCLI | None = None) -
     elif args.command == "lineage":
         print(cli.lineage(args.hash))
     elif args.command == "verify":
-        print(json.dumps({"verified": cli.verify(args.hash)}, sort_keys=True, separators=(",", ":")))
+        print(
+            json.dumps({"verified": cli.verify(args.hash)}, sort_keys=True, separators=(",", ":"))
+        )
     elif args.command == "export":
         print(cli.export(args.hash))
     else:

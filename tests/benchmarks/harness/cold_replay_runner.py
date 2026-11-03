@@ -52,9 +52,7 @@ def run_cold_replay(
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
 
     if result.returncode != 0 and not output_path.exists():
-        raise RuntimeError(
-            f"Subprocess cold replay worker crashed unexpectedly:\n{result.stderr}"
-        )
+        raise RuntimeError(f"Subprocess cold replay worker crashed unexpectedly:\n{result.stderr}")
 
     # 5. Parse sub-process output
     with open(output_path, "r", encoding="utf-8") as f:

@@ -1,4 +1,5 @@
 """Deterministic reconstruction and historical time travel over EventDAG."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -150,9 +151,7 @@ def _apply_event(registry: Registry, event: EventNode, token: object) -> None:
     elif event.event_type in {"GENESIS", "FactRejected", "FactUnverified"}:
         return
     else:
-        raise CausalConsistencyError(
-            f"Unsupported replay event type: {event.event_type}"
-        )
+        raise CausalConsistencyError(f"Unsupported replay event type: {event.event_type}")
 
 
 def _replay_ordered(ordered: tuple[EventNode, ...]) -> Registry:
@@ -196,9 +195,7 @@ class ReplayEngine:
     def replay_until(self, dag: EventDAG, target_event_id: str) -> ReplayResult:
         """Reconstruct only the causal history ending at ``target_event_id``."""
         if target_event_id not in dag.nodes:
-            raise EventNotFoundError(
-                f"EventNode not found: {target_event_id}"
-            )
+            raise EventNotFoundError(f"EventNode not found: {target_event_id}")
 
         # Validate the source graph before any replay mutation. This preserves
         # P16.1's tamper-detection and zero-mutation-on-failure invariant.
@@ -213,10 +210,7 @@ class ReplayEngine:
             ancestry.add(event_id)
             pending.extend(dag.nodes[event_id].parent_ids)
 
-        subgraph = {
-            event_id: dag.nodes[event_id]
-            for event_id in ancestry
-        }
+        subgraph = {event_id: dag.nodes[event_id] for event_id in ancestry}
         ordered = sort_causal_order(subgraph.values())
         registry = _replay_ordered(ordered)
         state_digest = _registry_digest(registry)

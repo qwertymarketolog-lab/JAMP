@@ -6,6 +6,7 @@ historical research artifacts and diagnostics. Both surfaces are immutable,
 deterministic, content-addressed, and free of I/O and environment-dependent
 selection logic.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -92,9 +93,7 @@ def project_replay(
         except ReplayTransitionError:
             raise
         except Exception as exc:
-            raise ReplayTransitionError(
-                f"transition failed for event {event.event_id}"
-            ) from exc
+            raise ReplayTransitionError(f"transition failed for event {event.event_id}") from exc
 
         try:
             next_state_hash = replay_hash(next_state)

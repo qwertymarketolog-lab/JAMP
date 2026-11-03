@@ -4,6 +4,7 @@ This module enumerates structurally admissible descendants of a SearchState.
 It deliberately contains no ranking, scoring, selection, Bayesian weighting,
 or counterfactual evaluation.
 """
+
 from __future__ import annotations
 
 from .search_space import SearchSpaceError, SearchState, apply_mutation, MutationOp
