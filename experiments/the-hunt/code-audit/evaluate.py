@@ -1,7 +1,8 @@
 """Paired Baseline/JAMP comparison against observed PyPI registry ground truth.
 
-The target is distribution-name presence on PyPI at a recorded observation time.
-It is not a claim about global package existence, package safety, or API validity.
+The target is whether every external distribution imported by a fixture output
+was present on PyPI at the recorded observation time. This is not a claim about
+global package non-existence, package safety, or API validity.
 """
 
 from __future__ import annotations
@@ -26,11 +27,12 @@ MODULE_DISTRIBUTION_ALIASES = {
 def _clean_code(code: str) -> str:
     """Remove one optional Markdown code fence without changing code content."""
     cleaned = code.strip()
-    if cleaned.startswith("```"):
+    fence = chr(96) * 3
+    if cleaned.startswith(fence):
         lines = cleaned.splitlines()
-        if lines and lines[0].startswith("```"):
+        if lines and lines[0].startswith(fence):
             lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
+        if lines and lines[-1].strip() == fence:
             lines = lines[:-1]
         return "\n".join(lines).strip()
     return cleaned
@@ -45,6 +47,16 @@ def _imports(tree: ast.AST) -> set[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             modules.add(node.module.split(".")[0])
     return modules
+
+
+def _external_distributions(code: str) -> set[str]:
+    """Return normalized distribution names for external imports in code."""
+    tree = ast.parse(_clean_code(code))
+    return {
+        re.sub(r"[-_.]+", "-", MODULE_DISTRIBUTION_ALIASES.get(module, module)).lower()
+        for module in _imports(tree)
+        if module not in STDLIB_MODULES
+    }
 
 
 def _has_suspicious_calls(tree: ast.AST) -> bool:
@@ -68,12 +80,6 @@ def _has_suspicious_calls(tree: ast.AST) -> bool:
     return False
 
 
-def _distribution_name(module: str) -> str:
-    """Apply explicit module aliases and PEP 503-style name normalization."""
-    candidate = MODULE_DISTRIBUTION_ALIASES.get(module, module)
-    return re.sub(r"[-_.]+", "-", candidate).lower()
-
-
 def baseline_check(code_str: str) -> str:
     """Naive baseline: valid Python with at least one import is CLEAN."""
     try:
@@ -93,11 +99,7 @@ def jamp_v2_check(code_str: str, observations: dict[str, str]) -> str:
     if _has_suspicious_calls(tree):
         return "SUSPICIOUS_AST"
 
-    packages = sorted(
-        _distribution_name(module)
-        for module in _imports(tree)
-        if module not in STDLIB_MODULES
-    )
+    packages = sorted(_external_distributions(code_str))
     if not packages:
         return "NO_EXTERNAL_IMPORTS"
 
@@ -112,7 +114,7 @@ def jamp_v2_check(code_str: str, observations: dict[str, str]) -> str:
 
 
 def _baseline_prediction(verdict: str) -> bool | None:
-    """Baseline accepts any import as evidence that the package exists."""
+    """Baseline accepts any import as evidence that all imports exist."""
     if verdict == "CLEAN":
         return True
     return None
@@ -181,29 +183,60 @@ def evaluate() -> dict[str, Any]:
             raise ValueError("Each task requires task_id and package_under_test.")
         if not isinstance(code, str) or not code.strip():
             results.append(
-                {"task_id": task_id, "status": "INCONCLUSIVE_EMPTY_OUTPUT",
-                 "baseline": "INCONCLUSIVE", "jamp": "INCONCLUSIVE"}
+                {
+                    "task_id": task_id,
+                    "status": "INCONCLUSIVE_EMPTY_OUTPUT",
+                    "baseline": "INCONCLUSIVE",
+                    "jamp": "INCONCLUSIVE",
+                    "scored_pair": False,
+                }
             )
             continue
 
-        normalized = re.sub(r"[-_.]+", "-", package).lower()
-        registry_status = observed_status.get(normalized, "INCONCLUSIVE")
-        expected_status = {
+        normalized_target = re.sub(r"[-_.]+", "-", package).lower()
+        target_status = observed_status.get(normalized_target, "INCONCLUSIVE")
+        expected_target_status = {
             "normal": "EXISTS_ON_PYPI",
             "trap": "NOT_FOUND_ON_PYPI",
         }.get(task_type)
-        if expected_status is None:
+        if expected_target_status is None:
             raise ValueError(f"{task_id}: unsupported fixture type {task_type!r}.")
 
         baseline = baseline_check(code)
         jamp = jamp_v2_check(code, observed_status)
-        if registry_status != expected_status:
+        try:
+            imported_packages = _external_distributions(code)
+        except SyntaxError:
+            imported_packages = set()
+
+        if normalized_target not in imported_packages:
+            conflict_status = "FIXTURE_PACKAGE_IMPORT_MISMATCH"
+        elif target_status != expected_target_status:
+            conflict_status = "GROUND_TRUTH_CONFLICT_OR_INCONCLUSIVE"
+        elif not imported_packages:
+            conflict_status = "INCONCLUSIVE_NO_EXTERNAL_IMPORTS"
+        else:
+            import_statuses = {
+                name: observed_status.get(name, "INCONCLUSIVE")
+                for name in sorted(imported_packages)
+            }
+            if any(status == "INCONCLUSIVE" for status in import_statuses.values()):
+                conflict_status = "INCONCLUSIVE_IMPORT_REGISTRY_OBSERVATION"
+            else:
+                conflict_status = None
+
+        if conflict_status is not None:
             results.append(
                 {
                     "task_id": task_id,
                     "package_under_test": package,
-                    "registry_status": registry_status,
-                    "status": "GROUND_TRUTH_CONFLICT_OR_INCONCLUSIVE",
+                    "target_registry_status": target_status,
+                    "imported_distributions": sorted(imported_packages),
+                    "import_registry_statuses": {
+                        name: observed_status.get(name, "INCONCLUSIVE")
+                        for name in sorted(imported_packages)
+                    },
+                    "status": conflict_status,
                     "baseline": baseline,
                     "jamp": jamp,
                     "baseline_prediction": None,
@@ -213,26 +246,30 @@ def evaluate() -> dict[str, Any]:
             )
             continue
 
-        actual_exists = registry_status == "EXISTS_ON_PYPI"
+        actual_all_imports_exist = all(
+            status == "EXISTS_ON_PYPI" for status in import_statuses.values()
+        )
         baseline_prediction = _baseline_prediction(baseline)
         jamp_prediction = _jamp_prediction(jamp)
         paired = baseline_prediction is not None and jamp_prediction is not None
         if paired:
-            baseline_pairs.append((baseline_prediction, actual_exists))
-            jamp_pairs.append((jamp_prediction, actual_exists))
+            baseline_pairs.append((baseline_prediction, actual_all_imports_exist))
+            jamp_pairs.append((jamp_prediction, actual_all_imports_exist))
 
         results.append(
             {
                 "task_id": task_id,
                 "package_under_test": package,
-                "registry_status": registry_status,
-                "ground_truth_scope": "PyPI distribution presence at observation time",
+                "target_registry_status": target_status,
+                "imported_distributions": sorted(imported_packages),
+                "import_registry_statuses": import_statuses,
+                "ground_truth_scope": "all external imported distributions present on PyPI at observation time",
                 "status": "SCORED_PAIR" if paired else "INCONCLUSIVE_FOR_BOTH",
                 "baseline": baseline,
                 "jamp": jamp,
                 "baseline_prediction": baseline_prediction,
                 "jamp_prediction": jamp_prediction,
-                "actual_package_exists": actual_exists,
+                "actual_all_imports_exist": actual_all_imports_exist,
                 "scored_pair": paired,
             }
         )
@@ -240,10 +277,12 @@ def evaluate() -> dict[str, Any]:
     report: dict[str, Any] = {
         "evidence_class": "SYNTHETIC_FIXTURE_WITH_LIVE_PYPI_GROUND_TRUTH",
         "ground_truth_observed_at_utc": ground_truth.get("observed_at_utc"),
-        "ground_truth_scope": "PyPI distribution presence only; not global non-existence or safety",
+        "ground_truth_scope": "all imported PyPI distribution names only; not global existence or safety",
         "task_count": len(tasks),
         "paired_scored_count": len(baseline_pairs),
-        "unscored_or_conflicted_count": sum(not item.get("scored_pair", False) for item in results),
+        "unscored_or_conflicted_count": sum(
+            not item.get("scored_pair", False) for item in results
+        ),
         "baseline": _accuracy(baseline_pairs),
         "jamp": _accuracy(jamp_pairs),
         "elapsed_seconds": round(time.perf_counter() - started, 3),
