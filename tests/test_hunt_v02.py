@@ -204,5 +204,98 @@ class PairedEvaluationTests(unittest.TestCase):
                 )
 
 
+class PostRevealCacheTests(unittest.TestCase):
+    def _cache_fixture(self, root: Path) -> Path:
+        cache_dir = root / "post-reveal-cache"
+        raw_dir = cache_dir / "raw_responses"
+        raw_dir.mkdir(parents=True)
+        observations = []
+        checksum_lines = []
+        packages = {}
+        for index in range(200):
+            name = f"pkg-{index:03d}"
+            body = json.dumps({"info": {"name": name}}).encode("utf-8")
+            digest = hashlib.sha256(body).hexdigest()
+            filename = f"response-{index:03d}.bin"
+            (raw_dir / filename).write_bytes(body)
+            relative = f"raw_responses/{filename}"
+            checksum_lines.append(f"{digest}  {relative}")
+            observations.append({
+                "normalized_name": name,
+                "endpoint": f"https://pypi.org/pypi/{name}/json",
+                "http_status": 200,
+                "response_name": name,
+                "status": "EXISTS_ON_PYPI",
+                "raw_response_sha256": digest,
+                "raw_response_path": relative,
+            })
+            packages[name] = "EXISTS_ON_PYPI"
+        observations_bytes = "".join(
+            json.dumps(row, sort_keys=True) + "\n" for row in observations
+        ).encode("utf-8")
+        checksums_bytes = ("\n".join(checksum_lines) + "\n").encode("utf-8")
+        (cache_dir / "observations.jsonl").write_bytes(observations_bytes)
+        (cache_dir / "checksums.sha256").write_bytes(checksums_bytes)
+        manifest = {
+            "schema_version": "jamp-hunt-post-reveal-cache-v0.2",
+            "evidence_class": "JAMP_POST_REVEAL_INDEPENDENT_REGISTRY_RECHECK",
+            "evaluation_mode": "POST_REVEAL_INDEPENDENT_RECHECK",
+            "acquisition_phase": "POST_REVEAL",
+            "ground_truth_source_observations_sha256": None,
+            "ground_truth_observations_sha256": "ground-truth-observations",
+            "ground_truth_workflow_run_id": 123,
+            "ground_truth_artifact_id": 456,
+            "ground_truth_workflow_completed_at_utc": "2026-11-03T09:08:51+00:00",
+            "collection_started_at_utc": "2026-11-03T09:10:00+00:00",
+            "candidate_count": 200,
+            "status_counts": {
+                "EXISTS_ON_PYPI": 200,
+                "NOT_FOUND_ON_PYPI": 0,
+                "INCONCLUSIVE": 0,
+                "AMBIGUOUS": 0,
+            },
+            "observations_file_sha256": hashlib.sha256(observations_bytes).hexdigest(),
+            "checksums_file_sha256": hashlib.sha256(checksums_bytes).hexdigest(),
+            "packages": packages,
+        }
+        manifest_path = cache_dir / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        return manifest_path
+
+    def test_post_reveal_cache_requires_and_validates_raw_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest_path = self._cache_fixture(Path(temporary))
+            result = EVALUATOR.load_jamp_cache(
+                manifest_path,
+                {"observations_file_sha256": "ground-truth-observations"},
+                evaluation_mode="POST_REVEAL_INDEPENDENT_RECHECK",
+            )
+            self.assertEqual(len(result), 200)
+            self.assertEqual(result["pkg-000"], "EXISTS_ON_PYPI")
+
+    def test_post_reveal_cache_cannot_claim_pre_reveal(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest_path = self._cache_fixture(Path(temporary))
+            cache = json.loads(manifest_path.read_text(encoding="utf-8"))
+            cache["acquired_before_ground_truth_reveal"] = True
+            manifest_path.write_text(json.dumps(cache), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "cannot claim pre-reveal"):
+                EVALUATOR.load_jamp_cache(
+                    manifest_path,
+                    {"observations_file_sha256": "ground-truth-observations"},
+                    evaluation_mode="POST_REVEAL_INDEPENDENT_RECHECK",
+                )
+
+    def test_pre_reveal_mode_does_not_accept_post_reveal_evidence_class(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest_path = self._cache_fixture(Path(temporary))
+            with self.assertRaisesRegex(ValueError, "JAMP_INDEPENDENT_REGISTRY_CACHE"):
+                EVALUATOR.load_jamp_cache(
+                    manifest_path,
+                    {"observations_file_sha256": "ground-truth-observations"},
+                    evaluation_mode="PRE_REVEAL_INDEPENDENT",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
