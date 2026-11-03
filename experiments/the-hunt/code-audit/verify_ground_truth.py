@@ -129,7 +129,7 @@ def verify_ground_truth(output_dir: Path | None = None) -> dict[str, Any]:
         "schema_version": "jamp-hunt-ground-truth-v1",
         "evidence_class": "LIVE_PYPI_REGISTRY_OBSERVATIONS",
         "scope": "PyPI distribution-name presence only",
-        "observed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "observed_at_utc": datetime.now(UTC).isoformat(),
         "source": "https://pypi.org/pypi/{normalized_distribution}/json",
         "candidate_count": len(observations),
         "verified_fake_candidates": verified_fakes,
