@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -62,7 +62,7 @@ def check_package(package: str, timeout: float = 5.0) -> dict[str, Any]:
     normalized = normalize_distribution_name(package)
     url = PYPI_API_URL.format(package=quote(normalized, safe=""))
     request = Request(url, headers={"User-Agent": "JAMP-The-Hunt-GroundTruth/0.2"})
-    observed_at = datetime.now(timezone.utc).isoformat()
+    observed_at = datetime.now(UTC).isoformat()
     try:
         with urlopen(request, timeout=timeout) as response:
             status_code = response.status
