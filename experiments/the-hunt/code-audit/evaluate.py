@@ -1,8 +1,8 @@
-"""Paired Baseline/JAMP checks for the synthetic The Hunt fixture.
+"""Paired Baseline/JAMP comparison against observed PyPI registry ground truth.
 
-PyPI 404 means only "not found on PyPI at retrieval time"; it is not proof
-that a package cannot exist on another index or under another distribution name.
-A PyPI 200 establishes registry presence only, not package safety or API validity.
+The target is whether every external distribution imported by a fixture output
+was present on PyPI at the recorded observation time. This is not a claim about
+global package non-existence, package safety, or API validity.
 """
 
 from __future__ import annotations
@@ -14,11 +14,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote
-from urllib.request import Request, urlopen
 
-PYPI_API_URL = "https://pypi.org/pypi/{package}/json"
 STDLIB_MODULES = sys.stdlib_module_names
 MODULE_DISTRIBUTION_ALIASES = {
     "bs4": "beautifulsoup4",
@@ -31,11 +27,12 @@ MODULE_DISTRIBUTION_ALIASES = {
 def _clean_code(code: str) -> str:
     """Remove one optional Markdown code fence without changing code content."""
     cleaned = code.strip()
-    if cleaned.startswith("```"):
+    fence = chr(96) * 3
+    if cleaned.startswith(fence):
         lines = cleaned.splitlines()
-        if lines and lines[0].startswith("```"):
+        if lines and lines[0].startswith(fence):
             lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
+        if lines and lines[-1].strip() == fence:
             lines = lines[:-1]
         return "\n".join(lines).strip()
     return cleaned
@@ -50,6 +47,18 @@ def _imports(tree: ast.AST) -> set[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             modules.add(node.module.split(".")[0])
     return modules
+
+
+def _external_distributions(code: str) -> set[str]:
+    """Return normalized distribution names for external imports in code."""
+    tree = ast.parse(_clean_code(code))
+    return {
+        re.sub(
+            r"[-_.]+", "-", MODULE_DISTRIBUTION_ALIASES.get(module, module)
+        ).lower()
+        for module in _imports(tree)
+        if module not in STDLIB_MODULES
+    }
 
 
 def _has_suspicious_calls(tree: ast.AST) -> bool:
@@ -73,12 +82,6 @@ def _has_suspicious_calls(tree: ast.AST) -> bool:
     return False
 
 
-def _distribution_name(module: str) -> str:
-    """Apply a small explicit alias map and PEP 503-style name normalization."""
-    candidate = MODULE_DISTRIBUTION_ALIASES.get(module, module)
-    return re.sub(r"[-_.]+", "-", candidate).lower()
-
-
 def baseline_check(code_str: str) -> str:
     """Naive baseline: valid Python with at least one import is CLEAN."""
     try:
@@ -88,34 +91,8 @@ def baseline_check(code_str: str) -> str:
     return "CLEAN" if _imports(tree) else "NO_IMPORTS"
 
 
-def _pypi_lookup(package: str, cache: dict[str, str]) -> str:
-    """Return OBSERVED PyPI registry status; transport failures remain unknown."""
-    if package in cache:
-        return cache[package]
-
-    url = PYPI_API_URL.format(package=quote(package, safe=""))
-    request = Request(url, headers={"User-Agent": "JAMP-The-Hunt/0.1"})
-    try:
-        with urlopen(request, timeout=5) as response:
-            if response.status == 200:
-                payload = json.loads(response.read())
-                if not isinstance(payload, dict) or not isinstance(payload.get("info"), dict):
-                    result = "INCONCLUSIVE"
-                else:
-                    result = "EXISTS_ON_PYPI"
-            else:
-                result = "INCONCLUSIVE"
-    except HTTPError as error:
-        result = "NOT_FOUND_ON_PYPI" if error.code == 404 else "INCONCLUSIVE"
-    except (URLError, TimeoutError, OSError, json.JSONDecodeError):
-        result = "INCONCLUSIVE"
-
-    cache[package] = result
-    return result
-
-
-def jamp_v2_check(code_str: str, cache: dict[str, str]) -> str:
-    """Check syntax, selected risky calls, then imported names against PyPI."""
+def jamp_v2_check(code_str: str, observations: dict[str, str]) -> str:
+    """Check syntax, selected risky calls, then imports against observed PyPI data."""
     try:
         tree = ast.parse(_clean_code(code_str))
     except SyntaxError:
@@ -124,103 +101,201 @@ def jamp_v2_check(code_str: str, cache: dict[str, str]) -> str:
     if _has_suspicious_calls(tree):
         return "SUSPICIOUS_AST"
 
-    imports = _imports(tree)
-    packages = sorted(
-        _distribution_name(module)
-        for module in imports
-        if module not in STDLIB_MODULES
-    )
+    packages = sorted(_external_distributions(code_str))
     if not packages:
         return "NO_EXTERNAL_IMPORTS"
 
     for package in packages:
-        status = _pypi_lookup(package, cache)
+        status = observations.get(package, "INCONCLUSIVE")
         if status == "NOT_FOUND_ON_PYPI":
             return f"PACKAGE_NOT_FOUND_ON_PYPI ({package})"
-        if status == "INCONCLUSIVE":
+        if status != "EXISTS_ON_PYPI":
             return f"INCONCLUSIVE ({package})"
 
     return "PACKAGE_EXISTS_ONLY"
 
 
-def _correctness(verdict: str, is_fake: bool, engine: str) -> bool | None:
-    """Score only outcomes supported by the registry check and supplied labels."""
-    if verdict == "SYNTAX_ERROR" or verdict.startswith("INCONCLUSIVE"):
-        return None
-    if engine == "baseline":
-        if verdict == "NO_IMPORTS":
-            return None
-        return (verdict == "SYNTAX_ERROR") if is_fake else verdict == "CLEAN"
-    if verdict == "SUSPICIOUS_AST":
-        return None
-    if verdict.startswith("PACKAGE_NOT_FOUND_ON_PYPI"):
-        return is_fake
-    if verdict == "PACKAGE_EXISTS_ONLY":
-        return None if is_fake else True
+def _baseline_prediction(verdict: str) -> bool | None:
+    """Baseline accepts any import as evidence that all imports exist."""
+    if verdict == "CLEAN":
+        return True
     return None
 
 
-def evaluate() -> dict[str, Any]:
-    """Evaluate the same saved LLM outputs with both engines (paired comparison)."""
-    path = Path(__file__).parent / "llm_responses.json"
-    if not path.exists():
-        raise FileNotFoundError(f"{path.name} not found. Generate it first.")
+def _jamp_prediction(verdict: str) -> bool | None:
+    """Map only registry-presence verdicts to a binary prediction."""
+    if verdict == "PACKAGE_EXISTS_ONLY":
+        return True
+    if verdict.startswith("PACKAGE_NOT_FOUND_ON_PYPI"):
+        return False
+    return None
 
-    tasks = json.loads(path.read_text(encoding="utf-8"))
+
+def _accuracy(predictions: list[tuple[bool, bool]]) -> dict[str, Any]:
+    """Calculate accuracy over the exact same paired observations."""
+    correct = sum(predicted == actual for predicted, actual in predictions)
+    count = len(predictions)
+    return {
+        "correct": correct,
+        "scored": count,
+        "accuracy": round(correct / count, 4) if count else None,
+    }
+
+
+def evaluate() -> dict[str, Any]:
+    """Evaluate identical fixture inputs with strict paired scoring."""
+    directory = Path(__file__).parent
+    tasks_path = directory / "llm_responses.json"
+    ground_truth_path = directory / "ground_truth.json"
+    if not tasks_path.exists():
+        raise FileNotFoundError(f"{tasks_path.name} not found.")
+    if not ground_truth_path.exists():
+        raise FileNotFoundError(
+            f"{ground_truth_path.name} not found; run verify_ground_truth.py first."
+        )
+
+    tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
+    ground_truth = json.loads(ground_truth_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):
         raise ValueError("llm_responses.json must contain a JSON array.")
+    if ground_truth.get("schema_version") != "jamp-hunt-ground-truth-v1":
+        raise ValueError("Unsupported ground_truth.json schema_version.")
 
-    cache: dict[str, str] = {}
+    observed_status = {
+        item["normalized_name"]: item["status"]
+        for item in ground_truth.get("observations", [])
+        if isinstance(item, dict)
+        and isinstance(item.get("normalized_name"), str)
+        and isinstance(item.get("status"), str)
+    }
+
     results: list[dict[str, Any]] = []
+    baseline_pairs: list[tuple[bool, bool]] = []
+    jamp_pairs: list[tuple[bool, bool]] = []
     started = time.perf_counter()
 
     for task in tasks:
         if not isinstance(task, dict):
             raise ValueError("Each response entry must be a JSON object.")
         task_id = task.get("task_id")
-        ground_truth = task.get("ground_truth")
         code = task.get("llm_output")
-        if not isinstance(task_id, str) or not isinstance(ground_truth, dict):
-            raise ValueError("Each entry requires task_id and ground_truth object.")
+        package = task.get("package_under_test")
+        task_type = task.get("type")
+        if not isinstance(task_id, str) or not isinstance(package, str):
+            raise ValueError("Each task requires task_id and package_under_test.")
         if not isinstance(code, str) or not code.strip():
-            results.append({"task_id": task_id, "status": "INCONCLUSIVE_MISSING_OUTPUT"})
+            results.append(
+                {
+                    "task_id": task_id,
+                    "status": "INCONCLUSIVE_EMPTY_OUTPUT",
+                    "baseline": "INCONCLUSIVE",
+                    "jamp": "INCONCLUSIVE",
+                    "scored_pair": False,
+                }
+            )
             continue
-        is_fake = ground_truth.get("is_hallucinated")
-        if not isinstance(is_fake, bool):
-            raise ValueError(f"{task_id}: ground_truth.is_hallucinated must be boolean.")
+
+        normalized_target = re.sub(r"[-_.]+", "-", package).lower()
+        target_status = observed_status.get(normalized_target, "INCONCLUSIVE")
+        if not isinstance(task_type, str):
+            raise ValueError(f"{task_id}: unsupported fixture type {task_type!r}.")
+        expected_target_status = {
+            "normal": "EXISTS_ON_PYPI",
+            "trap": "NOT_FOUND_ON_PYPI",
+        }.get(task_type)
+        if expected_target_status is None:
+            raise ValueError(f"{task_id}: unsupported fixture type {task_type!r}.")
 
         baseline = baseline_check(code)
-        jamp = jamp_v2_check(code, cache)
+        jamp = jamp_v2_check(code, observed_status)
+        try:
+            imported_packages = _external_distributions(code)
+        except SyntaxError:
+            imported_packages = set()
+
+        if normalized_target not in imported_packages:
+            conflict_status = "FIXTURE_PACKAGE_IMPORT_MISMATCH"
+        elif target_status != expected_target_status:
+            conflict_status = "GROUND_TRUTH_CONFLICT_OR_INCONCLUSIVE"
+        elif not imported_packages:
+            conflict_status = "INCONCLUSIVE_NO_EXTERNAL_IMPORTS"
+        else:
+            import_statuses = {
+                name: observed_status.get(name, "INCONCLUSIVE")
+                for name in sorted(imported_packages)
+            }
+            if any(status == "INCONCLUSIVE" for status in import_statuses.values()):
+                conflict_status = "INCONCLUSIVE_IMPORT_REGISTRY_OBSERVATION"
+            else:
+                conflict_status = None
+
+        if conflict_status is not None:
+            results.append(
+                {
+                    "task_id": task_id,
+                    "package_under_test": package,
+                    "target_registry_status": target_status,
+                    "imported_distributions": sorted(imported_packages),
+                    "import_registry_statuses": {
+                        name: observed_status.get(name, "INCONCLUSIVE")
+                        for name in sorted(imported_packages)
+                    },
+                    "status": conflict_status,
+                    "baseline": baseline,
+                    "jamp": jamp,
+                    "baseline_prediction": None,
+                    "jamp_prediction": None,
+                    "scored_pair": False,
+                }
+            )
+            continue
+
+        actual_all_imports_exist = all(
+            status == "EXISTS_ON_PYPI" for status in import_statuses.values()
+        )
+        baseline_prediction = _baseline_prediction(baseline)
+        jamp_prediction = _jamp_prediction(jamp)
+        paired = baseline_prediction is not None and jamp_prediction is not None
+        if baseline_prediction is not None and jamp_prediction is not None:
+            baseline_pairs.append((baseline_prediction, actual_all_imports_exist))
+            jamp_pairs.append((jamp_prediction, actual_all_imports_exist))
+
         results.append(
             {
                 "task_id": task_id,
-                "is_fake": is_fake,
+                "package_under_test": package,
+                "target_registry_status": target_status,
+                "imported_distributions": sorted(imported_packages),
+                "import_registry_statuses": import_statuses,
+                "ground_truth_scope": (
+                    "all external imported distributions present on PyPI "
+                    "at observation time"
+                ),
+                "status": "SCORED_PAIR" if paired else "INCONCLUSIVE_FOR_BOTH",
                 "baseline": baseline,
-                "baseline_correct": _correctness(baseline, is_fake, "baseline"),
                 "jamp": jamp,
-                "jamp_correct": _correctness(jamp, is_fake, "jamp"),
+                "baseline_prediction": baseline_prediction,
+                "jamp_prediction": jamp_prediction,
+                "actual_all_imports_exist": actual_all_imports_exist,
+                "scored_pair": paired,
             }
         )
 
-    elapsed = time.perf_counter() - started
-    baseline_scored = [item for item in results if item.get("baseline_correct") is not None]
-    jamp_scored = [item for item in results if item.get("jamp_correct") is not None]
     report: dict[str, Any] = {
-        "evidence_class": "SYNTHETIC_FIXTURE_WITH_LIVE_PYPI_OBSERVATIONS",
-        "pypi_lookup_count": len(cache),
-        "elapsed_seconds": round(elapsed, 3),
-        "baseline": {
-            "correct": sum(bool(item["baseline_correct"]) for item in baseline_scored),
-            "scored": len(baseline_scored),
-        },
-        "jamp": {
-            "correct": sum(bool(item["jamp_correct"]) for item in jamp_scored),
-            "scored": len(jamp_scored),
-        },
-        "unscored_or_conflicted": sum(
-            item.get("baseline_correct") is None or item.get("jamp_correct") is None
-            for item in results
+        "evidence_class": "SYNTHETIC_FIXTURE_WITH_LIVE_PYPI_GROUND_TRUTH",
+        "ground_truth_observed_at_utc": ground_truth.get("observed_at_utc"),
+        "ground_truth_scope": (
+            "all imported PyPI distribution names only; "
+            "not global existence or safety"
         ),
+        "task_count": len(tasks),
+        "paired_scored_count": len(baseline_pairs),
+        "unscored_or_conflicted_count": sum(
+            not item.get("scored_pair", False) for item in results
+        ),
+        "baseline": _accuracy(baseline_pairs),
+        "jamp": _accuracy(jamp_pairs),
+        "elapsed_seconds": round(time.perf_counter() - started, 3),
         "results": results,
     }
     print(json.dumps(report, indent=2, sort_keys=True))
