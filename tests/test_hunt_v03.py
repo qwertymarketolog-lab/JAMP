@@ -81,11 +81,18 @@ class ProvenanceScoringTests(unittest.TestCase):
         self.assertEqual(result["evidence"]["repository_penalty"], 30)
         self.assertEqual(result["trust_score"], 70)
 
-    def test_gitlab_project_url_counts_as_repository(self):
-        now, payload = metadata(365, {"Source": "https://gitlab.com/example/pkg"})
+    def test_github_and_gitlab_project_urls_count_as_repositories(self):
+        for host in ("github.com", "gitlab.com"):
+            with self.subTest(host=host):
+                now, payload = metadata(365, {"Source": f"https://{host}/example/pkg"})
+                result = PROVENANCE._score_metadata("samplepkg", payload, now)
+                self.assertTrue(result["evidence"]["repository_present"])
+                self.assertEqual(result["trust_score"], 100)
+
+    def test_lookalike_repository_hostname_does_not_count(self):
+        now, payload = metadata(365, {"Source": "https://github.com.attacker.invalid/example/pkg"})
         result = PROVENANCE._score_metadata("samplepkg", payload, now)
-        self.assertTrue(result["evidence"]["repository_present"])
-        self.assertEqual(result["trust_score"], 100)
+        self.assertFalse(result["evidence"]["repository_present"])
 
     def test_http_404_is_not_found(self):
         with patch.object(PROVENANCE, "fetch_pypi_json", return_value=(404, None)):
@@ -141,6 +148,7 @@ class SignatureSafetyTests(unittest.TestCase):
             )
             self.assertEqual(result["status"], "EXISTS")
             self.assertNotIn("../../evil.py", result["inspected_source_paths"])
+            self.assertIsNone(SIGNATURE._safe_member_path("../../evil.py"))
             self.assertFalse((root.parent / "evil.py").exists())
             self.assertFalse((root / "evil.py").exists())
 
@@ -178,6 +186,7 @@ class EvaluatorDecisionTests(unittest.TestCase):
         sample = {
             "sample_id": "case-1",
             "package_name": "samplepkg",
+            "prompt": "Use the samplepkg run API.",
             "code": "import samplepkg\nsamplepkg.run()",
             "ground_truth": "CLEAN",
         }

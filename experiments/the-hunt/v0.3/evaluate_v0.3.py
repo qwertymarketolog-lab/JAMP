@@ -86,7 +86,10 @@ def evaluate(input_path: Path, output_path: Path) -> dict[str, Any]:
         if not isinstance(sample, dict):
             raise ValueError(f"samples[{index}] must be an object")
         package_name = sample.get("package_name")
+        prompt = sample.get("prompt")
         code = sample.get("code")
+        if not isinstance(prompt, str):
+            raise ValueError(f"samples[{index}].prompt must be a string")
         if not isinstance(package_name, str) or not package_name.strip():
             raise ValueError(f"samples[{index}].package_name is required")
         if not isinstance(code, str):
@@ -107,6 +110,7 @@ def evaluate(input_path: Path, output_path: Path) -> dict[str, Any]:
             {
                 "sample_id": sample.get("sample_id", sample.get("id", f"sample-{index + 1:04d}")),
                 "package_name": package_name,
+                "prompt": prompt,
                 "ground_truth": "HALLUCINATION" if actual else "CLEAN",
                 "actual_hallucination": actual,
                 "baseline_verdict": baseline,
