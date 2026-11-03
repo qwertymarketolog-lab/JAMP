@@ -267,8 +267,8 @@ def load_jamp_cache(
         if sha256_bytes(checksums_bytes) != cache.get("checksums_file_sha256"):
             raise ValueError("POST-REVEAL checksums manifest digest mismatch")
         observations = load_jsonl(observations_path)
-        if len(observations) != cache.get("candidate_count"):
-            raise ValueError("POST-REVEAL observation count differs from manifest")
+        if cache.get("candidate_count") != 200 or len(observations) != 200:
+            raise ValueError("POST-REVEAL cache must contain exactly 200 observations")
         seen: set[str] = set()
         observed_packages: dict[str, str] = {}
         expected_raw: set[str] = set()
@@ -290,7 +290,7 @@ def load_jamp_cache(
                     raise ValueError("Definitive POST-REVEAL observation lacks raw response")
             else:
                 relative = Path(raw_path)
-                if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "raw_responses":
+                if relative.is_absolute() or ".." in relative.parts or not relative.parts or relative.parts[0] != "raw_responses":
                     raise ValueError("Unsafe POST-REVEAL raw response path")
                 raw_file = cache_dir / relative
                 if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
@@ -302,7 +302,7 @@ def load_jamp_cache(
                 continue
             digest, relative_name = line.split("  ", 1)
             relative = Path(relative_name)
-            if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "raw_responses":
+            if relative.is_absolute() or ".." in relative.parts or not relative.parts or relative.parts[0] != "raw_responses":
                 raise ValueError("Unsafe POST-REVEAL checksum path")
             raw_file = cache_dir / relative
             if not raw_file.is_file() or sha256_bytes(raw_file.read_bytes()) != digest:
