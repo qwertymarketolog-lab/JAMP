@@ -323,10 +323,10 @@ def analyze_wheel(
             "top_level_imports": top_level_imports,
             "literal_all": all_names,
             "all_is_dynamic_or_nonliteral": all_dynamic,
-            "httpx_top_level_get_binding": "get" in top_level_bindings,
-            "httpx_get_listed_in_all": all_names is not None and "get" in all_names,
-            "httpx_runtime_static_bindings": sorted(runtime_package_bindings),
-            "httpx_get_attribute_static_binding": "get" in runtime_package_bindings,
+            "package_top_level_get_binding": "get" in top_level_bindings,
+            "package_get_listed_in_all": all_names is not None and "get" in all_names,
+            "package_runtime_static_bindings": sorted(runtime_package_bindings),
+            "package_get_attribute_static_binding": "get" in runtime_package_bindings,
             "get_definition_locations": sorted(set(get_definition_hits)),
             "get_import_locations": sorted(set(get_import_hits)),
             "package_level_getattr_in_init": module_getattr,
@@ -341,9 +341,9 @@ def analyze_wheel(
         }
 
     print("\nSTATIC EXPORT EVIDENCE:")
-    print(f"TOP_LEVEL_GET_BINDING: {report['httpx_top_level_get_binding']}")
+    print(f"TOP_LEVEL_GET_BINDING: {report['package_top_level_get_binding']}")
     print(f"TOP_LEVEL_CELERY_BINDING: {'Celery' in top_level_bindings}")
-    print(f"HTTPX_GET_ATTRIBUTE_STATIC_BINDING: {report['httpx_get_attribute_static_binding']}")
+    print(f"PACKAGE_GET_ATTRIBUTE_STATIC_BINDING: {report['package_get_attribute_static_binding']}")
     print(f"GET_DEFINITION_LOCATIONS: {report['get_definition_locations']}")
     print(f"GET_IMPORT_LOCATIONS: {report['get_import_locations']}")
     print(f"LITERAL_ALL: {all_names}")
