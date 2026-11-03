@@ -282,7 +282,10 @@ def evaluate() -> dict[str, Any]:
     report: dict[str, Any] = {
         "evidence_class": "SYNTHETIC_FIXTURE_WITH_LIVE_PYPI_GROUND_TRUTH",
         "ground_truth_observed_at_utc": ground_truth.get("observed_at_utc"),
-        "ground_truth_scope": "all imported PyPI distribution names only; not global existence or safety",
+        "ground_truth_scope": (
+            "all imported PyPI distribution names only; "
+            "not global existence or safety"
+        ),
         "task_count": len(tasks),
         "paired_scored_count": len(baseline_pairs),
         "unscored_or_conflicted_count": sum(
