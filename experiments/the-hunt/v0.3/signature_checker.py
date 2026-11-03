@@ -162,9 +162,12 @@ def _symbol_exists(
             or symbol[0] in classes.get(module, {})
         ):
             return True
-        if len(symbol) == 2 and symbol[0] in classes.get(module, {}):
-            if symbol[1] in classes[module][symbol[0]]:
-                return True
+        if (
+            len(symbol) == 2
+            and symbol[0] in classes.get(module, {})
+            and symbol[1] in classes[module][symbol[0]]
+        ):
+            return True
     return False
 
 
