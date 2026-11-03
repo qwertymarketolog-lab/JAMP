@@ -115,7 +115,9 @@ def test_gate_09_input_result_integrity_verified():
     for field in ("trace_hash", "result_type", "result_payload", "provenance", "result_hash"):
         object.__setattr__(forged, field, getattr(first, field))
     object.__setattr__(forged, "result_payload", {"answer": 999})
-    registry._artifacts[first.result_hash] = type(registry._artifacts[first.result_hash])(forged, None)
+    registry._artifacts[first.result_hash] = type(registry._artifacts[first.result_hash])(
+        forged, None
+    )
     with pytest.raises((RegistryIntegrityError, CompositionIntegrityError)):
         compose_results(registry, [first.result_hash])
 
@@ -180,8 +182,12 @@ def test_gate_17_canonical_payload_ordering():
 
 def test_gate_18_equivalent_compositions_identical_hash():
     registry, first, second = make_registry()
-    left = compose_results(registry, [first.result_hash, second.result_hash], semantics={"mode": "meta"})
-    right = compose_results(registry, [second.result_hash, first.result_hash], semantics={"mode": "meta"})
+    left = compose_results(
+        registry, [first.result_hash, second.result_hash], semantics={"mode": "meta"}
+    )
+    right = compose_results(
+        registry, [second.result_hash, first.result_hash], semantics={"mode": "meta"}
+    )
     assert left.composition_hash == right.composition_hash
 
 
@@ -196,7 +202,15 @@ def test_gate_20_composition_payload_tampering_rejected():
     registry, first, _ = make_registry()
     artifact = compose_results(registry, [first.result_hash])
     forged = object.__new__(type(artifact))
-    for field in ("result_hashes", "semantics", "provenance", "trace_hashes", "event_ids", "state_anchors", "composition_hash"):
+    for field in (
+        "result_hashes",
+        "semantics",
+        "provenance",
+        "trace_hashes",
+        "event_ids",
+        "state_anchors",
+        "composition_hash",
+    ):
         object.__setattr__(forged, field, getattr(artifact, field))
     object.__setattr__(forged, "semantics", {"tampered": True})
     with pytest.raises(CompositionIntegrityError):
@@ -207,7 +221,15 @@ def test_gate_21_input_result_substitution_rejected():
     registry, first, second = make_registry()
     artifact = compose_results(registry, [first.result_hash])
     forged = object.__new__(type(artifact))
-    for field in ("result_hashes", "semantics", "provenance", "trace_hashes", "event_ids", "state_anchors", "composition_hash"):
+    for field in (
+        "result_hashes",
+        "semantics",
+        "provenance",
+        "trace_hashes",
+        "event_ids",
+        "state_anchors",
+        "composition_hash",
+    ):
         object.__setattr__(forged, field, getattr(artifact, field))
     object.__setattr__(forged, "result_hashes", (second.result_hash,))
     with pytest.raises(CompositionIntegrityError):
@@ -219,7 +241,16 @@ def test_gate_22_runtime_metadata_injection_rejected():
     with pytest.raises((ValueError, TypeError, CompositionIntegrityError)):
         compose_results(registry, [first.result_hash], semantics={"timestamp": "forbidden"})
     source = inspect.getsource(importlib.import_module("jamp.research.composition"))
-    forbidden = ("timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id")
+    forbidden = (
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    )
     assert not any(token in source for token in forbidden)
 
 
@@ -231,7 +262,9 @@ def test_gate_23_no_filesystem_network_or_domain_dependency():
 
 def test_gate_24_cross_runtime_deterministic_reproduction():
     registry, first, second = make_registry()
-    artifact = compose_results(registry, [first.result_hash, second.result_hash], semantics={"mode": "meta"})
+    artifact = compose_results(
+        registry, [first.result_hash, second.result_hash], semantics={"mode": "meta"}
+    )
     material = {
         "result_hashes": list(artifact.result_hashes),
         "semantics": {key: value for key, value in artifact.semantics.items()},

@@ -4,6 +4,7 @@ This module is deliberately research-only. It converts verified question states 
 registered evidence into immutable candidate experiment designs. It never predicts
 or asserts an empirical result.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,8 +17,28 @@ from typing import Any, Mapping, Sequence
 from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"})
-_FORBIDDEN_FACT_WORDS = ("proves", "proved", "will yield", "yields", "definitely", "certainly", "is true", "is false")
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
+_FORBIDDEN_FACT_WORDS = (
+    "proves",
+    "proved",
+    "will yield",
+    "yields",
+    "definitely",
+    "certainly",
+    "is true",
+    "is false",
+)
 
 
 class PlanningError(ValueError):
@@ -92,7 +113,8 @@ def compute_plan_hash(
         p = dict(payload_or_objective)
         p.pop("plan_hash", None)
         material = {
-            k: _thaw(_freeze(v)) for k, v in p.items()
+            k: _thaw(_freeze(v))
+            for k, v in p.items()
             if k not in _RUNTIME_KEYS and k != "provenance"
         }
     else:
@@ -137,12 +159,14 @@ def _verify_evidence(registry: Any, ref: str) -> Mapping[str, Any]:
         return item
     if getattr(item, "result_hash", ref) != ref:
         raise PlanningIntegrityError("evidence identity substitution")
-    return MappingProxyType({
-        "result_hash": getattr(item, "result_hash", ref),
-        "trace_hash": getattr(item, "trace_hash", None),
-        "event_ids": tuple(getattr(item, "event_ids", ())),
-        "state_anchors": tuple(getattr(item, "state_anchors", ())),
-    })
+    return MappingProxyType(
+        {
+            "result_hash": getattr(item, "result_hash", ref),
+            "trace_hash": getattr(item, "trace_hash", None),
+            "event_ids": tuple(getattr(item, "event_ids", ())),
+            "state_anchors": tuple(getattr(item, "state_anchors", ())),
+        }
+    )
 
 
 def _verify_claim(registry: Any, ref: str) -> None:
@@ -178,12 +202,16 @@ def _question(registry: Any, ref: str) -> Mapping[str, Any]:
             q.verify(registry=registry)
         except Exception as exc:
             raise PlanningIntegrityError("question integrity failure") from exc
-    return MappingProxyType({
-        "question_hash": ref,
-        "status": getattr(q, "status", "UNRESOLVED").value if isinstance(getattr(q, "status", None), Enum) else getattr(q, "status", "UNRESOLVED"),
-        "formulation": getattr(q, "formulation", ""),
-        "provenance": getattr(q, "provenance", {}),
-    })
+    return MappingProxyType(
+        {
+            "question_hash": ref,
+            "status": getattr(q, "status", "UNRESOLVED").value
+            if isinstance(getattr(q, "status", None), Enum)
+            else getattr(q, "status", "UNRESOLVED"),
+            "formulation": getattr(q, "formulation", ""),
+            "provenance": getattr(q, "provenance", {}),
+        }
+    )
 
 
 def _forbidden_outcome(value: Any) -> bool:
@@ -211,8 +239,14 @@ class ResearchPlan:
 
     def __post_init__(self) -> None:
         objective = _canonical_text(self.objective, "objective")
-        strategy = self.strategy if isinstance(self.strategy, PlanningStrategy) else PlanningStrategy(self.strategy)
-        status = self.status if isinstance(self.status, PlanningStatus) else PlanningStatus(self.status)
+        strategy = (
+            self.strategy
+            if isinstance(self.strategy, PlanningStrategy)
+            else PlanningStrategy(self.strategy)
+        )
+        status = (
+            self.status if isinstance(self.status, PlanningStatus) else PlanningStatus(self.status)
+        )
         questions = _ref_tuple(self.question_refs, "question_refs")
         evidence = _ref_tuple(self.evidence_refs, "evidence_refs")
         hypotheses = _ref_tuple(self.hypothesis_refs, "hypothesis_refs")
@@ -225,13 +259,21 @@ class ResearchPlan:
         if any(_forbidden_outcome(x) for x in outcomes):
             raise PlanningIntegrityError("empirical facts cannot be asserted as outcomes")
         provenance = _freeze(self.provenance)
-        expected = compute_plan_hash({
-            "objective": objective, "strategy": strategy.value, "status": status.value,
-            "question_refs": questions, "evidence_refs": evidence, "conditions": conditions,
-            "experiment_objective": experiment_objective, "candidate_outcomes": outcomes,
-            "hypothesis_refs": hypotheses, "selection_rationale": rationale,
-            "candidate_experiment": self.candidate_experiment,
-        })
+        expected = compute_plan_hash(
+            {
+                "objective": objective,
+                "strategy": strategy.value,
+                "status": status.value,
+                "question_refs": questions,
+                "evidence_refs": evidence,
+                "conditions": conditions,
+                "experiment_objective": experiment_objective,
+                "candidate_outcomes": outcomes,
+                "hypothesis_refs": hypotheses,
+                "selection_rationale": rationale,
+                "candidate_experiment": self.candidate_experiment,
+            }
+        )
         if expected != self.plan_hash:
             raise PlanningIntegrityError("plan_hash does not match content")
         object.__setattr__(self, "objective", objective)
@@ -261,15 +303,23 @@ class ResearchPlan:
         return True
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({
-            "objective": self.objective, "strategy": self.strategy.value, "status": self.status.value,
-            "question_refs": self.question_refs, "evidence_refs": self.evidence_refs,
-            "conditions": _thaw(self.conditions), "experiment_objective": self.experiment_objective,
-            "candidate_outcomes": self.candidate_outcomes, "hypothesis_refs": self.hypothesis_refs,
-            "selection_rationale": _thaw(self.selection_rationale),
-            "candidate_experiment": _thaw(self.candidate_experiment),
-            "provenance": _thaw(self.provenance), "plan_hash": self.plan_hash,
-        })
+        return MappingProxyType(
+            {
+                "objective": self.objective,
+                "strategy": self.strategy.value,
+                "status": self.status.value,
+                "question_refs": self.question_refs,
+                "evidence_refs": self.evidence_refs,
+                "conditions": _thaw(self.conditions),
+                "experiment_objective": self.experiment_objective,
+                "candidate_outcomes": self.candidate_outcomes,
+                "hypothesis_refs": self.hypothesis_refs,
+                "selection_rationale": _thaw(self.selection_rationale),
+                "candidate_experiment": _thaw(self.candidate_experiment),
+                "provenance": _thaw(self.provenance),
+                "plan_hash": self.plan_hash,
+            }
+        )
 
 
 def make_plan(
@@ -326,10 +376,15 @@ def make_plan(
         PlanningStrategy.UNCERTAINTY_REDUCTION: "uncertainty_reduction",
     }[strategy_enum]
     exp_obj = _canonical_text(experiment_objective or objective, "experiment_objective")
-    outcomes = tuple(candidate_outcomes) or ("empirical trace consistent with one or more candidate explanations",)
+    outcomes = tuple(candidate_outcomes) or (
+        "empirical trace consistent with one or more candidate explanations",
+    )
     if any(_forbidden_outcome(x) for x in outcomes):
         raise PlanningIntegrityError("empirical facts cannot be asserted")
-    rationale = dict(selection_rationale or {"basis": "deterministic strategy/question mapping", "question_refs": list(questions)})
+    rationale = dict(
+        selection_rationale
+        or {"basis": "deterministic strategy/question mapping", "question_refs": list(questions)}
+    )
     if "claim_refs" in rationale:
         for ref in rationale["claim_refs"]:
             _verify_claim(registry, ref)
@@ -347,16 +402,31 @@ def make_plan(
         "recursive_sources": [q.get("provenance", {}) for q in qrecords if isinstance(q, Mapping)],
     }
     material = {
-        "objective": objective, "strategy": strategy_enum.value, "status": status_enum.value,
-        "question_refs": questions, "evidence_refs": evidence, "conditions": conditions or {},
-        "experiment_objective": exp_obj, "candidate_outcomes": outcomes, "hypothesis_refs": hypotheses,
-        "selection_rationale": rationale, "candidate_experiment": candidate,
+        "objective": objective,
+        "strategy": strategy_enum.value,
+        "status": status_enum.value,
+        "question_refs": questions,
+        "evidence_refs": evidence,
+        "conditions": conditions or {},
+        "experiment_objective": exp_obj,
+        "candidate_outcomes": outcomes,
+        "hypothesis_refs": hypotheses,
+        "selection_rationale": rationale,
+        "candidate_experiment": candidate,
     }
     plan_hash = compute_plan_hash(material)
     return ResearchPlan(
-        objective=objective, strategy=strategy_enum, status=status_enum,
-        question_refs=questions, evidence_refs=evidence, conditions=conditions or {},
-        experiment_objective=exp_obj, candidate_outcomes=outcomes, hypothesis_refs=hypotheses,
-        selection_rationale=rationale, candidate_experiment=candidate,
-        provenance=provenance, plan_hash=plan_hash,
+        objective=objective,
+        strategy=strategy_enum,
+        status=status_enum,
+        question_refs=questions,
+        evidence_refs=evidence,
+        conditions=conditions or {},
+        experiment_objective=exp_obj,
+        candidate_outcomes=outcomes,
+        hypothesis_refs=hypotheses,
+        selection_rationale=rationale,
+        candidate_experiment=candidate,
+        provenance=provenance,
+        plan_hash=plan_hash,
     )

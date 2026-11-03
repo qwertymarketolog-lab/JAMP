@@ -155,7 +155,9 @@ def compose_results(
             result = registry.get(result_hash)
             entry = registry.index[result_hash]
         except (KeyError, RegistryIntegrityError) as exc:
-            raise CompositionIntegrityError("registered input failed integrity verification") from exc
+            raise CompositionIntegrityError(
+                "registered input failed integrity verification"
+            ) from exc
 
         if not result.verify_integrity():
             raise CompositionIntegrityError("input result integrity failure")

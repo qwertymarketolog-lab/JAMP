@@ -22,9 +22,7 @@ from typing import Any
 EXPERIMENT_ID = "EXP-22-PHASE2B-AFFINITY-V1"
 PHASE = 2
 WORKLOAD_SPEC_ID = "EXP-21-PHASE0-G4-CANONICAL-V1"
-WORKLOAD_DEFINITION_HASH = (
-    "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
-)
+WORKLOAD_DEFINITION_HASH = "f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92"
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 G4_THRESHOLD_MS = 15.0
 ALPHA = 0.01
@@ -86,9 +84,7 @@ def _environment_errors(env: dict[str, Any], pair_id: int) -> list[str]:
 
 
 def _verify_historical_workload_lineage() -> bool:
-    actual = hashlib.sha256(
-        HISTORICAL_CANONICAL_WORKLOAD_CODE.encode("utf-8")
-    ).hexdigest()
+    actual = hashlib.sha256(HISTORICAL_CANONICAL_WORKLOAD_CODE.encode("utf-8")).hexdigest()
     return actual == WORKLOAD_DEFINITION_HASH
 
 
@@ -125,9 +121,7 @@ def _run_boundary(graph) -> tuple[float, float, float, dict[str, Any]]:
     non_cpu_delta_ms = wall_ms - cpu_ms
 
     finite = all(
-        isinstance(value, (int, float))
-        and value == value
-        and abs(value) != float("inf")
+        isinstance(value, (int, float)) and value == value and abs(value) != float("inf")
         for value in (wall_ms, cpu_ms, non_cpu_delta_ms)
     )
     checks = {
@@ -303,13 +297,31 @@ def _validate_observation(
     seed: int,
 ) -> list[str]:
     required = {
-        "experiment_id", "phase", "pair_id", "condition", "target_commit",
-        "workload_spec_id", "workload_definition_hash", "experiment_seed",
-        "timestamp", "runner_name", "runner_os", "runner_arch", "kernel",
-        "python_version", "cpu_count_visible", "cpu_affinity_before",
-        "cpu_affinity_after", "affinity_verified", "affinity_restored",
-        "wall_ms", "cpu_ms", "non_cpu_delta_ms", "gc_enabled",
-        "gc_gen2_collections", "result_valid",
+        "experiment_id",
+        "phase",
+        "pair_id",
+        "condition",
+        "target_commit",
+        "workload_spec_id",
+        "workload_definition_hash",
+        "experiment_seed",
+        "timestamp",
+        "runner_name",
+        "runner_os",
+        "runner_arch",
+        "kernel",
+        "python_version",
+        "cpu_count_visible",
+        "cpu_affinity_before",
+        "cpu_affinity_after",
+        "affinity_verified",
+        "affinity_restored",
+        "wall_ms",
+        "cpu_ms",
+        "non_cpu_delta_ms",
+        "gc_enabled",
+        "gc_gen2_collections",
+        "result_valid",
     }
     errors = [f"missing_field:{field}" for field in sorted(required - observation.keys())]
     if observation.get("experiment_id") != EXPERIMENT_ID:
@@ -326,7 +338,10 @@ def _validate_observation(
         errors.append("experiment_seed_mismatch")
     if observation.get("condition") not in {"CONTROL", "CPU_AFFINITY"}:
         errors.append("unknown_condition")
-    if not isinstance(observation.get("pair_id"), int) or not 1 <= observation["pair_id"] <= N_PAIRS:
+    if (
+        not isinstance(observation.get("pair_id"), int)
+        or not 1 <= observation["pair_id"] <= N_PAIRS
+    ):
         errors.append("invalid_pair_id")
     if observation.get("condition") == "CPU_AFFINITY":
         before = observation.get("cpu_affinity_before")
@@ -340,7 +355,10 @@ def _validate_observation(
     for field in ("runner_name", "runner_os", "runner_arch", "kernel", "python_version"):
         if not isinstance(observation.get(field), str) or not observation[field].strip():
             errors.append(f"{field}_missing")
-    if not isinstance(observation.get("cpu_count_visible"), int) or observation["cpu_count_visible"] < 1:
+    if (
+        not isinstance(observation.get("cpu_count_visible"), int)
+        or observation["cpu_count_visible"] < 1
+    ):
         errors.append("cpu_count_visible_invalid")
     return errors
 
@@ -360,11 +378,7 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
     observations: list[dict[str, Any]] = []
     if not errors:
         for pair_id in range(1, N_PAIRS + 1):
-            order = (
-                ("CONTROL", "CPU_AFFINITY")
-                if pair_id % 2
-                else ("CPU_AFFINITY", "CONTROL")
-            )
+            order = ("CONTROL", "CPU_AFFINITY") if pair_id % 2 else ("CPU_AFFINITY", "CONTROL")
             initial = _affinity()
             if initial is None or not initial:
                 errors.append(f"pair_{pair_id}_initial_affinity_missing")
@@ -433,7 +447,11 @@ def run(target_commit: str, seed: int) -> dict[str, Any]:
 
     status = "INCONCLUSIVE"
     if not errors:
-        status = "VERIFIED / SUPPORTED" if p_value is not None and p_value < ALPHA else "VERIFIED / NOT_SUPPORTED"
+        status = (
+            "VERIFIED / SUPPORTED"
+            if p_value is not None and p_value < ALPHA
+            else "VERIFIED / NOT_SUPPORTED"
+        )
 
     artifact = {
         "experiment_id": EXPERIMENT_ID,

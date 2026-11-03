@@ -4,6 +4,7 @@ The module is intentionally limited to structural representation, content
 addressing, DAG validation, lookup, and traversal.  It contains no decision,
 selection, ranking, scoring, filtering, or environment-dependent behavior.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -69,8 +70,7 @@ class LineageGraph:
     def export(self) -> dict[str, object]:
         return {
             "nodes": [
-                {"node_hash": node.node_hash, "parents": list(node.parents)}
-                for node in self.nodes
+                {"node_hash": node.node_hash, "parents": list(node.parents)} for node in self.nodes
             ],
             "graph_hash": self.graph_hash,
         }
@@ -134,8 +134,7 @@ def build_lineage_graph(nodes: tuple[LineageNode, ...]) -> LineageGraph:
 
     canonical_nodes = _canonical_nodes(index)
     exported_nodes = [
-        {"node_hash": node.node_hash, "parents": list(node.parents)}
-        for node in canonical_nodes
+        {"node_hash": node.node_hash, "parents": list(node.parents)} for node in canonical_nodes
     ]
     graph_hash = replay_hash({"nodes": exported_nodes})
     return LineageGraph(nodes=canonical_nodes, graph_hash=graph_hash)

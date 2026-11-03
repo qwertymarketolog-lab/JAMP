@@ -5,6 +5,7 @@ references. It maps unresolved questions, gaps, and conflicts without making
 unstated scientific conclusions. No production-domain, filesystem, network, or
 runtime metadata dependencies are permitted.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,7 +18,18 @@ from typing import Any, Mapping, Sequence
 from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 _QUESTION_TYPES = frozenset({"EXPLANATORY", "CAUSAL", "COMPARATIVE", "PREDICTIVE", "OPEN"})
 
 
@@ -99,7 +111,9 @@ def compute_question_hash(
         raise QuestionIntegrityError("invalid question_type")
     if parent_question_hash is not None:
         _hash(parent_question_hash, "parent_question_hash")
-    refs = tuple(dict.fromkeys(tuple(evidence_hashes) + tuple(claim_hashes) + tuple(hypothesis_hashes)))
+    refs = tuple(
+        dict.fromkeys(tuple(evidence_hashes) + tuple(claim_hashes) + tuple(hypothesis_hashes))
+    )
     for ref in refs:
         _hash(ref, "provenance hash")
     material = {
@@ -127,7 +141,12 @@ def _registry_evidence(registry: Any, ref: str) -> tuple[Any, Mapping[str, Any]]
         index = getattr(registry, "index", {})
         entry = index.get(ref) if hasattr(index, "get") else None
         if entry is not None:
-            required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
+            required = (
+                "trace_hash",
+                "initial_state_hash",
+                "ordered_event_ids",
+                "resulting_state_hash",
+            )
             if not all(k in entry for k in required):
                 raise QuestionIntegrityError("complete evidence provenance is required")
             provenance = {
@@ -142,11 +161,17 @@ def _registry_evidence(registry: Any, ref: str) -> tuple[Any, Mapping[str, Any]]
                 "result_hash": getattr(evidence, "result_hash", ref),
                 "trace_hash": getattr(evidence, "trace_hash", exported.get("trace_hash")),
                 "event_ids": tuple(getattr(evidence, "event_ids", exported.get("event_ids", ()))),
-                "state_anchors": tuple(getattr(evidence, "state_anchors", exported.get("state_anchors", ()))),
+                "state_anchors": tuple(
+                    getattr(evidence, "state_anchors", exported.get("state_anchors", ()))
+                ),
             }
         if provenance["result_hash"] != ref:
             raise QuestionIntegrityError("evidence identity substitution detected")
-        if not provenance["trace_hash"] or len(provenance["event_ids"]) == 0 or len(provenance["state_anchors"]) != 2:
+        if (
+            not provenance["trace_hash"]
+            or len(provenance["event_ids"]) == 0
+            or len(provenance["state_anchors"]) != 2
+        ):
             raise QuestionIntegrityError("incomplete evidence provenance")
         _hash(provenance["trace_hash"], "trace_hash")
         for item in provenance["event_ids"] + provenance["state_anchors"]:
@@ -175,7 +200,9 @@ def _verify_claims(registry: Any, claims: Sequence[Any], claim_hashes: tuple[str
                 raise QuestionIntegrityError("claim references unregistered evidence")
 
 
-def _resolution(evidence: Sequence[Any], constraints: Mapping[str, Any], claims: Sequence[Any]) -> tuple[QuestionStatus, Mapping[str, Any]]:
+def _resolution(
+    evidence: Sequence[Any], constraints: Mapping[str, Any], claims: Sequence[Any]
+) -> tuple[QuestionStatus, Mapping[str, Any]]:
     statuses: list[str] = []
     for item in evidence:
         value = getattr(item, "status", None)
@@ -193,19 +220,40 @@ def _resolution(evidence: Sequence[Any], constraints: Mapping[str, Any], claims:
         if value in {"SUPPORTED", "REFUTED", "CONTRADICTED", "UNDETERMINED"}:
             claim_statuses.append(value)
     all_statuses = statuses + claim_statuses
-    if any(s in {"CONTRADICTED"} for s in all_statuses) or ("SUPPORTED" in all_statuses and "REFUTED" in all_statuses):
-        refs = tuple(getattr(x, "result_hash", None) for x in evidence if getattr(x, "result_hash", None))
-        return QuestionStatus.CONFLICTING, MappingProxyType({"class": "CONFLICTING", "conflicts": tuple(refs), "explanation_refs": refs})
+    if any(s in {"CONTRADICTED"} for s in all_statuses) or (
+        "SUPPORTED" in all_statuses and "REFUTED" in all_statuses
+    ):
+        refs = tuple(
+            getattr(x, "result_hash", None) for x in evidence if getattr(x, "result_hash", None)
+        )
+        return QuestionStatus.CONFLICTING, MappingProxyType(
+            {"class": "CONFLICTING", "conflicts": tuple(refs), "explanation_refs": refs}
+        )
     required = constraints.get("required_evidence", ()) if isinstance(constraints, Mapping) else ()
-    missing = tuple(ref for ref in required if ref not in {getattr(x, "result_hash", None) for x in evidence})
+    missing = tuple(
+        ref for ref in required if ref not in {getattr(x, "result_hash", None) for x in evidence}
+    )
     if missing:
-        return QuestionStatus.GAP, MappingProxyType({"class": "GAP", "missing_refs": missing, "explanation_refs": tuple(missing)})
+        return QuestionStatus.GAP, MappingProxyType(
+            {"class": "GAP", "missing_refs": missing, "explanation_refs": tuple(missing)}
+        )
     if all_statuses and all(s == "SUPPORTED" for s in all_statuses):
-        refs = tuple(getattr(x, "result_hash", None) for x in evidence if getattr(x, "result_hash", None))
-        return QuestionStatus.ANSWERED, MappingProxyType({"class": "ANSWERED", "explanation_refs": refs})
+        refs = tuple(
+            getattr(x, "result_hash", None) for x in evidence if getattr(x, "result_hash", None)
+        )
+        return QuestionStatus.ANSWERED, MappingProxyType(
+            {"class": "ANSWERED", "explanation_refs": refs}
+        )
     if not all_statuses:
-        return QuestionStatus.UNRESOLVED, MappingProxyType({"class": "UNRESOLVED", "explanation_refs": ()})
-    return QuestionStatus.UNRESOLVED, MappingProxyType({"class": "UNRESOLVED", "explanation_refs": tuple(getattr(x, "result_hash", None) for x in evidence)})
+        return QuestionStatus.UNRESOLVED, MappingProxyType(
+            {"class": "UNRESOLVED", "explanation_refs": ()}
+        )
+    return QuestionStatus.UNRESOLVED, MappingProxyType(
+        {
+            "class": "UNRESOLVED",
+            "explanation_refs": tuple(getattr(x, "result_hash", None) for x in evidence),
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,7 +273,11 @@ class ResearchQuestion:
 
     def __post_init__(self) -> None:
         formulation = _canonical_formulation(self.formulation)
-        qtype = self.question_type if isinstance(self.question_type, QuestionType) else QuestionType(self.question_type)
+        qtype = (
+            self.question_type
+            if isinstance(self.question_type, QuestionType)
+            else QuestionType(self.question_type)
+        )
         context = _freeze(self.context)
         constraints = _freeze(self.constraints)
         evidence = tuple(dict.fromkeys(self.evidence_hashes))
@@ -235,10 +287,21 @@ class ResearchQuestion:
             _hash(ref, "provenance hash")
         if self.parent_question_hash is not None:
             _hash(self.parent_question_hash, "parent_question_hash")
-        status = self.status if isinstance(self.status, QuestionStatus) else QuestionStatus(self.status)
+        status = (
+            self.status if isinstance(self.status, QuestionStatus) else QuestionStatus(self.status)
+        )
         resolution = _freeze(self.resolution)
         provenance = _freeze(self.provenance)
-        expected = compute_question_hash(formulation, qtype, context, constraints, evidence, claims, hypotheses, self.parent_question_hash)
+        expected = compute_question_hash(
+            formulation,
+            qtype,
+            context,
+            constraints,
+            evidence,
+            claims,
+            hypotheses,
+            self.parent_question_hash,
+        )
         if expected != self.question_hash:
             raise QuestionIntegrityError("question_hash does not match content")
         object.__setattr__(self, "formulation", formulation)
@@ -258,9 +321,20 @@ class ResearchQuestion:
 
     @property
     def lineage(self) -> tuple[str, ...]:
-        return (self.parent_question_hash, self.question_hash) if self.parent_question_hash else (self.question_hash,)
+        return (
+            (self.parent_question_hash, self.question_hash)
+            if self.parent_question_hash
+            else (self.question_hash,)
+        )
 
-    def verify(self, *, registry: Any | None = None, evidence: Sequence[str] | None = None, claims: Sequence[Any] | None = None, hypotheses: Sequence[Any] | None = None) -> bool:
+    def verify(
+        self,
+        *,
+        registry: Any | None = None,
+        evidence: Sequence[str] | None = None,
+        claims: Sequence[Any] | None = None,
+        hypotheses: Sequence[Any] | None = None,
+    ) -> bool:
         if evidence is not None and tuple(evidence) != self.evidence_hashes:
             raise QuestionIntegrityError("evidence substitution detected")
         if registry is not None:
@@ -279,32 +353,56 @@ class ResearchQuestion:
                     raise QuestionIntegrityError("hypothesis integrity verification failed")
         if self.parent_question_hash and self.parent_question_hash == self.question_hash:
             raise QuestionIntegrityError("question lineage cycle")
-        expected = compute_question_hash(self.formulation, self.question_type, self.context, self.constraints, self.evidence_hashes, self.claim_hashes, self.hypothesis_hashes, self.parent_question_hash)
+        expected = compute_question_hash(
+            self.formulation,
+            self.question_type,
+            self.context,
+            self.constraints,
+            self.evidence_hashes,
+            self.claim_hashes,
+            self.hypothesis_hashes,
+            self.parent_question_hash,
+        )
         if expected != self.question_hash:
             raise QuestionIntegrityError("question integrity failure")
         return True
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({
-            "formulation": self.formulation,
-            "question_type": self.question_type.value,
-            "context": _thaw(self.context),
-            "constraints": _thaw(self.constraints),
-            "evidence_hashes": self.evidence_hashes,
-            "claim_hashes": self.claim_hashes,
-            "hypothesis_hashes": self.hypothesis_hashes,
-            "parent_question_hash": self.parent_question_hash,
-            "status": self.status.value,
-            "resolution": _thaw(self.resolution),
-            "provenance": _thaw(self.provenance),
-            "question_hash": self.question_hash,
-        })
+        return MappingProxyType(
+            {
+                "formulation": self.formulation,
+                "question_type": self.question_type.value,
+                "context": _thaw(self.context),
+                "constraints": _thaw(self.constraints),
+                "evidence_hashes": self.evidence_hashes,
+                "claim_hashes": self.claim_hashes,
+                "hypothesis_hashes": self.hypothesis_hashes,
+                "parent_question_hash": self.parent_question_hash,
+                "status": self.status.value,
+                "resolution": _thaw(self.resolution),
+                "provenance": _thaw(self.provenance),
+                "question_hash": self.question_hash,
+            }
+        )
 
     @classmethod
     def from_export(cls, payload: Mapping[str, Any]) -> "ResearchQuestion":
         if not isinstance(payload, Mapping):
             raise QuestionIntegrityError("invalid question export")
-        required = {"formulation", "question_type", "context", "constraints", "evidence_hashes", "claim_hashes", "hypothesis_hashes", "parent_question_hash", "status", "resolution", "provenance", "question_hash"}
+        required = {
+            "formulation",
+            "question_type",
+            "context",
+            "constraints",
+            "evidence_hashes",
+            "claim_hashes",
+            "hypothesis_hashes",
+            "parent_question_hash",
+            "status",
+            "resolution",
+            "provenance",
+            "question_hash",
+        }
         if set(payload) != required:
             raise QuestionIntegrityError("invalid question export schema")
         return cls(**payload)
@@ -348,13 +446,29 @@ def make_question(
                 raise QuestionIntegrityError("hypothesis integrity verification failed")
     if parent_question_hash is not None:
         _hash(parent_question_hash, "parent_question_hash")
-        if parent_question_hash in tuple(constraints.get("lineage", ())) if isinstance(constraints, Mapping) else False:
+        if (
+            parent_question_hash in tuple(constraints.get("lineage", ()))
+            if isinstance(constraints, Mapping)
+            else False
+        ):
             raise QuestionIntegrityError("cyclic research lineage")
-    qhash = compute_question_hash(formulation, qtype, context, constraints, evidence_refs, claim_refs, hypothesis_refs, parent_question_hash)
+    qhash = compute_question_hash(
+        formulation,
+        qtype,
+        context,
+        constraints,
+        evidence_refs,
+        claim_refs,
+        hypothesis_refs,
+        parent_question_hash,
+    )
     computed_status, resolution = _resolution(evidence, constraints, claims)
     if status is not None:
         requested = status if isinstance(status, QuestionStatus) else QuestionStatus(status)
-        if requested in {QuestionStatus.CONFLICTING, QuestionStatus.GAP, QuestionStatus.ANSWERED} and requested != computed_status:
+        if (
+            requested in {QuestionStatus.CONFLICTING, QuestionStatus.GAP, QuestionStatus.ANSWERED}
+            and requested != computed_status
+        ):
             raise QuestionIntegrityError("status contradicts deterministic resolution")
         if requested is QuestionStatus.BLOCKED and not (evidence_refs or claim_refs):
             computed_status = requested
@@ -362,23 +476,66 @@ def make_question(
         elif requested is QuestionStatus.UNRESOLVED and computed_status is QuestionStatus.GAP:
             computed_status = requested
             resolution = MappingProxyType({"class": "UNRESOLVED", "explanation_refs": ()})
-    return ResearchQuestion(_canonical_formulation(formulation), QuestionType(qtype), context, constraints, evidence_refs, claim_refs, hypothesis_refs, parent_question_hash, computed_status, resolution, provenance, qhash)
+    return ResearchQuestion(
+        _canonical_formulation(formulation),
+        QuestionType(qtype),
+        context,
+        constraints,
+        evidence_refs,
+        claim_refs,
+        hypothesis_refs,
+        parent_question_hash,
+        computed_status,
+        resolution,
+        provenance,
+        qhash,
+    )
 
 
-def resolve_question(question: ResearchQuestion, *, evidence_statuses: Mapping[str, str] | None = None) -> ResearchQuestion:
+def resolve_question(
+    question: ResearchQuestion, *, evidence_statuses: Mapping[str, str] | None = None
+) -> ResearchQuestion:
     statuses = evidence_statuses or {}
     resolution = dict(question.resolution)
     if statuses:
         values = [statuses.get(ref) for ref in question.evidence_hashes if ref in statuses]
         if "SUPPORTED" in values and "REFUTED" in values:
             status = QuestionStatus.CONFLICTING
-            resolution = {"class": "CONFLICTING", "conflicts": tuple(question.evidence_hashes), "explanation_refs": tuple(question.evidence_hashes)}
-        elif values and all(v == "SUPPORTED" for v in values) and len(values) == len(question.evidence_hashes):
+            resolution = {
+                "class": "CONFLICTING",
+                "conflicts": tuple(question.evidence_hashes),
+                "explanation_refs": tuple(question.evidence_hashes),
+            }
+        elif (
+            values
+            and all(v == "SUPPORTED" for v in values)
+            and len(values) == len(question.evidence_hashes)
+        ):
             status = QuestionStatus.ANSWERED
             resolution = {"class": "ANSWERED", "explanation_refs": tuple(question.evidence_hashes)}
         else:
             status = QuestionStatus.UNRESOLVED
-            resolution = {"class": "UNRESOLVED", "explanation_refs": tuple(question.evidence_hashes)}
+            resolution = {
+                "class": "UNRESOLVED",
+                "explanation_refs": tuple(question.evidence_hashes),
+            }
     else:
-        status = question.status if question.status != QuestionStatus.UNRESOLVED else QuestionStatus.UNRESOLVED
-    return ResearchQuestion(question.formulation, question.question_type, question.context, question.constraints, question.evidence_hashes, question.claim_hashes, question.hypothesis_hashes, question.parent_question_hash, status, resolution, question.provenance, question.question_hash)
+        status = (
+            question.status
+            if question.status != QuestionStatus.UNRESOLVED
+            else QuestionStatus.UNRESOLVED
+        )
+    return ResearchQuestion(
+        question.formulation,
+        question.question_type,
+        question.context,
+        question.constraints,
+        question.evidence_hashes,
+        question.claim_hashes,
+        question.hypothesis_hashes,
+        question.parent_question_hash,
+        status,
+        resolution,
+        question.provenance,
+        question.question_hash,
+    )

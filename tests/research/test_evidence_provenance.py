@@ -3,6 +3,7 @@
 The production module is intentionally absent at contract deployment time.
 These gates define the immutable public boundary before implementation.
 """
+
 from __future__ import annotations
 
 import ast
@@ -14,10 +15,28 @@ import pytest
 from jamp.research import evidence
 
 FORBIDDEN = {
-    "select", "select_node", "select_nodes", "rank", "sort", "sorted",
-    "filter", "threshold", "heuristic", "estimate", "approximate",
-    "goal", "objective", "utility", "fitness", "probability", "prediction",
-    "confidence", "weight", "score", "score_evidence", "relevance",
+    "select",
+    "select_node",
+    "select_nodes",
+    "rank",
+    "sort",
+    "sorted",
+    "filter",
+    "threshold",
+    "heuristic",
+    "estimate",
+    "approximate",
+    "goal",
+    "objective",
+    "utility",
+    "fitness",
+    "probability",
+    "prediction",
+    "confidence",
+    "weight",
+    "score",
+    "score_evidence",
+    "relevance",
 }
 
 HEX64 = "a" * 64
@@ -46,7 +65,10 @@ def test_public_api_exists():
 
 def test_public_exports_are_exact():
     assert evidence.__all__ == (
-        "EvidenceRecord", "EvidenceLedger", "build_evidence_ledger", "verify_evidence"
+        "EvidenceRecord",
+        "EvidenceLedger",
+        "build_evidence_ledger",
+        "verify_evidence",
     )
 
 
@@ -62,14 +84,16 @@ def test_evidence_ledger_is_frozen_dataclass():
 
 def test_record_exposes_required_fields():
     assert set(evidence.EvidenceRecord.__dataclass_fields__) == {
-        "evidence_hash", "source_hash", "payload_hash", "state_hash", "sequence"
+        "evidence_hash",
+        "source_hash",
+        "payload_hash",
+        "state_hash",
+        "sequence",
     }
 
 
 def test_ledger_exposes_structural_fields_only():
-    assert set(evidence.EvidenceLedger.__dataclass_fields__) == {
-        "records", "ledger_hash"
-    }
+    assert set(evidence.EvidenceLedger.__dataclass_fields__) == {"records", "ledger_hash"}
 
 
 def test_evidence_hash_is_sha256_hex():
@@ -157,7 +181,9 @@ def test_ledger_is_deterministic():
 def test_equivalent_input_order_produces_same_ledger():
     first = _record(sequence=0)
     second = _record(source=HEX64_B, sequence=1)
-    assert evidence.build_evidence_ledger((first, second)) == evidence.build_evidence_ledger((second, first))
+    assert evidence.build_evidence_ledger((first, second)) == evidence.build_evidence_ledger(
+        (second, first)
+    )
 
 
 def test_sequence_order_is_canonical():
@@ -322,7 +348,10 @@ def test_evidence_is_independent_of_current_working_directory(monkeypatch, tmp_p
 
 def test_multiple_records_have_deterministic_commitment():
     records = (_record(sequence=0), _record(source=HEX64_B, sequence=1))
-    assert evidence.build_evidence_ledger(records).ledger_hash == evidence.build_evidence_ledger(records).ledger_hash
+    assert (
+        evidence.build_evidence_ledger(records).ledger_hash
+        == evidence.build_evidence_ledger(records).ledger_hash
+    )
 
 
 def test_record_sequence_is_integer():
@@ -334,7 +363,9 @@ def test_record_hash_is_not_runtime_object_identity():
 
 
 def test_ledger_records_are_immutable_dataclasses():
-    assert all(is_dataclass(record) and record.__dataclass_params__.frozen for record in _ledger().records)
+    assert all(
+        is_dataclass(record) and record.__dataclass_params__.frozen for record in _ledger().records
+    )
 
 
 def test_ledger_commitment_changes_when_record_changes():

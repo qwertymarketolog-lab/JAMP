@@ -4,6 +4,7 @@ The validator checks immutable search-state structure, cryptographic identity,
 lineage, inherited constraints, and hypothesis provenance. It has no heuristic
 or external decision mechanism and does not mutate its inputs.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -40,7 +41,9 @@ def _validate_one(parent: SearchState, candidate: SearchState) -> SearchState:
     if len(candidate.hypothesis_set) != len(parent.hypothesis_set):
         _raise("hypothesis lineage must be preserved")
 
-    for parent_hypothesis, candidate_hypothesis in zip(parent.hypothesis_set, candidate.hypothesis_set):
+    for parent_hypothesis, candidate_hypothesis in zip(
+        parent.hypothesis_set, candidate.hypothesis_set
+    ):
         if candidate_hypothesis.supporting_evidence != parent_hypothesis.supporting_evidence:
             _raise("supporting evidence must be preserved")
         if candidate_hypothesis.contradicting_evidence != parent_hypothesis.contradicting_evidence:
@@ -49,7 +52,10 @@ def _validate_one(parent: SearchState, candidate: SearchState) -> SearchState:
             _raise("hypothesis assumptions must be preserved")
         if candidate_hypothesis.causal_dependencies != parent_hypothesis.causal_dependencies:
             _raise("causal dependencies must be preserved")
-        if candidate_hypothesis.admissible_interventions != parent_hypothesis.admissible_interventions:
+        if (
+            candidate_hypothesis.admissible_interventions
+            != parent_hypothesis.admissible_interventions
+        ):
             _raise("admissible interventions must be preserved")
 
     return candidate
@@ -62,7 +68,9 @@ def validate_candidate(parent: SearchState, candidate: SearchState) -> SearchSta
     return _validate_one(parent, candidate)
 
 
-def validate_candidates(parent: SearchState, candidates: Iterable[SearchState]) -> tuple[SearchState, ...]:
+def validate_candidates(
+    parent: SearchState, candidates: Iterable[SearchState]
+) -> tuple[SearchState, ...]:
     """Validate candidates and return them in canonical state-hash order."""
     if not isinstance(parent, SearchState):
         _raise("parent must be a SearchState")

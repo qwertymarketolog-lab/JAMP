@@ -1,4 +1,5 @@
 """Executable P21.1 acceptance/adversarial gates."""
+
 from __future__ import annotations
 
 import hashlib
@@ -10,8 +11,13 @@ import pytest
 from jamp.research.runtime import RuntimeIntegrityError, RuntimeStage, RuntimeStatus, make_runtime
 
 STAGES = [
-    "QUESTION", "PLAN", "EXECUTION", "RESULT",
-    "INTERPRETATION", "CONSENSUS", "REVISION",
+    "QUESTION",
+    "PLAN",
+    "EXECUTION",
+    "RESULT",
+    "INTERPRETATION",
+    "CONSENSUS",
+    "REVISION",
 ]
 
 
@@ -106,11 +112,19 @@ def test_11_question_integration():
 
 
 def test_12_plan_integration():
-    assert sample().artifact_hashes[RuntimeStage.PLAN] == artifact("plan", artifact("question").artifact_hash).artifact_hash
+    assert (
+        sample().artifact_hashes[RuntimeStage.PLAN]
+        == artifact("plan", artifact("question").artifact_hash).artifact_hash
+    )
 
 
 def test_13_execution_integration():
-    assert sample().artifact_hashes[RuntimeStage.EXECUTION] == artifact("execution", artifact("plan", artifact("question").artifact_hash).artifact_hash).artifact_hash
+    assert (
+        sample().artifact_hashes[RuntimeStage.EXECUTION]
+        == artifact(
+            "execution", artifact("plan", artifact("question").artifact_hash).artifact_hash
+        ).artifact_hash
+    )
 
 
 def test_14_result_integration():
@@ -131,12 +145,16 @@ def test_17_revision_integration():
 
 def test_18_upstream_integrity_verification():
     calls = []
+
     class Checked(Artifact):
         def verify(self, *args, **kwargs):
             calls.append(self.artifact_hash)
             return True
+
     arts = chain_artifacts(STAGES)
-    checked = {s: Checked(v.artifact_hash, v.provenance_chain, v.upstream_hash) for s, v in arts.items()}
+    checked = {
+        s: Checked(v.artifact_hash, v.provenance_chain, v.upstream_hash) for s, v in arts.items()
+    }
     make_runtime(context={}, transitions=STAGES, artifacts=checked)
     assert len(calls) == 7
 
@@ -178,14 +196,21 @@ def test_26_consensus_to_revision():
 
 
 def test_27_revision_to_question():
-    arts = {"REVISION": artifact("revision"), "QUESTION": artifact("question", artifact("revision").artifact_hash)}
+    arts = {
+        "REVISION": artifact("revision"),
+        "QUESTION": artifact("question", artifact("revision").artifact_hash),
+    }
     r = make_runtime(context={}, transitions=["REVISION", "QUESTION"], artifacts=arts)
     assert r.transitions == (RuntimeStage.REVISION, RuntimeStage.QUESTION)
 
 
 def test_28_illegal_stage_jump_rejected():
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={}, transitions=["QUESTION", "RESULT"], artifacts=chain_artifacts(["QUESTION", "RESULT"]))
+        make_runtime(
+            context={},
+            transitions=["QUESTION", "RESULT"],
+            artifacts=chain_artifacts(["QUESTION", "RESULT"]),
+        )
 
 
 def test_29_equivalent_orchestrations_same_hash():
@@ -223,7 +248,10 @@ def test_33_deterministic_provenance_projection():
 def test_34_cross_runtime_byte_identity():
     a = sample().export()
     b = sample().export()
-    assert json.dumps(a, sort_keys=True, separators=(",", ":"), default=list).encode() == json.dumps(b, sort_keys=True, separators=(",", ":"), default=list).encode()
+    assert (
+        json.dumps(a, sort_keys=True, separators=(",", ":"), default=list).encode()
+        == json.dumps(b, sort_keys=True, separators=(",", ":"), default=list).encode()
+    )
 
 
 def test_35_runtime_payload_tampering_detected():
@@ -242,7 +270,11 @@ def test_36_upstream_hash_substitution_rejected():
 
 def test_37_illegal_cycle_rejected():
     with pytest.raises(RuntimeIntegrityError):
-        make_runtime(context={}, transitions=["QUESTION", "PLAN", "QUESTION"], artifacts=chain_artifacts(["QUESTION", "PLAN", "QUESTION"]))
+        make_runtime(
+            context={},
+            transitions=["QUESTION", "PLAN", "QUESTION"],
+            artifacts=chain_artifacts(["QUESTION", "PLAN", "QUESTION"]),
+        )
 
 
 def test_38_runtime_metadata_injection_rejected():
@@ -258,6 +290,7 @@ def test_39_full_chain_reconstruction():
 
 def test_40_zero_io_network_domain_contamination():
     import jamp.research.runtime as runtime
+
     source = inspect.getsource(runtime)
     assert "jamp.domain" not in source
     assert "socket" not in source and "requests" not in source

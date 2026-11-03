@@ -15,7 +15,14 @@ from jamp.research.derivation import derive_evidence
 from jamp.research.registry import ArtifactRegistry
 from jamp.research.replay import ReplayTrace, compute_trace_hash
 from jamp.research.result import ResearchResult, compute_result_hash
-from jamp.research.claim import ClaimIntegrityError, ClaimRuleError, ClaimStatus, compute_claim_hash, evaluate_claim, make_claim
+from jamp.research.claim import (
+    ClaimIntegrityError,
+    ClaimRuleError,
+    ClaimStatus,
+    compute_claim_hash,
+    evaluate_claim,
+    make_claim,
+)
 
 
 def _result(seed: str, value: int | None = None) -> ResearchResult:
@@ -42,16 +49,39 @@ def _registry(*seeds: str) -> ArtifactRegistry:
 
 
 def _evidence(registry: ArtifactRegistry, seed: str = "a", *, polarity: str = "SUPPORTED"):
-    result_hash = next(h for h in registry.snapshot() if registry.get(h).provenance["source"] == "test" and registry.get(h).result_payload["label"] == seed)
-    return derive_evidence(registry, [result_hash], "OBSERVATION", "1", {}, {"polarity": polarity, "value": registry.get(result_hash).result_payload["value"]})
+    result_hash = next(
+        h
+        for h in registry.snapshot()
+        if registry.get(h).provenance["source"] == "test"
+        and registry.get(h).result_payload["label"] == seed
+    )
+    return derive_evidence(
+        registry,
+        [result_hash],
+        "OBSERVATION",
+        "1",
+        {},
+        {"polarity": polarity, "value": registry.get(result_hash).result_payload["value"]},
+    )
 
 
-def _claim(registry: ArtifactRegistry, *, statement: str = "A", evidence=None, premises=(), status=None):
+def _claim(
+    registry: ArtifactRegistry, *, statement: str = "A", evidence=None, premises=(), status=None
+):
     if evidence is None:
         evidence = [_evidence(registry)]
     if status is None:
         status = evaluate_claim(evidence, premises, "EVIDENCE_STATUS")
-    return make_claim(registry, statement=statement, claim_type="HYPOTHESIS", premises=premises, evidence=evidence, inference_rule="EVIDENCE_STATUS", rule_version="1", status=status)
+    return make_claim(
+        registry,
+        statement=statement,
+        claim_type="HYPOTHESIS",
+        premises=premises,
+        evidence=evidence,
+        inference_rule="EVIDENCE_STATUS",
+        rule_version="1",
+        status=status,
+    )
 
 
 def test_01_schema_validity():
@@ -71,11 +101,27 @@ def test_02_structural_immutability():
 
 def test_03_valid_claim_hash():
     claim = _claim(_registry("a"))
-    assert claim.claim_hash == compute_claim_hash(claim.claim_type, claim.statement, claim.premises, claim.evidence_refs, claim.inference_rule, claim.rule_version, claim.status)
+    assert claim.claim_hash == compute_claim_hash(
+        claim.claim_type,
+        claim.statement,
+        claim.premises,
+        claim.evidence_refs,
+        claim.inference_rule,
+        claim.rule_version,
+        claim.status,
+    )
 
 
 def test_04_deterministic_hash_computation():
-    args = ("HYPOTHESIS", "A", ({"id": "p1", "status": "SUPPORTED"},), ("a" * 64,), "EVIDENCE_STATUS", "1", "SUPPORTED")
+    args = (
+        "HYPOTHESIS",
+        "A",
+        ({"id": "p1", "status": "SUPPORTED"},),
+        ("a" * 64,),
+        "EVIDENCE_STATUS",
+        "1",
+        "SUPPORTED",
+    )
     assert compute_claim_hash(*args) == compute_claim_hash(*args)
 
 
@@ -93,29 +139,67 @@ def test_06_canonical_statement():
 def test_07_explicit_claim_type():
     registry = _registry("a")
     with pytest.raises(ClaimIntegrityError):
-        make_claim(registry, statement="A", claim_type="", premises=(), evidence=[_evidence(registry)], inference_rule="EVIDENCE_STATUS", rule_version="1", status="UNDETERMINED")
+        make_claim(
+            registry,
+            statement="A",
+            claim_type="",
+            premises=(),
+            evidence=[_evidence(registry)],
+            inference_rule="EVIDENCE_STATUS",
+            rule_version="1",
+            status="UNDETERMINED",
+        )
 
 
 def test_08_explicit_rule_version():
     registry = _registry("a")
     with pytest.raises(ClaimRuleError):
-        make_claim(registry, statement="A", claim_type="HYPOTHESIS", premises=(), evidence=[_evidence(registry)], inference_rule="EVIDENCE_STATUS", rule_version="", status="SUPPORTED")
+        make_claim(
+            registry,
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=[_evidence(registry)],
+            inference_rule="EVIDENCE_STATUS",
+            rule_version="",
+            status="SUPPORTED",
+        )
 
 
 def test_09_registry_backed_evidence_only():
     with pytest.raises(ClaimIntegrityError):
-        make_claim(_registry("a"), statement="A", claim_type="HYPOTHESIS", premises=(), evidence=["0" * 64], inference_rule="EVIDENCE_STATUS", rule_version="1", status="UNDETERMINED")
+        make_claim(
+            _registry("a"),
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=["0" * 64],
+            inference_rule="EVIDENCE_STATUS",
+            rule_version="1",
+            status="UNDETERMINED",
+        )
 
 
 def test_10_unknown_evidence_rejected():
     with pytest.raises(ClaimIntegrityError):
-        make_claim(_registry("a"), statement="A", claim_type="HYPOTHESIS", premises=(), evidence=["f" * 64], inference_rule="EVIDENCE_STATUS", rule_version="1", status="UNDETERMINED")
+        make_claim(
+            _registry("a"),
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=["f" * 64],
+            inference_rule="EVIDENCE_STATUS",
+            rule_version="1",
+            status="UNDETERMINED",
+        )
 
 
 def test_11_evidence_integrity_verified():
     registry = _registry("a")
     evidence = _evidence(registry)
-    object.__setattr__(registry._artifacts[evidence.source_hashes[0]].result, "result_hash", "0" * 64)
+    object.__setattr__(
+        registry._artifacts[evidence.source_hashes[0]].result, "result_hash", "0" * 64
+    )
     with pytest.raises(ClaimIntegrityError):
         _claim(registry, evidence=evidence)
 
@@ -124,16 +208,23 @@ def test_12_complete_provenance_preserved():
     registry = _registry("a")
     evidence = _evidence(registry)
     claim = _claim(registry, evidence=[evidence])
-    assert claim.provenance["evidence"][evidence.derived_evidence_hash]["source_hashes"] == evidence.source_hashes
+    assert (
+        claim.provenance["evidence"][evidence.derived_evidence_hash]["source_hashes"]
+        == evidence.source_hashes
+    )
 
 
 def test_13_recursive_source_provenance_preserved():
     registry = _registry("a", "b")
     hashes = list(registry.snapshot())
     composition = compose_results(registry, hashes)
-    evidence = derive_evidence(registry, [composition], "AGGREGATION", "1", {}, {"polarity": "SUPPORTED"})
+    evidence = derive_evidence(
+        registry, [composition], "AGGREGATION", "1", {}, {"polarity": "SUPPORTED"}
+    )
     claim = _claim(registry, evidence=[evidence])
-    leaf = claim.provenance["evidence"][evidence.derived_evidence_hash]["provenance"]["sources"][composition.composition_hash]["leaves"]
+    leaf = claim.provenance["evidence"][evidence.derived_evidence_hash]["provenance"]["sources"][
+        composition.composition_hash
+    ]["leaves"]
     assert len(leaf) == len(hashes) and all(item["trace_hash"] for item in leaf)
 
 
@@ -168,29 +259,61 @@ def test_16_evidence_tampering_detected():
 
 def test_17_explicit_inference_rule_required():
     with pytest.raises(ClaimRuleError):
-        make_claim(_registry("a"), statement="A", claim_type="HYPOTHESIS", premises=(), evidence=[_evidence(_registry("a"))], inference_rule="", rule_version="1", status="UNDETERMINED")
+        make_claim(
+            _registry("a"),
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=[_evidence(_registry("a"))],
+            inference_rule="",
+            rule_version="1",
+            status="UNDETERMINED",
+        )
 
 
 def test_18_missing_premise_rejected_for_premise_rule():
     registry = _registry("a")
     with pytest.raises(ClaimIntegrityError):
-        make_claim(registry, statement="A", claim_type="HYPOTHESIS", premises=(), evidence=[_evidence(registry)], inference_rule="PREMISE_CONJUNCTION", rule_version="1", status="SUPPORTED")
+        make_claim(
+            registry,
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=[_evidence(registry)],
+            inference_rule="PREMISE_CONJUNCTION",
+            rule_version="1",
+            status="SUPPORTED",
+        )
 
 
 def test_19_unsupported_inference_rejected():
     registry = _registry("a")
     with pytest.raises(ClaimRuleError):
-        make_claim(registry, statement="A", claim_type="HYPOTHESIS", premises=(), evidence=[_evidence(registry)], inference_rule="MAGIC_RULE", rule_version="1", status="SUPPORTED")
+        make_claim(
+            registry,
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=(),
+            evidence=[_evidence(registry)],
+            inference_rule="MAGIC_RULE",
+            rule_version="1",
+            status="SUPPORTED",
+        )
 
 
 def test_20_supported_is_deterministic():
     evidence = [_evidence(_registry("a"), polarity="SUPPORTED")]
     assert evaluate_claim(evidence, (), "EVIDENCE_STATUS") == ClaimStatus.SUPPORTED
-    assert evaluate_claim(evidence, (), "EVIDENCE_STATUS") == evaluate_claim(evidence, (), "EVIDENCE_STATUS")
+    assert evaluate_claim(evidence, (), "EVIDENCE_STATUS") == evaluate_claim(
+        evidence, (), "EVIDENCE_STATUS"
+    )
 
 
 def test_21_refuted_is_deterministic():
-    assert evaluate_claim([_evidence(_registry("a"), polarity="REFUTED")], (), "EVIDENCE_STATUS") == ClaimStatus.REFUTED
+    assert (
+        evaluate_claim([_evidence(_registry("a"), polarity="REFUTED")], (), "EVIDENCE_STATUS")
+        == ClaimStatus.REFUTED
+    )
 
 
 def test_22_undetermined_is_first_class():
@@ -199,7 +322,10 @@ def test_22_undetermined_is_first_class():
 
 def test_23_contradicted_preserves_conflict():
     registry = _registry("a", "b")
-    evidence = [_evidence(registry, "a", polarity="SUPPORTED"), _evidence(registry, "b", polarity="REFUTED")]
+    evidence = [
+        _evidence(registry, "a", polarity="SUPPORTED"),
+        _evidence(registry, "b", polarity="REFUTED"),
+    ]
     assert evaluate_claim(evidence, (), "EVIDENCE_STATUS") == ClaimStatus.CONTRADICTED
     assert len(_claim(registry, evidence=evidence).evidence_refs) == 2
 
@@ -207,7 +333,17 @@ def test_23_contradicted_preserves_conflict():
 def test_24_claim_payload_tampering_detected():
     claim = _claim(_registry("a"))
     with pytest.raises(ClaimIntegrityError):
-        type(claim)(claim.claim_type, "B", claim.premises, claim.evidence_refs, claim.inference_rule, claim.rule_version, claim.status, claim.provenance, claim.claim_hash)
+        type(claim)(
+            claim.claim_type,
+            "B",
+            claim.premises,
+            claim.evidence_refs,
+            claim.inference_rule,
+            claim.rule_version,
+            claim.status,
+            claim.provenance,
+            claim.claim_hash,
+        )
 
 
 def test_25_rule_substitution_rejected():
@@ -220,20 +356,36 @@ def test_26_parameter_injection_rejected():
     registry = _registry("a")
     evidence = _evidence(registry)
     with pytest.raises(ClaimIntegrityError):
-        _claim(registry, evidence=[evidence], premises=({"id": "p1", "status": "SUPPORTED", "timestamp": 1},))
+        _claim(
+            registry,
+            evidence=[evidence],
+            premises=({"id": "p1", "status": "SUPPORTED", "timestamp": 1},),
+        )
 
 
 def test_27_runtime_metadata_injection_rejected():
     registry = _registry("a")
     evidence = _evidence(registry)
     with pytest.raises(ClaimIntegrityError):
-        make_claim(registry, statement="A", claim_type="HYPOTHESIS", premises=({"id": "p1", "status": "SUPPORTED", "hostname": "x"},), evidence=[evidence], inference_rule="EVIDENCE_STATUS", rule_version="1", status="SUPPORTED")
+        make_claim(
+            registry,
+            statement="A",
+            claim_type="HYPOTHESIS",
+            premises=({"id": "p1", "status": "SUPPORTED", "hostname": "x"},),
+            evidence=[evidence],
+            inference_rule="EVIDENCE_STATUS",
+            rule_version="1",
+            status="SUPPORTED",
+        )
 
 
 def test_28_duplicate_evidence_semantics_are_deterministic():
     registry = _registry("a")
     evidence = _evidence(registry)
-    one, two = _claim(registry, evidence=[evidence]), _claim(registry, evidence=[evidence, evidence])
+    one, two = (
+        _claim(registry, evidence=[evidence]),
+        _claim(registry, evidence=[evidence, evidence]),
+    )
     assert two.evidence_refs == one.evidence_refs and two.claim_hash == one.claim_hash
 
 
@@ -241,7 +393,16 @@ def test_29_cross_runtime_reproduction():
     registry = _registry("a")
     claim = _claim(registry)
     exported = claim.export()
-    recreated = make_claim(registry, statement=exported["statement"], claim_type=exported["claim_type"], premises=exported["premises"], evidence=[_evidence(registry)], inference_rule=exported["inference_rule"], rule_version=exported["rule_version"], status=exported["status"])
+    recreated = make_claim(
+        registry,
+        statement=exported["statement"],
+        claim_type=exported["claim_type"],
+        premises=exported["premises"],
+        evidence=[_evidence(registry)],
+        inference_rule=exported["inference_rule"],
+        rule_version=exported["rule_version"],
+        status=exported["status"],
+    )
     assert recreated.claim_hash == claim.claim_hash
 
 
@@ -249,4 +410,9 @@ def test_30_zero_io_and_domain_contamination():
     claim = _claim(_registry("a"))
     assert claim
     import jamp.research.claim as claim_module
-    assert "socket" not in claim_module.__dict__ and "requests" not in claim_module.__dict__ and "jamp.domain" not in claim_module.__dict__
+
+    assert (
+        "socket" not in claim_module.__dict__
+        and "requests" not in claim_module.__dict__
+        and "jamp.domain" not in claim_module.__dict__
+    )

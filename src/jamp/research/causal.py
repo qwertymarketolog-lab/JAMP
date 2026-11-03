@@ -62,7 +62,11 @@ class CausalEvent:
     def __post_init__(self) -> None:
         if not isinstance(self.event_type, str) or not self.event_type:
             raise CausalStructureError("event_type must be a non-empty string")
-        if not isinstance(self.sequence, int) or isinstance(self.sequence, bool) or self.sequence < 0:
+        if (
+            not isinstance(self.sequence, int)
+            or isinstance(self.sequence, bool)
+            or self.sequence < 0
+        ):
             raise CausalStructureError("sequence must be a non-negative integer")
         if not isinstance(self.state_hash, str) or not _HASH_RE.fullmatch(self.state_hash):
             raise CausalStructureError("state_hash must be a lowercase SHA-256 hex digest")

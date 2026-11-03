@@ -5,6 +5,7 @@ content-addressed identifiers and never owns or mutates upstream artifacts.
 No filesystem, network, production-domain, or runtime-metadata dependency is
 allowed.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,14 +19,33 @@ from typing import Any, Mapping, Sequence
 from .canonical import canonical_bytes
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({
-    "timestamp", "uuid", "memory_address", "environment", "local_path",
-    "hostname", "pid", "process_id", "runtime", "host", "platform",
-})
-_ARTIFACT_KINDS = frozenset({
-    "question", "plan", "execution", "result", "interpretation",
-    "claim", "consensus", "revision",
-})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+        "runtime",
+        "host",
+        "platform",
+    }
+)
+_ARTIFACT_KINDS = frozenset(
+    {
+        "question",
+        "plan",
+        "execution",
+        "result",
+        "interpretation",
+        "claim",
+        "consensus",
+        "revision",
+    }
+)
 _STATUS = frozenset({"OPEN", "CLOSED", "ARCHIVED"})
 
 
@@ -84,10 +104,7 @@ class ResearchSession:
             if not isinstance(artifact, SessionArtifact):
                 raise SessionError("artifact must be SessionArtifact")
             indexes[artifact.kind].append(artifact.artifact_hash)
-        normalized = {
-            kind: tuple(sorted(set(values)))
-            for kind, values in indexes.items()
-        }
+        normalized = {kind: tuple(sorted(set(values))) for kind, values in indexes.items()}
         proxy_indexes = MappingProxyType(normalized)
         preimage = {
             "metadata": _thaw(frozen_metadata),
@@ -199,7 +216,9 @@ class ResearchSession:
         _validate_hash(artifact_hash, "artifact_hash")
         altered = {k: tuple(v) for k, v in self.indexes.items()}
         altered[kind] = (artifact_hash,)
-        return ResearchSession(self.session_hash, self.metadata, MappingProxyType(altered), self.status)
+        return ResearchSession(
+            self.session_hash, self.metadata, MappingProxyType(altered), self.status
+        )
 
     def replace_artifact(self, kind: str, artifact_hash: str) -> "ResearchSession":
         raise SessionError("upstream artifact replacement is forbidden")

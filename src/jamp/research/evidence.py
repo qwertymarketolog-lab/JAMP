@@ -4,6 +4,7 @@ Evidence records bind an immutable source/payload observation to a structural
 state identity. The ledger is content-addressed and intentionally contains no
 decision, ranking, scoring, filtering, confidence, or environment logic.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -39,9 +40,7 @@ def _canonical_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def _evidence_hash(
-    source_hash: str, payload_hash: str, state_hash: str, sequence: int
-) -> str:
+def _evidence_hash(source_hash: str, payload_hash: str, state_hash: str, sequence: int) -> str:
     return hashlib.sha256(
         _canonical_bytes(
             {
@@ -150,9 +149,7 @@ def build_evidence_ledger(records: Sequence[EvidenceRecord]) -> EvidenceLedger:
     return EvidenceLedger(canonical, _ledger_hash(hashes))
 
 
-def verify_evidence(
-    ledger: EvidenceLedger, target_state_hash: str | None = None
-) -> bool:
+def verify_evidence(ledger: EvidenceLedger, target_state_hash: str | None = None) -> bool:
     if not isinstance(ledger, EvidenceLedger):
         raise TypeError("ledger must be an EvidenceLedger")
     if target_state_hash is not None:

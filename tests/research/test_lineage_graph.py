@@ -3,6 +3,7 @@
 The production module is intentionally absent at contract deployment time.
 These gates define the public boundary before implementation.
 """
+
 from __future__ import annotations
 
 import ast
@@ -14,9 +15,23 @@ import pytest
 from jamp.research import lineage_graph
 
 FORBIDDEN = {
-    "select", "select_node", "select_nodes", "rank", "sort", "sorted",
-    "filter", "threshold", "heuristic", "estimate", "approximate",
-    "goal", "objective", "utility", "fitness", "probability", "prediction",
+    "select",
+    "select_node",
+    "select_nodes",
+    "rank",
+    "sort",
+    "sorted",
+    "filter",
+    "threshold",
+    "heuristic",
+    "estimate",
+    "approximate",
+    "goal",
+    "objective",
+    "utility",
+    "fitness",
+    "probability",
+    "prediction",
 }
 
 
@@ -32,7 +47,12 @@ def test_public_api_exists():
 
 
 def test_public_exports_are_exact():
-    assert lineage_graph.__all__ == ("LineageNode", "LineageGraph", "build_lineage_graph", "verify_lineage")
+    assert lineage_graph.__all__ == (
+        "LineageNode",
+        "LineageGraph",
+        "build_lineage_graph",
+        "verify_lineage",
+    )
 
 
 def test_node_is_frozen_dataclass():

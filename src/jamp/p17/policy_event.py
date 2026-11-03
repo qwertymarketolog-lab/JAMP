@@ -1,4 +1,5 @@
 """Immutable causal fixation of P17.3 policy updates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -37,7 +38,10 @@ def _validate_parent_ids(parent_ids: tuple[str, ...], dag: EventDAG | None) -> t
         for parent_id in parents:
             if parent_id not in dag.nodes:
                 raise ValueError(f"Missing causal parent: {parent_id}")
-    elif any(parent_id != EventDAG.GENESIS_ID and not parent_id.startswith("POLICY_") for parent_id in parents):
+    elif any(
+        parent_id != EventDAG.GENESIS_ID and not parent_id.startswith("POLICY_")
+        for parent_id in parents
+    ):
         raise ValueError("Unknown causal parent identifier.")
     return parents
 

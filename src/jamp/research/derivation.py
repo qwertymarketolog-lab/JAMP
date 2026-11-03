@@ -20,10 +20,18 @@ from .registry import ArtifactRegistry, RegistryIntegrityError
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _ANALYSIS_TYPES = frozenset({"OBSERVATION", "COMPARISON", "AGGREGATION", "INFERENCE"})
-_RUNTIME_KEYS = frozenset({
-    "timestamp", "uuid", "memory_address", "environment", "local_path",
-    "hostname", "pid", "process_id",
-})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 
 
 class DerivationError(ValueError):
@@ -150,8 +158,11 @@ class DerivedEvidence:
         object.__setattr__(self, "result", _freeze(dict(self.result)))
         object.__setattr__(self, "provenance", _freeze(dict(self.provenance)))
         expected = compute_derived_evidence_hash(
-            self.source_hashes, self.analysis_type, self.algorithm_version,
-            self.parameters, self.result,
+            self.source_hashes,
+            self.analysis_type,
+            self.algorithm_version,
+            self.parameters,
+            self.result,
         )
         if self.derived_evidence_hash != expected:
             raise DerivationIntegrityError("derived_evidence_hash does not match content")
@@ -169,8 +180,12 @@ class DerivedEvidence:
         for source_hash in self.source_hashes:
             _source_provenance(registry, source_hash)
         expected = derive_evidence(
-            registry, self.source_hashes, self.analysis_type, self.algorithm_version,
-            self.parameters, self.result,
+            registry,
+            self.source_hashes,
+            self.analysis_type,
+            self.algorithm_version,
+            self.parameters,
+            self.result,
         )
         if expected != self:
             raise DerivationIntegrityError("derived evidence integrity failure")
@@ -178,15 +193,17 @@ class DerivedEvidence:
 
     def export(self) -> Mapping[str, Any]:
         """Return a deterministic serializable representation."""
-        return MappingProxyType({
-            "source_hashes": self.source_hashes,
-            "analysis_type": self.analysis_type,
-            "algorithm_version": self.algorithm_version,
-            "parameters": _thaw(self.parameters),
-            "result": _thaw(self.result),
-            "provenance": _thaw(self.provenance),
-            "derived_evidence_hash": self.derived_evidence_hash,
-        })
+        return MappingProxyType(
+            {
+                "source_hashes": self.source_hashes,
+                "analysis_type": self.analysis_type,
+                "algorithm_version": self.algorithm_version,
+                "parameters": _thaw(self.parameters),
+                "result": _thaw(self.result),
+                "provenance": _thaw(self.provenance),
+                "derived_evidence_hash": self.derived_evidence_hash,
+            }
+        )
 
 
 def derive_evidence(
@@ -223,14 +240,22 @@ def derive_evidence(
             raise DerivationIntegrityError("source verification failed") from exc
 
     ordered = bool(frozen_parameters.get("ordered", False))
-    source_hashes = tuple(item[0] for item in verified) if ordered else tuple(sorted(item[0] for item in verified))
+    source_hashes = (
+        tuple(item[0] for item in verified)
+        if ordered
+        else tuple(sorted(item[0] for item in verified))
+    )
     provenance_items = {item[0]: item[1] for item in verified}
     provenance = {
         "sources": provenance_items,
         "semantic_order": "ordered" if ordered else "unordered",
     }
     derived_hash = compute_derived_evidence_hash(
-        source_hashes, analysis_type, algorithm_version, frozen_parameters, frozen_result,
+        source_hashes,
+        analysis_type,
+        algorithm_version,
+        frozen_parameters,
+        frozen_result,
     )
     return DerivedEvidence(
         source_hashes=source_hashes,

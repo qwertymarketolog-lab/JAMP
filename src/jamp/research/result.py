@@ -19,16 +19,18 @@ from .replay import ReplayTrace, compute_trace_hash
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _RESULT_TYPES = frozenset({"finding", "measurement", "hypothesis", "conclusion"})
 _PROVENANCE_KEYS = frozenset({"source", "operation", "version"})
-_RUNTIME_KEYS = frozenset({
-    "timestamp",
-    "uuid",
-    "memory_address",
-    "environment",
-    "local_path",
-    "hostname",
-    "pid",
-    "process_id",
-})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 
 
 class ResultError(ValueError):

@@ -4,6 +4,7 @@ Research-only module. Claims are content-addressed, immutable, and bound to
 registry-backed P20 evidence. No I/O, runtime metadata, randomness, or
 production-domain dependencies are permitted.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,7 +19,18 @@ from .derivation import DerivedEvidence, compute_derived_evidence_hash
 from .registry import ArtifactRegistry
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 _CLAIM_TYPES = frozenset({"HYPOTHESIS", "ASSERTION", "COMPARATIVE", "INFERENTIAL"})
 _RULES = frozenset({"EVIDENCE_STATUS", "PREMISE_CONJUNCTION"})
 
@@ -86,7 +98,15 @@ def _validate_premises(premises: Sequence[Any]) -> tuple[Any, ...]:
     return frozen
 
 
-def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any], evidence_refs: Sequence[str], inference_rule: str, rule_version: str, status: str | ClaimStatus) -> str:
+def compute_claim_hash(
+    claim_type: str,
+    statement: str,
+    premises: Sequence[Any],
+    evidence_refs: Sequence[str],
+    inference_rule: str,
+    rule_version: str,
+    status: str | ClaimStatus,
+) -> str:
     """Compute content-addressed identity over canonical claim semantics."""
     if claim_type not in _CLAIM_TYPES:
         raise ClaimIntegrityError("invalid claim_type")
@@ -113,8 +133,16 @@ def compute_claim_hash(claim_type: str, statement: str, premises: Sequence[Any],
     return hashlib.sha256(canonical_bytes(material)).hexdigest()
 
 
-def _verify_derived_evidence(registry: ArtifactRegistry, evidence: DerivedEvidence) -> tuple[str, Mapping[str, Any]]:
-    expected_hash = compute_derived_evidence_hash(evidence.source_hashes, evidence.analysis_type, evidence.algorithm_version, evidence.parameters, evidence.result)
+def _verify_derived_evidence(
+    registry: ArtifactRegistry, evidence: DerivedEvidence
+) -> tuple[str, Mapping[str, Any]]:
+    expected_hash = compute_derived_evidence_hash(
+        evidence.source_hashes,
+        evidence.analysis_type,
+        evidence.algorithm_version,
+        evidence.parameters,
+        evidence.result,
+    )
     if expected_hash != evidence.derived_evidence_hash:
         raise ClaimIntegrityError("derived evidence hash mismatch")
     sources = evidence.provenance.get("sources")
@@ -138,7 +166,9 @@ def _verify_derived_evidence(registry: ArtifactRegistry, evidence: DerivedEviden
     return evidence.derived_evidence_hash, evidence.provenance
 
 
-def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> tuple[str, Mapping[str, Any]]:
+def _verify_evidence(
+    registry: ArtifactRegistry, ref: str | DerivedEvidence
+) -> tuple[str, Mapping[str, Any]]:
     if isinstance(ref, DerivedEvidence):
         return _verify_derived_evidence(registry, ref)
     _hash(ref, "evidence_ref")
@@ -152,14 +182,36 @@ def _verify_evidence(registry: ArtifactRegistry, ref: str | DerivedEvidence) -> 
         raise
     except Exception as exc:
         raise ClaimIntegrityError("evidence reference is not registry-backed") from exc
-    return artifact.result_hash, {"result_hash": artifact.result_hash, "trace_hash": artifact.trace_hash, "event_ids": tuple(entry["ordered_event_ids"]), "state_anchors": (entry["initial_state_hash"], entry["resulting_state_hash"]), "result_provenance": artifact.provenance}
+    return artifact.result_hash, {
+        "result_hash": artifact.result_hash,
+        "trace_hash": artifact.trace_hash,
+        "event_ids": tuple(entry["ordered_event_ids"]),
+        "state_anchors": (entry["initial_state_hash"], entry["resulting_state_hash"]),
+        "result_provenance": artifact.provenance,
+    }
 
 
-def _verify_exported_derived_evidence(registry: ArtifactRegistry, ref: str, payload: Mapping[str, Any]) -> None:
-    required = ("source_hashes", "analysis_type", "algorithm_version", "parameters", "result", "provenance", "derived_evidence_hash")
+def _verify_exported_derived_evidence(
+    registry: ArtifactRegistry, ref: str, payload: Mapping[str, Any]
+) -> None:
+    required = (
+        "source_hashes",
+        "analysis_type",
+        "algorithm_version",
+        "parameters",
+        "result",
+        "provenance",
+        "derived_evidence_hash",
+    )
     if not all(k in payload for k in required):
         raise ClaimIntegrityError("complete derived-evidence provenance required")
-    expected = compute_derived_evidence_hash(payload["source_hashes"], payload["analysis_type"], payload["algorithm_version"], payload["parameters"], payload["result"])
+    expected = compute_derived_evidence_hash(
+        payload["source_hashes"],
+        payload["analysis_type"],
+        payload["algorithm_version"],
+        payload["parameters"],
+        payload["result"],
+    )
     if expected != ref or payload["derived_evidence_hash"] != ref:
         raise ClaimIntegrityError("derived evidence identity mismatch")
     sources = payload["provenance"].get("sources")
@@ -172,13 +224,23 @@ def _verify_exported_derived_evidence(registry: ArtifactRegistry, ref: str, payl
         if "result_hash" in source:
             _verify_evidence(registry, source["result_hash"])
         for leaf in source.get("leaves", ()):
-            if not isinstance(leaf, Mapping) or "result_hash" not in leaf or "trace_hash" not in leaf or "event_ids" not in leaf or "state_anchors" not in leaf:
+            if (
+                not isinstance(leaf, Mapping)
+                or "result_hash" not in leaf
+                or "trace_hash" not in leaf
+                or "event_ids" not in leaf
+                or "state_anchors" not in leaf
+            ):
                 raise ClaimIntegrityError("incomplete recursive provenance")
             _hash(leaf["result_hash"], "result_hash")
             _hash(leaf["trace_hash"], "trace_hash")
 
 
-def evaluate_claim(evidence: Sequence[DerivedEvidence] | DerivedEvidence, premises: Sequence[Any], inference_rule: str) -> ClaimStatus:
+def evaluate_claim(
+    evidence: Sequence[DerivedEvidence] | DerivedEvidence,
+    premises: Sequence[Any],
+    inference_rule: str,
+) -> ClaimStatus:
     """Evaluate explicit evidence deterministically; this function is pure."""
     if not inference_rule:
         raise ClaimRuleError("inference_rule must be explicit")
@@ -191,7 +253,11 @@ def evaluate_claim(evidence: Sequence[DerivedEvidence] | DerivedEvidence, premis
         if not premises_frozen:
             raise ClaimIntegrityError("missing premise")
         statuses = [p.get("status") for p in premises_frozen if isinstance(p, Mapping)]
-        return ClaimStatus.SUPPORTED if statuses and all(s == ClaimStatus.SUPPORTED.value for s in statuses) else ClaimStatus.UNDETERMINED
+        return (
+            ClaimStatus.SUPPORTED
+            if statuses and all(s == ClaimStatus.SUPPORTED.value for s in statuses)
+            else ClaimStatus.UNDETERMINED
+        )
     polarities = [_polarity(item) for item in evidence]
     polarities = [p for p in polarities if p is not None]
     if not polarities:
@@ -240,11 +306,25 @@ class Claim:
         object.__setattr__(self, "evidence_refs", refs)
         object.__setattr__(self, "status", status)
         object.__setattr__(self, "provenance", provenance)
-        expected = compute_claim_hash(self.claim_type, statement, premises, refs, self.inference_rule, self.rule_version, status)
+        expected = compute_claim_hash(
+            self.claim_type,
+            statement,
+            premises,
+            refs,
+            self.inference_rule,
+            self.rule_version,
+            status,
+        )
         if expected != self.claim_hash:
             raise ClaimIntegrityError("claim_hash does not match content")
 
-    def verify(self, registry: ArtifactRegistry, *, evidence: Sequence[str | DerivedEvidence] | None = None, inference_rule: str | None = None) -> bool:
+    def verify(
+        self,
+        registry: ArtifactRegistry,
+        *,
+        evidence: Sequence[str | DerivedEvidence] | None = None,
+        inference_rule: str | None = None,
+    ) -> bool:
         if evidence is not None:
             if isinstance(evidence, DerivedEvidence):
                 evidence = (evidence,)
@@ -267,20 +347,58 @@ class Claim:
                 raise ClaimIntegrityError("evidence is not verifiable")
         if stored_evidence != proven:
             raise ClaimIntegrityError("provenance mismatch")
-        expected = compute_claim_hash(self.claim_type, self.statement, self.premises, self.evidence_refs, self.inference_rule, self.rule_version, self.status)
+        expected = compute_claim_hash(
+            self.claim_type,
+            self.statement,
+            self.premises,
+            self.evidence_refs,
+            self.inference_rule,
+            self.rule_version,
+            self.status,
+        )
         if expected != self.claim_hash:
             raise ClaimIntegrityError("claim integrity failure")
         return True
 
     def export(self) -> Mapping[str, Any]:
-        return MappingProxyType({"claim_type": self.claim_type, "statement": self.statement, "premises": _thaw(self.premises), "evidence_refs": self.evidence_refs, "inference_rule": self.inference_rule, "rule_version": self.rule_version, "status": self.status.value, "provenance": _thaw(self.provenance), "claim_hash": self.claim_hash})
+        return MappingProxyType(
+            {
+                "claim_type": self.claim_type,
+                "statement": self.statement,
+                "premises": _thaw(self.premises),
+                "evidence_refs": self.evidence_refs,
+                "inference_rule": self.inference_rule,
+                "rule_version": self.rule_version,
+                "status": self.status.value,
+                "provenance": _thaw(self.provenance),
+                "claim_hash": self.claim_hash,
+            }
+        )
 
 
 def _evidence_export(item: DerivedEvidence) -> Mapping[str, Any]:
-    return {"source_hashes": item.source_hashes, "analysis_type": item.analysis_type, "algorithm_version": item.algorithm_version, "parameters": item.parameters, "result": item.result, "provenance": item.provenance, "derived_evidence_hash": item.derived_evidence_hash}
+    return {
+        "source_hashes": item.source_hashes,
+        "analysis_type": item.analysis_type,
+        "algorithm_version": item.algorithm_version,
+        "parameters": item.parameters,
+        "result": item.result,
+        "provenance": item.provenance,
+        "derived_evidence_hash": item.derived_evidence_hash,
+    }
 
 
-def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, premises: Sequence[Any], evidence: Sequence[str | DerivedEvidence] | DerivedEvidence, inference_rule: str, rule_version: str, status: ClaimStatus | str) -> Claim:
+def make_claim(
+    registry: ArtifactRegistry,
+    *,
+    statement: str,
+    claim_type: str,
+    premises: Sequence[Any],
+    evidence: Sequence[str | DerivedEvidence] | DerivedEvidence,
+    inference_rule: str,
+    rule_version: str,
+    status: ClaimStatus | str,
+) -> Claim:
     if not inference_rule:
         raise ClaimRuleError("inference_rule must be explicit")
     if inference_rule not in _RULES:
@@ -307,5 +425,23 @@ def make_claim(registry: ArtifactRegistry, *, statement: str, claim_type: str, p
     expected_status = status if isinstance(status, ClaimStatus) else ClaimStatus(status)
     if expected_status != computed:
         raise ClaimIntegrityError("status is not deterministically supported by evidence")
-    claim_hash = compute_claim_hash(claim_type, statement, premises_frozen, tuple(refs), inference_rule, rule_version, expected_status)
-    return Claim(claim_type, _canonical_statement(statement), premises_frozen, tuple(refs), inference_rule, rule_version, expected_status, {"evidence": provenance}, claim_hash)
+    claim_hash = compute_claim_hash(
+        claim_type,
+        statement,
+        premises_frozen,
+        tuple(refs),
+        inference_rule,
+        rule_version,
+        expected_status,
+    )
+    return Claim(
+        claim_type,
+        _canonical_statement(statement),
+        premises_frozen,
+        tuple(refs),
+        inference_rule,
+        rule_version,
+        expected_status,
+        {"evidence": provenance},
+        claim_hash,
+    )
