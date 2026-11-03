@@ -18,6 +18,9 @@ from provenance_checker import fetch_pypi_json
 MAX_WHEEL_BYTES = 25 * 1024 * 1024
 MAX_SOURCE_BYTES = 10 * 1024 * 1024
 TIMEOUT_SECONDS = 30
+ImportAliases = dict[str, tuple[str, tuple[str, ...]]]
+CallRecords = list[dict[str, Any]]
+SymbolIndex = tuple[set[str], dict[str, set[str]], dict[str, dict[str, set[str]]]]
 
 
 def _dotted_name(node: ast.AST) -> tuple[str, list[str]] | None:
@@ -31,7 +34,7 @@ def _dotted_name(node: ast.AST) -> tuple[str, list[str]] | None:
     return current.id, list(reversed(parts))
 
 
-def _imports_and_calls(code_str: str, package_name: str) -> tuple[dict[str, tuple[str, tuple[str, ...]]], list[dict[str, Any]]]:
+def _imports_and_calls(code_str: str, package_name: str) -> tuple[ImportAliases, CallRecords]:
     tree = ast.parse(code_str)
     aliases: dict[str, tuple[str, tuple[str, ...]]] = {}
     for node in ast.walk(tree):
@@ -93,7 +96,10 @@ def read_wheel_sources(wheel_bytes: bytes) -> dict[str, str]:
                 continue
             if ".dist-info" in path.parts or ".data" in path.parts:
                 continue
-            if member.file_size > MAX_SOURCE_BYTES or total_source_bytes + member.file_size > MAX_SOURCE_BYTES:
+            if (
+                member.file_size > MAX_SOURCE_BYTES
+                or total_source_bytes + member.file_size > MAX_SOURCE_BYTES
+            ):
                 raise ValueError("wheel source exceeds inspection limit")
             content = archive.read(member)
             total_source_bytes += len(content)
@@ -112,7 +118,7 @@ def _module_name(path: str) -> str | None:
     return ".".join(parts) if parts else None
 
 
-def _build_symbol_index(sources: dict[str, str]) -> tuple[set[str], dict[str, set[str]], dict[str, dict[str, set[str]]]]:
+def _build_symbol_index(sources: dict[str, str]) -> SymbolIndex:
     modules: set[str] = set()
     functions: dict[str, set[str]] = {}
     classes: dict[str, dict[str, set[str]]] = {}
