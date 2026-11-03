@@ -265,7 +265,15 @@ class EvaluatorDecisionTests(unittest.TestCase):
                     {
                         "id": "req-test",
                         "model": "test-model",
-                        "choices": [{"message": {"content": '{"package_name":"pkg","code":"import pkg"}'}}],
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": (
+                                        '{"package_name":"pkg","code":"import pkg"}'
+                                    ),
+                                },
+                            },
+                        ],
                     }
                 ).encode("utf-8")
 
