@@ -51,6 +51,7 @@ jobs:
           mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
           if ((${#files[@]})); then
             root_files=()
+            src_files=()
             template_files=()
 
             for file in "${files[@]}"; do
@@ -58,14 +59,21 @@ jobs:
                 templates/jamp-plugin/*)
                   template_files+=("${file#templates/jamp-plugin/}")
                   ;;
+                src/jamp/*)
+                  src_files+=("$file")
+                  ;;
                 tools/*)
                   root_files+=("$file")
                   ;;
               esac
             done
 
-            if ((${#root_files[@]})); then
+            if (("${#root_files[@]}")); then
               MYPYPATH=src mypy --config-file=/dev/null --strict --follow-imports=skip --python-version 3.11 "${root_files[@]}"
+            fi
+
+            if (("${#src_files[@]}")); then
+              MYPYPATH=src mypy --config-file=pyproject.toml "${src_files[@]}"
             fi
 
             if ((${#template_files[@]})); then
