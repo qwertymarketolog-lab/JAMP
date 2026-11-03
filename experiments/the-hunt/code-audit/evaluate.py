@@ -65,9 +65,11 @@ def _has_suspicious_calls(tree: ast.AST) -> bool:
             "import_module",
         }:
             return True
-        if isinstance(function, ast.Attribute):
-            if function.attr in {"import_module", "system"}:
-                return True
+        if isinstance(function, ast.Attribute) and function.attr in {
+            "import_module",
+            "system",
+        }:
+            return True
     return False
 
 
@@ -96,7 +98,6 @@ def _pypi_lookup(package: str, cache: dict[str, str]) -> str:
     try:
         with urlopen(request, timeout=5) as response:
             if response.status == 200:
-                # Parse the response to ensure it is a valid PyPI JSON document.
                 payload = json.loads(response.read())
                 if not isinstance(payload, dict) or not isinstance(payload.get("info"), dict):
                     result = "INCONCLUSIVE"
@@ -155,7 +156,6 @@ def _correctness(verdict: str, is_fake: bool, engine: str) -> bool | None:
     if verdict.startswith("PACKAGE_NOT_FOUND_ON_PYPI"):
         return is_fake
     if verdict == "PACKAGE_EXISTS_ONLY":
-        # If a labelled trap exists on PyPI, the fixture label conflicts with evidence.
         return None if is_fake else True
     return None
 
