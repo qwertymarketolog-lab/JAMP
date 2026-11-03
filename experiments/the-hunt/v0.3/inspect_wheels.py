@@ -182,6 +182,7 @@ def analyze_wheel(
         type_checking_hits: list[str] = []
         getattr_hits: list[str] = []
         recreate_hits: list[str] = []
+        recreate_mapping_hits: list[str] = []
         lazy_module_hits: list[str] = []
         celery_class_hits: list[str] = []
         get_definition_hits: list[str] = []
@@ -258,6 +259,28 @@ def analyze_wheel(
                         and function.attr == "recreate_module"
                     ):
                         recreate_hits.append(name)
+                        for keyword in node.keywords:
+                            if keyword.arg == "by_module":
+                                try:
+                                    mapping: Any = ast.literal_eval(keyword.value)
+                                except (ValueError, TypeError, SyntaxError):
+                                    recreate_mapping_hits.append(
+                                        f"{name}:{node.lineno}: by_module is nonliteral"
+                                    )
+                                else:
+                                    if isinstance(mapping, dict):
+                                        for module_name, symbols in mapping.items():
+                                            if (
+                                                module_name == "celery.app"
+                                                or (
+                                                    isinstance(symbols, (list, tuple))
+                                                    and "Celery" in symbols
+                                                )
+                                            ):
+                                                recreate_mapping_hits.append(
+                                                    f"{name}:{node.lineno}: "
+                                                    f"{module_name} -> {symbols}"
+                                                )
                 if isinstance(node, ast.ClassDef):
                     if node.name == "LazyModule":
                         lazy_module_hits.append(name)
@@ -310,6 +333,7 @@ def analyze_wheel(
             "getattr_source_files": sorted(set(getattr_hits)),
             "type_checking_source_files": sorted(set(type_checking_hits)),
             "recreate_module_source_files": sorted(set(recreate_hits)),
+            "recreate_module_by_module_exports": sorted(set(recreate_mapping_hits)),
             "lazy_module_class_source_files": sorted(set(lazy_module_hits)),
             "celery_class_source_files": sorted(set(celery_class_hits)),
             "source_evidence_lines": source_hits,
@@ -330,6 +354,7 @@ def analyze_wheel(
         "type_checking_source_files",
         "getattr_source_files",
         "recreate_module_source_files",
+        "recreate_module_by_module_exports",
         "lazy_module_class_source_files",
         "celery_class_source_files",
     ):
