@@ -7,14 +7,14 @@ from pathlib import Path
 BASELINE_FILE = Path(".ruff-baseline.json")
 
 def get_fingerprint(diag: dict) -> str:
-    filename = Path(diag["filename"])
-    try:
-        if filename.is_absolute():
-            filename = filename.relative_to(Path.cwd())
-    except ValueError:
-        pass
-    return f"{filename.as_posix()}:{diag['code']}:{diag['message']}"
-
+    filename = Path(diag["filename"]).as_posix()
+    # Strip any absolute prefix up to the repository-relative path.
+    parts = filename.split("/")
+    for i, part in enumerate(parts):
+        if part in ("src", "tests", "tools", "track_a", "docs", "experiments", "experiments_b2b"):
+            filename = "/".join(parts[i:])
+            break
+    return f"{filename}:{diag['code']}:{diag['message']}"
 def get_current_errors_raw() -> list[dict]:
     result = subprocess.run(
         ["ruff", "check", ".", "--output-format=json"],
