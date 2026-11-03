@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
-import os
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -299,7 +299,12 @@ class EvaluatorDecisionTests(unittest.TestCase):
 class GroqFailureHandlingTests(unittest.TestCase):
     def test_http_error_body_is_preserved_and_api_key_redacted(self):
         body = json.dumps(
-            {"error": {"message": "invalid credential test-secret", "type": "invalid_request_error"}}
+            {
+                "error": {
+                    "message": "invalid credential test-secret",
+                    "type": "invalid_request_error",
+                }
+            }
         ).encode("utf-8")
         error = RUN_LLM.HTTPError(
             "https://api.groq.com/openai/v1/chat/completions",
