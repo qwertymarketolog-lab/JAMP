@@ -1,0 +1,35 @@
+name: Inspect Wheels AST
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "experiments/the-hunt/v0.3/inspect_wheels.py"
+      - ".github/workflows/inspect-wheels.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run AST Inspector
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p wheel-inspection-output
+          python experiments/the-hunt/v0.3/inspect_wheels.py 2>&1 | tee wheel-inspection-output/inspect_wheels.log
+      - name: Upload inspection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspect-wheels-evidence-${{ github.run_id }}
+          path: wheel-inspection-output/
+          if-no-files-found: warn
+          retention-days: 30
