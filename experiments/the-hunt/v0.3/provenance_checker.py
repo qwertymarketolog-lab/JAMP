@@ -9,6 +9,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 from urllib.error import HTTPError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 PYPI_JSON = "https://pypi.org/pypi/{}/json"
@@ -69,8 +70,8 @@ def _has_repository(project_urls: Any) -> bool:
     for value in project_urls.values():
         if not isinstance(value, str):
             continue
-        lowered = value.lower()
-        if "github.com" in lowered or "gitlab.com" in lowered:
+        hostname = (urlparse(value).hostname or "").lower()
+        if hostname in {"github.com", "www.github.com", "gitlab.com", "www.gitlab.com"}:
             return True
     return False
 

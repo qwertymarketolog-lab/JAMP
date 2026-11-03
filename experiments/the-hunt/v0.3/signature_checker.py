@@ -93,10 +93,10 @@ def read_wheel_sources(wheel_bytes: bytes) -> dict[str, str]:
                 continue
             if ".dist-info" in path.parts or ".data" in path.parts:
                 continue
+            if member.file_size > MAX_SOURCE_BYTES or total_source_bytes + member.file_size > MAX_SOURCE_BYTES:
+                raise ValueError("wheel source exceeds inspection limit")
             content = archive.read(member)
             total_source_bytes += len(content)
-            if total_source_bytes > MAX_SOURCE_BYTES:
-                raise ValueError("wheel source exceeds inspection limit")
             sources[path.as_posix()] = content.decode("utf-8")
     return sources
 

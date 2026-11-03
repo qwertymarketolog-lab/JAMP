@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,7 @@ def exact_mcnemar(b: int, c: int) -> float:
     n = b + c
     if n == 0:
         return 1.0
-    tail = sum(__import__("math").comb(n, k) for k in range(min(b, c) + 1)) / (2**n)
+    tail = sum(math.comb(n, k) for k in range(min(b, c) + 1)) / (2**n)
     return min(1.0, 2.0 * tail)
 
 
