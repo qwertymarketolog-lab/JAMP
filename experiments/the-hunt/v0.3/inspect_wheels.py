@@ -74,6 +74,55 @@ def _literal_all(tree: ast.Module) -> tuple[list[str] | None, bool]:
     return None, False
 
 
+def _module_name(path: str) -> str:
+    parts = path[:-3].split("/")
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts)
+
+
+def _import_target(module_name: str, path: str, node: ast.ImportFrom) -> str:
+    if not node.level:
+        return node.module or ""
+    module_parts = module_name.split(".")
+    package_parts = (
+        module_parts if path.endswith("/__init__.py") else module_parts[:-1]
+    )
+    if node.level > 1:
+        package_parts = package_parts[: -(node.level - 1)]
+    target_parts = list(package_parts)
+    if node.module:
+        target_parts.extend(node.module.split("."))
+    return ".".join(target_parts)
+
+
+def _runtime_bindings(
+    module: str,
+    bindings: dict[str, set[str]],
+    star_imports: dict[str, list[str]],
+    all_names: dict[str, list[str] | None],
+    all_declared: set[str],
+    visited: set[str] | None = None,
+) -> set[str]:
+    visited = set() if visited is None else set(visited)
+    if module in visited:
+        return set()
+    visited.add(module)
+    names = set(bindings.get(module, set()))
+    for target in star_imports.get(module, []):
+        if target in all_declared:
+            names.update(all_names.get(target) or [])
+        else:
+            names.update(
+                name
+                for name in _runtime_bindings(
+                    target, bindings, star_imports, all_names, all_declared, visited
+                )
+                if not name.startswith("_")
+            )
+    return names
+
+
 def analyze_wheel(
     package: str, wheel_path: Path, expected_sha256: str
 ) -> dict[str, object]:
@@ -135,8 +184,14 @@ def analyze_wheel(
         recreate_hits: list[str] = []
         lazy_module_hits: list[str] = []
         celery_class_hits: list[str] = []
+        get_definition_hits: list[str] = []
+        get_import_hits: list[str] = []
         source_hits: list[str] = []
         parse_errors: list[str] = []
+        module_bindings: dict[str, set[str]] = {}
+        module_star_imports: dict[str, list[str]] = {}
+        module_all_names: dict[str, list[str] | None] = {}
+        modules_with_all: set[str] = set()
 
         for name in python_files:
             raw = archive.read(name)
@@ -147,14 +202,61 @@ def analyze_wheel(
                 parse_errors.append(f"{name}:{error.lineno}:{error.msg}")
                 continue
 
+            module = _module_name(name)
+            module_bindings[module] = set()
+            module_star_imports[module] = []
+            literal_names, dynamic_all = _literal_all(tree)
+            module_all_names[module] = literal_names
+            if literal_names is not None or dynamic_all:
+                modules_with_all.add(module)
+
+            for top_node in tree.body:
+                if isinstance(
+                    top_node,
+                    (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
+                ):
+                    module_bindings[module].add(top_node.name)
+                    if top_node.name == "get":
+                        get_definition_hits.append(f"{name}:{top_node.lineno}")
+                elif isinstance(top_node, ast.ImportFrom):
+                    target_module = _import_target(module, name, top_node)
+                    for alias in top_node.names:
+                        if alias.name == "*":
+                            module_star_imports[module].append(target_module)
+                        else:
+                            bound_name = alias.asname or alias.name
+                            module_bindings[module].add(bound_name)
+                            if bound_name == "get":
+                                get_import_hits.append(f"{name}:{top_node.lineno}")
+                elif isinstance(top_node, ast.Import):
+                    for alias in top_node.names:
+                        bound_name = alias.asname or alias.name.split(".")[0]
+                        module_bindings[module].add(bound_name)
+                elif isinstance(top_node, (ast.Assign, ast.AnnAssign)):
+                    targets = (
+                        top_node.targets
+                        if isinstance(top_node, ast.Assign)
+                        else [top_node.target]
+                    )
+                    for target in targets:
+                        if isinstance(target, ast.Name):
+                            module_bindings[module].add(target.id)
+
             for node in ast.walk(tree):
                 if isinstance(node, ast.Name) and node.id == "TYPE_CHECKING":
                     type_checking_hits.append(name)
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     if node.name == "__getattr__":
                         getattr_hits.append(name)
-                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                    if node.func.id == "recreate_module":
+                if isinstance(node, ast.Call):
+                    function = node.func
+                    if (
+                        isinstance(function, ast.Name)
+                        and function.id == "recreate_module"
+                    ) or (
+                        isinstance(function, ast.Attribute)
+                        and function.attr == "recreate_module"
+                    ):
                         recreate_hits.append(name)
                 if isinstance(node, ast.ClassDef):
                     if node.name == "LazyModule":
@@ -172,10 +274,20 @@ def analyze_wheel(
                         "by_module",
                         "class LazyModule",
                         "class Celery",
+                        "def get(",
+                        "__all__",
                     )
                 ):
                     source_hits.append(f"{name}:{line_number}: {line.strip()}")
 
+        package_module = package.replace("-", "_")
+        runtime_package_bindings = _runtime_bindings(
+            package_module,
+            module_bindings,
+            module_star_imports,
+            module_all_names,
+            modules_with_all,
+        )
         report: dict[str, object] = {
             "package": package,
             "wheel_filename": wheel_path.name,
@@ -190,6 +302,10 @@ def analyze_wheel(
             "all_is_dynamic_or_nonliteral": all_dynamic,
             "httpx_top_level_get_binding": "get" in top_level_bindings,
             "httpx_get_listed_in_all": all_names is not None and "get" in all_names,
+            "httpx_runtime_static_bindings": sorted(runtime_package_bindings),
+            "httpx_get_attribute_static_binding": "get" in runtime_package_bindings,
+            "get_definition_locations": sorted(set(get_definition_hits)),
+            "get_import_locations": sorted(set(get_import_hits)),
             "package_level_getattr_in_init": module_getattr,
             "getattr_source_files": sorted(set(getattr_hits)),
             "type_checking_source_files": sorted(set(type_checking_hits)),
@@ -203,6 +319,9 @@ def analyze_wheel(
     print("\nSTATIC EXPORT EVIDENCE:")
     print(f"TOP_LEVEL_GET_BINDING: {report['httpx_top_level_get_binding']}")
     print(f"TOP_LEVEL_CELERY_BINDING: {'Celery' in top_level_bindings}")
+    print(f"HTTPX_GET_ATTRIBUTE_STATIC_BINDING: {report['httpx_get_attribute_static_binding']}")
+    print(f"GET_DEFINITION_LOCATIONS: {report['get_definition_locations']}")
+    print(f"GET_IMPORT_LOCATIONS: {report['get_import_locations']}")
     print(f"LITERAL_ALL: {all_names}")
     print(f"ALL_DYNAMIC_OR_NONLITERAL: {all_dynamic}")
     print(f"PACKAGE_LEVEL_GETATTR_IN_INIT: {module_getattr}")
