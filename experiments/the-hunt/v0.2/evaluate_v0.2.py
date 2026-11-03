@@ -446,6 +446,8 @@ def evaluate(
     if not tasks:
         raise ValueError("Paired evaluation requires at least one task")
     if evaluation_mode == "POST_REVEAL_INDEPENDENT_RECHECK":
+        if sha256_bytes(tasks_path.read_bytes()) != cache_manifest.get("tasks_file_sha256"):
+            raise ValueError("POST-REVEAL task file digest differs from cache provenance")
         if len(tasks) != 200 or set(cache) != set(gt_by_name):
             raise ValueError(
                 "POST-REVEAL evaluation requires 200 tasks and a complete 200-name cache"
@@ -565,6 +567,14 @@ def evaluate(
         "cache_manifest_sha256": sha256_bytes(cache_path.read_bytes()),
         "cache_ground_truth_workflow_run_id": cache_manifest.get("ground_truth_workflow_run_id"),
         "cache_ground_truth_artifact_id": cache_manifest.get("ground_truth_artifact_id"),
+        "cache_ground_truth_artifact_digest": cache_manifest.get("ground_truth_artifact_digest"),
+        "cache_ground_truth_workflow_head_sha": cache_manifest.get("ground_truth_workflow_head_sha"),
+        "cache_ground_truth_workflow_completed_at_utc": cache_manifest.get(
+            "ground_truth_workflow_completed_at_utc"
+        ),
+        "cache_observations_sha256": cache_manifest.get("observations_file_sha256"),
+        "cache_checksums_sha256": cache_manifest.get("checksums_file_sha256"),
+        "cache_raw_response_count": cache_manifest.get("raw_response_count"),
         "cache_collection_started_at_utc": cache_manifest.get("collection_started_at_utc"),
         "cache_collection_completed_at_utc": cache_manifest.get("collection_completed_at_utc"),
         "input_origin": "SYNTHETIC_CONTROL_INPUT",
