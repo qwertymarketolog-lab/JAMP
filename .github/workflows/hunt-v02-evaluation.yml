@@ -135,6 +135,7 @@ jobs:
             --output "$REPORT_PATH" 2>&1 | tee post-reveal-evaluator.log
           python - "$REPORT_PATH" <<'PY'
           import json
+          import os
           import sys
           from pathlib import Path
 
@@ -142,7 +143,8 @@ jobs:
           assert report["evaluation_mode"] == "POST_REVEAL_INDEPENDENT_RECHECK"
           assert report["cache_acquisition_phase"] == "POST_REVEAL"
           assert report["attempted_task_count"] == 200
-          assert report["cache_ground_truth_workflow_run_id"] == 41608537962 or report["cache_ground_truth_workflow_run_id"] is not None
+          assert report["cache_ground_truth_workflow_run_id"] == int(os.environ["GT_RUN_ID"])
+          assert report["cache_ground_truth_artifact_id"] == int(os.environ["GT_ARTIFACT_ID"])
           print(json.dumps({
               "evaluation_mode": report["evaluation_mode"],
               "attempted_task_count": report["attempted_task_count"],
