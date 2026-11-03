@@ -222,6 +222,9 @@ class PostRevealCacheTests(unittest.TestCase):
             checksum_lines.append(f"{digest}  {relative}")
             observations.append({
                 "normalized_name": name,
+                "endpoint": f"https://pypi.org/pypi/{name}/json",
+                "http_status": 200,
+                "response_name": name,
                 "status": "EXISTS_ON_PYPI",
                 "raw_response_sha256": digest,
                 "raw_response_path": relative,
@@ -244,6 +247,12 @@ class PostRevealCacheTests(unittest.TestCase):
             "ground_truth_workflow_completed_at_utc": "2026-11-03T09:08:51+00:00",
             "collection_started_at_utc": "2026-11-03T09:10:00+00:00",
             "candidate_count": 200,
+            "status_counts": {
+                "EXISTS_ON_PYPI": 200,
+                "NOT_FOUND_ON_PYPI": 0,
+                "INCONCLUSIVE": 0,
+                "AMBIGUOUS": 0,
+            },
             "observations_file_sha256": hashlib.sha256(observations_bytes).hexdigest(),
             "checksums_file_sha256": hashlib.sha256(checksums_bytes).hexdigest(),
             "packages": packages,
