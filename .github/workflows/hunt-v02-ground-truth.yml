@@ -1,0 +1,108 @@
+name: The Hunt v0.2 Ground Truth Collection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hunt-v02-ground-truth-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  collect-ground-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUNBUFFERED: "1"
+      OUTPUT_DIR: artifacts/the-hunt/v0.2/ground_truth-${{ github.run_id }}
+    steps:
+      - name: Checkout exact workflow revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Record execution identity
+        run: |
+          {
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "workflow_sha=${GITHUB_SHA}"
+            echo "checked_out_sha=$(git rev-parse HEAD)"
+            echo "python_version=$(python --version 2>&1)"
+          } | tee execution-identity.txt
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Collect live PyPI Ground Truth
+        shell: bash
+        run: |
+          set -o pipefail
+          python experiments/the-hunt/v0.2/verify_ground_truth_v2.py \
+            --output-dir "$OUTPUT_DIR" 2>&1 | tee ground-truth-collector.log
+
+      - name: Verify completed Ground Truth Lock and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$OUTPUT_DIR/manifest.json"
+          test -s "$OUTPUT_DIR/observations.jsonl"
+          test -f "$OUTPUT_DIR/checksums.sha256"
+          test -s "$OUTPUT_DIR/top-pypi-packages-30-days.min.json"
+          (
+            cd "$OUTPUT_DIR"
+            sha256sum --check checksums.sha256
+          )
+          python - "$OUTPUT_DIR/manifest.json" "$OUTPUT_DIR/observations.jsonl" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest_path = Path(sys.argv[1])
+          observations_path = Path(sys.argv[2])
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          rows = [
+              json.loads(line)
+              for line in observations_path.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          assert manifest.get("schema_version") == "jamp-hunt-ground-truth-v0.2"
+          assert manifest.get("evidence_class") == "LIVE_REGISTRY_OBSERVATIONS"
+          assert manifest.get("collection_complete") is True
+          assert manifest.get("candidate_count") == 200
+          assert manifest.get("unique_normalized_candidate_count") == 200
+          assert len(rows) == 200
+          assert len({row["normalized_name"] for row in rows}) == 200
+          assert sum(manifest["status_counts"].values()) == 200
+          print(json.dumps({
+              "candidate_count": manifest["candidate_count"],
+              "unique_normalized_candidate_count": manifest["unique_normalized_candidate_count"],
+              "status_counts": manifest["status_counts"],
+              "inconclusive_count": manifest["status_counts"]["INCONCLUSIVE"],
+              "ambiguous_count": manifest["status_counts"]["AMBIGUOUS"],
+              "observations_file_sha256": manifest["observations_file_sha256"],
+              "checksums_file_sha256": manifest["checksums_file_sha256"],
+              "source_snapshot_sha256": manifest["source"]["snapshot_sha256"],
+          }, indent=2, sort_keys=True))
+          PY
+          sha256sum "$OUTPUT_DIR/manifest.json" \
+            "$OUTPUT_DIR/observations.jsonl" \
+            "$OUTPUT_DIR/checksums.sha256" \
+            "$OUTPUT_DIR/top-pypi-packages-30-days.min.json" \
+            > "$OUTPUT_DIR/evidence-files.sha256"
+
+      - name: Upload Ground Truth evidence (including partial failure evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v02-ground-truth-${{ github.run_id }}
+          path: |
+            ${{ env.OUTPUT_DIR }}/
+            ground-truth-collector.log
+            execution-identity.txt
+          if-no-files-found: warn
+          retention-days: 30
