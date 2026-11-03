@@ -31,8 +31,16 @@ jobs:
           grep -qx 'ruff 0.17.3' ruff-version.txt
           printf '%s\n' "${GITHUB_SHA}" > base-sha.txt
 
-          # Restrict Ruff to tracked Python files; never pass Markdown or other assets.
-          mapfile -d '' -t python_files < <(git ls-files -z -- '*.py')
+          # Restrict Ruff to tracked Python files and preserve the locked Frozen Core.
+          core_before="$(git rev-parse HEAD:src/jamp/run.py)"
+          test "$core_before" = '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+          mapfile -d '' -t tracked_python_files < <(git ls-files -z -- '*.py')
+          python_files=()
+          for path in "${tracked_python_files[@]}"; do
+            if [ "$path" != "src/jamp/run.py" ]; then
+              python_files+=("$path")
+            fi
+          done
           candidate_count="${#python_files[@]}"
           printf 'TRACKED_PYTHON_FILE_COUNT=%s\n' "$candidate_count" | tee format-summary.txt
           if [ "$candidate_count" -eq 0 ]; then
@@ -51,7 +59,8 @@ jobs:
           changed_count="$(wc -l < formatted-files.txt | tr -d ' ')"
           printf 'FORMATTED_FILE_COUNT=%s\n' "$changed_count" | tee -a format-summary.txt
 
-          if git diff --quiet -- src/jamp/run.py; then
+          core_after="$(git hash-object src/jamp/run.py)"
+          if [ "$core_after" = '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a' ] && git diff --quiet -- src/jamp/run.py; then
             printf 'FROZEN_CORE_DELTA=0\n' | tee -a format-summary.txt
           else
             printf 'FROZEN_CORE_DELTA=NONZERO\n' | tee -a format-summary.txt
