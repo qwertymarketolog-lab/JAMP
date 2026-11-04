@@ -97,6 +97,8 @@ jobs:
           printf 'SANDBOX_IMAGE_ID=%s\n' "$IMAGE_ID" | tee recovery-output/sandbox-image.txt
           chmod -R a+rX recovery-input
           chmod -R 777 recovery-output
+          mkdir -p "$RUNNER_TEMP/hunt-recovery-venvs"
+          chmod 777 "$RUNNER_TEMP/hunt-recovery-venvs"
           docker run --rm \
             --network none --memory=3g --cpus=2 --pids-limit=128 \
             --read-only --cap-drop=ALL --security-opt=no-new-privileges \
@@ -105,8 +107,9 @@ jobs:
             --mount "type=bind,src=$PWD/recovery-input/wheelhouse,dst=/wheelhouse,readonly" \
             --mount "type=bind,src=$PWD/recovery-input,dst=/input,readonly" \
             --mount "type=bind,src=$PWD/recovery-output,dst=/output" \
+            --mount "type=bind,src=$RUNNER_TEMP/hunt-recovery-venvs,dst=/venvs" \
             --mount "type=bind,src=$PWD/experiments/the-hunt/v0.3/recover_v03.py,dst=/recover_v03.py,readonly" \
-            -e HOME=/tmp -e PYTHONNOUSERSITE=1 \
+            -e HOME=/tmp -e PYTHONNOUSERSITE=1 -e JAMP_VENV_ROOT=/venvs \
             -e JAMP_RECOVERY_RUN_ID="${GITHUB_RUN_ID}" \
             -e JAMP_RECOVERY_SHA="${GITHUB_SHA}" \
             -e JAMP_RECOVERY_WORKFLOW="${GITHUB_WORKFLOW}" \

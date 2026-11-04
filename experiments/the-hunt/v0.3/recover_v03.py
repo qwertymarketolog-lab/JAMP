@@ -527,8 +527,13 @@ def install_sample_environment(
     folder = wheelhouse / sample_id
     if not folder.is_dir() or not list(folder.glob("*.whl")):
         return None
-    persistent = Path(tempfile.mkdtemp(prefix="jamp-hunt-env-"))
-    env_dir = persistent / "venv"
+    venv_root = Path(os.environ.get("JAMP_VENV_ROOT", "/tmp/jamp-hunt-venvs"))
+    venv_root.mkdir(parents=True, exist_ok=True)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", sample_id):
+        raise ValueError(f"unsafe sample_id for isolated environment: {sample_id}")
+    env_dir = venv_root / sample_id
+    if env_dir.exists():
+        raise ValueError(f"isolated environment already exists for {sample_id}")
     venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
     python = env_dir / "bin" / "python"
     installed = subprocess.run(
