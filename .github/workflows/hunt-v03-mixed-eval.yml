@@ -1,0 +1,120 @@
+name: The Hunt v0.3 - Mixed Temporal Replay
+
+on:
+  push:
+    branches:
+      - exp/hunt-v0.3.2-metrics-fix
+    paths:
+      - ".github/workflows/hunt-v03-mixed-eval.yml"
+      - "experiments/the-hunt/v0.3/run_mixed_eval.py"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  mixed-temporal-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download immutable source and recovery artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mixed-eval
+          python - <<'PY'
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          repo = "qwertymarketolog-lab/JAMP"
+          artifacts = {
+              13257610773: Path("mixed-eval/source-13257610773.zip"),
+              13299716958: Path("mixed-eval/recovery-13299716958.zip"),
+          }
+          token = os.environ["GH_TOKEN"]
+          for artifact_id, destination in artifacts.items():
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  with destination.open("wb") as output:
+                      while chunk := response.read(1024 * 1024):
+                          output.write(chunk)
+              print(f"downloaded artifact_id={artifact_id} bytes={destination.stat().st_size}")
+          PY
+
+      - name: Compile and run focused contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q \
+            experiments/the-hunt/v0.3/signature_checker.py \
+            experiments/the-hunt/v0.3/run_mixed_eval.py
+          python -m unittest discover -s tests -p 'test_signature_checker.py' -v
+          python -m unittest discover -s tests -p 'test_hunt_v03*.py' -v
+
+      - name: Run MIXED_TEMPORAL evaluation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/run_mixed_eval.py \
+            --source-artifact mixed-eval/source-13257610773.zip \
+            --recovery-artifact mixed-eval/recovery-13299716958.zip \
+            --output mixed-eval/results_mixed.json \
+            2>&1 | tee mixed-eval/run.log
+          printf '\n=== MIXED TEMPORAL SUMMARY ===\n'
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("mixed-eval/results_mixed.json").read_text())
+          for key in (
+              "evaluation_mode",
+              "false_positives",
+              "true_positives",
+              "true_positive_evaluation_possible",
+              "true_positive_ground_truth_denominator",
+              "inconclusive",
+              "qualification",
+          ):
+              print(f"{key}={report[key]}")
+          PY
+
+      - name: Capture immutable CI metadata
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'github_run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'github_sha=%s\n' "$GITHUB_SHA"
+            printf 'workflow=%s\n' "$GITHUB_WORKFLOW"
+            printf 'frozen_core_blob=%s\n' "$(git rev-parse "$GITHUB_SHA:src/jamp/run.py")"
+            printf 'frozen_core_expected=%s\n' \
+              '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+          } > mixed-eval/ci-metadata.txt
+
+      - name: Upload MIXED_TEMPORAL evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v03-mixed-temporal-${{ github.run_id }}
+          path: mixed-eval/
+          if-no-files-found: warn
+          retention-days: 90
