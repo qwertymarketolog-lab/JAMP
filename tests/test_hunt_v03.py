@@ -35,6 +35,19 @@ VERIFY_GT = load_script("verify_gt_v3.py", "hunt_v03_verify_gt")
 RUN_LLM = load_script("run_llm_v3.py", "hunt_v03_run_llm")
 
 
+class CompletionParsingTests(unittest.TestCase):
+    def test_markdown_json_fence_is_parsed(self):
+        content = '```json\n{"package_name":"samplepkg","code":"import samplepkg"}\n```'
+        self.assertEqual(RUN_LLM._parse_completion(content), ("samplepkg", "import samplepkg"))
+
+    def test_plain_json_is_parsed(self):
+        content = '{"package_name":"samplepkg","code":"import samplepkg"}'
+        self.assertEqual(RUN_LLM._parse_completion(content), ("samplepkg", "import samplepkg"))
+
+    def test_malformed_json_fails_closed(self):
+        self.assertEqual(RUN_LLM._parse_completion('{"package_name":'), (None, None))
+
+
 def metadata(age_days: int, project_urls=None, author="Maintainer"):
     now = datetime(2026, 11, 3, tzinfo=UTC)
     first = now - timedelta(days=age_days)
@@ -311,7 +324,7 @@ class EvaluatorDecisionTests(unittest.TestCase):
                 patch.object(
                     EVALUATOR,
                     "check_provenance",
-                    side_effect=lambda package: {
+                    side_effect=lambda package, *_args: {
                         "status": "NOT_FOUND" if package.startswith("probe-") else "TRUSTED"
                     },
                 ),
@@ -470,6 +483,20 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 ),
                 patch.object(
                     RUN_LLM,
+                    "capture_pre_generation_release",
+                    side_effect=lambda package, *_args: {
+                        "package_name": package,
+                        "resolution_status": "UNRESOLVED",
+                        "temporal_provenance": "UNRESOLVED",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
+                    RUN_LLM,
                     "_call_groq",
                     return_value=(
                         None,
@@ -534,6 +561,20 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(sys, "argv", argv),
                 patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
                 patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    side_effect=lambda package, *_args: {
+                        "package_name": package,
+                        "resolution_status": "UNRESOLVED",
+                        "temporal_provenance": "UNRESOLVED",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
                     RUN_LLM, "_call_anymodel", return_value=(response, None, None)
                 ),
                 patch("sys.stdout", new_callable=io.StringIO),
@@ -582,6 +623,20 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(sys, "argv", argv),
                 patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
                 patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    side_effect=lambda package, *_args: {
+                        "package_name": package,
+                        "resolution_status": "UNRESOLVED",
+                        "temporal_provenance": "UNRESOLVED",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
                     RUN_LLM, "_call_anymodel", return_value=(response, None, None)
                 ) as call,
                 patch("sys.stdout", new_callable=io.StringIO),
@@ -621,7 +676,8 @@ class GroqFailureHandlingTests(unittest.TestCase):
                     ],
                 }).encode("utf-8")
 
-        with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
+        with patch.object(RUN_LLM, "build_opener") as opener:
+            opener.return_value.open.return_value = FakeResponse()
             result, error, diagnostics = RUN_LLM._call_anymodel(
                 api_key="test-anymodel-secret",
                 endpoint="https://anymodel.org/v1/chat/completions",
@@ -634,9 +690,157 @@ class GroqFailureHandlingTests(unittest.TestCase):
         self.assertEqual(result["http_status"], 200)
         self.assertEqual(result["provider_model_id"], "ds/deepseek-v4-pro")
         self.assertEqual(
-            opener.call_args.args[0].full_url,
+            opener.return_value.open.call_args.args[0].full_url,
             "https://anymodel.org/v1/chat/completions",
         )
+
+
+class ProviderTransportDiagnosticsTests(unittest.TestCase):
+    def _call_anymodel(self):
+        return RUN_LLM._call_anymodel(
+            api_key="test-anymodel-secret",
+            endpoint="https://anymodel.org/v1/chat/completions",
+            model_id="ds/deepseek-v4-pro",
+            prompt="test prompt",
+            max_tokens=128,
+        )
+
+    def test_open_timeout_records_elapsed_phase_and_redacts_api_key(self):
+        with (
+            patch.object(
+                RUN_LLM,
+                "build_opener",
+            ) as opener,
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[10.0, 10.045]),
+        ):
+            opener.return_value.open.side_effect = TimeoutError(
+                "request timed out for test-anymodel-secret"
+            )
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "TimeoutError")
+        self.assertEqual(diagnostics["transport_phase"], "request_open")
+        self.assertEqual(diagnostics["elapsed_ms"], 45.0)
+        self.assertEqual(diagnostics["exception_type"], "TimeoutError")
+        self.assertIn("[REDACTED]", diagnostics["error_message"])
+        self.assertNotIn("test-anymodel-secret", json.dumps(diagnostics))
+
+    def test_response_read_timeout_is_distinguished_from_open_timeout(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                raise TimeoutError("response body timed out")
+
+        with (
+            patch.object(RUN_LLM, "build_opener") as opener,
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[20.0, 20.012]),
+        ):
+            opener.return_value.open.return_value = FakeResponse()
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "TimeoutError")
+        self.assertEqual(diagnostics["transport_phase"], "response_read")
+        self.assertEqual(diagnostics["elapsed_ms"], 12.0)
+        self.assertEqual(diagnostics["error_message"], "response body timed out")
+
+    def test_url_error_reason_redacts_api_key_and_records_failed_request(self):
+        secret = "test-anymodel-secret"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prompts_path = root / "prompts.json"
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            prompts_path.write_text(
+                json.dumps(
+                    {
+                        "samples": [
+                            {
+                                "sample_id": f"sample-{index}",
+                                "package_name": f"package-{index}",
+                                "prompt": f"prompt-{index}",
+                            }
+                            for index in range(100)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            argv = [
+                "run_llm_v3.py",
+                "--provider",
+                "anymodel",
+                "--model",
+                "ds/deepseek-v4-pro",
+                "--limit",
+                "1",
+                "--prompts",
+                str(prompts_path),
+                "--responses",
+                str(responses_path),
+                "--manifest",
+                str(manifest_path),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"ANYMODEL_API_KEY": secret}),
+                patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    side_effect=lambda package, *_args: {
+                        "package_name": package,
+                        "resolution_status": "UNRESOLVED",
+                        "temporal_provenance": "UNRESOLVED",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "build_opener",
+                ) as opener,
+                patch("sys.stdout", new_callable=io.StringIO),
+            ):
+                opener.return_value.open.side_effect = RUN_LLM.URLError(
+                    f"proxy rejected {secret}"
+                )
+                self.assertEqual(RUN_LLM.main(), 1)
+
+            payload = json.loads(responses_path.read_text(encoding="utf-8"))
+            row = payload["samples"][0]
+            self.assertEqual(row["request_status"], "FAILED")
+            self.assertEqual(row["failure_reason"], "URLError")
+            self.assertEqual(
+                row["provider_error"]["error_reason"],
+                "proxy rejected [REDACTED]",
+            )
+            self.assertIn("[REDACTED]", row["provider_error"]["error_message"])
+            self.assertNotIn(secret, json.dumps(payload))
+
+    def test_os_error_number_is_preserved(self):
+        with (
+            patch.object(
+                RUN_LLM,
+                "build_opener",
+            ) as opener,
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[30.0, 30.025]),
+        ):
+            opener.return_value.open.side_effect = OSError(5, "Input/output error")
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "OSError")
+        self.assertEqual(diagnostics["errno"], 5)
+        self.assertEqual(diagnostics["transport_phase"], "request_open")
 
 if __name__ == "__main__":
     unittest.main()

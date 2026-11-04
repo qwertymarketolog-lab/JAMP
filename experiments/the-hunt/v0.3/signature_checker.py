@@ -464,6 +464,7 @@ def _hunt_extended_index(
     dict[str, dict[str, set[str]]],
     dict[str, dict[str, tuple[str, str]]],
     set[str],
+    dict[str, set[str]],
     dict[str, list[str] | None],
     set[str],
 ]:
@@ -475,6 +476,7 @@ def _hunt_extended_index(
     all_declared: set[str] = set()
     dynamic_all: set[str] = set()
     star_imports: dict[str, list[str]] = {}
+    imported_child_bindings: set[tuple[str, str]] = set()
 
     for path, source in sources.items():
         module = _module_name(path)
@@ -495,6 +497,15 @@ def _hunt_extended_index(
                 bindings.add(node.name)
             elif isinstance(node, ast.ImportFrom):
                 target_module = _hunt_relative_import_target(module, path, node)
+                if target_module in modules:
+                    target_parts = target_module.split(".")
+                    for index in range(1, len(target_parts)):
+                        parent_module = ".".join(target_parts[:index])
+                        child_module = ".".join(target_parts[: index + 1])
+                        if parent_module in modules and child_module in modules:
+                            imported_child_bindings.add(
+                                (parent_module, target_parts[index])
+                            )
                 for alias in node.names:
                     if alias.name == "*":
                         star_imports[module].append(target_module)
@@ -503,6 +514,8 @@ def _hunt_extended_index(
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     bindings.add(alias.asname or alias.name.split(".")[0])
+                    if alias.asname is None and alias.name.startswith(f"{module}."):
+                        bindings.add(alias.name[len(module) + 1 :].split(".")[0])
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 assignment_targets = (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -550,6 +563,11 @@ def _hunt_extended_index(
                 for symbol in symbols:
                     reexports[module][symbol] = (target_module, symbol)
 
+    # Importing a child module through ImportFrom also binds that child as
+    # an attribute on each package parent (for example, samplepkg.api).
+    for parent_module, child_name in imported_child_bindings:
+        module_bindings[parent_module].add(child_name)
+
     # Python star imports use literal __all__, or public top-level bindings
     # when __all__ is absent. A dynamic __all__ is deliberately unresolved.
     for importing_module, star_targets in star_imports.items():
@@ -577,6 +595,7 @@ def _hunt_extended_index(
         classes,
         reexports,
         dynamic_modules,
+        module_bindings,
         all_names,
         all_declared | dynamic_all,
     )
@@ -630,6 +649,125 @@ def _hunt_symbol_exists(
     return resolve(base_module, symbol_path, set())
 
 
+def _hunt_dynamic_resolution_relevant(
+    base_module: str,
+    symbol_path: list[str],
+    modules: set[str],
+    reexports: dict[str, dict[str, tuple[str, str]]],
+    module_bindings: dict[str, set[str]],
+    dynamic_modules: set[str],
+) -> bool:
+    """Return whether a missing symbol may be supplied by a relevant module hook.
+
+    Traverse only symbol-specific static re-export edges. Unrelated imports and
+    unrelated modules elsewhere in the distribution are deliberately ignored.
+    """
+    if not symbol_path:
+        return False
+
+    queue: list[tuple[str, tuple[str, ...]]] = [
+        (base_module, tuple(symbol_path))
+    ]
+    visited: set[tuple[str, tuple[str, ...]]] = set()
+
+    while queue:
+        module_name, path = queue.pop(0)
+        state = (module_name, path)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        candidates: list[tuple[str, tuple[str, ...]]] = []
+        for split in range(len(path)):
+            candidate_module = ".".join([module_name, *path[:split]])
+            remaining = path[split:]
+            if candidate_module in modules and remaining:
+                candidates.append((candidate_module, remaining))
+
+        if not candidates:
+            continue
+
+        for candidate_module, remaining in candidates:
+            # A child source file does not itself bind that child as an
+            # attribute on its parent package. Only a static module binding
+            # or re-export suppresses the parent's dynamic attribute hook.
+            if (
+                candidate_module in dynamic_modules
+                and remaining[0]
+                not in module_bindings.get(candidate_module, set())
+            ):
+                return True
+
+            exported = reexports.get(candidate_module, {}).get(remaining[0])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module:
+                    queue.append(
+                        (target_module, (target_symbol, *remaining[1:]))
+                    )
+
+    return False
+
+
+def _hunt_binary_module_names(binary_members: list[str]) -> set[str]:
+    """Map safe extension-wheel paths to importable module names."""
+    modules: set[str] = set()
+    for filename in binary_members:
+        path = _safe_member_path(filename)
+        if (
+            path is None
+            or any(part.endswith((".dist-info", ".data")) for part in path.parts)
+        ):
+            continue
+        suffix = path.suffix.lower()
+        if suffix not in {".so", ".pyd"}:
+            continue
+        stem = path.name[: -len(suffix)].split(".", 1)[0]
+        if stem:
+            modules.add(".".join([*path.parts[:-1], stem]))
+    return modules
+
+
+def _hunt_binary_resolution_relevant(
+    base_module: str,
+    symbol_path: list[str],
+    modules: set[str],
+    reexports: dict[str, dict[str, tuple[str, str]]],
+    binary_modules: set[str],
+) -> bool:
+    """Return whether an extension module lies on this symbol's resolution path."""
+    if not symbol_path:
+        return False
+
+    queue: list[tuple[str, tuple[str, ...]]] = [
+        (base_module, tuple(symbol_path))
+    ]
+    visited: set[tuple[str, tuple[str, ...]]] = set()
+
+    while queue:
+        module_name, path = queue.pop(0)
+        state = (module_name, path)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        # Include the leaf: a binary submodule may itself be the requested symbol.
+        for split in range(len(path) + 1):
+            candidate_module = ".".join([module_name, *path[:split]])
+            if candidate_module in binary_modules:
+                return True
+            if split == len(path) or candidate_module not in modules:
+                continue
+            exported = reexports.get(candidate_module, {}).get(path[split])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module:
+                    queue.append(
+                        (target_module, (target_symbol, *path[split + 1 :]))
+                    )
+    return False
+
+
 def inspect_wheel_bytes(
     wheel_bytes: bytes,
     calls: list[dict[str, Any]],
@@ -659,9 +797,11 @@ def inspect_wheel_bytes(
             classes,
             reexports,
             dynamic_modules,
+            module_bindings,
             all_names,
             all_declared,
         ) = _hunt_extended_index(sources)
+        binary_modules = _hunt_binary_module_names(binary_members)
     except (
         OSError,
         UnicodeDecodeError,
@@ -703,16 +843,38 @@ def inspect_wheel_bytes(
         if not _hunt_symbol_exists(
             call_module, symbol_path, modules, functions, classes, reexports
         ):
-            unresolved.append(call)
+            if _hunt_dynamic_resolution_relevant(
+                call_module,
+                symbol_path,
+                modules,
+                reexports,
+                module_bindings,
+                dynamic_modules,
+            ):
+                inconclusive_calls.append(call)
+            else:
+                unresolved.append(call)
 
     reason: str | None = None
     if inconclusive_calls:
         status = "INCONCLUSIVE"
-        reason = "dynamic_star_import_exports"
-    elif unresolved and dynamic_modules:
-        status = "INCONCLUSIVE"
-        reason = "dynamic_attribute_present"
-    elif unresolved and binary_members:
+        reason = (
+            "dynamic_star_import_exports"
+            if any(call.get("operation") == "star_import" for call in inconclusive_calls)
+            else "dynamic_attribute_present"
+        )
+    elif unresolved and any(
+        _hunt_binary_resolution_relevant(
+            call["module"],
+            call["symbol_path"],
+            modules,
+            reexports,
+            binary_modules,
+        )
+        for call in unresolved
+        if isinstance(call.get("module"), str)
+        and isinstance(call.get("symbol_path"), list)
+    ):
         status = "INCONCLUSIVE"
         reason = "binary_extension_not_inspected"
     elif unresolved and any(

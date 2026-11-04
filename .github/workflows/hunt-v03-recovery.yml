@@ -1,4 +1,4 @@
-name: The Hunt v0.3 - Nemotron Artifact Recovery
+name: The Hunt v0.3 - DeepSeek Artifact Recovery
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ permissions:
 jobs:
   recover-original-artifact:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,91 +34,94 @@ jobs:
           python -m compileall -q experiments/the-hunt/v0.3/recover_v03.py tests/test_hunt_v03_recovery.py
           python -m unittest discover -s tests -p 'test_hunt_v03_recovery.py' -v
 
-      - name: Download and verify immutable Nemotron artifact
+      - name: Download and verify immutable DeepSeek artifact
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p recovery-input/original recovery-input/wheelhouse recovery-output
+          mkdir -p recovery-input/original recovery-input/wheelhouse recovery-input/download-logs recovery-output
           curl --fail --silent --show-error --location \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13257610773/zip" \
-            -o recovery-input/nemotron-original.zip
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13347295508/zip" \
+            -o recovery-input/deepseek-original.zip
+          test "$(stat -c%s recovery-input/deepseek-original.zip)" = "97441836"
           printf '%s  %s\n' \
-            '9e0ff74b4f3450044224fc457ef9dae8f831c77773852dc9bf985a846be7c5a3' \
-            'recovery-input/nemotron-original.zip' \
-            | sha256sum --check --status
-          unzip -q recovery-input/nemotron-original.zip -d recovery-input/original
+            '576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5' \
+            'recovery-input/deepseek-original.zip' | sha256sum --check
+          unzip -q recovery-input/deepseek-original.zip -d recovery-input/original
           python experiments/the-hunt/v0.3/recover_v03.py prepare \
             --artifact-dir recovery-input/original \
-            --requirements recovery-input/requirements.txt
+            --source-zip recovery-input/deepseek-original.zip \
+            --requirements recovery-input/requirements_strict.txt \
+            --pins recovery-input/pins.json
 
-      - name: Resolve and capture exact binary wheelhouse
+      - name: Download exact pinned CPython 3.11 Linux x86_64 wheels only
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip download --disable-pip-version-check --only-binary=:all: \
-            --dest recovery-input/wheelhouse \
-            --requirement recovery-input/requirements.txt \
-            2>&1 | tee recovery-input/wheel-download.log
+          while IFS=$'\t' read -r sample_id package_name version; do
+            mkdir -p "recovery-input/wheelhouse/$sample_id"
+            if python -m pip download --disable-pip-version-check --only-binary=:all: \
+              --dest "recovery-input/wheelhouse/$sample_id" "$package_name==$version" \
+              >"recovery-input/download-logs/$sample_id.log" 2>&1; then
+              printf '%s\tSUCCESS\n' "$sample_id" >> recovery-input/download-status.tsv
+            else
+              printf '%s\tFAILED\n' "$sample_id" >> recovery-input/download-status.tsv
+            fi
+          done < recovery-input/requirements_strict.tsv
           python experiments/the-hunt/v0.3/recover_v03.py manifest \
             --wheelhouse recovery-input/wheelhouse \
+            --pins recovery-input/pins.json \
+            --download-status recovery-input/download-status.tsv \
             --output recovery-input/wheel_manifest.json
 
-      - name: Run import/API Ground Truth in network-isolated container
+      - name: Run API Ground Truth in network-isolated per-sample environments
         shell: bash
         run: |
           set -euo pipefail
           IMAGE="python:3.11-slim"
           docker pull "$IMAGE"
           IMAGE_ID="$(docker image inspect "$IMAGE" --format '{{.Id}}')"
-          mkdir -p "$RUNNER_TEMP/hunt-recovery-venv"
-          chmod 777 "$RUNNER_TEMP/hunt-recovery-venv"
-          df -h "$RUNNER_TEMP" | tee recovery-output/runner-disk-before-install.txt
           printf 'SANDBOX_IMAGE_ID=%s\n' "$IMAGE_ID" | tee recovery-output/sandbox-image.txt
+          chmod -R a+rX recovery-input
           chmod -R 777 recovery-output
           docker run --rm \
-            --network none --memory=2g --cpus=1 --pids-limit=64 \
+            --network none --memory=3g --cpus=2 --pids-limit=128 \
             --read-only --cap-drop=ALL --security-opt=no-new-privileges \
-            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+            --tmpfs /tmp:rw,nosuid,nodev,size=1g \
             --mount "type=bind,src=$PWD/recovery-input/original,dst=/original,readonly" \
             --mount "type=bind,src=$PWD/recovery-input/wheelhouse,dst=/wheelhouse,readonly" \
             --mount "type=bind,src=$PWD/recovery-input,dst=/input,readonly" \
             --mount "type=bind,src=$PWD/recovery-output,dst=/output" \
-            --mount "type=bind,src=$RUNNER_TEMP/hunt-recovery-venv,dst=/venv" \
-            --mount \
-              "type=bind,src=$PWD/experiments/the-hunt/v0.3/recover_v03.py,dst=/recover_v03.py,readonly" \
+            --mount "type=bind,src=$PWD/experiments/the-hunt/v0.3/recover_v03.py,dst=/recover_v03.py,readonly" \
             -e HOME=/tmp -e PYTHONNOUSERSITE=1 \
             -e JAMP_RECOVERY_RUN_ID="${GITHUB_RUN_ID}" \
             -e JAMP_RECOVERY_SHA="${GITHUB_SHA}" \
             -e JAMP_RECOVERY_WORKFLOW="${GITHUB_WORKFLOW}" \
-            -e JAMP_SANDBOX_IMAGE_ID="${IMAGE_ID}" \
-            "$IMAGE" sh -eu -c '
-              python -m venv /venv
-              /venv/bin/python -m pip install --disable-pip-version-check --no-input \
-                --no-cache-dir --no-compile --no-index --find-links=/wheelhouse \
-                --report=/output/install-report.json --requirement /input/requirements.txt
-              /venv/bin/python -I /recover_v03.py evaluate \
-                --artifact-dir /original \
-                --wheelhouse /wheelhouse \
-                --wheelhouse-manifest /input/wheel_manifest.json \
-                --output-dir /output
-            ' 2>&1 | tee recovery-output/recovery.log
+            -e JAMP_SANDBOX_IMAGE_ID="$IMAGE_ID" \
+            "$IMAGE" python /recover_v03.py evaluate \
+              --artifact-dir /original --wheelhouse /wheelhouse \
+              --pins /input/pins.json \
+              --wheelhouse-manifest /input/wheel_manifest.json \
+              --output-dir /output 2>&1 | tee recovery-output/recovery.log
 
-      - name: Upload complete recovery evidence
+      - name: Upload complete DeepSeek Recovery evidence bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hunt-v03-nemotron-recovery-${{ github.run_id }}
+          name: hunt-v03-deepseek-recovery-${{ github.run_id }}
           path: |
-            recovery-input/nemotron-original.zip
+            recovery-input/deepseek-original.zip
             recovery-input/original/
-            recovery-input/requirements.txt
+            recovery-input/requirements_strict.txt
+            recovery-input/requirements_strict.tsv
+            recovery-input/pins.json
             recovery-input/wheelhouse/
+            recovery-input/download-status.tsv
+            recovery-input/download-logs/
             recovery-input/wheel_manifest.json
-            recovery-input/wheel-download.log
             recovery-output/
           if-no-files-found: warn
           retention-days: 90

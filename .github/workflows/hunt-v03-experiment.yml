@@ -3,14 +3,21 @@ name: The Hunt v0.3 - Real LLM Experiment
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "generate runs model requests; transport_probe performs DNS/TLS/GET only"
+        required: true
+        type: choice
+        options: [generate, transport_probe]
+        default: generate
       provider:
-        description: OpenAI-compatible provider
+        description: OpenAI-compatible provider (transport_probe supports AnyModel)
         required: true
         type: choice
         options: [groq, anymodel]
+        default: anymodel
       model:
-        description: Exact provider model ID
-        required: true
+        description: Exact provider model ID (required for generate; ignored by transport_probe)
+        required: false
         type: string
       base_url:
         description: Provider API base URL (blank uses provider default)
@@ -21,6 +28,7 @@ on:
         required: true
         type: choice
         options: ["1", "100"]
+        default: "1"
 
 permissions:
   contents: read
@@ -38,6 +46,7 @@ jobs:
           python-version: '3.11'
       - name: Validate experiment inputs and selected secret
         env:
+          MODE: ${{ inputs.mode }}
           PROVIDER: ${{ inputs.provider }}
           MODEL: ${{ inputs.model }}
           LIMIT: ${{ inputs.limit }}
@@ -45,24 +54,36 @@ jobs:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
         run: |
           set -euo pipefail
-          [[ -n "${MODEL//[[:space:]]/}" ]] || { echo "::error::model must not be empty"; exit 1; }
-          [[ "$LIMIT" == "1" || "$LIMIT" == "100" ]] || { echo "::error::limit must be 1 or 100"; exit 1; }
-          if [[ "$PROVIDER" == "anymodel" && -z "$ANYMODEL_API_KEY" ]]; then
-            echo "::error::ANYMODEL_API_KEY repository secret is missing"
+          if [[ "$MODE" == "transport_probe" ]]; then
+            [[ "$PROVIDER" == "anymodel" ]] || { echo "::error::transport_probe currently supports anymodel only"; exit 1; }
+            [[ -n "$ANYMODEL_API_KEY" ]] || { echo "::error::ANYMODEL_API_KEY repository secret is missing"; exit 1; }
+          elif [[ "$MODE" == "generate" ]]; then
+            [[ -n "${MODEL//[[:space:]]/}" ]] || { echo "::error::model must not be empty for generate"; exit 1; }
+            [[ "$LIMIT" == "1" || "$LIMIT" == "100" ]] || { echo "::error::limit must be 1 or 100"; exit 1; }
+            if [[ "$PROVIDER" == "anymodel" && -z "$ANYMODEL_API_KEY" ]]; then
+              echo "::error::ANYMODEL_API_KEY repository secret is missing"
+              exit 1
+            fi
+            if [[ "$PROVIDER" == "groq" && -z "$GROQ_API_KEY" ]]; then
+              echo "::error::GROQ_API_KEY repository secret is missing"
+              exit 1
+            fi
+          else
+            echo "::error::unsupported mode: $MODE"
             exit 1
           fi
-          if [[ "$PROVIDER" == "groq" && -z "$GROQ_API_KEY" ]]; then
-            echo "::error::GROQ_API_KEY repository secret is missing"
-            exit 1
-          fi
-          printf 'Provider: %s\nModel: %s\nLimit: %s\n' "$PROVIDER" "$MODEL" "$LIMIT"
+          printf 'Mode: %s\nProvider: %s\n' "$MODE" "$PROVIDER"
+
       - name: 1. Generate Ground Truth (PyPI)
+        if: inputs.mode == 'generate'
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/verify_gt_v3.py \
             --prompts experiments/the-hunt/v0.3/data/prompts.json \
             --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json
+
       - name: 2. Generate Provider Responses
+        if: inputs.mode == 'generate'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
@@ -78,15 +99,29 @@ jobs:
             --manifest experiments/the-hunt/v0.3/data/generation_manifest.json)
           if [[ -n "$BASE_URL" ]]; then args+=(--base-url "$BASE_URL"); fi
           python experiments/the-hunt/v0.3/run_llm_v3.py "${args[@]}"
-      - name: 3. Paired Evaluation (100 samples only)
-        if: inputs.limit == '100'
+
+      - name: 3. AnyModel read-only transport probe (no generation)
+        if: inputs.mode == 'transport_probe'
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          BASE_URL: ${{ inputs.base_url }}
+        run: |
+          set -euo pipefail
+          args=(--output experiments/the-hunt/v0.3/data/transport_probe.json)
+          if [[ -n "$BASE_URL" ]]; then args+=(--base-url "$BASE_URL"); fi
+          python experiments/the-hunt/v0.3/transport_probe_v3.py "${args[@]}"
+
+      - name: 4. Paired Evaluation (100 samples only)
+        if: inputs.mode == 'generate' && inputs.limit == '100'
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/evaluate_v0.3.py \
             --input experiments/the-hunt/v0.3/data/llm_responses_v3.json \
             --manifest experiments/the-hunt/v0.3/data/generation_manifest.json \
             --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json \
-            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json
+            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json \
+            --temporal-snapshot experiments/the-hunt/v0.3/data/generation_snapshot.json
+
       - name: Upload Full Evidence Bundle
         if: always()
         uses: actions/upload-artifact@v4
