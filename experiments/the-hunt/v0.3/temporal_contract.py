@@ -284,7 +284,11 @@ def check_signature_from_snapshot(
     if record.get("package_name") != package_name:
         return {"status": "INCONCLUSIVE", "reason": "temporal_package_identity_mismatch"}
     relative = record.get("wheel_relative_path")
-    if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
+    if (
+        not isinstance(relative, str)
+        or Path(relative).is_absolute()
+        or ".." in Path(relative).parts
+    ):
         return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_path_invalid"}
     wheel_path = snapshot_root / relative
     if not wheel_path.is_file():
