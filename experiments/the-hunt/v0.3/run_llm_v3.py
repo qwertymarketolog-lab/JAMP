@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -64,11 +65,20 @@ def _call_openai_compatible(
         "Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
         "Accept": "application/json", "User-Agent": USER_AGENT,
     }, method="POST")
+    request_started = time.monotonic()
+    request_phase = "request_open"
     try:
-        with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            raw, http_status = response.read(), getattr(response, "status", 200)
+        response = urlopen(request, timeout=TIMEOUT_SECONDS)
+        request_phase = "response_read"
+        with response:
+            raw = response.read()
+            http_status = getattr(response, "status", 200)
     except HTTPError as exc:
-        diagnostics: dict[str, Any] = {"provider_http_status": exc.code}
+        diagnostics: dict[str, Any] = {
+            "provider_http_status": exc.code,
+            "transport_phase": request_phase,
+            "elapsed_ms": round((time.monotonic() - request_started) * 1000, 3),
+        }
         try:
             error_body = exc.read(4096).decode("utf-8", errors="replace")
         except OSError as read_error:
@@ -91,7 +101,24 @@ def _call_openai_compatible(
             diagnostics["provider_request_id"] = request_id
         return None, f"HTTP_{exc.code}", diagnostics
     except (URLError, TimeoutError, OSError) as exc:
-        return None, type(exc).__name__, None
+        error_message = str(exc)
+        if api_key:
+            error_message = error_message.replace(api_key, "[REDACTED]")
+        diagnostics = {
+            "transport_phase": request_phase,
+            "elapsed_ms": round((time.monotonic() - request_started) * 1000, 3),
+            "exception_type": type(exc).__name__,
+            "error_message": error_message[:1000],
+        }
+        error_number = getattr(exc, "errno", None)
+        reason = getattr(exc, "reason", None)
+        if error_number is None and isinstance(reason, OSError):
+            error_number = reason.errno
+        if error_number is not None:
+            diagnostics["errno"] = error_number
+        if isinstance(reason, str):
+            diagnostics["error_reason"] = reason[:500]
+        return None, type(exc).__name__, diagnostics
     try:
         decoded = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
