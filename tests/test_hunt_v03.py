@@ -470,6 +470,16 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 ),
                 patch.object(
                     RUN_LLM,
+                    "capture_pre_generation_release",
+                    return_value={"package_name": "fixture", "resolution_status": "UNRESOLVED", "temporal_provenance": "UNRESOLVED"},
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
+                    RUN_LLM,
                     "_call_groq",
                     return_value=(
                         None,
