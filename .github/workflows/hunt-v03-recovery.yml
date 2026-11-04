@@ -57,6 +57,16 @@ jobs:
             --requirements recovery-input/requirements_strict.txt \
             --pins recovery-input/pins.json
 
+      - name: Record recovery host target
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            python --version
+            python -c "import platform; print(platform.python_implementation(), platform.machine(), platform.platform())"
+            uname -a
+          } | tee recovery-input/target-platform.txt
+
       - name: Download exact pinned CPython 3.11 Linux x86_64 wheels only
         shell: bash
         run: |
@@ -121,6 +131,7 @@ jobs:
             recovery-input/wheelhouse/
             recovery-input/download-status.tsv
             recovery-input/download-logs/
+            recovery-input/target-platform.txt
             recovery-input/wheel_manifest.json
             recovery-output/
           if-no-files-found: warn
