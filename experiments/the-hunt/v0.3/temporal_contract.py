@@ -322,6 +322,9 @@ def check_signature_from_snapshot(
         or ".." in Path(relative).parts
     ):
         return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_path_invalid"}
+    wheel_path = snapshot_root / relative
+    if not wheel_path.is_file():
+        return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_missing"}
     wheel_filename = record.get("wheel_filename")
     if (
         not isinstance(wheel_filename, str)
@@ -332,9 +335,6 @@ def check_signature_from_snapshot(
             "reason": "temporal_wheel_incompatible_with_cpython311_linux_x86_64",
             "wheel_filename": wheel_filename,
         }
-    wheel_path = snapshot_root / relative
-    if not wheel_path.is_file():
-        return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_missing"}
     wheel_bytes = wheel_path.read_bytes()
     observed = hashlib.sha256(wheel_bytes).hexdigest()
     if observed != record.get("wheel_sha256"):

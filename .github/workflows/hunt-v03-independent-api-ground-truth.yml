@@ -116,8 +116,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hunt-v03-independent-api-ground-truth-${{ github.run_id }}
-          path: |
-            evaluation-output/
-            recovery-evidence/recovery.zip
+          path: evaluation-output/
           if-no-files-found: warn
           retention-days: 90
