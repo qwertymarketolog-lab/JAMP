@@ -379,7 +379,54 @@ def _hunt_relative_import_target(
     return ".".join(parts)
 
 
+def _hunt_statement_mutates_all(statement: ast.stmt) -> bool:
+    """Return True when a module-level statement may change the __all__ binding."""
+    pending = [statement]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        if isinstance(node, ast.AugAssign) and (
+            isinstance(node.target, ast.Name) and node.target.id == "__all__"
+        ):
+            return True
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.Delete)):
+            targets = (
+                node.targets
+                if isinstance(node, ast.Assign)
+                else [node.target]
+                if isinstance(node, ast.AnnAssign)
+                else node.targets
+            )
+            if any(
+                (
+                    isinstance(target, ast.Name) and target.id == "__all__"
+                )
+                or (
+                    isinstance(target, ast.Subscript)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "__all__"
+                )
+                for target in targets
+            ):
+                return True
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            receiver = node.func.value
+            if (
+                isinstance(receiver, ast.Name)
+                and receiver.id == "__all__"
+                and node.func.attr
+                in {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"}
+            ):
+                return True
+        pending.extend(ast.iter_child_nodes(node))
+    return False
+
+
 def _hunt_literal_all(tree: ast.Module) -> tuple[list[str] | None, bool]:
+    """Return literal exports only when no later dynamic mutation can alter them."""
+    names: list[str] | None = None
+    declared = False
     for node in tree.body:
         if isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -387,18 +434,26 @@ def _hunt_literal_all(tree: ast.Module) -> tuple[list[str] | None, bool]:
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in targets
             ):
+                declared = True
                 if node.value is None:
-                    return None, True
+                    names = None
+                    continue
                 try:
                     value = ast.literal_eval(node.value)
                 except (ValueError, TypeError, SyntaxError):
-                    return None, True
-                if isinstance(value, (list, tuple)) and all(
-                    isinstance(item, str) for item in value
-                ):
-                    return list(value), True
-                return None, True
-    return None, False
+                    names = None
+                    continue
+                names = (
+                    list(value)
+                    if isinstance(value, (list, tuple))
+                    and all(isinstance(item, str) for item in value)
+                    else None
+                )
+                continue
+        if _hunt_statement_mutates_all(node):
+            declared = True
+            names = None
+    return names, declared
 
 
 def _hunt_extended_index(

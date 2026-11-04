@@ -220,5 +220,66 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
 
 
 
+
+    def test_augmented_all_assignment_is_inconclusive(self):
+        wheel = self._wheel({
+            "sample/api.py": (
+                "__all__ = ['present']\\n"
+                "__all__ += ['hidden']\\n"
+                "def present(): pass\\n"
+                "def hidden(): pass\\n"
+            ),
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [{
+                "operation": "star_import",
+                "module": "sample.api",
+                "symbol_path": ["hidden"],
+            }],
+        )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "dynamic_star_import_exports")
+
+    def test_all_append_mutation_is_inconclusive(self):
+        wheel = self._wheel({
+            "sample/api.py": (
+                "__all__ = ['present']\\n"
+                "__all__.append('hidden')\\n"
+                "def present(): pass\\n"
+                "def hidden(): pass\\n"
+            ),
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [{
+                "operation": "star_import",
+                "module": "sample.api",
+                "symbol_path": ["hidden"],
+            }],
+        )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "dynamic_star_import_exports")
+
+    def test_all_extend_mutation_is_inconclusive(self):
+        wheel = self._wheel({
+            "sample/api.py": (
+                "__all__ = ['present']\\n"
+                "__all__.extend(['hidden'])\\n"
+                "def present(): pass\\n"
+                "def hidden(): pass\\n"
+            ),
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [{
+                "operation": "star_import",
+                "module": "sample.api",
+                "symbol_path": ["hidden"],
+            }],
+        )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "dynamic_star_import_exports")
+
 if __name__ == "__main__":
     unittest.main()
