@@ -40,7 +40,7 @@ def validate_anymodel_base_url(url: str) -> str:
         or parsed.fragment
     ):
         raise ValueError(
-            f"Security Error: Unauthorized AnyModel base_url {url!r}. "
+            "Security Error: Unauthorized AnyModel base_url. "
             "Only https://anymodel.org/v1 is allowed."
         )
     return "https://anymodel.org/v1"
