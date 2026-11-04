@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import hashlib
 import importlib.metadata
 import json
@@ -12,7 +13,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 TARGETS: dict[str, dict[str, str]] = {
     "celery": {
@@ -262,7 +263,7 @@ def _load_signature_checker() -> Any:
 
 
 def _distribution_label(dist: importlib.metadata.Distribution) -> str:
-    name = dist.metadata["Name"] if "Name" in dist.metadata else "unknown"
+    name = cast(Mapping[str, str], dist.metadata).get("Name", "unknown")
     return f"{name}=={dist.version}"
 
 
