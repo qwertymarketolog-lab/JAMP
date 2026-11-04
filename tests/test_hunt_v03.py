@@ -758,7 +758,7 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
             response, failure, diagnostics = self._call_anymodel()
 
         self.assertIsNone(response)
-        self.assertEqual(failure, "TimeoutError" if False else "OSError")
+        self.assertEqual(failure, "OSError")
         self.assertEqual(diagnostics["errno"], 110)
         self.assertEqual(diagnostics["transport_phase"], "request_open")
 
