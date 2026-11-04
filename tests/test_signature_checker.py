@@ -177,3 +177,22 @@ def test_parent_getattr_is_relevant_when_child_module_file_is_unbound() -> None:
     )
     assert result["status"] == "INCONCLUSIVE"
     assert result["reason"] == "dynamic_attribute_present"
+
+def test_importfrom_binds_child_module_on_parent_package() -> None:
+    wheel = make_wheel(
+        {
+            "samplepkg/__init__.py": (
+                "def __getattr__(name):\\n"
+                "    if name == 'api':\\n"
+                "        return DynamicAPI()\\n"
+                "    raise AttributeError(name)\\n"
+                "from .api import known\\n"
+            ),
+            "samplepkg/api.py": "def known():\\n    return None\\n",
+        }
+    )
+    result = check_with_wheel(
+        "import samplepkg\\nsamplepkg.api.missing_method()", wheel
+    )
+    assert result["status"] == "INVALID_SIGNATURE"
+    assert result["reason"] == "symbol_missing"

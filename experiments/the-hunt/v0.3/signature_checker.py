@@ -476,6 +476,7 @@ def _hunt_extended_index(
     all_declared: set[str] = set()
     dynamic_all: set[str] = set()
     star_imports: dict[str, list[str]] = {}
+    imported_child_bindings: set[tuple[str, str]] = set()
 
     for path, source in sources.items():
         module = _module_name(path)
@@ -496,6 +497,15 @@ def _hunt_extended_index(
                 bindings.add(node.name)
             elif isinstance(node, ast.ImportFrom):
                 target_module = _hunt_relative_import_target(module, path, node)
+                if target_module in modules:
+                    target_parts = target_module.split(".")
+                    for index in range(1, len(target_parts)):
+                        parent_module = ".".join(target_parts[:index])
+                        child_module = ".".join(target_parts[: index + 1])
+                        if parent_module in modules and child_module in modules:
+                            imported_child_bindings.add(
+                                (parent_module, target_parts[index])
+                            )
                 for alias in node.names:
                     if alias.name == "*":
                         star_imports[module].append(target_module)
@@ -552,6 +562,11 @@ def _hunt_extended_index(
             for target_module, symbols in mapping.items():
                 for symbol in symbols:
                     reexports[module][symbol] = (target_module, symbol)
+
+    # Importing a child module through ImportFrom also binds that child as
+    # an attribute on each package parent (for example, samplepkg.api).
+    for parent_module, child_name in imported_child_bindings:
+        module_bindings[parent_module].add(child_name)
 
     # Python star imports use literal __all__, or public top-level bindings
     # when __all__ is absent. A dynamic __all__ is deliberately unresolved.
