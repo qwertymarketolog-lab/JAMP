@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
 import hashlib
 import importlib.metadata
 import json
@@ -12,6 +11,7 @@ import resource
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
 
