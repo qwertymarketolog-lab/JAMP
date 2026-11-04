@@ -381,7 +381,7 @@ def _hunt_relative_import_target(
 
 def _hunt_statement_mutates_all(statement: ast.stmt) -> bool:
     """Return True when a module-level statement may change the __all__ binding."""
-    pending = [statement]
+    pending: list[ast.AST] = [statement]
     while pending:
         node = pending.pop()
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
