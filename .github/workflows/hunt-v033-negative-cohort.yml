@@ -27,42 +27,33 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download and verify immutable Recovery artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Download immutable Recovery artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hunt-v03-nemotron-recovery-41782136773
+          path: negative-evidence/recovery
+          repository: qwertymarketolog-lab/JAMP
+          run-id: 41782136773
+          github-token: ${{ github.token }}
+
+      - name: Verify immutable Recovery artifact
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p negative-evidence
           python - <<'PY'
           import hashlib
-          import os
-          import urllib.request
           from pathlib import Path
-
-          artifact_id = 13299716958
-          expected_sha256 = (
-              "93cf36e696897bfca8ab99e500a8e625e8bae131d5944f56b1cb879ccdeae3b6"
+          root = Path("negative-evidence/recovery")
+          manifest = root / "recovery-input/wheel_manifest.json"
+          expected = (
+              "5425ec5849201997ef7b6472ca64d909ea1165fc152064f120593a8fabbc4f6b"
           )
-          request = urllib.request.Request(
-              "https://api.github.com/repos/qwertymarketolog-lab/JAMP/"
-              f"actions/artifacts/{artifact_id}/zip",
-              headers={
-                  "Accept": "application/vnd.github+json",
-                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-                  "X-GitHub-Api-Version": "2022-11-28",
-              },
-          )
-          destination = Path("negative-evidence/recovery-13299716958.zip")
-          with urllib.request.urlopen(request, timeout=180) as response:
-              with destination.open("wb") as output:
-                  while chunk := response.read(1024 * 1024):
-                      output.write(chunk)
-          observed = hashlib.sha256(destination.read_bytes()).hexdigest()
-          print(f"recovery_artifact_id={artifact_id}")
-          print(f"recovery_artifact_sha256={observed}")
-          if observed != expected_sha256:
-              raise SystemExit("Recovery artifact SHA-256 mismatch")
+          observed = hashlib.sha256(manifest.read_bytes()).hexdigest()
+          print(f"recovery_artifact_id=13299716958")
+          print(f"recovery_run_id=41782136773")
+          print(f"wheel_manifest_sha256={observed}")
+          if observed != expected:
+              raise SystemExit("Recovery wheel manifest SHA-256 mismatch")
           PY
 
       - name: Compile and run signature checker regressions
@@ -81,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/generate_negative_cohort.py \
-            --recovery-artifact negative-evidence/recovery-13299716958.zip \
+            --recovery-artifact negative-evidence/recovery \
             --output negative-evidence/negative_cohort.json \
             2>&1 | tee negative-evidence/generation.log
           python - <<'PY'
@@ -101,7 +92,7 @@ jobs:
           set -euo pipefail
           python experiments/the-hunt/v0.3/evaluate_negative_cohort.py \
             --cohort negative-evidence/negative_cohort.json \
-            --recovery-artifact negative-evidence/recovery-13299716958.zip \
+            --recovery-artifact negative-evidence/recovery \
             --output negative-evidence/api_negative_results.json \
             2>&1 | tee negative-evidence/evaluation.log
 
