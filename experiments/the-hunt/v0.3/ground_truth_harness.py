@@ -253,12 +253,17 @@ def _static_api_valid(status: Any) -> bool | None:
     return None
 
 
-def _load_signature_checker():
+def _load_signature_checker() -> Any:
     script_dir = Path(__file__).resolve().parent
     if str(script_dir) not in sys.path:
         sys.path.insert(0, str(script_dir))
     import signature_checker
     return signature_checker
+
+
+def _distribution_label(dist: importlib.metadata.Distribution) -> str:
+    name = dist.metadata["Name"] if "Name" in dist.metadata else "unknown"
+    return f"{name}=={dist.version}"
 
 
 def _static_probe(
@@ -413,7 +418,7 @@ def run_harness(wheelhouse: Path, manifest_path: Path, output_path: Path) -> dic
                 "probe_open_files": 64, "probe_timeout_seconds": 12,
             },
             "installed_distributions": sorted(
-                f"{dist.metadata.get('Name', 'unknown')}=={dist.version}"
+                _distribution_label(dist)
                 for dist in importlib.metadata.distributions()
             ),
         },
