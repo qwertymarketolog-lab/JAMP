@@ -142,7 +142,10 @@ def module_declares_symbol(sources: dict[str, str], module: str, symbol: str) ->
         return False
     tree = ast.parse(source)
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name == symbol:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and node.name == symbol
+        ):
             return True
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if any((alias.asname or alias.name) == symbol for alias in node.names):
@@ -246,7 +249,9 @@ def generate(recovery: Path, output: Path) -> dict[str, Any]:
             "has no dynamic attribute hook; it is not a runtime-behavior claim."
         ),
         "recovery_artifact_id": 13299716958,
-        "recovery_artifact_sha256": "93cf36e696897bfca8ab99e500a8e625e8bae131d5944f56b1cb879ccdeae3b6",
+        "recovery_artifact_sha256": (
+            "93cf36e696897bfca8ab99e500a8e625e8bae131d5944f56b1cb879ccdeae3b6"
+        ),
         "wheel_manifest_sha256": WHEEL_MANIFEST_SHA256,
         "wheel_count": manifest["wheel_count"],
         "package_count": len(PACKAGES),
