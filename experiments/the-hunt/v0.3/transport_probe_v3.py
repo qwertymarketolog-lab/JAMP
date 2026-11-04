@@ -30,8 +30,8 @@ def validate_base_url(url: str) -> str:
         or parsed.fragment
     ):
         raise ValueError(
-            "Security Error: Unauthorized base_url. "
-            "Only https://anymodel.org/v1 is allowed."
+            "Security Error: HTTPS is required; only "
+            "https://anymodel.org/v1 is allowed."
         )
     return "https://anymodel.org/v1"
 
