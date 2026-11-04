@@ -358,6 +358,16 @@ def evaluate(
             }
         )
 
+    for row in results:
+        temporal_record = temporal_packages.get(row.get("sample_id"))
+        row.setdefault("api_valid_now", None)
+        row.setdefault("api_valid_then", None)
+        row.setdefault(
+            "temporal_evidence_status",
+            temporal_record.get("temporal_provenance", "UNRESOLVED")
+            if temporal_record else "TEMPORAL_EVIDENCE_MISSING",
+        )
+
     paired = [
         row
         for row in results
