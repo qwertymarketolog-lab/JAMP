@@ -544,6 +544,16 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(sys, "argv", argv),
                 patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
                 patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    return_value={"package_name": "fixture", "resolution_status": "UNRESOLVED", "temporal_provenance": "UNRESOLVED"},
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
                     RUN_LLM, "_call_anymodel", return_value=(response, None, None)
                 ),
                 patch("sys.stdout", new_callable=io.StringIO),
@@ -591,6 +601,16 @@ class GroqFailureHandlingTests(unittest.TestCase):
             with (
                 patch.object(sys, "argv", argv),
                 patch.dict(os.environ, {"ANYMODEL_API_KEY": "test-anymodel-secret"}),
+                patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    return_value={"package_name": "fixture", "resolution_status": "UNRESOLVED", "temporal_provenance": "UNRESOLVED"},
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
                 patch.object(
                     RUN_LLM, "_call_anymodel", return_value=(response, None, None)
                 ) as call,
