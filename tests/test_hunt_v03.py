@@ -751,7 +751,7 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
             patch.object(
                 RUN_LLM,
                 "urlopen",
-                side_effect=OSError(110, "Connection timed out"),
+                side_effect=OSError(5, "Input/output error"),
             ),
             patch.object(RUN_LLM.time, "monotonic", side_effect=[30.0, 30.025]),
         ):
@@ -759,7 +759,7 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
 
         self.assertIsNone(response)
         self.assertEqual(failure, "OSError")
-        self.assertEqual(diagnostics["errno"], 110)
+        self.assertEqual(diagnostics["errno"], 5)
         self.assertEqual(diagnostics["transport_phase"], "request_open")
 
 if __name__ == "__main__":
