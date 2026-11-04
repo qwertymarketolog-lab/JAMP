@@ -105,6 +105,8 @@ The evaluator must keep two independent API observations:
 - `API VALID NOW`: static API inspection against the latest wheel resolved at evaluation time.
 - `API VALID THEN`: static API inspection against the exact wheel whose SHA-256 was recorded from PyPI release metadata observed before the corresponding model request.
 
+Per-row evaluator fields are `api_valid_now`, `api_valid_then`, `api_status_now`, and `api_status_then`. Status values are `VALID_NOW`, `INVALID_NOW`, `VALID_THEN`, `INVALID_THEN`, `INCONCLUSIVE`, and `TEMPORAL_EVIDENCE_MISSING`. NOW and THEN counts are reported independently.
+
 For every request, the runner captures the Python interpreter/platform and installed-distribution inventory before generation. It then observes the target distribution's PyPI release metadata immediately before the model request, pins the selected version, wheel filename, and published SHA-256, and downloads the wheel immediately after the response. The downloaded bytes are accepted only if their SHA-256 matches the pre-request metadata. The wheel is retained in the evidence bundle and referenced by a canonical snapshot manifest hash.
 
 Temporal provenance is explicit:
