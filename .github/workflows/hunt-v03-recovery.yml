@@ -2,6 +2,13 @@ name: The Hunt v0.3 - Nemotron Artifact Recovery
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "exp/hunt-v03-nemotron-recovery"
+    paths:
+      - ".github/workflows/hunt-v03-recovery.yml"
+      - "experiments/the-hunt/v0.3/recover_v03.py"
+      - "tests/test_hunt_v03_recovery.py"
   pull_request:
     paths:
       - ".github/workflows/hunt-v03-recovery.yml"
