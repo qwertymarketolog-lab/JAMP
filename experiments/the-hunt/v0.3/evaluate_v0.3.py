@@ -428,16 +428,13 @@ def evaluate(
             "invalid": sum(row.get("api_valid_then") is False for row in results),
             "inconclusive": sum(row.get("api_valid_then") is None for row in results),
         },
-        "api_status_counts": {
-            status: sum(
-                row.get("api_status_now") == status or row.get("api_status_then") == status
-                for row in results
-            )
-            for status in sorted({
-                row.get("api_status_now") for row in results
-            } | {
-                row.get("api_status_then") for row in results
-            })
+        "api_status_now_counts": {
+            status: sum(row.get("api_status_now") == status for row in results)
+            for status in sorted({row.get("api_status_now") for row in results})
+        },
+        "api_status_then_counts": {
+            status: sum(row.get("api_status_then") == status for row in results)
+            for status in sorted({row.get("api_status_then") for row in results})
         },
         "temporal_evidence_status_counts": {
             status: sum(row.get("temporal_evidence_status") == status for row in results)
