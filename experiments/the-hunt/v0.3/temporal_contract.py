@@ -27,6 +27,38 @@ USER_AGENT = "JAMP-The-Hunt-v0.3-Temporal-Lock"
 SNAPSHOT_SCHEMA = "jamp-hunt-generation-snapshot-v0.1"
 
 
+def _wheel_compatible_with_cpython311_linux_x86_64(filename: str) -> bool:
+    """Fail closed unless a wheel tag is compatible with the captured CI target."""
+    if (
+        platform.python_implementation() != "CPython"
+        or sys.version_info[:2] != (3, 11)
+        or platform.system() != "Linux"
+        or platform.machine().lower() not in {"x86_64", "amd64"}
+        or not filename.endswith(".whl")
+        or Path(filename).name != filename
+    ):
+        return False
+    parts = filename[:-4].rsplit("-", 4)
+    if len(parts) != 5:
+        return False
+    python_tags, abi_tags, platform_tags = (
+        parts[2].split("."),
+        parts[3].split("."),
+        parts[4].split("."),
+    )
+    supported_platform = any(
+        tag == "any"
+        or tag == "linux_x86_64"
+        or (tag.startswith("manylinux") and tag.endswith("_x86_64"))
+        for tag in platform_tags
+    )
+    return (
+        supported_platform
+        and any(tag in {"cp311", "py311", "py3"} for tag in python_tags)
+        and any(tag in {"cp311", "abi3", "none"} for tag in abi_tags)
+    )
+
+
 def utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
@@ -290,6 +322,16 @@ def check_signature_from_snapshot(
         or ".." in Path(relative).parts
     ):
         return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_path_invalid"}
+    wheel_filename = record.get("wheel_filename")
+    if (
+        not isinstance(wheel_filename, str)
+        or not _wheel_compatible_with_cpython311_linux_x86_64(wheel_filename)
+    ):
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "temporal_wheel_incompatible_with_cpython311_linux_x86_64",
+            "wheel_filename": wheel_filename,
+        }
     wheel_path = snapshot_root / relative
     if not wheel_path.is_file():
         return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_missing"}

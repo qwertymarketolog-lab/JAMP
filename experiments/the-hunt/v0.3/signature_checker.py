@@ -23,6 +23,18 @@ MAX_SOURCE_BYTES = 10 * 1024 * 1024
 TIMEOUT_SECONDS = 30
 ImportAliases = dict[str, tuple[str, tuple[str, ...]]]
 CallRecords = list[dict[str, Any]]
+DISTRIBUTION_IMPORT_ALIASES = {
+    "beautifulsoup4": {"bs4"},
+    "opencv-python": {"cv2"},
+    "scikit-learn": {"sklearn"},
+    "pillow": {"pil"},
+    "pyyaml": {"yaml"},
+    "python-dotenv": {"dotenv"},
+}
+
+
+def _normalized_distribution_name(value: str) -> str:
+    return re.sub(r"[-_.]+", "-", value).lower()
 SymbolIndex = tuple[
     set[str],
     dict[str, set[str]],
@@ -63,15 +75,38 @@ def _imports_and_calls(
                 local_name = alias.asname or alias.name
                 aliases[local_name] = (node.module, (alias.name,))
 
-    normalized_package = re.sub(r"[-_.]+", "-", package_name).lower()
+    normalized_package = _normalized_distribution_name(package_name)
+    expected_import_roots = {
+        normalized_package,
+        *(
+            _normalized_distribution_name(name)
+            for name in DISTRIBUTION_IMPORT_ALIASES.get(normalized_package, set())
+        ),
+    }
     matching = {
         alias: target
         for alias, target in aliases.items()
-        if re.sub(r"[-_.]+", "-", target[0].split(".")[0]).lower()
-        == normalized_package
+        if _normalized_distribution_name(target[0].split(".")[0])
+        in expected_import_roots
     }
     calls: list[dict[str, Any]] = []
     unsupported: list[dict[str, Any]] = []
+    inherited_class_origins: dict[str, tuple[str, tuple[str, ...]]] = {}
+    for class_node in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)):
+        for base in class_node.bases:
+            base_expression = base.value if isinstance(base, ast.Subscript) else base
+            dotted_base = _dotted_name(base_expression)
+            if dotted_base is None:
+                continue
+            root, attributes = dotted_base
+            if root not in matching:
+                continue
+            base_module, prefix = matching[root]
+            inherited_class_origins[class_node.name] = (
+                base_module,
+                tuple([*prefix, *attributes]),
+            )
+            break
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -85,6 +120,16 @@ def _imports_and_calls(
                         "module": base_module,
                         "symbol_path": list(prefix) + attributes,
                         "source_expression": ast.unparse(node.func),
+                    }
+                )
+            elif isinstance(node.func, ast.Name) and node.func.id in inherited_class_origins:
+                base_module, base_path = inherited_class_origins[node.func.id]
+                calls.append(
+                    {
+                        "module": base_module,
+                        "symbol_path": list(base_path),
+                        "source_expression": ast.unparse(node.func),
+                        "operation": "inherited_constructor",
                     }
                 )
             continue
@@ -467,6 +512,7 @@ def _hunt_extended_index(
     dict[str, set[str]],
     dict[str, list[str] | None],
     set[str],
+    dict[str, list[str]],
 ]:
     modules, functions, classes, reexports, dynamic_modules = _build_symbol_index(
         sources
@@ -598,6 +644,7 @@ def _hunt_extended_index(
         module_bindings,
         all_names,
         all_declared | dynamic_all,
+        star_imports,
     )
 
 
@@ -734,6 +781,7 @@ def _hunt_binary_resolution_relevant(
     modules: set[str],
     reexports: dict[str, dict[str, tuple[str, str]]],
     binary_modules: set[str],
+    star_imports: dict[str, list[str]] | None = None,
 ) -> bool:
     """Return whether an extension module lies on this symbol's resolution path."""
     if not symbol_path:
@@ -750,6 +798,10 @@ def _hunt_binary_resolution_relevant(
         if state in visited:
             continue
         visited.add(state)
+
+        # Follow only explicit star-import edges from modules on this symbol path.
+        for target_module in (star_imports or {}).get(module_name, []):
+            queue.append((target_module, path))
 
         # Include the leaf: a binary submodule may itself be the requested symbol.
         for split in range(len(path) + 1):
@@ -800,6 +852,7 @@ def inspect_wheel_bytes(
             module_bindings,
             all_names,
             all_declared,
+            star_imports,
         ) = _hunt_extended_index(sources)
         binary_modules = _hunt_binary_module_names(binary_members)
     except (
@@ -870,6 +923,7 @@ def inspect_wheel_bytes(
             modules,
             reexports,
             binary_modules,
+            star_imports,
         )
         for call in unresolved
         if isinstance(call.get("module"), str)

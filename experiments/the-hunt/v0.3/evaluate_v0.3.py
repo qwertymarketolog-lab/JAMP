@@ -12,6 +12,7 @@ from typing import Any
 from provenance_checker import check_provenance
 from signature_checker import check_signature
 from temporal_contract import check_signature_from_snapshot, load_generation_snapshot
+from api_ground_truth import api_valid_matrix, package_exists_matrix, validate_api_ground_truth
 
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
 NEGATIVE_LABELS = {"CLEAN", "NOT_HALLUCINATED"}
@@ -119,6 +120,9 @@ def evaluate(
     manifest_path: Path,
     ground_truth_path: Path,
     temporal_snapshot_path: Path | None = None,
+    api_ground_truth_path: Path | None = None,
+    prompts_path: Path | None = None,
+    api_wheel_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     payload, raw_responses = _read_json(input_path)
     manifest, raw_manifest = _read_json(manifest_path)
@@ -215,6 +219,7 @@ def evaluate(
         raise ValueError("LLM response and ground-truth sample IDs do not match")
 
     results: list[dict[str, Any]] = []
+    provenance_by_sample: dict[str, dict[str, Any]] = {}
     for index, sample in enumerate(response_samples):
         if not isinstance(sample, dict):
             raise ValueError(f"samples[{index}] must be an object")
@@ -238,6 +243,8 @@ def evaluate(
         package_name = truth.get("package_name")
         if not isinstance(package_name, str) or not package_name.strip():
             raise ValueError(f"ground truth for {sample_id} lacks a valid package_name")
+        provenance = check_provenance(package_name)
+        provenance_by_sample[sample_id] = provenance
         request_status = sample.get("request_status")
         if request_status == "ABSTAINED":
             if (
@@ -264,7 +271,6 @@ def evaluate(
             if not isinstance(package_exists, bool):
                 raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
             baseline = _baseline_verdict(code, package_exists)
-            provenance = check_provenance(package_name)
             signature = {
                 "status": "INCONCLUSIVE",
                 "reason": "model_abstained_no_candidate_code",
@@ -337,7 +343,6 @@ def evaluate(
         if not isinstance(package_exists, bool):
             raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
         baseline = _baseline_verdict(code, package_exists)
-        provenance = check_provenance(package_name)
         signature_now = check_signature(code, package_name)
         temporal_record = temporal_packages.get(sample_id)
         signature_then = check_signature_from_snapshot(
@@ -372,7 +377,10 @@ def evaluate(
         )
 
     for row in results:
-        temporal_record = temporal_packages.get(row.get("sample_id"))
+        sample_id = row.get("sample_id")
+        if sample_id in provenance_by_sample:
+            row.setdefault("provenance", provenance_by_sample[sample_id])
+        temporal_record = temporal_packages.get(sample_id)
         row.setdefault("api_valid_now", None)
         row.setdefault("api_valid_then", None)
         row.setdefault("api_status_now", "INCONCLUSIVE")
@@ -486,6 +494,37 @@ def evaluate(
         },
         "results": results,
     }
+    independent_inputs = (api_ground_truth_path, prompts_path, api_wheel_manifest_path)
+    if any(path is not None for path in independent_inputs):
+        if any(path is None for path in independent_inputs):
+            raise ValueError(
+                "API Ground Truth evaluation requires --api-ground-truth, --prompts, "
+                "and --api-wheel-manifest together"
+            )
+        if temporal_snapshot is None:
+            raise ValueError("API Ground Truth evaluation requires the verified temporal snapshot")
+        api_payload, _ = _read_json(api_ground_truth_path)
+        prompts_payload, _ = _read_json(prompts_path)
+        wheel_manifest_payload, _ = _read_json(api_wheel_manifest_path)
+        if not all(
+            isinstance(value, dict)
+            for value in (api_payload, prompts_payload, wheel_manifest_payload)
+        ):
+            raise ValueError("API Ground Truth, prompts, and wheel manifest must be JSON objects")
+        api_rows = validate_api_ground_truth(
+            api_payload, payload, ground_truth_payload, prompts_payload,
+            temporal_snapshot, wheel_manifest_payload
+        )
+        report["matrix_package_exists"] = package_exists_matrix(results, truth_samples)
+        report["matrix_api_valid"] = api_valid_matrix(api_rows, results)
+        report["independent_api_ground_truth"] = {
+            "schema_version": api_payload["schema_version"],
+            "sample_count": len(api_rows),
+            "api_ground_truth_counts": api_payload["api_ground_truth_counts"],
+            "qualification": "NOT_GRANTED",
+            "validity_scope": api_payload["api_validity_scope"],
+        }
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
@@ -501,9 +540,14 @@ def main() -> int:
     parser.add_argument("--ground-truth", type=Path, default=Path("ground_truth_v3.json"))
     parser.add_argument("--output", type=Path, default=Path("results_v0.3.json"))
     parser.add_argument("--temporal-snapshot", type=Path)
+    parser.add_argument("--api-ground-truth", type=Path)
+    parser.add_argument("--prompts", type=Path)
+    parser.add_argument("--api-wheel-manifest", type=Path)
     args = parser.parse_args()
     report = evaluate(
-        args.input, args.output, args.manifest, args.ground_truth, args.temporal_snapshot
+        args.input, args.output, args.manifest, args.ground_truth,
+        args.temporal_snapshot, args.api_ground_truth, args.prompts,
+        args.api_wheel_manifest
     )
     print(
         json.dumps(
