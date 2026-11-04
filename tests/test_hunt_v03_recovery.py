@@ -34,7 +34,7 @@ class RecoveryTests(unittest.TestCase):
                            "ground_truth": "CLEAN" if exists else "HALLUCINATION",
                            "pypi_exists": exists})
             if index < 20:
-                filename = f"pkg_{index + 1}-1.0-py3-none-any.whl"
+                filename = f"pkg_{index + 1:03d}-1.0-py3-none-any.whl"
                 relative = f"wheelhouse/{filename}"
                 wheel = wheelhouse / filename
                 wheel.write_bytes(f"fixture-wheel-{index}".encode())
@@ -115,10 +115,14 @@ class RecoveryTests(unittest.TestCase):
 
     def test_dynamic_import_without_static_target_is_inconclusive(self):
         probes, unresolved = RECOVERY.analyze_code(
-            "import importlib\nname = get_name()\nimportlib.import_module(name)"
+            "import importlib\\nname = get_name()\\nimportlib.import_module(name)\\n"
+            "__import__(resolve_module_name())"
         )
         self.assertTrue(probes)
-        self.assertEqual(unresolved[0]["reason"], "dynamic_import_target_not_static")
+        self.assertEqual(len(unresolved), 2)
+        self.assertTrue(all(
+            item["reason"] == "dynamic_import_target_not_static" for item in unresolved
+        ))
 
     def test_constant_dynamic_import_is_resolved_statically(self):
         probes, unresolved = RECOVERY.analyze_code(

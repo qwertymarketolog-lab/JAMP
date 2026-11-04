@@ -236,6 +236,10 @@ def validate_source_artifact(
             observed_hash = sha256_file(actual)
             if observed_hash != digest or snap_row.get("wheel_sha256_observed") != digest:
                 raise ValueError(f"original wheel SHA-256 mismatch: {relative}")
+            wheel_dist, wheel_version, _compatible = _wheel_compatibility(wheel_name)
+            if (wheel_dist.lower().replace("_", "-") != str(snap_row["package_name"]).lower().replace("_", "-")
+                    or wheel_version != str(snap_row.get("pypi_version"))):
+                raise ValueError(f"original wheel identity differs from snapshot pin: {relative}")
             expected_wheels[relative] = digest
         elif resolution != "UNRESOLVED":
             raise ValueError(f"unknown snapshot resolution status for {sample_id}: {resolution}")
