@@ -75,6 +75,7 @@ jobs:
           docker pull "$IMAGE"
           IMAGE_ID="$(docker image inspect "$IMAGE" --format '{{.Id}}')"
           mkdir -p "$RUNNER_TEMP/hunt-recovery-venv"
+          chmod 777 "$RUNNER_TEMP/hunt-recovery-venv"
           df -h "$RUNNER_TEMP" | tee recovery-output/runner-disk-before-install.txt
           printf 'SANDBOX_IMAGE_ID=%s\n' "$IMAGE_ID" | tee recovery-output/sandbox-image.txt
           chmod -R 777 recovery-output
