@@ -105,7 +105,7 @@ def exact_mcnemar(b: int, c: int) -> float:
     if n == 0:
         return 1.0
     tail = sum(math.comb(n, k) for k in range(min(b, c) + 1)) / (2**n)
-    return min(1.0, 2.0 * tail)
+    return float(min(1.0, 2.0 * tail))
 
 
 def _read_json(path: Path) -> tuple[Any, bytes]:
@@ -235,9 +235,11 @@ def evaluate(
             )
             continue
         actual = _ground_truth(label)
+        package_name = truth.get("package_name")
+        if not isinstance(package_name, str) or not package_name.strip():
+            raise ValueError(f"ground truth for {sample_id} lacks a valid package_name")
         request_status = sample.get("request_status")
         if request_status == "ABSTAINED":
-            package_name = truth.get("package_name")
             if (
                 sample.get("package_name") != package_name
                 or sample.get("prompt") != truth.get("prompt")
@@ -299,7 +301,6 @@ def evaluate(
             )
             continue
 
-        package_name = truth.get("package_name")
         if (
             sample.get("package_name") != package_name
             or sample.get("prompt") != truth.get("prompt")
@@ -408,6 +409,21 @@ def evaluate(
     abstained_results = [
         row for row in results if row.get("generation_status") == "ABSTAINED"
     ]
+    api_status_now_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("api_status_now")), str)
+    }
+    api_status_then_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("api_status_then")), str)
+    }
+    temporal_evidence_status_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("temporal_evidence_status")), str)
+    }
     report = {
         "schema_version": "jamp-hunt-evaluation-v0.3",
         "evidence_class": "LIVE_LLM_WITH_LIVE_PYPI_PACKAGE_EXISTENCE_LABELS",
@@ -430,18 +446,15 @@ def evaluate(
         },
         "api_status_now_counts": {
             status: sum(row.get("api_status_now") == status for row in results)
-            for status in sorted({row.get("api_status_now") for row in results})
+            for status in sorted(api_status_now_values)
         },
         "api_status_then_counts": {
             status: sum(row.get("api_status_then") == status for row in results)
-            for status in sorted({row.get("api_status_then") for row in results})
+            for status in sorted(api_status_then_values)
         },
         "temporal_evidence_status_counts": {
             status: sum(row.get("temporal_evidence_status") == status for row in results)
-            for status in sorted({
-                row.get("temporal_evidence_status") for row in results
-                if row.get("temporal_evidence_status") is not None
-            })
+            for status in sorted(temporal_evidence_status_values)
         },
         "attempted_sample_count": len(results),
         "successful_generation_count": manifest.get("successful_requests"),
