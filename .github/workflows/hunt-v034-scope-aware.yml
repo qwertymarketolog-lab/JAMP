@@ -1,0 +1,129 @@
+name: The Hunt v0.3.4 - Scope-Aware Negative Cohort
+
+on:
+  push:
+    branches:
+      - exp/hunt-v0.3.4-scope-aware
+    paths:
+      - ".github/workflows/hunt-v034-scope-aware.yml"
+      - "experiments/the-hunt/v0.3/signature_checker.py"
+      - "experiments/the-hunt/v0.3/generate_negative_cohort.py"
+      - "tests/test_signature_checker.py"
+      - "experiments/the-hunt/v0.3/evaluate_negative_cohort.py"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  negative-cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download immutable Recovery artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hunt-v03-nemotron-recovery-41782136773
+          path: negative-evidence/recovery
+          repository: qwertymarketolog-lab/JAMP
+          run-id: 41782136773
+          github-token: ${{ github.token }}
+
+      - name: Verify immutable Recovery artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root = Path("negative-evidence/recovery")
+          manifest = root / "recovery-input/wheel_manifest.json"
+          expected = (
+              "5425ec5849201997ef7b6472ca64d909ea1165fc152064f120593a8fabbc4f6b"
+          )
+          observed = hashlib.sha256(manifest.read_bytes()).hexdigest()
+          print(f"recovery_artifact_id=13299716958")
+          print(f"recovery_run_id=41782136773")
+          print(f"wheel_manifest_sha256={observed}")
+          if observed != expected:
+              raise SystemExit("Recovery wheel manifest SHA-256 mismatch")
+          PY
+
+      - name: Compile and run signature checker regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q \
+            experiments/the-hunt/v0.3/signature_checker.py \
+            experiments/the-hunt/v0.3/generate_negative_cohort.py \
+            experiments/the-hunt/v0.3/evaluate_negative_cohort.py
+          python -m pip install --disable-pip-version-check pytest
+          python -m pytest -q tests/test_signature_checker.py
+
+      - name: Generate 100 independently labeled negative cases and positive controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/generate_negative_cohort.py \
+            --recovery-artifact negative-evidence/recovery \
+            --output negative-evidence/negative_cohort.json \
+            2>&1 | tee negative-evidence/generation.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cohort = json.loads(Path("negative-evidence/negative_cohort.json").read_text())
+          assert cohort["package_count"] == 20
+          assert cohort["negative_sample_count"] == 100
+          assert cohort["positive_control_count"] == 20
+          assert len({row["sample_id"] for row in cohort["negative_samples"]}) == 100
+          print("cohort_contract=VERIFIED")
+          PY
+
+      - name: Evaluate cohort through signature_checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/evaluate_negative_cohort.py \
+            --cohort negative-evidence/negative_cohort.json \
+            --recovery-artifact negative-evidence/recovery \
+            --output negative-evidence/api_negative_results.json \
+            2>&1 | tee negative-evidence/evaluation.log
+
+      - name: Enforce Frozen Core and capture terminal evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse "$GITHUB_SHA:src/jamp/run.py")"
+          expected="0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          {
+            printf 'github_run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'github_sha=%s\n' "$GITHUB_SHA"
+            printf 'workflow=%s\n' "$GITHUB_WORKFLOW"
+            printf 'frozen_core_blob=%s\n' "$actual"
+            printf 'frozen_core_expected=%s\n' "$expected"
+            if [ "$actual" = "$expected" ]; then
+              printf 'frozen_core_delta=0\n'
+            else
+              printf 'frozen_core_delta=NONZERO\n'
+            fi
+          } > negative-evidence/ci-metadata.txt
+          test "$actual" = "$expected"
+
+      - name: Upload API negative evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v034-scope-aware-${{ github.run_id }}
+          path: negative-evidence/
+          if-no-files-found: warn
+          retention-days: 90
