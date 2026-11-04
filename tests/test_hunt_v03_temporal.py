@@ -63,6 +63,28 @@ class TemporalSnapshotTests(unittest.TestCase):
         self.assertEqual(record["temporal_provenance"], "PRE_GENERATION_REGISTRY_SNAPSHOT")
         self.assertIsNotNone(record["metadata_observed_timestamp_utc"])
 
+    def test_installed_generation_version_is_pinned_instead_of_latest(self):
+        wheel = wheel_bytes("def ok():\n    return True\n")
+        environment = {
+            "installed_distributions": [{"package_name": "samplepkg", "pypi_version": "1.0"}]
+        }
+        with patch.object(TEMPORAL, "fetch_pypi_json", return_value=(200, self._metadata(wheel))):
+            record = TEMPORAL.capture_pre_generation_release("samplepkg", environment)
+        self.assertEqual(record["pypi_version"], "1.0")
+        self.assertEqual(record["generation_environment_version"], "1.0")
+        self.assertEqual(record["temporal_provenance"], "GENERATION_ENVIRONMENT")
+
+    def test_multiple_installed_versions_are_unresolved(self):
+        environment = {
+            "installed_distributions": [
+                {"package_name": "samplepkg", "pypi_version": "1.0"},
+                {"package_name": "samplepkg", "pypi_version": "2.0"},
+            ]
+        }
+        with patch.object(TEMPORAL, "fetch_pypi_json", return_value=(200, self._metadata(b"wheel"))):
+            record = TEMPORAL.capture_pre_generation_release("samplepkg", environment)
+        self.assertEqual(record["resolution_status"], "UNRESOLVED")
+        self.assertEqual(record["resolution_reason"], "multiple_generation_environment_versions")
     def test_unavailable_pypi_is_unresolved_not_live_fallback(self):
         with patch.object(TEMPORAL, "fetch_pypi_json", return_value=(503, None)):
             record = TEMPORAL.capture_pre_generation_release("samplepkg")
