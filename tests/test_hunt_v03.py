@@ -693,5 +693,74 @@ class GroqFailureHandlingTests(unittest.TestCase):
             "https://anymodel.org/v1/chat/completions",
         )
 
+
+class ProviderTransportDiagnosticsTests(unittest.TestCase):
+    def _call_anymodel(self):
+        return RUN_LLM._call_anymodel(
+            api_key="test-anymodel-secret",
+            endpoint="https://anymodel.org/v1/chat/completions",
+            model_id="ds/deepseek-v4-pro",
+            prompt="test prompt",
+            max_tokens=128,
+        )
+
+    def test_open_timeout_records_elapsed_phase_and_redacts_api_key(self):
+        with (
+            patch.object(
+                RUN_LLM,
+                "urlopen",
+                side_effect=TimeoutError("request timed out for test-anymodel-secret"),
+            ),
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[10.0, 10.045]),
+        ):
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "TimeoutError")
+        self.assertEqual(diagnostics["transport_phase"], "request_open")
+        self.assertEqual(diagnostics["elapsed_ms"], 45.0)
+        self.assertEqual(diagnostics["exception_type"], "TimeoutError")
+        self.assertIn("[REDACTED]", diagnostics["error_message"])
+        self.assertNotIn("test-anymodel-secret", json.dumps(diagnostics))
+
+    def test_response_read_timeout_is_distinguished_from_open_timeout(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                raise TimeoutError("response body timed out")
+
+        with (
+            patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()),
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[20.0, 20.012]),
+        ):
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "TimeoutError")
+        self.assertEqual(diagnostics["transport_phase"], "response_read")
+        self.assertEqual(diagnostics["elapsed_ms"], 12.0)
+        self.assertEqual(diagnostics["error_message"], "response body timed out")
+
+    def test_os_error_number_is_preserved(self):
+        with (
+            patch.object(
+                RUN_LLM,
+                "urlopen",
+                side_effect=OSError(110, "Connection timed out"),
+            ),
+            patch.object(RUN_LLM.time, "monotonic", side_effect=[30.0, 30.025]),
+        ):
+            response, failure, diagnostics = self._call_anymodel()
+
+        self.assertIsNone(response)
+        self.assertEqual(failure, "TimeoutError" if False else "OSError")
+        self.assertEqual(diagnostics["errno"], 110)
+        self.assertEqual(diagnostics["transport_phase"], "request_open")
+
 if __name__ == "__main__":
     unittest.main()
