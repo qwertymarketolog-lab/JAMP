@@ -471,7 +471,7 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(
                     RUN_LLM,
                     "capture_pre_generation_release",
-                    side_effect=lambda package: {
+                    side_effect=lambda package, *_args: {
                         "package_name": package,
                         "resolution_status": "UNRESOLVED",
                         "temporal_provenance": "UNRESOLVED",
@@ -550,7 +550,7 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(
                     RUN_LLM,
                     "capture_pre_generation_release",
-                    side_effect=lambda package: {
+                    side_effect=lambda package, *_args: {
                         "package_name": package,
                         "resolution_status": "UNRESOLVED",
                         "temporal_provenance": "UNRESOLVED",
@@ -612,7 +612,7 @@ class GroqFailureHandlingTests(unittest.TestCase):
                 patch.object(
                     RUN_LLM,
                     "capture_pre_generation_release",
-                    side_effect=lambda package: {
+                    side_effect=lambda package, *_args: {
                         "package_name": package,
                         "resolution_status": "UNRESOLVED",
                         "temporal_provenance": "UNRESOLVED",
