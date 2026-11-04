@@ -35,6 +35,19 @@ VERIFY_GT = load_script("verify_gt_v3.py", "hunt_v03_verify_gt")
 RUN_LLM = load_script("run_llm_v3.py", "hunt_v03_run_llm")
 
 
+class CompletionParsingTests(unittest.TestCase):
+    def test_markdown_json_fence_is_parsed(self):
+        content = '```json\n{"package_name":"samplepkg","code":"import samplepkg"}\n```'
+        self.assertEqual(RUN_LLM._parse_completion(content), ("samplepkg", "import samplepkg"))
+
+    def test_plain_json_is_parsed(self):
+        content = '{"package_name":"samplepkg","code":"import samplepkg"}'
+        self.assertEqual(RUN_LLM._parse_completion(content), ("samplepkg", "import samplepkg"))
+
+    def test_malformed_json_fails_closed(self):
+        self.assertEqual(RUN_LLM._parse_completion('{"package_name":'), (None, None))
+
+
 def metadata(age_days: int, project_urls=None, author="Maintainer"):
     now = datetime(2026, 11, 3, tzinfo=UTC)
     first = now - timedelta(days=age_days)
