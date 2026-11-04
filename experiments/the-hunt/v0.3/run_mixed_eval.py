@@ -28,22 +28,35 @@ SOURCE_ARTIFACT_SHA256 = (
 RECOVERY_ARTIFACT_SHA256 = (
     "93cf36e696897bfca8ab99e500a8e625e8bae131d5944f56b1cb879ccdeae3b6"
 )
+RECOVERY_WHEEL_MANIFEST_SHA256 = (
+    "5425ec5849201997ef7b6472ca64d909ea1165fc152064f120593a8fabbc4f6b"
+)
 RECOVERY_RUN_ID = 41782136773
+
+
+class ArtifactReader:
+    """Read either an extracted artifact directory or its original ZIP."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.archive = None if path.is_dir() else zipfile.ZipFile(path)
+
+    def read(self, name: str) -> bytes:
+        if self.archive is not None:
+            return self.archive.read(name)
+        return (self.path / name).read_bytes()
+
+    def close(self) -> None:
+        if self.archive is not None:
+            self.archive.close()
 
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _member(archive: zipfile.ZipFile, suffix: str) -> str:
-    matches = [name for name in archive.namelist() if name.endswith(suffix)]
-    if len(matches) != 1:
-        raise ValueError(f"expected exactly one ZIP member ending in {suffix!r}")
-    return matches[0]
-
-
-def _json_member(archive: zipfile.ZipFile, suffix: str) -> tuple[Any, bytes]:
-    raw = archive.read(_member(archive, suffix))
+def _json_member(artifact: ArtifactReader, name: str) -> tuple[Any, bytes]:
+    raw = artifact.read(name)
     return json.loads(raw.decode("utf-8")), raw
 
 
@@ -63,8 +76,7 @@ def _wheel_index(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
         digest = wheel.get("sha256")
         if not isinstance(filename, str) or not isinstance(digest, str):
             raise ValueError("wheel manifest entry lacks filename or sha256")
-        distribution = filename.split("-", 1)[0]
-        key = _normalise_distribution(distribution)
+        key = _normalise_distribution(filename.split("-", 1)[0])
         if key in index:
             raise ValueError(f"duplicate normalized wheel distribution: {key}")
         index[key] = wheel
@@ -72,15 +84,13 @@ def _wheel_index(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _verify_recovery_wheels(
-    archive: zipfile.ZipFile, manifest: dict[str, Any]
+    artifact: ArtifactReader, manifest: dict[str, Any]
 ) -> dict[str, dict[str, Any]]:
     index = _wheel_index(manifest)
     for wheel in index.values():
         filename = wheel["filename"]
         member = f"recovery-input/wheelhouse/{filename}"
-        if member not in archive.namelist():
-            raise ValueError(f"recovery wheel is missing: {filename}")
-        observed = _sha256(archive.read(member))
+        observed = _sha256(artifact.read(member))
         if observed != wheel["sha256"]:
             raise ValueError(f"recovery wheel SHA-256 mismatch: {filename}")
     return index
@@ -99,39 +109,38 @@ def _classify(api_status: str, signature_status: str) -> str:
 
 
 def evaluate(
-    source_zip: Path,
-    recovery_zip: Path,
+    source_path: Path,
+    recovery_path: Path,
     output_path: Path,
 ) -> dict[str, Any]:
-    source_bytes = source_zip.read_bytes()
-    recovery_bytes = recovery_zip.read_bytes()
-    source_digest = _sha256(source_bytes)
-    recovery_digest = _sha256(recovery_bytes)
-    if source_digest != SOURCE_ARTIFACT_SHA256:
-        raise ValueError("original source artifact SHA-256 does not match pinned ID")
-    if recovery_digest != RECOVERY_ARTIFACT_SHA256:
-        raise ValueError("recovery artifact SHA-256 does not match pinned run")
-
-    with zipfile.ZipFile(source_zip) as source, zipfile.ZipFile(recovery_zip) as recovery:
-        manifest, manifest_raw = _json_member(source, "generation_manifest.json")
-        responses, responses_raw = _json_member(source, "llm_responses_v3.json")
-        ground_truth, ground_truth_raw = _json_member(source, "ground_truth_v3.json")
-        api_gt, _ = _json_member(recovery, "api_ground_truth_v0.3.json")
-        recovery_results, _ = _json_member(recovery, "results_v0.3.json")
+    source = ArtifactReader(source_path)
+    recovery = ArtifactReader(recovery_path)
+    try:
+        manifest, manifest_raw = _json_member(
+            source, "generation_manifest.json"
+        )
+        responses, responses_raw = _json_member(
+            source, "llm_responses_v3.json"
+        )
+        ground_truth, ground_truth_raw = _json_member(
+            source, "ground_truth_v3.json"
+        )
+        api_gt, _ = _json_member(
+            recovery, "recovery-output/api_ground_truth_v0.3.json"
+        )
+        recovery_results, _ = _json_member(
+            recovery, "recovery-output/results_v0.3.json"
+        )
         wheel_manifest, wheel_manifest_raw = _json_member(
             recovery, "recovery-input/wheel_manifest.json"
         )
 
-        if manifest.get("llm_responses_sha256") != _sha256(responses_raw):
-            raise ValueError("original response SHA-256 differs from manifest")
-        if manifest.get("prompt_dataset_sha256") != ground_truth.get(
-            "prompt_dataset_sha256"
-        ):
-            raise ValueError("original prompt dataset digest mismatch")
+        if _sha256(wheel_manifest_raw) != RECOVERY_WHEEL_MANIFEST_SHA256:
+            raise ValueError("recovery wheel manifest SHA-256 differs from pinned evidence")
         if recovery_results.get("source_artifact_id") != SOURCE_ARTIFACT_ID:
             raise ValueError("recovery results reference a different source artifact")
-        if recovery_results.get("source_artifact_sha256") != source_digest:
-            raise ValueError("recovery results source artifact digest mismatch")
+        if recovery_results.get("source_artifact_sha256") != SOURCE_ARTIFACT_SHA256:
+            raise ValueError("recovery results source artifact digest differs from pinned evidence")
         if recovery_results.get("source_manifest_sha256") != _sha256(manifest_raw):
             raise ValueError("recovery results source manifest digest mismatch")
         if recovery_results.get("source_responses_sha256") != _sha256(responses_raw):
@@ -140,6 +149,12 @@ def evaluate(
             ground_truth_raw
         ):
             raise ValueError("recovery results source Ground Truth digest mismatch")
+        if manifest.get("llm_responses_sha256") != _sha256(responses_raw):
+            raise ValueError("original response SHA-256 differs from manifest")
+        if manifest.get("prompt_dataset_sha256") != ground_truth.get(
+            "prompt_dataset_sha256"
+        ):
+            raise ValueError("original prompt dataset digest mismatch")
         if api_gt.get("source_artifact_id") != SOURCE_ARTIFACT_ID:
             raise ValueError("API Ground Truth references a different source artifact")
         wheel_manifest_digest = _sha256(wheel_manifest_raw)
@@ -152,7 +167,10 @@ def evaluate(
         response_rows = responses.get("samples")
         truth_rows = ground_truth.get("samples")
         api_rows = api_gt.get("samples")
-        if not all(isinstance(rows, list) for rows in (response_rows, truth_rows, api_rows)):
+        if not all(
+            isinstance(rows, list)
+            for rows in (response_rows, truth_rows, api_rows)
+        ):
             raise ValueError("source and API Ground Truth samples must be lists")
         if not (len(response_rows) == len(truth_rows) == len(api_rows) == 100):
             raise ValueError("MIXED_TEMPORAL evaluation requires aligned 100-row inputs")
@@ -236,7 +254,9 @@ def evaluate(
             signature_status = signature.get("status")
             classification = _classify(
                 api_status,
-                signature_status if isinstance(signature_status, str) else "INCONCLUSIVE",
+                signature_status
+                if isinstance(signature_status, str)
+                else "INCONCLUSIVE",
             )
             results.append(
                 {
@@ -251,44 +271,53 @@ def evaluate(
                 }
             )
 
-    class_counts = Counter(row["classification"] for row in results)
-    api_counts = Counter(row["api_ground_truth_status"] for row in results)
-    invalid_api_count = api_counts["INVALID"]
-    report = {
-        "schema_version": "jamp-hunt-mixed-temporal-v0.1",
-        "evaluation_mode": "MIXED_TEMPORAL",
-        "temporal_contract": "THEN_LLM_GENERATION_PLUS_RECOVERY_NOW_API_GROUND_TRUTH",
-        "source_artifact_id": SOURCE_ARTIFACT_ID,
-        "source_artifact_sha256": source_digest,
-        "source_generation_timestamp_utc": manifest.get("generation_timestamp_utc"),
-        "source_provider": manifest.get("provider_name"),
-        "source_model_id": manifest.get("provider_model_id"),
-        "recovery_artifact_id": RECOVERY_ARTIFACT_ID,
-        "recovery_run_id": RECOVERY_RUN_ID,
-        "recovery_artifact_sha256": recovery_digest,
-        "api_ground_truth_method": api_gt.get("method"),
-        "api_ground_truth_scope": api_gt.get("api_validity_scope"),
-        "api_ground_truth_runtime_note": api_gt.get("runtime_snapshot_note"),
-        "wheel_manifest_sha256": wheel_manifest_digest,
-        "wheel_count": wheel_manifest.get("wheel_count"),
-        "generated_model_code_executed": False,
-        "api_ground_truth_counts": dict(sorted(api_counts.items())),
-        "false_positives": class_counts["FALSE_POSITIVE"],
-        "true_positives": class_counts["TRUE_POSITIVE"],
-        "true_positive_evaluation_possible": invalid_api_count > 0,
-        "true_positive_ground_truth_denominator": invalid_api_count,
-        "true_negatives": class_counts["TRUE_NEGATIVE"],
-        "false_negatives": class_counts["FALSE_NEGATIVE"],
-        "inconclusive": class_counts["INCONCLUSIVE"],
-        "qualification": "NOT_GRANTED",
-        "results": results,
-    }
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return report
+        class_counts = Counter(row["classification"] for row in results)
+        api_counts = Counter(row["api_ground_truth_status"] for row in results)
+        invalid_api_count = api_counts["INVALID"]
+        report = {
+            "schema_version": "jamp-hunt-mixed-temporal-v0.1",
+            "evaluation_mode": "MIXED_TEMPORAL",
+            "temporal_contract": (
+                "THEN_LLM_GENERATION_PLUS_RECOVERY_NOW_API_GROUND_TRUTH"
+            ),
+            "source_artifact_id": SOURCE_ARTIFACT_ID,
+            "source_artifact_sha256": SOURCE_ARTIFACT_SHA256,
+            "source_generation_timestamp_utc": manifest.get(
+                "generation_timestamp_utc"
+            ),
+            "source_provider": manifest.get("provider_name"),
+            "source_model_id": manifest.get("provider_model_id"),
+            "recovery_artifact_id": RECOVERY_ARTIFACT_ID,
+            "recovery_run_id": RECOVERY_RUN_ID,
+            "recovery_artifact_sha256_pinned": RECOVERY_ARTIFACT_SHA256,
+            "api_ground_truth_method": api_gt.get("method"),
+            "api_ground_truth_scope": api_gt.get("api_validity_scope"),
+            "api_ground_truth_runtime_note": api_gt.get("runtime_snapshot_note"),
+            "wheel_manifest_sha256": wheel_manifest_digest,
+            "wheel_count": wheel_manifest.get("wheel_count"),
+            "verified_wheel_count": len(wheel_index),
+            "generated_model_code_executed": False,
+            "api_ground_truth_counts": dict(sorted(api_counts.items())),
+            "false_positives": class_counts["FALSE_POSITIVE"],
+            "true_positives": class_counts["TRUE_POSITIVE"],
+            "true_positive_evaluation_possible": invalid_api_count > 0,
+            "true_positive_ground_truth_denominator": invalid_api_count,
+            "true_negatives": class_counts["TRUE_NEGATIVE"],
+            "false_negatives": class_counts["FALSE_NEGATIVE"],
+            "inconclusive": class_counts["INCONCLUSIVE"],
+            "qualification": "NOT_GRANTED",
+            "results": results,
+        }
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False)
+            + "\n",
+            encoding="utf-8",
+        )
+        return report
+    finally:
+        source.close()
+        recovery.close()
 
 
 def main() -> int:
