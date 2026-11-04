@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from json_utils import safe_parse_json
-
 from temporal_contract import (
     capture_generation_environment,
     capture_pre_generation_release,
