@@ -474,7 +474,11 @@ def check_signature_from_recovery(
             "wheel_filename": filename,
             "wheel_sha256_expected": expected_sha,
             "wheel_sha256_observed": observed_sha,
-            "temporal_provenance": snapshot_record.get("temporal_provenance"),
+            "snapshot_version_provenance": snapshot_record.get("temporal_provenance"),
+            "wheel_temporal_scope": (
+                "RECOVERY_TIME_COMPATIBLE_WHEEL_AT_EXACT_SNAPSHOT_PINNED_VERSION; "
+                "NOT_ORIGINAL_GENERATION_WHEEL_BUILD"
+            ),
             "checker_evidence_source": "HASH_VERIFIED_RECOVERY_WHEELHOUSE",
         })
         return result

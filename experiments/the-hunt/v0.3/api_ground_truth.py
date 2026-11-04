@@ -229,6 +229,10 @@ def api_valid_matrix(
     return {
         "positive_class": "INVALID",
         "checker_basis": "HASH_VERIFIED_RECOVERY_WHEEL_AT_SNAPSHOT_PINNED_VERSION",
+        "temporal_scope": (
+            "Recovery-time compatible wheel at the exact snapshot-pinned direct version; "
+            "does not establish the original generation-time wheel build or transitive dependency closure."
+        ),
         **counts,
         "scored_count": sum(counts.values()),
         "api_gt_inconclusive_excluded": gt_excluded,

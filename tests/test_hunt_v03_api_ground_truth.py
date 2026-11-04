@@ -220,6 +220,11 @@ class RecoveryWheelCheckerTests(unittest.TestCase):
             )
         self.assertEqual(result["status"], "EXISTS")
         self.assertEqual(result["checker_evidence_source"], "HASH_VERIFIED_RECOVERY_WHEELHOUSE")
+        self.assertEqual(
+            result["wheel_temporal_scope"],
+            "RECOVERY_TIME_COMPATIBLE_WHEEL_AT_EXACT_SNAPSHOT_PINNED_VERSION; "
+            "NOT_ORIGINAL_GENERATION_WHEEL_BUILD",
+        )
         self.assertEqual(mismatch["status"], "INCONCLUSIVE")
         self.assertEqual(mismatch["reason"], "recovery_wheel_snapshot_version_mismatch")
 

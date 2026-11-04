@@ -541,6 +541,11 @@ def evaluate(
         report["matrix_api_valid"] = api_valid_matrix(api_rows, results)
         report["independent_api_ground_truth"] = {
             "checker_basis": "HASH_VERIFIED_RECOVERY_WHEEL_AT_SNAPSHOT_PINNED_VERSION",
+            "temporal_limitation": (
+                "Checker inspected a hash-verified recovery-time compatible wheel whose direct "
+                "package version exactly matches the generation snapshot. This does not prove "
+                "the original generation-time wheel build or transitive dependency closure."
+            ),
             "schema_version": api_payload["schema_version"],
             "sample_count": len(api_rows),
             "api_ground_truth_counts": api_payload["api_ground_truth_counts"],
