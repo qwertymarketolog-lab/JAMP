@@ -22,7 +22,7 @@ from temporal_contract import (
 )
 
 TEMPERATURE = 0.7
-TIMEOUT_SECONDS = 45
+TIMEOUT_SECONDS = 300
 USER_AGENT = "JAMP-The-Hunt-v0.3-Experiment"
 PROVIDER_DEFAULTS = {
     "groq": "https://api.groq.com/openai/v1",
