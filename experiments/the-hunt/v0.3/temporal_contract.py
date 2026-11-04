@@ -70,13 +70,12 @@ def _upload_time(value: Any) -> datetime | None:
 
 
 def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
-    observed_at = utc_now()
     record: dict[str, Any] = {
         "package_name": package_name,
         "pypi_version": None,
         "wheel_filename": None,
         "wheel_sha256": None,
-        "metadata_observed_timestamp_utc": observed_at,
+        "metadata_observed_timestamp_utc": None,
         "artifact_download_timestamp_utc": None,
         "resolution_status": "UNRESOLVED",
         "temporal_provenance": "UNRESOLVED",
@@ -88,10 +87,12 @@ def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
         if status != 200 or not isinstance(metadata, dict):
             record["resolution_reason"] = "pypi_metadata_unavailable"
             return record
+        record["metadata_observed_timestamp_utc"] = utc_now()
         metadata_bytes = json.dumps(
             metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         record["pypi_metadata_sha256"] = hashlib.sha256(metadata_bytes).hexdigest()
+        record["pypi_metadata_hash_method"] = "canonical_json_utf8_sorted_compact"
         releases = metadata.get("releases")
         if not isinstance(releases, dict):
             record["resolution_reason"] = "pypi_releases_missing"
@@ -147,7 +148,6 @@ def finalize_wheel_snapshot(
     record: dict[str, Any], wheelhouse: Path, sample_id: str
 ) -> dict[str, Any]:
     result = dict(record)
-    result["artifact_download_timestamp_utc"] = utc_now()
     if result.get("resolution_status") != "PINNED_BEFORE_GENERATION":
         return result
     try:
@@ -156,6 +156,7 @@ def finalize_wheel_snapshot(
         )
         with urlopen(request, timeout=30) as response:
             wheel_bytes = response.read(MAX_WHEEL_BYTES + 1)
+        result["artifact_download_timestamp_utc"] = utc_now()
         if len(wheel_bytes) > MAX_WHEEL_BYTES:
             raise ValueError("wheel_exceeds_size_limit")
         observed = hashlib.sha256(wheel_bytes).hexdigest()
