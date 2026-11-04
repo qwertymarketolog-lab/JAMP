@@ -26,26 +26,70 @@ PACKAGES = (
     "blinker", "certifi",
 )
 POSITIVE_CONTROLS = {
-    "amqp": ("amqp.connection", "Connection", "from amqp.connection import Connection\nConnection()"),
+    "amqp": (
+        "amqp.connection",
+        "Connection",
+        "from amqp.connection import Connection\nConnection()",
+    ),
     "anyio": ("anyio._core._eventloop", "run", "from anyio._core._eventloop import run\nrun()"),
     "boto3": ("boto3.session", "Session", "from boto3.session import Session\nSession()"),
     "celery": ("celery.app.base", "Celery", "from celery.app.base import Celery\nCelery()"),
-    "click": ("click.decorators", "command", "from click.decorators import command\ncommand(lambda: None)"),
-    "fastapi": ("fastapi.applications", "FastAPI", "from fastapi.applications import FastAPI\nFastAPI()"),
+    "click": (
+        "click.decorators",
+        "command",
+        "from click.decorators import command\ncommand(lambda: None)",
+    ),
+    "fastapi": (
+        "fastapi.applications",
+        "FastAPI",
+        "from fastapi.applications import FastAPI\nFastAPI()",
+    ),
     "flask": ("flask.app", "Flask", "from flask.app import Flask\nFlask(__name__)"),
     "httpx": ("httpx._api", "get", "from httpx._api import get\nget('https://example.invalid')"),
-    "jinja2": ("jinja2.environment", "Environment", "from jinja2.environment import Environment\nEnvironment()"),
-    "kombu": ("kombu.connection", "Connection", "from kombu.connection import Connection\nConnection('amqp://')"),
-    "packaging": ("packaging.version", "Version", "from packaging.version import Version\nVersion('1.0')"),
+    "jinja2": (
+        "jinja2.environment",
+        "Environment",
+        "from jinja2.environment import Environment\nEnvironment()",
+    ),
+    "kombu": (
+        "kombu.connection",
+        "Connection",
+        "from kombu.connection import Connection\nConnection('amqp://')",
+    ),
+    "packaging": (
+        "packaging.version",
+        "Version",
+        "from packaging.version import Version\nVersion('1.0')",
+    ),
     "pydantic": ("pydantic.main", "BaseModel", "from pydantic.main import BaseModel\nBaseModel()"),
     "redis": ("redis.client", "Redis", "from redis.client import Redis\nRedis()"),
-    "requests": ("requests.api", "get", "from requests.api import get\nget('https://example.invalid')"),
-    "sqlalchemy": ("sqlalchemy.engine", "create_engine", "from sqlalchemy.engine import create_engine\ncreate_engine('sqlite://')"),
-    "starlette": ("starlette.applications", "Starlette", "from starlette.applications import Starlette\nStarlette()"),
-    "urllib3": ("urllib3.poolmanager", "PoolManager", "from urllib3.poolmanager import PoolManager\nPoolManager()"),
+    "requests": (
+        "requests.api",
+        "get",
+        "from requests.api import get\nget('https://example.invalid')",
+    ),
+    "sqlalchemy": (
+        "sqlalchemy.engine",
+        "create_engine",
+        "from sqlalchemy.engine import create_engine\ncreate_engine('sqlite://')",
+    ),
+    "starlette": (
+        "starlette.applications",
+        "Starlette",
+        "from starlette.applications import Starlette\nStarlette()",
+    ),
+    "urllib3": (
+        "urllib3.poolmanager",
+        "PoolManager",
+        "from urllib3.poolmanager import PoolManager\nPoolManager()",
+    ),
     "werkzeug": ("werkzeug.test", "Client", "from werkzeug.test import Client\nClient(None)"),
     "blinker": ("blinker.base", "Signal", "from blinker.base import Signal\nSignal()"),
-    "certifi": ("certifi.core", "exit_cacert_ctx", "from certifi.core import exit_cacert_ctx\nexit_cacert_ctx()"),
+    "certifi": (
+        "certifi.core",
+        "exit_cacert_ctx",
+        "from certifi.core import exit_cacert_ctx\nexit_cacert_ctx()",
+    ),
 }
 
 
@@ -98,9 +142,8 @@ def module_declares_symbol(sources: dict[str, str], module: str, symbol: str) ->
         return False
     tree = ast.parse(source)
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if node.name == symbol:
-                return True
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name == symbol:
+            return True
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if any((alias.asname or alias.name) == symbol for alias in node.names):
                 return True
