@@ -149,6 +149,11 @@ __import__(resolve_module_name())
             self.assertEqual(result["samples"]["s1"]["status"], "INCONCLUSIVE")
             self.assertEqual(result["samples"]["s1"]["reason"], "wheel_download_failed")
 
+    def test_static_dunder_import_target_is_resolved(self):
+        probes, unresolved = RECOVERY.analyze_code("__import__('json')")
+        self.assertFalse(unresolved)
+        self.assertIn({"module": "json", "attributes": [], "callable": False}, probes)
+
     def test_probe_extraction_does_not_execute_candidate_code(self):
         with tempfile.TemporaryDirectory() as tmp:
             marker = Path(tmp) / "executed"
