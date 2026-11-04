@@ -95,3 +95,52 @@ def test_pure_python_package_without_symbol_is_invalid_signature() -> None:
     result = check_with_wheel("import samplepkg\nsamplepkg.missing_api()", wheel)
     assert result["status"] == "INVALID_SIGNATURE"
     assert result["reason"] == "symbol_missing"
+
+
+def test_dynamic_in_unrelated_module_is_invalid_signature() -> None:
+    wheel = make_wheel(
+        {
+            "samplepkg/__init__.py": "",
+            "samplepkg/api.py": "def known_api():\n    return None\n",
+            "samplepkg/other.py": (
+                "def __getattr__(name):\n    raise AttributeError(name)\n"
+            ),
+        }
+    )
+    result = check_with_wheel(
+        "import samplepkg.api as target\ntarget.missing_api()", wheel
+    )
+    assert result["status"] == "INVALID_SIGNATURE"
+    assert result["reason"] == "symbol_missing"
+
+
+def test_dynamic_in_resolution_chain_is_inconclusive() -> None:
+    wheel = make_wheel(
+        {
+            "samplepkg/__init__.py": "from .dynamic import lazy_api\n",
+            "samplepkg/dynamic.py": (
+                "def __getattr__(name):\n    raise AttributeError(name)\n"
+            ),
+        }
+    )
+    result = check_with_wheel(
+        "import samplepkg\nsamplepkg.lazy_api()", wheel
+    )
+    assert result["status"] == "INCONCLUSIVE"
+    assert result["reason"] == "dynamic_attribute_present"
+
+
+def test_clean_static_symbol_is_exists() -> None:
+    wheel = make_wheel(
+        {
+            "samplepkg/__init__.py": "from .api import get\n",
+            "samplepkg/api.py": "def get(url):\n    return url\n",
+            "samplepkg/other.py": (
+                "def __getattr__(name):\n    raise AttributeError(name)\n"
+            ),
+        }
+    )
+    result = check_with_wheel(
+        "import samplepkg\nsamplepkg.get('/health')", wheel
+    )
+    assert result["status"] == "EXISTS"
