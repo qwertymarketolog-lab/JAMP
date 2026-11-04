@@ -650,6 +650,7 @@ def inspect_wheel_bytes(
         ):
             unresolved.append(call)
 
+    reason: str | None = None
     if inconclusive_calls:
         status = "INCONCLUSIVE"
         reason = "dynamic_star_import_exports"
