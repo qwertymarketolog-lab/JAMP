@@ -161,6 +161,12 @@ def validate_source_artifact(
         raise ValueError("original evaluation mode mismatch")
     if manifest.get("generation_snapshot_file") != "generation_snapshot.json":
         raise ValueError("manifest does not bind generation_snapshot.json")
+    environment = snapshot.get("generation_environment", {})
+    if (environment.get("python_implementation") != "CPython"
+            or not str(environment.get("python_version", "")).startswith("3.11")
+            or "Linux" not in str(environment.get("platform", ""))
+            or "x86_64" not in str(environment.get("platform", ""))):
+        raise ValueError("generation snapshot is not CPython 3.11 Linux x86_64")
     snapshot_hash = canonical_json_hash(snapshot, "snapshot_sha256")
     if snapshot.get("snapshot_sha256") != snapshot_hash:
         raise ValueError("generation_snapshot canonical SHA-256 mismatch")
@@ -506,23 +512,19 @@ def install_sample_environment(
     folder = wheelhouse / sample_id
     if not folder.is_dir() or not list(folder.glob("*.whl")):
         return None
-    with tempfile.TemporaryDirectory(prefix="jamp-hunt-recovery-") as tmp:
-        env_dir = Path(tmp) / "venv"
-        venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
-        python = env_dir / "bin" / "python"
-        installed = subprocess.run(
-            [str(python), "-m", "pip", "install", "--disable-pip-version-check",
-             "--no-input", "--no-index", "--only-binary=:all:",
-             "--find-links", str(folder), requirement],
-            capture_output=True, text=True, timeout=180, check=False,
-        )
-        if installed.returncode != 0:
-            return None
-        # Keep the venv alive while the caller probes it.
-        persistent = Path(tempfile.mkdtemp(prefix="jamp-hunt-env-"))
-        import shutil
-        shutil.copytree(env_dir, persistent / "venv", dirs_exist_ok=True)
-        return str(persistent / "venv" / "bin" / "python")
+    persistent = Path(tempfile.mkdtemp(prefix="jamp-hunt-env-"))
+    env_dir = persistent / "venv"
+    venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
+    python = env_dir / "bin" / "python"
+    installed = subprocess.run(
+        [str(python), "-m", "pip", "install", "--disable-pip-version-check",
+         "--no-input", "--no-index", "--only-binary=:all:",
+         "--find-links", str(folder), requirement],
+        capture_output=True, text=True, timeout=180, check=False,
+    )
+    if installed.returncode != 0:
+        return None
+    return str(python)
 
 
 def evaluate(
