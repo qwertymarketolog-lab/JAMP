@@ -27,6 +27,16 @@ def _api_boolean(signature: dict[str, Any]) -> bool | None:
     return None
 
 
+def _api_status(signature: dict[str, Any], axis: str) -> str:
+    if signature.get("status") == "EXISTS":
+        return f"VALID_{axis}"
+    if signature.get("status") == "INVALID_SIGNATURE":
+        return f"INVALID_{axis}"
+    if signature.get("reason") == "TEMPORAL_EVIDENCE_MISSING":
+        return "TEMPORAL_EVIDENCE_MISSING"
+    return "INCONCLUSIVE"
+
+
 def _ground_truth(value: Any) -> bool:
     if value is True or (isinstance(value, str) and value.upper() in POSITIVE_LABELS):
         return True
@@ -351,6 +361,8 @@ def evaluate(
                 "signature_then": signature_then,
                 "api_valid_now": _api_boolean(signature_now),
                 "api_valid_then": _api_boolean(signature_then),
+                "api_status_now": _api_status(signature_now, "NOW"),
+                "api_status_then": _api_status(signature_then, "THEN"),
                 "temporal_evidence_status": (
                     temporal_record.get("temporal_provenance", "UNRESOLVED")
                     if temporal_record else "TEMPORAL_EVIDENCE_MISSING"
@@ -362,6 +374,11 @@ def evaluate(
         temporal_record = temporal_packages.get(row.get("sample_id"))
         row.setdefault("api_valid_now", None)
         row.setdefault("api_valid_then", None)
+        row.setdefault("api_status_now", "INCONCLUSIVE")
+        row.setdefault(
+            "api_status_then",
+            "TEMPORAL_EVIDENCE_MISSING" if temporal_record is None else "INCONCLUSIVE",
+        )
         row.setdefault(
             "temporal_evidence_status",
             temporal_record.get("temporal_provenance", "UNRESOLVED")
@@ -410,6 +427,17 @@ def evaluate(
             "valid": sum(row.get("api_valid_then") is True for row in results),
             "invalid": sum(row.get("api_valid_then") is False for row in results),
             "inconclusive": sum(row.get("api_valid_then") is None for row in results),
+        },
+        "api_status_counts": {
+            status: sum(
+                row.get("api_status_now") == status or row.get("api_status_then") == status
+                for row in results
+            )
+            for status in sorted({
+                row.get("api_status_now") for row in results
+            } | {
+                row.get("api_status_then") for row in results
+            })
         },
         "temporal_evidence_status_counts": {
             status: sum(row.get("temporal_evidence_status") == status for row in results)
