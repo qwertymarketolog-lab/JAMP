@@ -26,39 +26,70 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download immutable source and recovery artifacts
+      - name: Resolve immutable artifact metadata
+        id: artifact-metadata
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p mixed-eval
           python - <<'PY'
+          import json
           import os
           import urllib.request
           from pathlib import Path
 
           repo = "qwertymarketolog-lab/JAMP"
-          artifacts = {
-              13257610773: Path("mixed-eval/source-13257610773.zip"),
-              13299716958: Path("mixed-eval/recovery-13299716958.zip"),
-          }
           token = os.environ["GH_TOKEN"]
-          for artifact_id, destination in artifacts.items():
+          artifacts = {
+              "source": 13257610773,
+              "recovery": 13299716958,
+          }
+          outputs = []
+          for label, artifact_id in artifacts.items():
               request = urllib.request.Request(
-                  f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip",
+                  f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}",
                   headers={
                       "Accept": "application/vnd.github+json",
                       "Authorization": f"Bearer {token}",
                       "X-GitHub-Api-Version": "2022-11-28",
                   },
               )
-              with urllib.request.urlopen(request, timeout=120) as response:
-                  with destination.open("wb") as output:
-                      while chunk := response.read(1024 * 1024):
-                          output.write(chunk)
-              print(f"downloaded artifact_id={artifact_id} bytes={destination.stat().st_size}")
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  metadata = json.load(response)
+              if metadata.get("expired"):
+                  raise RuntimeError(f"artifact {artifact_id} is expired")
+              run_id = metadata.get("workflow_run", {}).get("id")
+              name = metadata.get("name")
+              if not isinstance(run_id, int) or not isinstance(name, str):
+                  raise RuntimeError(f"artifact metadata incomplete: {artifact_id}")
+              outputs.extend(
+                  [f"{label}_run_id={run_id}", f"{label}_name={name}"]
+              )
+              print(
+                  f"artifact_id={artifact_id} name={name} source_run_id={run_id}"
+              )
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+              output.write("\n".join(outputs) + "\n")
           PY
+
+      - name: Download original Nemotron artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact-metadata.outputs.source_name }}
+          path: mixed-eval/source
+          repository: qwertymarketolog-lab/JAMP
+          run-id: ${{ steps.artifact-metadata.outputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Recovery-time API Ground Truth artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact-metadata.outputs.recovery_name }}
+          path: mixed-eval/recovery
+          repository: qwertymarketolog-lab/JAMP
+          run-id: ${{ steps.artifact-metadata.outputs.recovery_run_id }}
+          github-token: ${{ github.token }}
 
       - name: Compile and run focused contracts
         shell: bash
@@ -75,8 +106,8 @@ jobs:
         run: |
           set -euo pipefail
           python experiments/the-hunt/v0.3/run_mixed_eval.py \
-            --source-artifact mixed-eval/source-13257610773.zip \
-            --recovery-artifact mixed-eval/recovery-13299716958.zip \
+            --source-artifact mixed-eval/source \
+            --recovery-artifact mixed-eval/recovery \
             --output mixed-eval/results_mixed.json \
             2>&1 | tee mixed-eval/run.log
           printf '\n=== MIXED TEMPORAL SUMMARY ===\n'
