@@ -47,7 +47,15 @@ def validate_anymodel_base_url(url: str) -> str:
 
 
 class NoRedirectHandler(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self,
+        req: Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> Request | None:
         raise HTTPError(
             newurl,
             code,
