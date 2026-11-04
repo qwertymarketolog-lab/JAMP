@@ -1,35 +1,84 @@
-name: Inspect Wheels AST
+name: The Hunt v0.3.2 - Wheel + Ground Truth Harness
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "experiments/the-hunt/v0.3/inspect_wheels.py"
       - ".github/workflows/inspect-wheels.yml"
+      - "experiments/the-hunt/v0.3/collect_ground_truth_wheels.py"
+      - "experiments/the-hunt/v0.3/ground_truth_harness.py"
+      - "experiments/the-hunt/v0.3/signature_checker.py"
+      - "tests/test_hunt_ground_truth_harness.py"
 
 permissions:
   contents: read
 
 jobs:
-  inspect:
+  wheel-ground-truth:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run AST Inspector
+
+      - name: Collect pinned target wheels and offline dependencies
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p wheel-inspection-output
-          python experiments/the-hunt/v0.3/inspect_wheels.py 2>&1 | tee wheel-inspection-output/inspect_wheels.log
-      - name: Upload inspection evidence
+          set -euo pipefail
+          mkdir -p wheel-ground-truth-output
+          python experiments/the-hunt/v0.3/collect_ground_truth_wheels.py \
+            --output-dir wheel-ground-truth-output \
+            2>&1 | tee wheel-ground-truth-output/collector.log
+
+      - name: Run runtime Ground Truth in network-isolated container
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="python:3.11-slim"
+          docker pull "$IMAGE"
+          IMAGE_ID="$(docker image inspect "$IMAGE" --format '{{.Id}}')"
+          printf 'SANDBOX_IMAGE_ID=%s\n' "$IMAGE_ID" \
+            | tee wheel-ground-truth-output/sandbox-image.txt
+
+          docker run --rm \
+            --network none \
+            --memory=1g \
+            --cpus=1 \
+            --pids-limit=64 \
+            --read-only \
+            --cap-drop=ALL \
+            --security-opt=no-new-privileges \
+            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+            --mount "type=bind,src=$PWD/wheel-ground-truth-output/wheelhouse,dst=/wheelhouse,readonly" \
+            --mount "type=bind,src=$PWD/wheel-ground-truth-output,dst=/output" \
+            --mount "type=bind,src=$PWD/experiments/the-hunt/v0.3,dst=/src,readonly" \
+            -e JAMP_GROUND_TRUTH_SANDBOX=docker-network-none \
+            -e JAMP_GROUND_TRUTH_NETWORK=none \
+            -e JAMP_SANDBOX_IMAGE_ID="$IMAGE_ID" \
+            "$IMAGE" sh -eu -c '
+              python -m venv /tmp/hunt-venv
+              /tmp/hunt-venv/bin/python -m pip install \
+                --disable-pip-version-check \
+                --no-index \
+                --find-links=/wheelhouse \
+                --report=/output/install-report.json \
+                celery==5.6.3 httpx==0.28.1 requests==2.34.2
+              /tmp/hunt-venv/bin/python -I /src/ground_truth_harness.py \
+                --wheelhouse /wheelhouse \
+                --manifest /output/wheel_manifest.json \
+                --output /output/ground_truth.json
+            ' 2>&1 | tee wheel-ground-truth-output/ground_truth.log
+
+      - name: Upload wheel and Ground Truth evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: inspect-wheels-evidence-${{ github.run_id }}
-          path: wheel-inspection-output/
+          name: hunt-v032-wheel-ground-truth-\${{ github.run_id }}
+          path: wheel-ground-truth-output/
           if-no-files-found: warn
           retention-days: 30
