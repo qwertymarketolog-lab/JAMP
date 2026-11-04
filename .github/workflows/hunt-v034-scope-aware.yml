@@ -10,6 +10,9 @@ on:
       - "experiments/the-hunt/v0.3/generate_negative_cohort.py"
       - "tests/test_signature_checker.py"
       - "experiments/the-hunt/v0.3/evaluate_negative_cohort.py"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
