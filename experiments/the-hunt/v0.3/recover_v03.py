@@ -352,18 +352,20 @@ def build_wheel_manifest(
             if (name.lower().replace("_", "-") == pin["package_name"].lower().replace("_", "-")
                     and version == pin["version"] and compatible):
                 direct = record
-        if direct is None:
+        if direct is None or status.get(sample_id) != "SUCCESS":
+            if status.get(sample_id) != "SUCCESS":
+                reason = "dependency_wheel_resolution_failed" if direct else "wheel_download_failed"
+            else:
+                reason = "no_compatible_wheel"
             samples[sample_id] = {
-                "status": "INCONCLUSIVE",
-                "reason": "no_compatible_wheel" if status.get(sample_id) == "SUCCESS"
-                          else "wheel_download_failed",
+                "status": "INCONCLUSIVE", "reason": reason,
                 "download_status": status.get(sample_id, "MISSING"),
-                "direct_wheel": None, "wheels": records,
+                "direct_wheel": direct, "wheels": records,
             }
         else:
             samples[sample_id] = {
                 "status": "READY", "reason": "exact_pinned_compatible_wheel_found",
-                "download_status": status.get(sample_id, "SUCCESS"),
+                "download_status": status[sample_id],
                 "direct_wheel": direct, "wheels": records,
             }
     unexpected = [p.name for p in wheelhouse.iterdir() if not p.is_dir()]
@@ -527,6 +529,39 @@ def install_sample_environment(
     return str(python)
 
 
+def verify_recovery_wheelhouse(wheelhouse: Path, manifest: dict[str, Any]) -> None:
+    records = manifest.get("wheels")
+    if not isinstance(records, list):
+        raise ValueError("recovery wheel manifest has no wheel records")
+    expected: dict[str, str] = {}
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError("recovery wheel manifest contains a malformed record")
+        relative, digest = record.get("relative_path"), record.get("sha256")
+        if not isinstance(relative, str) or not isinstance(digest, str):
+            raise ValueError("recovery wheel manifest record lacks path or SHA-256")
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts or len(path.parts) != 2:
+            raise ValueError(f"unsafe recovery wheel path: {relative}")
+        if relative in expected:
+            raise ValueError(f"duplicate recovery wheel path: {relative}")
+        expected[relative] = digest
+        actual = wheelhouse / path
+        if not actual.is_file() or sha256_file(actual) != digest:
+            raise ValueError(f"recovery wheel SHA-256 mismatch: {relative}")
+        if actual.stat().st_size != record.get("size_bytes"):
+            raise ValueError(f"recovery wheel size mismatch: {relative}")
+    observed = {
+        str(path.relative_to(wheelhouse)).replace(os.sep, "/"): sha256_file(path)
+        for path in wheelhouse.rglob("*.whl")
+    }
+    if observed != expected:
+        raise ValueError("recovery wheelhouse files differ from manifest")
+    digest = sha256_bytes(json.dumps(records, sort_keys=True, separators=(",", ":")).encode())
+    if digest != manifest.get("wheelhouse_sha256"):
+        raise ValueError("recovery wheel manifest digest is inconsistent")
+
+
 def evaluate(
     root: Path, wheelhouse: Path, pins_path: Path, wheel_manifest_path: Path,
     output_dir: Path, *, source_zip: Path | None = None,
@@ -536,6 +571,7 @@ def evaluate(
     validated = validate_source_artifact(root, source_zip=source_zip, strict_hashes=strict_hashes)
     pins_obj, _ = read_json(pins_path)
     wheel_manifest, _ = read_json(wheel_manifest_path)
+    verify_recovery_wheelhouse(wheelhouse, wheel_manifest)
     pins = {p["sample_id"]: p for p in pins_obj.get("pins", [])}
     wheel_samples = wheel_manifest.get("samples", {})
     api_rows: list[dict[str, Any]] = []
