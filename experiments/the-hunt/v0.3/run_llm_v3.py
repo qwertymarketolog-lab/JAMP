@@ -117,6 +117,8 @@ def _call_openai_compatible(
         if error_number is not None:
             diagnostics["errno"] = error_number
         if isinstance(reason, str):
+            if api_key:
+                reason = reason.replace(api_key, "[REDACTED]")
             diagnostics["error_reason"] = reason[:500]
         return None, type(exc).__name__, diagnostics
     try:

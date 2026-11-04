@@ -746,6 +746,80 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
         self.assertEqual(diagnostics["elapsed_ms"], 12.0)
         self.assertEqual(diagnostics["error_message"], "response body timed out")
 
+    def test_url_error_reason_redacts_api_key_and_records_failed_request(self):
+        secret = "test-anymodel-secret"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prompts_path = root / "prompts.json"
+            responses_path = root / "responses.json"
+            manifest_path = root / "manifest.json"
+            prompts_path.write_text(
+                json.dumps(
+                    {
+                        "samples": [
+                            {
+                                "sample_id": f"sample-{index}",
+                                "package_name": f"package-{index}",
+                                "prompt": f"prompt-{index}",
+                            }
+                            for index in range(100)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            argv = [
+                "run_llm_v3.py",
+                "--provider",
+                "anymodel",
+                "--model",
+                "ds/deepseek-v4-pro",
+                "--limit",
+                "1",
+                "--prompts",
+                str(prompts_path),
+                "--responses",
+                str(responses_path),
+                "--manifest",
+                str(manifest_path),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.dict(os.environ, {"ANYMODEL_API_KEY": secret}),
+                patch.object(
+                    RUN_LLM,
+                    "capture_pre_generation_release",
+                    side_effect=lambda package, *_args: {
+                        "package_name": package,
+                        "resolution_status": "UNRESOLVED",
+                        "temporal_provenance": "UNRESOLVED",
+                    },
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "finalize_wheel_snapshot",
+                    side_effect=lambda record, *_args: record,
+                ),
+                patch.object(
+                    RUN_LLM,
+                    "urlopen",
+                    side_effect=RUN_LLM.URLError(f"proxy rejected {secret}"),
+                ),
+                patch("sys.stdout", new_callable=io.StringIO),
+            ):
+                self.assertEqual(RUN_LLM.main(), 1)
+
+            payload = json.loads(responses_path.read_text(encoding="utf-8"))
+            row = payload["samples"][0]
+            self.assertEqual(row["request_status"], "FAILED")
+            self.assertEqual(row["failure_reason"], "URLError")
+            self.assertEqual(
+                row["provider_error"]["error_reason"],
+                "proxy rejected [REDACTED]",
+            )
+            self.assertIn("[REDACTED]", row["provider_error"]["error_message"])
+            self.assertNotIn(secret, json.dumps(payload))
+
     def test_os_error_number_is_preserved(self):
         with (
             patch.object(
