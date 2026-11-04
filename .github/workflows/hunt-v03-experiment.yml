@@ -86,7 +86,8 @@ jobs:
             --input experiments/the-hunt/v0.3/data/llm_responses_v3.json \
             --manifest experiments/the-hunt/v0.3/data/generation_manifest.json \
             --ground-truth experiments/the-hunt/v0.3/data/ground_truth_v3.json \
-            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json
+            --output experiments/the-hunt/v0.3/data/results/results_v0.3.json \
+            --temporal-snapshot experiments/the-hunt/v0.3/data/generation_snapshot.json
       - name: Upload Full Evidence Bundle
         if: always()
         uses: actions/upload-artifact@v4
