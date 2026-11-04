@@ -11,11 +11,30 @@ from typing import Any
 
 from provenance_checker import check_provenance
 from signature_checker import check_signature
+from temporal_contract import check_signature_from_snapshot, load_generation_snapshot
 
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
 NEGATIVE_LABELS = {"CLEAN", "NOT_HALLUCINATED"}
 DEFINITIVE_PREDICTIONS = {"HALLUCINATION_CAUGHT", "CLEAN"}
 BASELINE_HALLUCINATION = {"SYNTAX_ERROR", "PACKAGE_NOT_FOUND"}
+
+
+def _api_boolean(signature: dict[str, Any]) -> bool | None:
+    if signature.get("status") == "EXISTS":
+        return True
+    if signature.get("status") == "INVALID_SIGNATURE":
+        return False
+    return None
+
+
+def _api_status(signature: dict[str, Any], axis: str) -> str:
+    if signature.get("status") == "EXISTS":
+        return f"VALID_{axis}"
+    if signature.get("status") == "INVALID_SIGNATURE":
+        return f"INVALID_{axis}"
+    if signature.get("reason") == "TEMPORAL_EVIDENCE_MISSING":
+        return "TEMPORAL_EVIDENCE_MISSING"
+    return "INCONCLUSIVE"
 
 
 def _ground_truth(value: Any) -> bool:
@@ -86,7 +105,7 @@ def exact_mcnemar(b: int, c: int) -> float:
     if n == 0:
         return 1.0
     tail = sum(math.comb(n, k) for k in range(min(b, c) + 1)) / (2**n)
-    return min(1.0, 2.0 * tail)
+    return float(min(1.0, 2.0 * tail))
 
 
 def _read_json(path: Path) -> tuple[Any, bytes]:
@@ -99,6 +118,7 @@ def evaluate(
     output_path: Path,
     manifest_path: Path,
     ground_truth_path: Path,
+    temporal_snapshot_path: Path | None = None,
 ) -> dict[str, Any]:
     payload, raw_responses = _read_json(input_path)
     manifest, raw_manifest = _read_json(manifest_path)
@@ -116,6 +136,22 @@ def evaluate(
     response_hash = hashlib.sha256(raw_responses).hexdigest()
     manifest_hash = hashlib.sha256(raw_manifest).hexdigest()
     ground_truth_hash = hashlib.sha256(raw_ground_truth).hexdigest()
+    if temporal_snapshot_path is None:
+        candidate_snapshot = manifest_path.parent / "generation_snapshot.json"
+        temporal_snapshot_path = candidate_snapshot if candidate_snapshot.is_file() else None
+    temporal_snapshot = (
+        load_generation_snapshot(temporal_snapshot_path)
+        if temporal_snapshot_path is not None and temporal_snapshot_path.is_file()
+        else None
+    )
+    if temporal_snapshot is not None:
+        expected_snapshot_hash = manifest.get("generation_snapshot_sha256")
+        if expected_snapshot_hash != temporal_snapshot.get("snapshot_sha256"):
+            raise ValueError("generation snapshot SHA-256 does not match generation manifest")
+    temporal_packages = (
+        temporal_snapshot.get("_packages_by_sample", {})
+        if temporal_snapshot is not None else {}
+    )
     expected_response_hash = manifest.get("llm_responses_sha256")
     if expected_response_hash and expected_response_hash != response_hash:
         raise ValueError("LLM response file SHA-256 does not match generation manifest")
@@ -199,9 +235,11 @@ def evaluate(
             )
             continue
         actual = _ground_truth(label)
+        package_name = truth.get("package_name")
+        if not isinstance(package_name, str) or not package_name.strip():
+            raise ValueError(f"ground truth for {sample_id} lacks a valid package_name")
         request_status = sample.get("request_status")
         if request_status == "ABSTAINED":
-            package_name = truth.get("package_name")
             if (
                 sample.get("package_name") != package_name
                 or sample.get("prompt") != truth.get("prompt")
@@ -263,7 +301,6 @@ def evaluate(
             )
             continue
 
-        package_name = truth.get("package_name")
         if (
             sample.get("package_name") != package_name
             or sample.get("prompt") != truth.get("prompt")
@@ -301,8 +338,14 @@ def evaluate(
             raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
         baseline = _baseline_verdict(code, package_exists)
         provenance = check_provenance(package_name)
-        signature = check_signature(code, package_name)
-        verdict = _jamp_verdict(provenance, signature)
+        signature_now = check_signature(code, package_name)
+        temporal_record = temporal_packages.get(sample_id)
+        signature_then = check_signature_from_snapshot(
+            code, package_name, temporal_record, temporal_snapshot_path.parent
+            if temporal_snapshot_path is not None else manifest_path.parent
+        )
+        signature = signature_then
+        verdict = _jamp_verdict(provenance, signature_then)
         results.append(
             {
                 "sample_id": sample_id,
@@ -315,7 +358,32 @@ def evaluate(
                 "jamp_verdict": verdict,
                 "provenance": provenance,
                 "signature": signature,
+                "signature_now": signature_now,
+                "signature_then": signature_then,
+                "api_valid_now": _api_boolean(signature_now),
+                "api_valid_then": _api_boolean(signature_then),
+                "api_status_now": _api_status(signature_now, "NOW"),
+                "api_status_then": _api_status(signature_then, "THEN"),
+                "temporal_evidence_status": (
+                    temporal_record.get("temporal_provenance", "UNRESOLVED")
+                    if temporal_record else "TEMPORAL_EVIDENCE_MISSING"
+                ),
             }
+        )
+
+    for row in results:
+        temporal_record = temporal_packages.get(row.get("sample_id"))
+        row.setdefault("api_valid_now", None)
+        row.setdefault("api_valid_then", None)
+        row.setdefault("api_status_now", "INCONCLUSIVE")
+        row.setdefault(
+            "api_status_then",
+            "TEMPORAL_EVIDENCE_MISSING" if temporal_record is None else "INCONCLUSIVE",
+        )
+        row.setdefault(
+            "temporal_evidence_status",
+            temporal_record.get("temporal_provenance", "UNRESOLVED")
+            if temporal_record else "TEMPORAL_EVIDENCE_MISSING",
         )
 
     paired = [
@@ -341,6 +409,21 @@ def evaluate(
     abstained_results = [
         row for row in results if row.get("generation_status") == "ABSTAINED"
     ]
+    api_status_now_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("api_status_now")), str)
+    }
+    api_status_then_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("api_status_then")), str)
+    }
+    temporal_evidence_status_values = {
+        value
+        for row in results
+        if isinstance((value := row.get("temporal_evidence_status")), str)
+    }
     report = {
         "schema_version": "jamp-hunt-evaluation-v0.3",
         "evidence_class": "LIVE_LLM_WITH_LIVE_PYPI_PACKAGE_EXISTENCE_LABELS",
@@ -348,6 +431,31 @@ def evaluate(
         "generation_manifest_sha256": manifest_hash,
         "llm_responses_sha256": response_hash,
         "ground_truth_sha256": ground_truth_hash,
+        "generation_snapshot_sha256": (
+            temporal_snapshot.get("snapshot_sha256") if temporal_snapshot else None
+        ),
+        "api_valid_now_counts": {
+            "valid": sum(row.get("api_valid_now") is True for row in results),
+            "invalid": sum(row.get("api_valid_now") is False for row in results),
+            "inconclusive": sum(row.get("api_valid_now") is None for row in results),
+        },
+        "api_valid_then_counts": {
+            "valid": sum(row.get("api_valid_then") is True for row in results),
+            "invalid": sum(row.get("api_valid_then") is False for row in results),
+            "inconclusive": sum(row.get("api_valid_then") is None for row in results),
+        },
+        "api_status_now_counts": {
+            status: sum(row.get("api_status_now") == status for row in results)
+            for status in sorted(api_status_now_values)
+        },
+        "api_status_then_counts": {
+            status: sum(row.get("api_status_then") == status for row in results)
+            for status in sorted(api_status_then_values)
+        },
+        "temporal_evidence_status_counts": {
+            status: sum(row.get("temporal_evidence_status") == status for row in results)
+            for status in sorted(temporal_evidence_status_values)
+        },
         "attempted_sample_count": len(results),
         "successful_generation_count": manifest.get("successful_requests"),
         "failed_generation_count": manifest.get("failed_requests"),
@@ -392,8 +500,11 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=Path("generation_manifest.json"))
     parser.add_argument("--ground-truth", type=Path, default=Path("ground_truth_v3.json"))
     parser.add_argument("--output", type=Path, default=Path("results_v0.3.json"))
+    parser.add_argument("--temporal-snapshot", type=Path)
     args = parser.parse_args()
-    report = evaluate(args.input, args.output, args.manifest, args.ground_truth)
+    report = evaluate(
+        args.input, args.output, args.manifest, args.ground_truth, args.temporal_snapshot
+    )
     print(
         json.dumps(
             {
