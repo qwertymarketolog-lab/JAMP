@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from json_utils import safe_parse_json
 from temporal_contract import (
@@ -28,6 +28,42 @@ PROVIDER_DEFAULTS = {
     "groq": "https://api.groq.com/openai/v1",
     "anymodel": "https://anymodel.org/v1",
 }
+
+
+def validate_anymodel_base_url(url: str) -> str:
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "anymodel.org"
+        or parsed.path.rstrip("/") != "/v1"
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "Security Error: Unauthorized AnyModel base_url. "
+            "Only https://anymodel.org/v1 is allowed."
+        )
+    return "https://anymodel.org/v1"
+
+
+class NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> Request | None:
+        raise HTTPError(
+            newurl,
+            code,
+            "HTTP redirects are disabled for authenticated AnyModel requests",
+            headers,
+            fp,
+        )
+
 
 def _read_prompts(path: Path) -> tuple[dict[str, Any], bytes]:
     raw = path.read_bytes()
@@ -56,6 +92,7 @@ def _call_openai_compatible(
     model_id: str,
     prompt: str,
     max_tokens: int,
+    block_redirects: bool = False,
 ) -> tuple[dict[str, Any] | None, str | None, dict[str, Any] | None]:
     body = json.dumps({
         "model": model_id, "messages": [{"role": "user", "content": prompt}],
@@ -68,7 +105,12 @@ def _call_openai_compatible(
     request_started = time.monotonic()
     request_phase = "request_open"
     try:
-        response = urlopen(request, timeout=TIMEOUT_SECONDS)
+        if block_redirects:
+            response = build_opener(NoRedirectHandler()).open(
+                request, timeout=TIMEOUT_SECONDS
+            )
+        else:
+            response = urlopen(request, timeout=TIMEOUT_SECONDS)
         request_phase = "response_read"
         with response:
             raw = response.read()
@@ -159,6 +201,7 @@ def _call_anymodel(
         model_id=model_id,
         prompt=prompt,
         max_tokens=max_tokens,
+        block_redirects=True,
     )
 
 def main() -> int:
@@ -180,6 +223,12 @@ def main() -> int:
     base_url = (args.base_url or os.environ.get(base_env, PROVIDER_DEFAULTS[provider])).rstrip("/")
     endpoint = f"{base_url}/chat/completions"
     max_tokens = int(os.environ.get("GROQ_MAX_TOKENS", "1024"))
+    if provider == "anymodel":
+        try:
+            base_url = validate_anymodel_base_url(base_url)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+        endpoint = f"{base_url}/chat/completions"
     parsed = urlparse(base_url)
     if not api_key:
         raise SystemExit(f"{key_name} is required")

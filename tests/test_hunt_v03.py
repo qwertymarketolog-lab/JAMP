@@ -676,7 +676,8 @@ class GroqFailureHandlingTests(unittest.TestCase):
                     ],
                 }).encode("utf-8")
 
-        with patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()) as opener:
+        with patch.object(RUN_LLM, "build_opener") as opener:
+            opener.return_value.open.return_value = FakeResponse()
             result, error, diagnostics = RUN_LLM._call_anymodel(
                 api_key="test-anymodel-secret",
                 endpoint="https://anymodel.org/v1/chat/completions",
@@ -689,7 +690,7 @@ class GroqFailureHandlingTests(unittest.TestCase):
         self.assertEqual(result["http_status"], 200)
         self.assertEqual(result["provider_model_id"], "ds/deepseek-v4-pro")
         self.assertEqual(
-            opener.call_args.args[0].full_url,
+            opener.return_value.open.call_args.args[0].full_url,
             "https://anymodel.org/v1/chat/completions",
         )
 
@@ -708,11 +709,13 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
         with (
             patch.object(
                 RUN_LLM,
-                "urlopen",
-                side_effect=TimeoutError("request timed out for test-anymodel-secret"),
-            ),
+                "build_opener",
+            ) as opener,
             patch.object(RUN_LLM.time, "monotonic", side_effect=[10.0, 10.045]),
         ):
+            opener.return_value.open.side_effect = TimeoutError(
+                "request timed out for test-anymodel-secret"
+            )
             response, failure, diagnostics = self._call_anymodel()
 
         self.assertIsNone(response)
@@ -735,9 +738,10 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
                 raise TimeoutError("response body timed out")
 
         with (
-            patch.object(RUN_LLM, "urlopen", return_value=FakeResponse()),
+            patch.object(RUN_LLM, "build_opener") as opener,
             patch.object(RUN_LLM.time, "monotonic", side_effect=[20.0, 20.012]),
         ):
+            opener.return_value.open.return_value = FakeResponse()
             response, failure, diagnostics = self._call_anymodel()
 
         self.assertIsNone(response)
@@ -802,11 +806,13 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
                 ),
                 patch.object(
                     RUN_LLM,
-                    "urlopen",
-                    side_effect=RUN_LLM.URLError(f"proxy rejected {secret}"),
-                ),
+                    "build_opener",
+                ) as opener,
                 patch("sys.stdout", new_callable=io.StringIO),
             ):
+                opener.return_value.open.side_effect = RUN_LLM.URLError(
+                    f"proxy rejected {secret}"
+                )
                 self.assertEqual(RUN_LLM.main(), 1)
 
             payload = json.loads(responses_path.read_text(encoding="utf-8"))
@@ -824,11 +830,11 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
         with (
             patch.object(
                 RUN_LLM,
-                "urlopen",
-                side_effect=OSError(5, "Input/output error"),
-            ),
+                "build_opener",
+            ) as opener,
             patch.object(RUN_LLM.time, "monotonic", side_effect=[30.0, 30.025]),
         ):
+            opener.return_value.open.side_effect = OSError(5, "Input/output error")
             response, failure, diagnostics = self._call_anymodel()
 
         self.assertIsNone(response)
