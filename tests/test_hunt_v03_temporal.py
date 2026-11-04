@@ -275,6 +275,7 @@ class TemporalSnapshotTests(unittest.TestCase):
             self.assertEqual(result["jamp_verdict"], "CLEAN")
             self.assertEqual(report["api_valid_now_counts"]["invalid"], 1)
             self.assertEqual(report["api_valid_then_counts"]["valid"], 1)
+
     def test_post_generation_only_record_cannot_claim_valid_then(self):
         record = {
             "package_name": "samplepkg",
