@@ -50,7 +50,16 @@ class GroundTruthHarnessContractTests(unittest.TestCase):
             {"api_valid": False, "static_api_valid": True},
             {"api_valid": True, "static_api_valid": False},
             {"api_valid": None, "static_api_valid": True},
-            {"api_valid": True, "static_api_valid": None},
+            {
+                "api_valid": True,
+                "static_api_valid": None,
+                "static_result": {"status": "INCONCLUSIVE"},
+            },
+            {
+                "api_valid": True,
+                "static_api_valid": None,
+                "static_result": {"status": "NOT_APPLICABLE"},
+            },
         ]
         result = HARNESS._metrics(rows)
         self.assertEqual(
@@ -58,10 +67,12 @@ class GroundTruthHarnessContractTests(unittest.TestCase):
             (1, 1, 1, 1),
         )
         self.assertEqual(result["resolved_case_count"], 4)
-        self.assertEqual(result["total_case_count"], 6)
-        self.assertAlmostEqual(result["coverage"], 4 / 6)
+        self.assertEqual(result["total_case_count"], 7)
+        self.assertAlmostEqual(result["coverage"], 4 / 7)
         self.assertEqual(result["ground_truth_unknown_count"], 1)
         self.assertEqual(result["static_inconclusive_count"], 1)
+        self.assertEqual(result["static_not_applicable_count"], 1)
+        self.assertEqual(result["static_unknown_count"], 2)
         self.assertEqual(result["precision"], 0.5)
         self.assertEqual(result["recall"], 0.5)
 

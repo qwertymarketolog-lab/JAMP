@@ -316,7 +316,19 @@ def _metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "resolved_case_count": len(resolved), "total_case_count": len(rows),
         "coverage": len(resolved) / len(rows) if rows else None,
         "ground_truth_unknown_count": sum(row.get("api_valid") is None for row in rows),
-        "static_inconclusive_count": sum(row.get("static_api_valid") is None for row in rows),
+        "static_inconclusive_count": sum(
+            isinstance(row.get("static_result"), dict)
+            and row["static_result"].get("status") == "INCONCLUSIVE"
+            for row in rows
+        ),
+        "static_not_applicable_count": sum(
+            isinstance(row.get("static_result"), dict)
+            and row["static_result"].get("status") == "NOT_APPLICABLE"
+            for row in rows
+        ),
+        "static_unknown_count": sum(
+            row.get("static_api_valid") is None for row in rows
+        ),
         "precision": tp / predicted_positive if predicted_positive else None,
         "recall": tp / actual_positive if actual_positive else None,
     }
