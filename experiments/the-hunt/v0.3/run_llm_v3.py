@@ -11,6 +11,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from temporal_contract import (
+    capture_generation_environment,
+    capture_pre_generation_release,
+    finalize_wheel_snapshot,
+    write_generation_snapshot,
+)
+
 TEMPERATURE = 0.7
 TIMEOUT_SECONDS = 45
 USER_AGENT = "JAMP-The-Hunt-v0.3-Experiment"
@@ -157,6 +164,10 @@ def main() -> int:
     samples = prompts["samples"][:args.limit]
     prompt_hash = hashlib.sha256(raw_prompts).hexdigest()
     started_at = datetime.now(UTC).isoformat()
+    generation_environment = capture_generation_environment()
+    temporal_packages = []
+    wheelhouse = args.manifest.parent / "wheelhouse"
+    snapshot_path = args.manifest.parent / "generation_snapshot.json"
     results, provider_model_ids = [], set()
     call = _call_groq if provider == "groq" else _call_anymodel
     for sample in samples:
@@ -167,6 +178,7 @@ def main() -> int:
         package_name = sample.get("package_name")
         if not all(isinstance(value, str) and value for value in (sample_id, prompt, package_name)):
             raise ValueError("each prompt requires sample_id, package_name, and prompt")
+        package_snapshot = capture_pre_generation_release(package_name)
         timestamp = datetime.now(UTC).isoformat()
         response, failure, provider_error = call(
             api_key=api_key,
@@ -175,6 +187,12 @@ def main() -> int:
             prompt=prompt,
             max_tokens=max_tokens,
         )
+        package_snapshot = finalize_wheel_snapshot(
+            package_snapshot, wheelhouse, sample_id
+        )
+        package_snapshot["sample_id"] = sample_id
+        package_snapshot["generation_request_timestamp_utc"] = timestamp
+        temporal_packages.append(package_snapshot)
         if failure or response is None:
             row = {
                 "sample_id": sample_id, "package_name": package_name, "prompt": prompt,
@@ -244,6 +262,18 @@ def main() -> int:
         "request_count": len(results), "llm_responses_sha256": response_hash,
         "llm_responses_file": args.responses.name,
     }
+    snapshot_hash = write_generation_snapshot(
+        snapshot_path,
+        generation_timestamp_utc=started_at,
+        provider_name=provider,
+        requested_model_id=model_id,
+        provider_model_id=manifest["provider_model_id"],
+        generation_environment=generation_environment,
+        packages=temporal_packages,
+    )
+    manifest["generation_snapshot_file"] = snapshot_path.name
+    manifest["generation_snapshot_sha256"] = snapshot_hash
+    manifest["generation_environment_snapshot"] = generation_environment
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(
         json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
