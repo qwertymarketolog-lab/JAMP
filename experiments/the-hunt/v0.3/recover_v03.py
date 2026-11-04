@@ -533,7 +533,7 @@ def evaluate(
             "python_version": platform.python_version(),
             "platform": platform.platform(),
             "installed_distributions": sorted(
-                {dist.metadata.get("Name", "unknown"): dist.version
+                {dist.metadata["Name"]: dist.version
                  for dist in importlib.metadata.distributions()}.items()
             ),
         },
