@@ -62,6 +62,10 @@ class TemporalSnapshotTests(unittest.TestCase):
         self.assertEqual(record["resolution_status"], "PINNED_BEFORE_GENERATION")
         self.assertEqual(record["temporal_provenance"], "PRE_GENERATION_REGISTRY_SNAPSHOT")
         self.assertIsNotNone(record["metadata_observed_timestamp_utc"])
+        self.assertEqual(
+            record["pypi_metadata_hash_method"],
+            "canonical_json_utf8_sorted_compact",
+        )
 
     def test_installed_generation_version_is_pinned_instead_of_latest(self):
         wheel = wheel_bytes("def ok():\n    return True\n")
@@ -85,6 +89,7 @@ class TemporalSnapshotTests(unittest.TestCase):
             record = TEMPORAL.capture_pre_generation_release("samplepkg", environment)
         self.assertEqual(record["resolution_status"], "UNRESOLVED")
         self.assertEqual(record["resolution_reason"], "multiple_generation_environment_versions")
+
     def test_unavailable_pypi_is_unresolved_not_live_fallback(self):
         with patch.object(TEMPORAL, "fetch_pypi_json", return_value=(503, None)):
             record = TEMPORAL.capture_pre_generation_release("samplepkg")
