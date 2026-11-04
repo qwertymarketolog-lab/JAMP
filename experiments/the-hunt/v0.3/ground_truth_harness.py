@@ -261,7 +261,11 @@ def _load_signature_checker():
     return signature_checker
 
 
-def _static_probe(signature_checker: Any, wheel_bytes: bytes, case: dict[str, Any]) -> dict[str, Any]:
+def _static_probe(
+    signature_checker: Any,
+    wheel_bytes: bytes,
+    case: dict[str, Any],
+) -> dict[str, Any]:
     call = case.get("static_call")
     if not isinstance(call, dict):
         return {
@@ -323,7 +327,10 @@ def run_harness(wheelhouse: Path, manifest_path: Path, output_path: Path) -> dic
 
     manifest_bytes = manifest_path.read_bytes()
     manifest = json.loads(manifest_bytes.decode("utf-8"))
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != "jamp.hunt.wheelhouse.v1":
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema_version") != "jamp.hunt.wheelhouse.v1"
+    ):
         raise ValueError("unsupported wheelhouse manifest schema")
     _validate_target_metadata(manifest)
     wheel_paths = _validate_wheelhouse(wheelhouse, manifest)
