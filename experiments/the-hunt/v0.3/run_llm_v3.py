@@ -178,7 +178,9 @@ def main() -> int:
         package_name = sample.get("package_name")
         if not all(isinstance(value, str) and value for value in (sample_id, prompt, package_name)):
             raise ValueError("each prompt requires sample_id, package_name, and prompt")
-        package_snapshot = capture_pre_generation_release(package_name)
+        package_snapshot = capture_pre_generation_release(
+            package_name, generation_environment
+        )
         timestamp = datetime.now(UTC).isoformat()
         response, failure, provider_error = call(
             api_key=api_key,
