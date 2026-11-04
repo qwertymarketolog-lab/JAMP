@@ -5,11 +5,11 @@ import hashlib
 import importlib.util
 import io
 import json
+from pathlib import Path
 import sys
 import tempfile
 import unittest
 import zipfile
-from pathlib import Path
 from unittest.mock import patch
 
 BASE = Path(__file__).parents[1] / "experiments/the-hunt/v0.3"
