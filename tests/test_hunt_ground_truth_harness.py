@@ -224,10 +224,10 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
     def test_augmented_all_assignment_is_inconclusive(self):
         wheel = self._wheel({
             "sample/api.py": (
-                "__all__ = ['present']\\n"
-                "__all__ += ['hidden']\\n"
-                "def present(): pass\\n"
-                "def hidden(): pass\\n"
+                "__all__ = ['present']\n"
+                "__all__ += ['hidden']\n"
+                "def present(): pass\n"
+                "def hidden(): pass\n"
             ),
         })
         result = SIGNATURE_CHECKER.inspect_wheel_bytes(
@@ -244,10 +244,10 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
     def test_all_append_mutation_is_inconclusive(self):
         wheel = self._wheel({
             "sample/api.py": (
-                "__all__ = ['present']\\n"
-                "__all__.append('hidden')\\n"
-                "def present(): pass\\n"
-                "def hidden(): pass\\n"
+                "__all__ = ['present']\n"
+                "__all__.append('hidden')\n"
+                "def present(): pass\n"
+                "def hidden(): pass\n"
             ),
         })
         result = SIGNATURE_CHECKER.inspect_wheel_bytes(
@@ -264,10 +264,10 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
     def test_all_extend_mutation_is_inconclusive(self):
         wheel = self._wheel({
             "sample/api.py": (
-                "__all__ = ['present']\\n"
-                "__all__.extend(['hidden'])\\n"
-                "def present(): pass\\n"
-                "def hidden(): pass\\n"
+                "__all__ = ['present']\n"
+                "__all__.extend(['hidden'])\n"
+                "def present(): pass\n"
+                "def hidden(): pass\n"
             ),
         })
         result = SIGNATURE_CHECKER.inspect_wheel_bytes(
