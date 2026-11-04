@@ -45,6 +45,10 @@ jobs:
           printf 'SANDBOX_IMAGE_ID=%s\n' "$IMAGE_ID" \
             | tee wheel-ground-truth-output/sandbox-image.txt
 
+          # Root inside Docker may be user-namespace mapped on hosted runners.
+          # Make only the artifact output directory writable; wheelhouse stays read-only.
+          chmod 777 wheel-ground-truth-output
+
           docker run --rm \
             --network none \
             --memory=1g \
@@ -57,6 +61,7 @@ jobs:
             --mount "type=bind,src=$PWD/wheel-ground-truth-output/wheelhouse,dst=/wheelhouse,readonly" \
             --mount "type=bind,src=$PWD/wheel-ground-truth-output,dst=/output" \
             --mount "type=bind,src=$PWD/experiments/the-hunt/v0.3,dst=/src,readonly" \
+            -e HOME=/tmp \
             -e JAMP_GROUND_TRUTH_SANDBOX=docker-network-none \
             -e JAMP_GROUND_TRUTH_NETWORK=none \
             -e JAMP_SANDBOX_IMAGE_ID="$IMAGE_ID" \
@@ -64,6 +69,7 @@ jobs:
               python -m venv /tmp/hunt-venv
               /tmp/hunt-venv/bin/python -m pip install \
                 --disable-pip-version-check \
+                --no-cache-dir \
                 --no-index \
                 --find-links=/wheelhouse \
                 --report=/output/install-report.json \
@@ -78,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hunt-v032-wheel-ground-truth-\${{ github.run_id }}
+          name: hunt-v032-wheel-ground-truth-${{ github.run_id }}
           path: wheel-ground-truth-output/
           if-no-files-found: warn
           retention-days: 30
