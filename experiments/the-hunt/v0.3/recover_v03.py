@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
-import importlib.metadata
 import json
 import os
 import platform
@@ -18,7 +17,6 @@ import re
 import resource
 import subprocess
 import sys
-import tempfile
 import time
 import venv
 import zipfile
