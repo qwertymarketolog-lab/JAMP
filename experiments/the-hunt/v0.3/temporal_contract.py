@@ -92,6 +92,7 @@ def capture_pre_generation_release(
         "generation_environment_version": None,
         "wheel_url": None,
         "wheel_relative_path": None,
+        "wheel_sha256_observed": None,
     }
     try:
         status, metadata = fetch_pypi_json(package_name)
