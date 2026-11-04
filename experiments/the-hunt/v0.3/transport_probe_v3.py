@@ -8,6 +8,7 @@ import os
 import socket
 import ssl
 import time
+from typing import cast
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -82,7 +83,7 @@ def run_probe(base_url: str, api_key: str) -> dict[str, object]:
         try:
             with (
                 socket.create_connection(
-                    (ip, port), timeout=TIMEOUT_SECONDS
+                    (cast(str, ip), port), timeout=TIMEOUT_SECONDS
                 ) as raw_socket,
                 context.wrap_socket(
                     raw_socket, server_hostname=hostname
@@ -91,7 +92,7 @@ def run_probe(base_url: str, api_key: str) -> dict[str, object]:
                 result["tls_version"] = tls_socket.version()
                 certificate = tls_socket.getpeercert(binary_form=True)
                 result["peer_certificate_sha256"] = hashlib.sha256(
-                    certificate
+                    cast(bytes, certificate)
                 ).hexdigest()
             result["tls_handshake"] = "success"
             tls_error = None
