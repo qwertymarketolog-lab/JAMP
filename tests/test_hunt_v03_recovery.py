@@ -97,7 +97,7 @@ class RecoveryTests(unittest.TestCase):
             self._source_fixture(root)
             path = root / "generation_snapshot.json"
             snapshot = json.loads(path.read_text())
-            snapshot["provider_model_id"] = "other/model"
+            snapshot["tamper_marker"] = "changed-without-rehash"
             path.write_text(json.dumps(snapshot))
             with self.assertRaisesRegex(ValueError, "canonical SHA-256 mismatch"):
                 RECOVERY.validate_source_artifact(root, strict_hashes=False)
