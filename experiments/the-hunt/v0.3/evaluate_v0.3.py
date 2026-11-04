@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 from typing import Any
 
+from api_ground_truth import api_valid_matrix, package_exists_matrix, validate_api_ground_truth
 from provenance_checker import check_provenance
 from signature_checker import check_signature
 from temporal_contract import (
@@ -16,7 +17,6 @@ from temporal_contract import (
     check_signature_from_snapshot,
     load_generation_snapshot,
 )
-from api_ground_truth import api_valid_matrix, package_exists_matrix, validate_api_ground_truth
 
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
 NEGATIVE_LABELS = {"CLEAN", "NOT_HALLUCINATED"}

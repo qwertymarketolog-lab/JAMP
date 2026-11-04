@@ -396,7 +396,8 @@ def check_signature_from_recovery(
     ):
         return {"status": "INCONCLUSIVE", "reason": "TEMPORAL_EVIDENCE_MISSING"}
 
-    normalize = lambda value: re.sub(r"[-_.]+", "-", value).lower()
+    def normalize(value: str) -> str:
+        return re.sub(r"[-_.]+", "-", value).lower()
     matching = [
         wheel for wheel in recovery_wheels
         if isinstance(wheel, dict)

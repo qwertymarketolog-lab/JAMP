@@ -587,7 +587,7 @@ def _hunt_extended_index(
                 for target in assignment_targets
             ) or not isinstance(assignment_value, ast.Dict):
                 continue
-            for key_node, value_node in zip(assignment_value.keys, assignment_value.values):
+            for key_node, value_node in zip(assignment_value.keys, assignment_value.values, strict=True):
                 try:
                     exported_name = ast.literal_eval(key_node)
                 except (ValueError, TypeError, SyntaxError):

@@ -14,7 +14,9 @@ API_METHOD = "AST_STATIC_IMPORT_ATTRIBUTE_CALLABILITY_RUNTIME_PROBE"
 
 
 def _canonical_row_sha256(row: dict[str, Any]) -> str:
-    raw = json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    raw = json.dumps(
+        row, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
