@@ -152,7 +152,7 @@ class SignatureCheckerRegressionTests(unittest.TestCase):
     def test_pydantic_dynamic_export_map_resolves_base_model(self):
         wheel = make_wheel({
             "pydantic/__init__.py": (
-                "_dynamic_imports = {'BaseModel': (__spec__.parent, '.main')}\n"
+                "_dynamic_imports: dict = {'BaseModel': (__spec__.parent, '.main')}\n"
                 "def __getattr__(name):\n"
                 "    raise AttributeError(name)\n"
             ),

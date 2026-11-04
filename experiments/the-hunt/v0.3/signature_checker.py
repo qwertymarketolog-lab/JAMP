@@ -574,14 +574,20 @@ def _hunt_extended_index(
         # Resolve literal lazy-export maps without executing package code.
         # Pydantic uses (__spec__.parent, ".main") to expose BaseModel.
         for statement in tree.body:
-            if not isinstance(statement, ast.Assign):
+            if isinstance(statement, ast.Assign):
+                assignment_targets = statement.targets
+                assignment_value = statement.value
+            elif isinstance(statement, ast.AnnAssign):
+                assignment_targets = [statement.target]
+                assignment_value = statement.value
+            else:
                 continue
             if not any(
                 isinstance(target, ast.Name) and target.id == "_dynamic_imports"
-                for target in statement.targets
-            ) or not isinstance(statement.value, ast.Dict):
+                for target in assignment_targets
+            ) or not isinstance(assignment_value, ast.Dict):
                 continue
-            for key_node, value_node in zip(statement.value.keys, statement.value.values):
+            for key_node, value_node in zip(assignment_value.keys, assignment_value.values):
                 try:
                     exported_name = ast.literal_eval(key_node)
                 except (ValueError, TypeError, SyntaxError):
