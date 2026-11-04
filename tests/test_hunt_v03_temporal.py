@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import json
 import sys
@@ -14,6 +15,14 @@ from unittest.mock import patch
 BASE = Path(__file__).parents[1] / "experiments/the-hunt/v0.3"
 sys.path.insert(0, str(BASE))
 import temporal_contract as TEMPORAL  # noqa: E402
+
+EVALUATOR_SPEC = importlib.util.spec_from_file_location(
+    "hunt_v03_temporal_evaluator", BASE / "evaluate_v0.3.py"
+)
+assert EVALUATOR_SPEC is not None and EVALUATOR_SPEC.loader is not None
+EVALUATOR = importlib.util.module_from_spec(EVALUATOR_SPEC)
+sys.modules[EVALUATOR_SPEC.name] = EVALUATOR
+EVALUATOR_SPEC.loader.exec_module(EVALUATOR)
 
 
 def wheel_bytes(source: str) -> bytes:
@@ -179,6 +188,93 @@ class TemporalSnapshotTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
                 TEMPORAL.load_generation_snapshot(path)
 
+    def test_evaluator_keeps_api_valid_now_and_then_separate(self):
+        wheel = wheel_bytes("def ok():\n    return True\n")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wheelhouse = root / "wheelhouse"
+            wheelhouse.mkdir()
+            (wheelhouse / "sample-0.whl").write_bytes(wheel)
+            package_record = {
+                "sample_id": "sample-0",
+                "package_name": "samplepkg",
+                "pypi_version": "2.0",
+                "wheel_filename": "samplepkg-2.0-py3-none-any.whl",
+                "wheel_sha256": hashlib.sha256(wheel).hexdigest(),
+                "wheel_relative_path": "wheelhouse/sample-0.whl",
+                "resolution_status": "RESOLVED",
+                "temporal_provenance": "PRE_GENERATION_REGISTRY_SNAPSHOT",
+            }
+            snapshot_path = root / "generation_snapshot.json"
+            snapshot_hash = TEMPORAL.write_generation_snapshot(
+                snapshot_path,
+                generation_timestamp_utc="2026-11-04T06:00:00Z",
+                provider_name="anymodel",
+                requested_model_id="test/model",
+                provider_model_id="test/model",
+                generation_environment={"installed_distributions": []},
+                packages=[package_record],
+            )
+            response_rows = []
+            truth_rows = []
+            for index in range(100):
+                sample_id = f"sample-{index}"
+                response_rows.append({
+                    "sample_id": sample_id,
+                    "package_name": "samplepkg",
+                    "prompt": f"prompt-{index}",
+                    "request_status": "SUCCESS" if index == 0 else "ABSTAINED",
+                    "code": "import samplepkg\nsamplepkg.ok()" if index == 0 else "",
+                })
+                truth_rows.append({
+                    "sample_id": sample_id,
+                    "package_name": "samplepkg",
+                    "prompt": f"prompt-{index}",
+                    "ground_truth": "CLEAN",
+                    "pypi_exists": True,
+                })
+            response_path = root / "responses.json"
+            response_bytes = (
+                json.dumps({"samples": response_rows}, indent=2, sort_keys=True) + "\n"
+            ).encode()
+            response_path.write_bytes(response_bytes)
+            prompt_hash = "a" * 64
+            truth_path = root / "ground_truth.json"
+            truth_path.write_text(json.dumps({
+                "prompt_dataset_sha256": prompt_hash,
+                "samples": truth_rows,
+            }), encoding="utf-8")
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(json.dumps({
+                "llm_responses_sha256": hashlib.sha256(response_bytes).hexdigest(),
+                "prompt_dataset_sha256": prompt_hash,
+                "provider_name": "anymodel",
+                "temperature": 0.7,
+                "requested_model_id": "test/model",
+                "request_count": 100,
+                "successful_requests": 1,
+                "abstained_requests": 99,
+                "failed_requests": 0,
+                "generation_snapshot_sha256": snapshot_hash,
+            }), encoding="utf-8")
+            with (
+                patch.object(EVALUATOR, "check_provenance", return_value={"status": "TRUSTED"}),
+                patch.object(
+                    EVALUATOR,
+                    "check_signature",
+                    return_value={"status": "INVALID_SIGNATURE", "reason": "live-current-wheel"},
+                ),
+            ):
+                report = EVALUATOR.evaluate(
+                    response_path, root / "result.json", manifest_path, truth_path, snapshot_path
+                )
+            result = next(row for row in report["results"] if row["sample_id"] == "sample-0")
+            self.assertFalse(result["api_valid_now"])
+            self.assertTrue(result["api_valid_then"])
+            self.assertEqual(result["temporal_evidence_status"], "PRE_GENERATION_REGISTRY_SNAPSHOT")
+            self.assertEqual(result["jamp_verdict"], "CLEAN")
+            self.assertEqual(report["api_valid_now_counts"]["invalid"], 1)
+            self.assertEqual(report["api_valid_then_counts"]["valid"], 1)
     def test_post_generation_only_record_cannot_claim_valid_then(self):
         record = {
             "package_name": "samplepkg",
