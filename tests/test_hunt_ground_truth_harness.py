@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import importlib.util
 import io
-import zipfile
 import sys
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "experiments" / "the-hunt" / "v0.3"
 sys.path.insert(0, str(BASE))
-import signature_checker as SIGNATURE_CHECKER
+SIGNATURE_CHECKER = importlib.import_module("signature_checker")
 
 SPEC = importlib.util.spec_from_file_location(
     "hunt_ground_truth_harness", BASE / "ground_truth_harness.py"
@@ -27,6 +27,20 @@ class GroundTruthHarnessContractTests(unittest.TestCase):
         case_ids = [case["case_id"] for case in HARNESS.CASE_DEFINITIONS]
         self.assertEqual(len(case_ids), 12)
         self.assertEqual(len(set(case_ids)), 12)
+
+
+    def test_c07_static_probe_matches_runtime_star_import_target(self):
+        case = next(
+            item for item in HARNESS.CASE_DEFINITIONS if item["case_id"] == "C07"
+        )
+        self.assertEqual(
+            case["static_call"],
+            {
+                "operation": "star_import",
+                "module": "httpx._api",
+                "symbol_path": ["get"],
+            },
+        )
 
     def test_runtime_expectations_are_not_prelabelled(self):
         for case in HARNESS.CASE_DEFINITIONS:
