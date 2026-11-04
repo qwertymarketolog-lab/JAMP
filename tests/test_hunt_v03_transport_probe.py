@@ -6,10 +6,10 @@ import io
 import socket
 import sys
 from email.message import Message
-from urllib.error import HTTPError
-from urllib.request import Request
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.request import Request
 
 _PROBE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -119,3 +119,18 @@ def test_redirect_to_unauthorized_domain_is_blocked() -> None:
         assert exc.url == "https://evil.com/steal"
     else:
         raise AssertionError("redirect must be blocked before forwarding credentials")
+
+    try:
+        _RUNNER.NoRedirectHandler().redirect_request(
+            request,
+            io.BytesIO(b""),
+            302,
+            "Found",
+            Message(),
+            "https://evil.com/steal",
+        )
+    except HTTPError as exc:
+        assert exc.code == 302
+        assert exc.url == "https://evil.com/steal"
+    else:
+        raise AssertionError("generation redirect must be blocked")
