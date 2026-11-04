@@ -60,16 +60,30 @@ def test_requests_style_reexport_resolves_to_exists() -> None:
     assert result["unresolved_calls"] == []
 
 
-def test_binary_extension_makes_missing_python_symbol_inconclusive() -> None:
+def test_binary_extension_on_symbol_path_remains_inconclusive() -> None:
     wheel = make_wheel(
         {
             "samplepkg/__init__.py": "'''pure python facade'''\n",
-            "samplepkg/_native.so": b"binary-placeholder",
+            "samplepkg/_native.cpython-314-x86_64-linux-gnu.so": b"binary-placeholder",
         }
     )
-    result = check_with_wheel("import samplepkg\nsamplepkg.native_call()", wheel)
+    result = check_with_wheel(
+        "import samplepkg\nsamplepkg._native.native_call()", wheel
+    )
     assert result["status"] == "INCONCLUSIVE"
     assert result["reason"] == "binary_extension_not_inspected"
+
+
+def test_unrelated_binary_extension_does_not_block_missing_symbol() -> None:
+    wheel = make_wheel(
+        {
+            "samplepkg/__init__.py": "def known_api():\n    return None\n",
+            "samplepkg/_unrelated.cpython-314-x86_64-linux-gnu.so": b"binary-placeholder",
+        }
+    )
+    result = check_with_wheel("import samplepkg\nsamplepkg.missing_api()", wheel)
+    assert result["status"] == "INVALID_SIGNATURE"
+    assert result["reason"] == "symbol_missing"
 
 
 def test_module_getattr_makes_missing_symbol_inconclusive() -> None:

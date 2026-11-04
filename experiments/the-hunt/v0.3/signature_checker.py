@@ -688,6 +688,65 @@ def _hunt_dynamic_resolution_relevant(
     return False
 
 
+def _hunt_binary_module_names(binary_members: list[str]) -> set[str]:
+    """Map safe extension-wheel paths to importable module names."""
+    modules: set[str] = set()
+    for filename in binary_members:
+        path = _safe_member_path(filename)
+        if (
+            path is None
+            or any(part.endswith((".dist-info", ".data")) for part in path.parts)
+        ):
+            continue
+        suffix = path.suffix.lower()
+        if suffix not in {".so", ".pyd"}:
+            continue
+        stem = path.name[: -len(suffix)].split(".", 1)[0]
+        if stem:
+            modules.add(".".join([*path.parts[:-1], stem]))
+    return modules
+
+
+def _hunt_binary_resolution_relevant(
+    base_module: str,
+    symbol_path: list[str],
+    modules: set[str],
+    reexports: dict[str, dict[str, tuple[str, str]]],
+    binary_modules: set[str],
+) -> bool:
+    """Return whether an extension module lies on this symbol's resolution path."""
+    if not symbol_path:
+        return False
+
+    queue: list[tuple[str, tuple[str, ...]]] = [
+        (base_module, tuple(symbol_path))
+    ]
+    visited: set[tuple[str, tuple[str, ...]]] = set()
+
+    while queue:
+        module_name, path = queue.pop(0)
+        state = (module_name, path)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        # Include the leaf: a binary submodule may itself be the requested symbol.
+        for split in range(len(path) + 1):
+            candidate_module = ".".join([module_name, *path[:split]])
+            if candidate_module in binary_modules:
+                return True
+            if split == len(path) or candidate_module not in modules:
+                continue
+            exported = reexports.get(candidate_module, {}).get(path[split])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module:
+                    queue.append(
+                        (target_module, (target_symbol, *path[split + 1 :]))
+                    )
+    return False
+
+
 def inspect_wheel_bytes(
     wheel_bytes: bytes,
     calls: list[dict[str, Any]],
@@ -720,6 +779,7 @@ def inspect_wheel_bytes(
             all_names,
             all_declared,
         ) = _hunt_extended_index(sources)
+        binary_modules = _hunt_binary_module_names(binary_members)
     except (
         OSError,
         UnicodeDecodeError,
@@ -776,7 +836,18 @@ def inspect_wheel_bytes(
             if any(call.get("operation") == "star_import" for call in inconclusive_calls)
             else "dynamic_attribute_present"
         )
-    elif unresolved and binary_members:
+    elif unresolved and any(
+        _hunt_binary_resolution_relevant(
+            call["module"],
+            call["symbol_path"],
+            modules,
+            reexports,
+            binary_modules,
+        )
+        for call in unresolved
+        if isinstance(call.get("module"), str)
+        and isinstance(call.get("symbol_path"), list)
+    ):
         status = "INCONCLUSIVE"
         reason = "binary_extension_not_inspected"
     elif unresolved and any(
