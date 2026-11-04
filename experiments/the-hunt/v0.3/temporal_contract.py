@@ -88,6 +88,10 @@ def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
         if status != 200 or not isinstance(metadata, dict):
             record["resolution_reason"] = "pypi_metadata_unavailable"
             return record
+        metadata_bytes = json.dumps(
+            metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        record["pypi_metadata_sha256"] = hashlib.sha256(metadata_bytes).hexdigest()
         releases = metadata.get("releases")
         if not isinstance(releases, dict):
             record["resolution_reason"] = "pypi_releases_missing"
