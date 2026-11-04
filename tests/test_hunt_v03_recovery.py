@@ -134,6 +134,22 @@ __import__(resolve_module_name())
         self.assertFalse(unresolved)
         self.assertIn({"module": "json", "attributes": [], "callable": False}, probes)
 
+    def test_wheel_manifest_rejects_source_distributions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wheelhouse = root / "wheelhouse"
+            sample = wheelhouse / "s1"
+            sample.mkdir(parents=True)
+            (sample / "pkg-1.0.tar.gz").write_bytes(b"sdist")
+            pins = {"pins": [{"sample_id": "s1", "package_name": "pkg",
+                              "version": "1.0", "requirement": "pkg==1.0"}]}
+            (root / "pins.json").write_text(json.dumps(pins))
+            (root / "download.tsv").write_text("s1\\tSUCCESS\\n")
+            with self.assertRaisesRegex(ValueError, "non-wheel"):
+                RECOVERY.build_wheel_manifest(
+                    wheelhouse, root / "pins.json", root / "download.tsv", root / "manifest.json"
+                )
+
     def test_wheel_manifest_marks_missing_compatible_wheel_inconclusive(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

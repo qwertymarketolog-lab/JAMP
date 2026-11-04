@@ -212,9 +212,10 @@ def validate_source_artifact(
         for key in ("package_name", "prompt"):
             if not isinstance(row.get(key), str) or not row[key]:
                 raise ValueError(f"response {key} missing for {sample_id}")
-            if row[key] != gt.get(key) or row[key] != prompt.get(key) or row[key] != snap_row.get("package_name"):
-                if key == "package_name" or row.get(key) != gt.get(key) or row.get(key) != prompt.get(key):
-                    raise ValueError(f"{key} mismatch across source files for {sample_id}")
+            if row[key] != gt.get(key) or row[key] != prompt.get(key):
+                raise ValueError(f"{key} mismatch across source files for {sample_id}")
+        if row["package_name"] != snap_row.get("package_name"):
+            raise ValueError(f"package_name mismatch between response and snapshot for {sample_id}")
         if type(gt.get("pypi_exists")) is not bool:
             raise ValueError(f"original package-existence label is not boolean for {sample_id}")
         label = "CLEAN" if gt["pypi_exists"] else "HALLUCINATION"
@@ -373,9 +374,16 @@ def build_wheel_manifest(
                 "download_status": status[sample_id],
                 "direct_wheel": direct, "wheels": records,
             }
-    unexpected = [p.name for p in wheelhouse.iterdir() if not p.is_dir()]
+    unexpected = [
+        str(path.relative_to(wheelhouse))
+        for path in wheelhouse.rglob("*")
+        if path.is_symlink() or (path.is_file() and path.suffix != ".whl")
+    ]
     if unexpected:
-        raise ValueError(f"wheelhouse root contains unexpected files: {unexpected}")
+        raise ValueError(f"wheelhouse contains non-wheel or symlink entries: {unexpected}")
+    root_files = [path.name for path in wheelhouse.iterdir() if path.is_file()]
+    if root_files:
+        raise ValueError(f"wheelhouse root contains files outside per-sample directories: {root_files}")
     manifest = {
         "schema_version": "jamp.hunt.recovery-wheelhouse.v2",
         "target": "CPython 3.11 Linux x86_64",
@@ -556,9 +564,12 @@ def verify_recovery_wheelhouse(wheelhouse: Path, manifest: dict[str, Any]) -> No
             raise ValueError(f"recovery wheel SHA-256 mismatch: {relative}")
         if actual.stat().st_size != record.get("size_bytes"):
             raise ValueError(f"recovery wheel size mismatch: {relative}")
+    all_files = [path for path in wheelhouse.rglob("*") if path.is_file()]
+    if any(path.is_symlink() or path.suffix != ".whl" for path in all_files):
+        raise ValueError("recovery wheelhouse contains a non-wheel or symlink entry")
     observed = {
         str(path.relative_to(wheelhouse)).replace(os.sep, "/"): sha256_file(path)
-        for path in wheelhouse.rglob("*.whl")
+        for path in all_files
     }
     if observed != expected:
         raise ValueError("recovery wheelhouse files differ from manifest")
