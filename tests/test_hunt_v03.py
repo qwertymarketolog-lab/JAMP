@@ -807,7 +807,7 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
                 patch.object(
                     RUN_LLM,
                     "build_opener",
-                ),
+                ) as opener,
                 patch("sys.stdout", new_callable=io.StringIO),
             ):
                 opener.return_value.open.side_effect = RUN_LLM.URLError(
@@ -831,7 +831,7 @@ class ProviderTransportDiagnosticsTests(unittest.TestCase):
             patch.object(
                 RUN_LLM,
                 "build_opener",
-            ),
+            ) as opener,
             patch.object(RUN_LLM.time, "monotonic", side_effect=[30.0, 30.025]),
         ):
             opener.return_value.open.side_effect = OSError(5, "Input/output error")
