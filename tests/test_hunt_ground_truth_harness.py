@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import importlib.util
+import io
+import zipfile
 import sys
 import unittest
 from pathlib import Path
@@ -9,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "experiments" / "the-hunt" / "v0.3"
 sys.path.insert(0, str(BASE))
+import signature_checker as SIGNATURE_CHECKER
 
 SPEC = importlib.util.spec_from_file_location(
     "hunt_ground_truth_harness", BASE / "ground_truth_harness.py"
@@ -95,6 +98,113 @@ class GroundTruthHarnessContractTests(unittest.TestCase):
         manifest["targets"]["celery"]["version"] = "5.7.0rc1"
         with self.assertRaisesRegex(ValueError, "version mismatch"):
             HARNESS._validate_target_metadata(manifest)
+
+
+
+
+class StaticWheelExportResolutionTests(unittest.TestCase):
+    @staticmethod
+    def _wheel(files: dict[str, str]) -> bytes:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for path, source in files.items():
+                archive.writestr(path, source)
+        return buffer.getvalue()
+
+    def test_httpx_style_star_imports_resolve_package_exports(self):
+        wheel = self._wheel({
+            "httpx/__init__.py": (
+                "from ._api import *\n"
+                "from ._client import *\n"
+                "__all__ = ['get', 'Client']\n"
+            ),
+            "httpx/_api.py": "__all__ = ['get']\ndef get(): pass\n",
+            "httpx/_client.py": "__all__ = ['Client']\nclass Client: pass\n",
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [
+                {"module": "httpx", "symbol_path": ["get"]},
+                {"module": "httpx", "symbol_path": ["Client"]},
+            ],
+        )
+        self.assertEqual(result["status"], "EXISTS")
+        self.assertEqual(result["unresolved_calls"], [])
+
+    def test_celery_style_recreate_module_resolves_lazy_exports(self):
+        wheel = self._wheel({
+            "celery/__init__.py": (
+                "from . import local\n"
+                "__all__ = ('Celery', 'shared_task')\n"
+                "old_module, new_module = local.recreate_module(\n"
+                "    __name__, by_module={\n"
+                "        'celery.app': ['Celery', 'shared_task'],\n"
+                "    }\n"
+                ")\n"
+            ),
+            "celery/local.py": (
+                "class LazyModule:\n"
+                "    def __getattr__(self, name): return getattr(self, name)\n"
+                "def recreate_module(*args, **kwargs): pass\n"
+            ),
+            "celery/app/__init__.py": "from .base import Celery, shared_task\n",
+            "celery/app/base.py": (
+                "class Celery: pass\n"
+                "def shared_task(): pass\n"
+            ),
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [
+                {"module": "celery", "symbol_path": ["Celery"]},
+                {"module": "celery", "symbol_path": ["shared_task"]},
+                {"module": "celery", "symbol_path": ["missing_symbol"]},
+            ],
+        )
+        self.assertEqual(result["status"], "INVALID_SIGNATURE")
+        self.assertEqual(
+            [call["symbol_path"] for call in result["unresolved_calls"]],
+            [["missing_symbol"]],
+        )
+
+    def test_dynamic_star_import_contract_is_inconclusive(self):
+        wheel = self._wheel({
+            "sample/__init__.py": "from .api import *\n",
+            "sample/api.py": (
+                "__all__ = build_exports()\n"
+                "def present(): pass\n"
+            ),
+        })
+        result = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel, [{"module": "sample", "symbol_path": ["present"]}]
+        )
+        self.assertEqual(result["status"], "INCONCLUSIVE")
+        self.assertEqual(result["reason"], "dynamic_attribute_present")
+
+    def test_star_import_probe_checks_literal_all_membership(self):
+        wheel = self._wheel({
+            "sample/__init__.py": "__all__ = ['present']\n",
+            "sample/api.py": "__all__ = ['present']\ndef present(): pass\n",
+        })
+        present = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [{
+                "operation": "star_import",
+                "module": "sample",
+                "symbol_path": ["present"],
+            }],
+        )
+        missing = SIGNATURE_CHECKER.inspect_wheel_bytes(
+            wheel,
+            [{
+                "operation": "star_import",
+                "module": "sample",
+                "symbol_path": ["not_exported"],
+            }],
+        )
+        self.assertEqual(present["status"], "EXISTS")
+        self.assertEqual(missing["status"], "INVALID_SIGNATURE")
+
 
 
 if __name__ == "__main__":

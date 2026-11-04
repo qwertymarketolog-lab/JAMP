@@ -52,7 +52,7 @@ CASE_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"case_id": "C05", "package": "httpx", "module": "httpx",
      "operation": "attribute", "attribute_path": ["get"],
      "description": "HTTPX package-level function: httpx.get",
-     "static_call": {"module": "httpx", "symbol_path": ["get"]}},
+     "static_call": {"operation": "star_import", "module": "httpx._api", "symbol_path": ["get"]}},
     {"case_id": "C06", "package": "httpx", "module": "httpx",
      "operation": "attribute", "attribute_path": ["Client"],
      "description": "HTTPX package-level class: httpx.Client",

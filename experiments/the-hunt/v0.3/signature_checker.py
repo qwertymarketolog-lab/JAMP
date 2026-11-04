@@ -436,3 +436,319 @@ def check_signature(code_str: str, package_name: str) -> dict[str, Any]:
             "reason": "wheel_retrieval_or_inspection_failed",
             "error_type": type(exc).__name__,
         }
+
+
+# Export-resolution extension: literal star imports and Celery recreate_module.
+# Static-only: wheel source is parsed in memory and never executed.
+
+def _hunt_relative_import_target(
+    module: str, path: str, node: ast.ImportFrom
+) -> str:
+    if not node.level:
+        return node.module or ""
+    package = module if path.endswith("/__init__.py") else module.rpartition(".")[0]
+    parts = package.split(".") if package else []
+    if node.level > 1:
+        parts = parts[: -(node.level - 1)]
+    if node.module:
+        parts.extend(node.module.split("."))
+    return ".".join(parts)
+
+
+def _hunt_literal_all(tree: ast.Module) -> tuple[list[str] | None, bool]:
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in targets
+            ):
+                try:
+                    value = ast.literal_eval(node.value)
+                except (ValueError, TypeError, SyntaxError):
+                    return None, True
+                if isinstance(value, (list, tuple)) and all(
+                    isinstance(item, str) for item in value
+                ):
+                    return list(value), True
+                return None, True
+    return None, False
+
+
+def _hunt_extended_index(
+    sources: dict[str, str],
+) -> tuple[
+    set[str],
+    dict[str, set[str]],
+    dict[str, dict[str, set[str]]],
+    dict[str, dict[str, tuple[str, str]]],
+    set[str],
+    dict[str, list[str] | None],
+    set[str],
+]:
+    modules, functions, classes, reexports, dynamic_modules = _build_symbol_index(
+        sources
+    )
+    module_bindings: dict[str, set[str]] = {}
+    all_names: dict[str, list[str] | None] = {}
+    all_declared: set[str] = set()
+    dynamic_all: set[str] = set()
+    star_imports: dict[str, list[str]] = {}
+
+    for path, source in sources.items():
+        module = _module_name(path)
+        if module is None:
+            continue
+        tree = ast.parse(source, filename=path)
+        bindings: set[str] = set()
+        star_imports[module] = []
+        names, declared = _hunt_literal_all(tree)
+        all_names[module] = names
+        if declared:
+            all_declared.add(module)
+            if names is None:
+                dynamic_all.add(module)
+
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                bindings.add(node.name)
+            elif isinstance(node, ast.ImportFrom):
+                target_module = _hunt_relative_import_target(module, path, node)
+                for alias in node.names:
+                    if alias.name == "*":
+                        star_imports[module].append(target_module)
+                    else:
+                        bindings.add(alias.asname or alias.name)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    bindings.add(alias.asname or alias.name.split(".")[0])
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                bindings.update(
+                    target.id for target in targets if isinstance(target, ast.Name)
+                )
+        module_bindings[module] = bindings
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            function = node.func
+            is_recreate = (
+                isinstance(function, ast.Name) and function.id == "recreate_module"
+            ) or (
+                isinstance(function, ast.Attribute)
+                and function.attr == "recreate_module"
+            )
+            if not is_recreate:
+                continue
+            by_module = next(
+                (keyword.value for keyword in node.keywords if keyword.arg == "by_module"),
+                None,
+            )
+            if by_module is None:
+                dynamic_modules.add(module)
+                continue
+            try:
+                mapping = ast.literal_eval(by_module)
+            except (ValueError, TypeError, SyntaxError):
+                dynamic_modules.add(module)
+                continue
+            if not isinstance(mapping, dict) or any(
+                not isinstance(target_module, str)
+                or not isinstance(symbols, (list, tuple))
+                or not all(isinstance(symbol, str) for symbol in symbols)
+                for target_module, symbols in mapping.items()
+            ):
+                dynamic_modules.add(module)
+                continue
+            for target_module, symbols in mapping.items():
+                for symbol in symbols:
+                    reexports[module][symbol] = (target_module, symbol)
+
+    # Python star imports use literal __all__, or public top-level bindings
+    # when __all__ is absent. A dynamic __all__ is deliberately unresolved.
+    for module, targets in star_imports.items():
+        for target_module in targets:
+            if target_module not in modules:
+                dynamic_modules.add(module)
+                continue
+            if target_module in dynamic_all:
+                dynamic_modules.add(module)
+                continue
+            if target_module in all_declared:
+                exported_names = all_names[target_module] or []
+            else:
+                exported_names = sorted(
+                    name
+                    for name in module_bindings.get(target_module, set())
+                    if not name.startswith("_")
+                )
+            for name in exported_names:
+                reexports[module][name] = (target_module, name)
+
+    return (
+        modules,
+        functions,
+        classes,
+        reexports,
+        dynamic_modules,
+        all_names,
+        all_declared | dynamic_all,
+    )
+
+
+def _hunt_symbol_exists(
+    base_module: str,
+    symbol_path: list[str],
+    modules: set[str],
+    functions: dict[str, set[str]],
+    classes: dict[str, dict[str, set[str]]],
+    reexports: dict[str, dict[str, tuple[str, str]]],
+) -> bool:
+    if not symbol_path:
+        return False
+
+    def resolve(
+        module_name: str,
+        path: list[str],
+        visited: set[tuple[str, tuple[str, ...]]],
+    ) -> bool:
+        key = (module_name, tuple(path))
+        if key in visited:
+            return False
+        visited.add(key)
+        for split in range(len(path)):
+            candidate_module = ".".join([module_name, *path[:split]])
+            remaining = path[split:]
+            if candidate_module not in modules:
+                continue
+            if len(remaining) == 1 and (
+                remaining[0] in functions.get(candidate_module, set())
+                or remaining[0] in classes.get(candidate_module, {})
+            ):
+                return True
+            if (
+                len(remaining) == 2
+                and remaining[0] in classes.get(candidate_module, {})
+                and remaining[1] in classes[candidate_module][remaining[0]]
+            ):
+                return True
+            exported = reexports.get(candidate_module, {}).get(remaining[0])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module and resolve(
+                    target_module, [target_symbol, *remaining[1:]], visited
+                ):
+                    return True
+        return False
+
+    return resolve(base_module, symbol_path, set())
+
+
+def inspect_wheel_bytes(
+    wheel_bytes: bytes,
+    calls: list[dict[str, Any]],
+    unsupported_calls: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Inspect wheel declarations, including literal star and lazy re-exports."""
+    if len(wheel_bytes) > MAX_WHEEL_BYTES:
+        return {"status": "INCONCLUSIVE", "reason": "wheel_too_large"}
+    if unsupported_calls:
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "dynamic_call_receiver_unresolved",
+            "unsupported_calls": unsupported_calls,
+        }
+    try:
+        with zipfile.ZipFile(io.BytesIO(wheel_bytes)) as archive:
+            binary_members = [
+                member.filename
+                for member in archive.infolist()
+                if not member.is_dir()
+                and member.filename.lower().endswith((".so", ".pyd"))
+            ]
+        sources = read_wheel_sources(wheel_bytes)
+        (
+            modules,
+            functions,
+            classes,
+            reexports,
+            dynamic_modules,
+            all_names,
+            all_declared,
+        ) = _hunt_extended_index(sources)
+    except (
+        OSError,
+        UnicodeDecodeError,
+        ValueError,
+        zipfile.BadZipFile,
+        SyntaxError,
+    ):
+        return {"status": "INCONCLUSIVE", "reason": "wheel_source_unreadable"}
+    if not calls:
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "no_package_calls",
+            "inspected_module_count": len(modules),
+        }
+
+    unresolved: list[dict[str, Any]] = []
+    inconclusive_calls: list[dict[str, Any]] = []
+    for call in calls:
+        module = call.get("module")
+        symbol_path = call.get("symbol_path")
+        if not isinstance(module, str) or not isinstance(symbol_path, list):
+            inconclusive_calls.append(call)
+            continue
+        if call.get("operation") == "star_import":
+            if module not in modules or not symbol_path:
+                unresolved.append(call)
+                continue
+            if module in all_declared and all_names.get(module) is None:
+                inconclusive_calls.append(call)
+                continue
+            symbol = symbol_path[0]
+            if module in all_declared:
+                if symbol not in (all_names.get(module) or []):
+                    unresolved.append(call)
+                    continue
+            elif symbol.startswith("_"):
+                unresolved.append(call)
+                continue
+        if not _hunt_symbol_exists(
+            module, symbol_path, modules, functions, classes, reexports
+        ):
+            unresolved.append(call)
+
+    if inconclusive_calls:
+        status = "INCONCLUSIVE"
+        reason = "dynamic_star_import_exports"
+    elif unresolved and dynamic_modules:
+        status = "INCONCLUSIVE"
+        reason = "dynamic_attribute_present"
+    elif unresolved and binary_members:
+        status = "INCONCLUSIVE"
+        reason = "binary_extension_not_inspected"
+    elif unresolved and any(
+        call.get("symbol_path")
+        and call["symbol_path"][0] in reexports.get(call.get("module", ""), {})
+        for call in unresolved
+    ):
+        status = "INCONCLUSIVE"
+        reason = "unresolved_reexport"
+    else:
+        status = "INVALID_SIGNATURE" if unresolved else "EXISTS"
+        reason = "symbol_missing" if unresolved else None
+
+    return {
+        "status": status,
+        "reason": reason,
+        "calls": calls,
+        "unresolved_calls": unresolved,
+        "inconclusive_calls": inconclusive_calls,
+        "unsupported_calls": [],
+        "inspected_module_count": len(modules),
+        "inspected_source_paths": sorted(sources),
+        "binary_extension_count": len(binary_members),
+        "dynamic_getattr_modules": sorted(dynamic_modules),
+    }
