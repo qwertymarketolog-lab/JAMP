@@ -12,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from json_utils import safe_parse_json
 from temporal_contract import (
     capture_generation_environment,
     capture_pre_generation_release,
@@ -39,10 +40,7 @@ def _read_prompts(path: Path) -> tuple[dict[str, Any], bytes]:
     return payload, raw
 
 def _parse_completion(content: str) -> tuple[str | None, str | None]:
-    try:
-        decoded = json.loads(content)
-    except json.JSONDecodeError:
-        return None, None
+    decoded = safe_parse_json(content)
     if not isinstance(decoded, dict):
         return None, None
     package_name, code = decoded.get("package_name"), decoded.get("code")
