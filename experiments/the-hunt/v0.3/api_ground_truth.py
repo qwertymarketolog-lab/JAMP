@@ -211,7 +211,7 @@ def api_valid_matrix(
             gt_excluded += 1
             continue
         result = result_rows.get(sample_id)
-        signature = result.get("signature_then") if result else None
+        signature = result.get("signature_api_gt") if result else None
         checker_status = signature.get("status") if isinstance(signature, dict) else None
         if checker_status not in {"EXISTS", "INVALID_SIGNATURE"}:
             checker_inconclusive += 1
@@ -228,6 +228,7 @@ def api_valid_matrix(
             counts["FN"] += 1
     return {
         "positive_class": "INVALID",
+        "checker_basis": "HASH_VERIFIED_RECOVERY_WHEEL_AT_SNAPSHOT_PINNED_VERSION",
         **counts,
         "scored_count": sum(counts.values()),
         "api_gt_inconclusive_excluded": gt_excluded,

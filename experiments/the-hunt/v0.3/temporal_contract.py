@@ -374,3 +374,113 @@ def check_signature_from_snapshot(
             "reason": "temporal_wheel_inspection_failed",
             "error_type": type(exc).__name__,
         }
+
+def check_signature_from_recovery(
+    code: str,
+    package_name: str,
+    snapshot_record: dict[str, Any] | None,
+    recovery_wheels: list[dict[str, Any]],
+    recovery_root: Path,
+    sample_id: str,
+) -> dict[str, Any]:
+    """Inspect the compatible recovery wheel pinned to the generation snapshot version."""
+    if (
+        not isinstance(snapshot_record, dict)
+        or snapshot_record.get("package_name") != package_name
+        or snapshot_record.get("resolution_status") != "RESOLVED"
+        or snapshot_record.get("temporal_provenance") not in {
+            "GENERATION_ENVIRONMENT",
+            "PRE_GENERATION_REGISTRY_SNAPSHOT",
+        }
+        or not isinstance(snapshot_record.get("pypi_version"), str)
+    ):
+        return {"status": "INCONCLUSIVE", "reason": "TEMPORAL_EVIDENCE_MISSING"}
+
+    normalize = lambda value: re.sub(r"[-_.]+", "-", value).lower()
+    matching = [
+        wheel for wheel in recovery_wheels
+        if isinstance(wheel, dict)
+        and isinstance(wheel.get("distribution"), str)
+        and normalize(wheel["distribution"]) == normalize(package_name)
+    ]
+    if len(matching) != 1:
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "recovery_direct_wheel_missing_or_ambiguous",
+        }
+    wheel = matching[0]
+    if (
+        wheel.get("sample_id") != sample_id
+        or wheel.get("version") != snapshot_record.get("pypi_version")
+    ):
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "recovery_wheel_snapshot_version_mismatch",
+        }
+    filename = wheel.get("filename")
+    if (
+        wheel.get("compatible_cpython311_linux_x86_64") is not True
+        or not isinstance(filename, str)
+        or not _wheel_compatible_with_cpython311_linux_x86_64(filename)
+    ):
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "recovery_wheel_incompatible_with_cpython311_linux_x86_64",
+            "wheel_filename": filename,
+        }
+    relative = wheel.get("relative_path")
+    if (
+        not isinstance(relative, str)
+        or Path(relative).is_absolute()
+        or ".." in Path(relative).parts
+        or Path(relative).name != filename
+    ):
+        return {"status": "INCONCLUSIVE", "reason": "recovery_wheel_path_invalid"}
+    wheelhouse_root = (recovery_root / "wheelhouse").resolve()
+    wheel_path = (wheelhouse_root / relative).resolve()
+    if wheelhouse_root not in wheel_path.parents or not wheel_path.is_file():
+        return {"status": "INCONCLUSIVE", "reason": "recovery_wheel_missing"}
+    wheel_bytes = wheel_path.read_bytes()
+    expected_size = wheel.get("size_bytes")
+    expected_sha = wheel.get("sha256")
+    observed_sha = hashlib.sha256(wheel_bytes).hexdigest()
+    if (
+        not isinstance(expected_size, int)
+        or len(wheel_bytes) != expected_size
+        or not isinstance(expected_sha, str)
+        or observed_sha != expected_sha
+    ):
+        return {"status": "INCONCLUSIVE", "reason": "recovery_wheel_integrity_mismatch"}
+    try:
+        aliases, calls, unsupported = _imports_and_calls(code, package_name)
+        if not aliases:
+            return {"status": "INCONCLUSIVE", "reason": "package_import_not_found"}
+        if unsupported:
+            return {
+                "status": "INCONCLUSIVE",
+                "reason": "dynamic_call_receiver_unresolved",
+                "unsupported_calls": unsupported,
+                "calls": calls,
+            }
+        result = inspect_wheel_bytes(wheel_bytes, calls, unsupported)
+        if not isinstance(result, dict):
+            return {
+                "status": "INCONCLUSIVE",
+                "reason": "recovery_wheel_inspection_invalid_result",
+            }
+        result.update({
+            "package": package_name,
+            "pypi_version": snapshot_record.get("pypi_version"),
+            "wheel_filename": filename,
+            "wheel_sha256_expected": expected_sha,
+            "wheel_sha256_observed": observed_sha,
+            "temporal_provenance": snapshot_record.get("temporal_provenance"),
+            "checker_evidence_source": "HASH_VERIFIED_RECOVERY_WHEELHOUSE",
+        })
+        return result
+    except Exception as exc:
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "recovery_wheel_inspection_failed",
+            "error_type": type(exc).__name__,
+        }

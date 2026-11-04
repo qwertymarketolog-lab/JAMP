@@ -36,12 +36,12 @@ class IndependentMatrixTests(unittest.TestCase):
             "checker_unknown": {"sample_id": "checker_unknown", "api_status": "VALID"},
         }
         results = [
-            {"sample_id": "tn", "signature_then": {"status": "EXISTS"}},
-            {"sample_id": "fp", "signature_then": {"status": "INVALID_SIGNATURE"}},
-            {"sample_id": "tp", "signature_then": {"status": "INVALID_SIGNATURE"}},
-            {"sample_id": "fn", "signature_then": {"status": "EXISTS"}},
-            {"sample_id": "gt_unknown", "signature_then": {"status": "EXISTS"}},
-            {"sample_id": "checker_unknown", "signature_then": {"status": "INCONCLUSIVE"}},
+            {"sample_id": "tn", "signature_api_gt": {"status": "EXISTS"}},
+            {"sample_id": "fp", "signature_api_gt": {"status": "INVALID_SIGNATURE"}},
+            {"sample_id": "tp", "signature_api_gt": {"status": "INVALID_SIGNATURE"}},
+            {"sample_id": "fn", "signature_api_gt": {"status": "EXISTS"}},
+            {"sample_id": "gt_unknown", "signature_api_gt": {"status": "EXISTS"}},
+            {"sample_id": "checker_unknown", "signature_api_gt": {"status": "INCONCLUSIVE"}},
         ]
         matrix = API_GT.api_valid_matrix(api_rows, results)
         self.assertEqual(
@@ -51,6 +51,10 @@ class IndependentMatrixTests(unittest.TestCase):
         self.assertEqual(matrix["api_gt_inconclusive_excluded"], 1)
         self.assertEqual(matrix["checker_inconclusive"], 1)
         self.assertEqual(matrix["scored_count"], 4)
+        self.assertEqual(
+            matrix["checker_basis"],
+            "HASH_VERIFIED_RECOVERY_WHEEL_AT_SNAPSHOT_PINNED_VERSION",
+        )
 
     def test_package_matrix_uses_package_gt_and_provenance_not_jamp_verdict(self):
         truth = [
@@ -145,6 +149,25 @@ class SignatureCheckerRegressionTests(unittest.TestCase):
         self.assertEqual(result["status"], "INCONCLUSIVE")
         self.assertEqual(result["reason"], "binary_extension_not_inspected")
 
+    def test_pydantic_dynamic_export_map_resolves_base_model(self):
+        wheel = make_wheel({
+            "pydantic/__init__.py": (
+                "_dynamic_imports = {'BaseModel': (__spec__.parent, '.main')}\\n"
+                "def __getattr__(name):\\n"
+                "    raise AttributeError(name)\\n"
+            ),
+            "pydantic/main.py": "class BaseModel:\\n    pass\\n",
+        })
+        code = (
+            "from pydantic import BaseModel\\n"
+            "class User(BaseModel):\\n"
+            "    name: str\\n"
+            "User()\\n"
+        )
+        _aliases, calls, unsupported = SIGNATURE._imports_and_calls(code, "pydantic")
+        result = SIGNATURE.inspect_wheel_bytes(wheel, calls, unsupported)
+        self.assertEqual(result["status"], "EXISTS")
+
     def test_unrelated_binary_does_not_suppress_missing_symbol(self):
         wheel = make_wheel({
             "samplepkg/__init__.py": "def known_api():\n    return None\n",
@@ -156,6 +179,49 @@ class SignatureCheckerRegressionTests(unittest.TestCase):
         result = SIGNATURE.inspect_wheel_bytes(wheel, calls, unsupported)
         self.assertEqual(result["status"], "INVALID_SIGNATURE")
         self.assertEqual(result["reason"], "symbol_missing")
+
+
+class RecoveryWheelCheckerTests(unittest.TestCase):
+    def test_recovery_wheel_requires_exact_snapshot_version_and_verified_bytes(self):
+        wheel = make_wheel({
+            "samplepkg/__init__.py": "def ok():\\n    return True\\n"
+        })
+        digest = hashlib.sha256(wheel).hexdigest()
+        snapshot = {
+            "sample_id": "hunt-v03-001",
+            "package_name": "samplepkg",
+            "pypi_version": "1.0",
+            "resolution_status": "RESOLVED",
+            "temporal_provenance": "PRE_GENERATION_REGISTRY_SNAPSHOT",
+        }
+        candidate = {
+            "sample_id": "hunt-v03-001",
+            "distribution": "samplepkg",
+            "version": "1.0",
+            "filename": "samplepkg-1.0-py3-none-any.whl",
+            "relative_path": "hunt-v03-001/samplepkg-1.0-py3-none-any.whl",
+            "size_bytes": len(wheel),
+            "sha256": digest,
+            "compatible_cpython311_linux_x86_64": True,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wheelhouse = root / "wheelhouse" / "hunt-v03-001"
+            wheelhouse.mkdir(parents=True)
+            (wheelhouse / candidate["filename"]).write_bytes(wheel)
+            result = TEMPORAL.check_signature_from_recovery(
+                "import samplepkg\\nsamplepkg.ok()",
+                "samplepkg", snapshot, [candidate], root, "hunt-v03-001"
+            )
+            wrong_version = dict(candidate, version="2.0")
+            mismatch = TEMPORAL.check_signature_from_recovery(
+                "import samplepkg\\nsamplepkg.ok()",
+                "samplepkg", snapshot, [wrong_version], root, "hunt-v03-001"
+            )
+        self.assertEqual(result["status"], "EXISTS")
+        self.assertEqual(result["checker_evidence_source"], "HASH_VERIFIED_RECOVERY_WHEELHOUSE")
+        self.assertEqual(mismatch["status"], "INCONCLUSIVE")
+        self.assertEqual(mismatch["reason"], "recovery_wheel_snapshot_version_mismatch")
 
 
 class TemporalWheelCompatibilityTests(unittest.TestCase):

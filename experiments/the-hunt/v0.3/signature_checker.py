@@ -571,6 +571,49 @@ def _hunt_extended_index(
                     for target in assignment_targets
                     if isinstance(target, ast.Name)
                 )
+        # Resolve literal lazy-export maps without executing package code.
+        # Pydantic uses (__spec__.parent, ".main") to expose BaseModel.
+        for statement in tree.body:
+            if not isinstance(statement, ast.Assign):
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == "_dynamic_imports"
+                for target in statement.targets
+            ) or not isinstance(statement.value, ast.Dict):
+                continue
+            for key_node, value_node in zip(statement.value.keys, statement.value.values):
+                try:
+                    exported_name = ast.literal_eval(key_node)
+                except (ValueError, TypeError, SyntaxError):
+                    continue
+                if (
+                    not isinstance(exported_name, str)
+                    or not isinstance(value_node, ast.Tuple)
+                    or len(value_node.elts) != 2
+                ):
+                    continue
+                package_expression, module_expression = value_node.elts
+                try:
+                    target_suffix = ast.literal_eval(module_expression)
+                except (ValueError, TypeError, SyntaxError):
+                    continue
+                if not isinstance(target_suffix, str):
+                    continue
+                is_current_package = (
+                    isinstance(package_expression, ast.Attribute)
+                    and isinstance(package_expression.value, ast.Name)
+                    and package_expression.value.id == "__spec__"
+                    and package_expression.attr == "parent"
+                )
+                if is_current_package and target_suffix.startswith("."):
+                    target_module = module + target_suffix
+                elif is_current_package and target_suffix == "__module__":
+                    continue
+                else:
+                    continue
+                if target_module in modules:
+                    reexports[module][exported_name] = (target_module, exported_name)
+
         module_bindings[module] = bindings
 
         for ast_node in ast.walk(tree):

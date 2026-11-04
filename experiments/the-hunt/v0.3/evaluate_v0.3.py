@@ -11,7 +11,11 @@ from typing import Any
 
 from provenance_checker import check_provenance
 from signature_checker import check_signature
-from temporal_contract import check_signature_from_snapshot, load_generation_snapshot
+from temporal_contract import (
+    check_signature_from_recovery,
+    check_signature_from_snapshot,
+    load_generation_snapshot,
+)
 from api_ground_truth import api_valid_matrix, package_exists_matrix, validate_api_ground_truth
 
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
@@ -515,9 +519,28 @@ def evaluate(
             api_payload, payload, ground_truth_payload, prompts_payload,
             temporal_snapshot, wheel_manifest_payload
         )
+        response_by_sample = {
+            item["sample_id"]: item for item in response_samples
+            if isinstance(item, dict) and isinstance(item.get("sample_id"), str)
+        }
+        result_by_sample = {item["sample_id"]: item for item in results}
+        for sample_id, api_row in api_rows.items():
+            if api_row.get("api_status") not in {"VALID", "INVALID"}:
+                continue
+            response_row = response_by_sample[sample_id]
+            result_row = result_by_sample[sample_id]
+            result_row["signature_api_gt"] = check_signature_from_recovery(
+                response_row.get("code", ""),
+                api_row["package_name"],
+                temporal_packages.get(sample_id),
+                api_row["provenance"]["recovery_wheels"],
+                api_wheel_manifest_path.parent,
+                sample_id,
+            )
         report["matrix_package_exists"] = package_exists_matrix(results, truth_samples)
         report["matrix_api_valid"] = api_valid_matrix(api_rows, results)
         report["independent_api_ground_truth"] = {
+            "checker_basis": "HASH_VERIFIED_RECOVERY_WHEEL_AT_SNAPSHOT_PINNED_VERSION",
             "schema_version": api_payload["schema_version"],
             "sample_count": len(api_rows),
             "api_ground_truth_counts": api_payload["api_ground_truth_counts"],
