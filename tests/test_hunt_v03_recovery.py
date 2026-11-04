@@ -150,6 +150,44 @@ class RecoveryTests(unittest.TestCase):
             )
             self.assertFalse(marker.exists())
 
+    def test_recovery_wheelhouse_hashes_are_verified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wheelhouse = root / "wheelhouse"
+            folder = wheelhouse / "sample-1"
+            folder.mkdir(parents=True)
+            wheel = folder / "pkg-1.0-py3-none-any.whl"
+            wheel.write_bytes(b"wheel-bytes")
+            digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+            record = {"relative_path": "sample-1/pkg-1.0-py3-none-any.whl",
+                      "sha256": digest, "size_bytes": wheel.stat().st_size}
+            manifest = {"wheels": [record],
+                        "wheelhouse_sha256": hashlib.sha256(
+                            json.dumps([record], sort_keys=True, separators=(",", ":")).encode()
+                        ).hexdigest()}
+            RECOVERY.verify_recovery_wheelhouse(wheelhouse, manifest)
+            wheel.write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+                RECOVERY.verify_recovery_wheelhouse(wheelhouse, manifest)
+
+    def test_generation_environment_must_be_cpython311_linux_x86_64(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._source_fixture(root)
+            path = root / "generation_snapshot.json"
+            snapshot = json.loads(path.read_text())
+            snapshot["generation_environment"]["python_version"] = "3.15.0"
+            snapshot["snapshot_sha256"] = RECOVERY.canonical_json_hash(
+                snapshot, "snapshot_sha256"
+            )
+            path.write_text(json.dumps(snapshot), encoding="utf-8")
+            manifest_path = root / "generation_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["generation_snapshot_sha256"] = snapshot["snapshot_sha256"]
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "not CPython 3.11 Linux x86_64"):
+                RECOVERY.validate_source_artifact(root, strict_hashes=False)
+
     def test_source_status_contract_is_21_77_2(self):
         self.assertEqual(RECOVERY.EXPECTED_STATUS_COUNTS,
                          {"SUCCESS": 21, "ABSTAINED": 77, "MALFORMED_RESPONSE": 2})
