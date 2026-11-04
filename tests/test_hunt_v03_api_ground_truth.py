@@ -152,17 +152,17 @@ class SignatureCheckerRegressionTests(unittest.TestCase):
     def test_pydantic_dynamic_export_map_resolves_base_model(self):
         wheel = make_wheel({
             "pydantic/__init__.py": (
-                "_dynamic_imports = {'BaseModel': (__spec__.parent, '.main')}\\n"
-                "def __getattr__(name):\\n"
-                "    raise AttributeError(name)\\n"
+                "_dynamic_imports = {'BaseModel': (__spec__.parent, '.main')}\n"
+                "def __getattr__(name):\n"
+                "    raise AttributeError(name)\n"
             ),
-            "pydantic/main.py": "class BaseModel:\\n    pass\\n",
+            "pydantic/main.py": "class BaseModel:\n    pass\n",
         })
         code = (
-            "from pydantic import BaseModel\\n"
-            "class User(BaseModel):\\n"
-            "    name: str\\n"
-            "User()\\n"
+            "from pydantic import BaseModel\n"
+            "class User(BaseModel):\n"
+            "    name: str\n"
+            "User()\n"
         )
         _aliases, calls, unsupported = SIGNATURE._imports_and_calls(code, "pydantic")
         result = SIGNATURE.inspect_wheel_bytes(wheel, calls, unsupported)
@@ -184,7 +184,7 @@ class SignatureCheckerRegressionTests(unittest.TestCase):
 class RecoveryWheelCheckerTests(unittest.TestCase):
     def test_recovery_wheel_requires_exact_snapshot_version_and_verified_bytes(self):
         wheel = make_wheel({
-            "samplepkg/__init__.py": "def ok():\\n    return True\\n"
+            "samplepkg/__init__.py": "def ok():\n    return True\n"
         })
         digest = hashlib.sha256(wheel).hexdigest()
         snapshot = {
@@ -210,12 +210,12 @@ class RecoveryWheelCheckerTests(unittest.TestCase):
             wheelhouse.mkdir(parents=True)
             (wheelhouse / candidate["filename"]).write_bytes(wheel)
             result = TEMPORAL.check_signature_from_recovery(
-                "import samplepkg\\nsamplepkg.ok()",
+                "import samplepkg\nsamplepkg.ok()",
                 "samplepkg", snapshot, [candidate], root, "hunt-v03-001"
             )
             wrong_version = dict(candidate, version="2.0")
             mismatch = TEMPORAL.check_signature_from_recovery(
-                "import samplepkg\\nsamplepkg.ok()",
+                "import samplepkg\nsamplepkg.ok()",
                 "samplepkg", snapshot, [wrong_version], root, "hunt-v03-001"
             )
         self.assertEqual(result["status"], "EXISTS")
