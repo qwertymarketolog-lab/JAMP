@@ -80,17 +80,19 @@ def run_probe(base_url: str, api_key: str) -> dict[str, object]:
     tls_error: OSError | ssl.SSLError | None = None
     for ip in ips:
         try:
-            with socket.create_connection(
-                (ip, port), timeout=TIMEOUT_SECONDS
-            ) as raw_socket:
-                with context.wrap_socket(
+            with (
+                socket.create_connection(
+                    (ip, port), timeout=TIMEOUT_SECONDS
+                ) as raw_socket,
+                context.wrap_socket(
                     raw_socket, server_hostname=hostname
-                ) as tls_socket:
-                    result["tls_version"] = tls_socket.version()
-                    certificate = tls_socket.getpeercert(binary_form=True)
-                    result["peer_certificate_sha256"] = hashlib.sha256(
-                        certificate
-                    ).hexdigest()
+                ) as tls_socket,
+            ):
+                result["tls_version"] = tls_socket.version()
+                certificate = tls_socket.getpeercert(binary_form=True)
+                result["peer_certificate_sha256"] = hashlib.sha256(
+                    certificate
+                ).hexdigest()
             result["tls_handshake"] = "success"
             tls_error = None
             break
