@@ -308,7 +308,13 @@ def check_signature_from_snapshot(
                 "unsupported_calls": unsupported,
                 "calls": calls,
             }
-        result = inspect_wheel_bytes(wheel_bytes, calls)
+        inspected = inspect_wheel_bytes(wheel_bytes, calls)
+        if not isinstance(inspected, dict):
+            return {
+                "status": "INCONCLUSIVE",
+                "reason": "temporal_wheel_inspection_invalid_result",
+            }
+        result: dict[str, Any] = inspected
         result.update(
             {
                 "package": package_name,
