@@ -630,6 +630,64 @@ def _hunt_symbol_exists(
     return resolve(base_module, symbol_path, set())
 
 
+def _hunt_dynamic_resolution_relevant(
+    base_module: str,
+    symbol_path: list[str],
+    modules: set[str],
+    reexports: dict[str, dict[str, tuple[str, str]]],
+    dynamic_modules: set[str],
+) -> bool:
+    """Return whether a missing symbol may be supplied by a relevant module hook.
+
+    Traverse only symbol-specific static re-export edges. Unrelated imports and
+    unrelated modules elsewhere in the distribution are deliberately ignored.
+    """
+    if not symbol_path:
+        return False
+
+    queue: list[tuple[str, tuple[str, ...]]] = [
+        (base_module, tuple(symbol_path))
+    ]
+    visited: set[tuple[str, tuple[str, ...]]] = set()
+
+    while queue:
+        module_name, path = queue.pop(0)
+        state = (module_name, path)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        candidates: list[tuple[str, tuple[str, ...]]] = []
+        for split in range(len(path)):
+            candidate_module = ".".join([module_name, *path[:split]])
+            remaining = path[split:]
+            if candidate_module in modules and remaining:
+                candidates.append((candidate_module, remaining))
+
+        if not candidates:
+            continue
+
+        deepest_module, deepest_remaining = candidates[-1]
+        for candidate_module, remaining in candidates:
+            exported = reexports.get(candidate_module, {}).get(remaining[0])
+            if exported is not None:
+                target_module, target_symbol = exported
+                if target_module:
+                    queue.append(
+                        (target_module, (target_symbol, *remaining[1:]))
+                    )
+
+        # A parent package hook is not relevant when a concrete child module
+        # exists. Explicit re-exports are followed above instead.
+        deepest_export = reexports.get(deepest_module, {}).get(
+            deepest_remaining[0]
+        )
+        if deepest_module in dynamic_modules and deepest_export is None:
+            return True
+
+    return False
+
+
 def inspect_wheel_bytes(
     wheel_bytes: bytes,
     calls: list[dict[str, Any]],
@@ -703,15 +761,21 @@ def inspect_wheel_bytes(
         if not _hunt_symbol_exists(
             call_module, symbol_path, modules, functions, classes, reexports
         ):
-            unresolved.append(call)
+            if _hunt_dynamic_resolution_relevant(
+                call_module, symbol_path, modules, reexports, dynamic_modules
+            ):
+                inconclusive_calls.append(call)
+            else:
+                unresolved.append(call)
 
     reason: str | None = None
     if inconclusive_calls:
         status = "INCONCLUSIVE"
-        reason = "dynamic_star_import_exports"
-    elif unresolved and dynamic_modules:
-        status = "INCONCLUSIVE"
-        reason = "dynamic_attribute_present"
+        reason = (
+            "dynamic_star_import_exports"
+            if any(call.get("operation") == "star_import" for call in inconclusive_calls)
+            else "dynamic_attribute_present"
+        )
     elif unresolved and binary_members:
         status = "INCONCLUSIVE"
         reason = "binary_extension_not_inspected"
