@@ -97,3 +97,25 @@ JAMP queries PyPI JSON metadata and calculates a deterministic Trust Score, star
 - [ ] Static signature checks implemented using wheel source and `ast.parse`, without installation or execution.
 - [ ] Paired evaluation (Baseline vs JAMP) with McNemar test.
 - [ ] Evidence artifact with raw PyPI metadata, scoring inputs, generation manifest, and signature validation logs.
+
+## 7. Temporal Contract — Generation Environment and API Snapshots
+
+The evaluator must keep two independent API observations:
+
+- `API VALID NOW`: static API inspection against the latest wheel resolved at evaluation time.
+- `API VALID THEN`: static API inspection against the exact wheel whose SHA-256 was recorded from PyPI release metadata observed before the corresponding model request.
+
+For every request, the runner captures the Python interpreter/platform and installed-distribution inventory before generation. It then observes the target distribution's PyPI release metadata immediately before the model request, pins the selected version, wheel filename, and published SHA-256, and downloads the wheel immediately after the response. The downloaded bytes are accepted only if their SHA-256 matches the pre-request metadata. The wheel is retained in the evidence bundle and referenced by a canonical snapshot manifest hash.
+
+Temporal provenance is explicit:
+
+- `GENERATION_ENVIRONMENT`: the package version is independently established as installed in the captured generation environment. This status must not be inferred from a PyPI lookup.
+- `PRE_GENERATION_REGISTRY_SNAPSHOT`: the exact PyPI wheel release and digest were observed before the request; this supports a historical registry/API declaration check, but does not claim the package was installed in the generation environment.
+- `POST_GENERATION_RESOLUTION`: package/version resolution occurred only after the response; this is not accepted as proof of API VALID THEN.
+- `UNRESOLVED`: metadata, wheel, timestamp, or digest evidence is missing or invalid.
+
+The current runner captures the requested target distribution `package_name` for each sample. Additional imported modules that cannot be mapped to a distribution using authoritative evidence are outside this snapshot's qualified scope and must remain INCONCLUSIVE; do not guess a PyPI distribution name from an import name.
+
+The evaluator verifies the snapshot digest and each wheel digest before static inspection. It never silently falls back from a missing or invalid temporal wheel to the latest PyPI wheel for the THEN result. The live latest-wheel check is retained only as the separate NOW axis. A post-generation-only record, missing wheel, hash mismatch, or missing snapshot yields `INCONCLUSIVE` / `TEMPORAL_EVIDENCE_MISSING` for THEN.
+
+The snapshot's timestamp is the registry-observation boundary immediately before each model request. The wheel download occurs after the response, but the pre-request SHA-256 pins the exact immutable artifact; if the artifact cannot be retrieved byte-for-byte, the temporal result is unresolved. Static API presence is not runtime behavior or function-signature compatibility.
