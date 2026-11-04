@@ -164,17 +164,16 @@ def test_parent_getattr_is_relevant_when_child_module_file_is_unbound() -> None:
     wheel = make_wheel(
         {
             "samplepkg/__init__.py": (
-                "def __getattr__(name):\\n"
-                "    if name == 'api':\\n"
-                "        return DynamicAPI()\\n"
-                "    raise AttributeError(name)\\n"
+                "def __getattr__(name):\n"
+                "    if name == 'api':\n"
+                "        return DynamicAPI()\n"
+                "    raise AttributeError(name)\n"
             ),
-            "samplepkg/api.py": "def known_method():\\n    return None\\n",
+            "samplepkg/api.py": "def known_method():\n    return None\n",
         }
     )
     result = check_with_wheel(
-        "import samplepkg\\nsamplepkg.api.missing_method()", wheel
+        "import samplepkg\nsamplepkg.api.missing_method()", wheel
     )
     assert result["status"] == "INCONCLUSIVE"
     assert result["reason"] == "dynamic_attribute_present"
-
