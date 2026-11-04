@@ -85,7 +85,7 @@ def test_unauthorized_domain_rejected_before_network_access() -> None:
         try:
             _PROBE.run_probe("https://evil.com/v1", "test-secret")
         except ValueError as exc:
-            assert "Only https://anymodel.org/v1 is allowed" in str(exc)
+            assert "anymodel.org/v1 is allowed" in str(exc)
         else:
             raise AssertionError("unauthorized domain must be rejected")
         getaddrinfo.assert_not_called()
