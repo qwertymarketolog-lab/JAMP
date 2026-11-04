@@ -8,9 +8,9 @@ import os
 import socket
 import ssl
 import time
-from typing import cast
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
