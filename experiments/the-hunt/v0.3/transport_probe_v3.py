@@ -13,11 +13,38 @@ from pathlib import Path
 from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 TIMEOUT_SECONDS = 15
 MAX_RESPONSE_BYTES = 1_048_576
 USER_AGENT = "JAMP-The-Hunt-v0.3-Transport-Probe"
+
+
+def validate_base_url(url: str) -> str:
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "anymodel.org"
+        or parsed.path.rstrip("/") != "/v1"
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            f"Security Error: Unauthorized base_url {url!r}. "
+            "Only https://anymodel.org/v1 is allowed."
+        )
+    return "https://anymodel.org/v1"
+
+
+class NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise HTTPError(
+            newurl,
+            code,
+            "HTTP redirects are disabled for authenticated AnyModel requests",
+            headers,
+            fp,
+        )
 
 
 def _elapsed_ms(started: float) -> float:
@@ -30,11 +57,11 @@ def _redact(value: str, api_key: str) -> str:
 
 def run_probe(base_url: str, api_key: str) -> dict[str, object]:
     started = time.monotonic()
+    base_url = validate_base_url(base_url)
     parsed = urlparse(base_url)
-    if parsed.scheme != "https" or not parsed.hostname:
-        raise ValueError("base_url must be an HTTPS URL with a hostname")
-
     hostname = parsed.hostname
+    if hostname is None:
+        raise ValueError("validated AnyModel base URL has no hostname")
     port = parsed.port or 443
     dns_started = time.monotonic()
     result: dict[str, object] = {
@@ -124,7 +151,8 @@ def run_probe(base_url: str, api_key: str) -> dict[str, object]:
     )
     http_started = time.monotonic()
     try:
-        with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        opener = build_opener(NoRedirectHandler())
+        with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
             result["http_status"] = response.status
             result["request_id"] = (
                 response.headers.get("x-request-id")
