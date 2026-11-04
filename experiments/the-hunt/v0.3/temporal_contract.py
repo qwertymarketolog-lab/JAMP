@@ -69,7 +69,17 @@ def _upload_time(value: Any) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
-def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
+def capture_pre_generation_release(
+    package_name: str, generation_environment: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    installed_versions = {
+        item.get("pypi_version")
+        for item in (generation_environment or {}).get("installed_distributions", [])
+        if isinstance(item, dict)
+        and re.sub(r"[-_.]+", "-", str(item.get("package_name", ""))).lower()
+        == re.sub(r"[-_.]+", "-", package_name).lower()
+        and isinstance(item.get("pypi_version"), str)
+    }
     record: dict[str, Any] = {
         "package_name": package_name,
         "pypi_version": None,
@@ -79,6 +89,7 @@ def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
         "artifact_download_timestamp_utc": None,
         "resolution_status": "UNRESOLVED",
         "temporal_provenance": "UNRESOLVED",
+        "generation_environment_version": None,
         "wheel_url": None,
         "wheel_relative_path": None,
     }
@@ -97,8 +108,22 @@ def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
         if not isinstance(releases, dict):
             record["resolution_reason"] = "pypi_releases_missing"
             return record
+        if len(installed_versions) > 1:
+            record["resolution_reason"] = "multiple_generation_environment_versions"
+            return record
+        installed_version = next(iter(installed_versions), None)
+        if installed_version is not None:
+            record["generation_environment_version"] = installed_version
+            if installed_version not in releases:
+                record["resolution_reason"] = "installed_generation_version_not_on_pypi"
+                return record
+            selected_releases = {installed_version: releases[installed_version]}
+            provenance = "GENERATION_ENVIRONMENT"
+        else:
+            selected_releases = releases
+            provenance = "PRE_GENERATION_REGISTRY_SNAPSHOT"
         candidates = []
-        for version, files in releases.items():
+        for version, files in selected_releases.items():
             if not isinstance(files, list):
                 continue
             for item in files:
@@ -135,7 +160,7 @@ def capture_pre_generation_release(package_name: str) -> dict[str, Any]:
                 "wheel_sha256": digest.lower(),
                 "wheel_url": url,
                 "resolution_status": "PINNED_BEFORE_GENERATION",
-                "temporal_provenance": "PRE_GENERATION_REGISTRY_SNAPSHOT",
+                "temporal_provenance": provenance,
             }
         )
         return record
