@@ -170,6 +170,16 @@ __import__(resolve_module_name())
         self.assertFalse(unresolved)
         self.assertIn({"module": "json", "attributes": [], "callable": False}, probes)
 
+    def test_missing_attribute_is_not_double_counted_as_not_callable(self):
+        result = RECOVERY.run_api_probe([{
+            "module": "json",
+            "attributes": ["jamp_missing_symbol_for_recovery_test"],
+            "callable": True,
+        }])
+        self.assertIs(result["api_valid"], False)
+        self.assertEqual(len(result["missing"]), 1)
+        self.assertEqual(result["missing"][0]["kind"], "missing_attribute_or_submodule")
+
     def test_probe_extraction_does_not_execute_candidate_code(self):
         with tempfile.TemporaryDirectory() as tmp:
             marker = Path(tmp) / "executed"

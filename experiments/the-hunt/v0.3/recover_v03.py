@@ -55,6 +55,7 @@ for probe in probes:
         print(json.dumps({"api_valid": None, "reason": "module_import_failed",
                           "error_type": type(exc).__name__, "error": str(exc)[:500]}))
         raise SystemExit(0)
+    probe_missing_before = len(missing)
     try:
         for part in probe.get("attributes", []):
             try:
@@ -68,7 +69,8 @@ for probe in probes:
                         missing.append({"probe": probe, "kind": "missing_attribute_or_submodule"})
                         break
                     raise
-        if probe.get("callable") and not callable(current):
+        if (probe.get("callable") and len(missing) == probe_missing_before
+                and not callable(current)):
             missing.append({"probe": probe, "kind": "symbol_not_callable"})
     except AttributeError as exc:
         missing.append({"probe": probe, "kind": "missing_attribute", "error": str(exc)[:500]})
