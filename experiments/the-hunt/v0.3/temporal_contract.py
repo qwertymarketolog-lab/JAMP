@@ -174,6 +174,9 @@ def finalize_wheel_snapshot(
     record: dict[str, Any], wheelhouse: Path, sample_id: str
 ) -> dict[str, Any]:
     result = dict(record)
+    result.setdefault("wheel_relative_path", None)
+    result.setdefault("wheel_sha256_observed", None)
+    result.setdefault("artifact_download_timestamp_utc", None)
     if result.get("resolution_status") != "PINNED_BEFORE_GENERATION":
         return result
     try:
