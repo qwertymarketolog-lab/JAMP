@@ -231,7 +231,8 @@ def validate_source_artifact(
             if wheel_path.is_absolute() or ".." in wheel_path.parts or wheel_path.parts[0] != "wheelhouse":
                 raise ValueError(f"unsafe wheel path in snapshot: {relative}")
             actual = root / wheel_path
-            if not actual.is_file() or actual.name != wheel_name:
+            if (not actual.is_file()
+                    or not (actual.name == wheel_name or actual.name.endswith("-" + wheel_name))):
                 raise ValueError(f"snapshot wheel is missing or misnamed: {relative}")
             observed_hash = sha256_file(actual)
             if observed_hash != digest or snap_row.get("wheel_sha256_observed") != digest:

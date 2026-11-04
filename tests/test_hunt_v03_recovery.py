@@ -35,8 +35,9 @@ class RecoveryTests(unittest.TestCase):
                            "pypi_exists": exists})
             if index < 20:
                 filename = f"pkg_{index + 1:03d}-1.0-py3-none-any.whl"
-                relative = f"wheelhouse/{filename}"
-                wheel = wheelhouse / filename
+                archive_name = f"fixturehash-{filename}"
+                relative = f"wheelhouse/{archive_name}"
+                wheel = wheelhouse / archive_name
                 wheel.write_bytes(f"fixture-wheel-{index}".encode())
                 digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
                 packages.append({"sample_id": sample_id, "package_name": package,
