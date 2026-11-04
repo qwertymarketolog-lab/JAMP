@@ -311,7 +311,7 @@ class EvaluatorDecisionTests(unittest.TestCase):
                 patch.object(
                     EVALUATOR,
                     "check_provenance",
-                    side_effect=lambda package: {
+                    side_effect=lambda package, *_args: {
                         "status": "NOT_FOUND" if package.startswith("probe-") else "TRUSTED"
                     },
                 ),
