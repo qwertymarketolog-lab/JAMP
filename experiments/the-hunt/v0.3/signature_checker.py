@@ -387,6 +387,8 @@ def _hunt_literal_all(tree: ast.Module) -> tuple[list[str] | None, bool]:
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in targets
             ):
+                if node.value is None:
+                    return None, True
                 try:
                     value = ast.literal_eval(node.value)
                 except (ValueError, TypeError, SyntaxError):
@@ -447,16 +449,20 @@ def _hunt_extended_index(
                 for alias in node.names:
                     bindings.add(alias.asname or alias.name.split(".")[0])
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
-                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                assignment_targets = (
+                    node.targets if isinstance(node, ast.Assign) else [node.target]
+                )
                 bindings.update(
-                    target.id for target in targets if isinstance(target, ast.Name)
+                    target.id
+                    for target in assignment_targets
+                    if isinstance(target, ast.Name)
                 )
         module_bindings[module] = bindings
 
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
+        for ast_node in ast.walk(tree):
+            if not isinstance(ast_node, ast.Call):
                 continue
-            function = node.func
+            function = ast_node.func
             is_recreate = (
                 isinstance(function, ast.Name) and function.id == "recreate_module"
             ) or (
@@ -466,7 +472,7 @@ def _hunt_extended_index(
             if not is_recreate:
                 continue
             by_module = next(
-                (keyword.value for keyword in node.keywords if keyword.arg == "by_module"),
+                (keyword.value for keyword in ast_node.keywords if keyword.arg == "by_module"),
                 None,
             )
             if by_module is None:
@@ -491,24 +497,24 @@ def _hunt_extended_index(
 
     # Python star imports use literal __all__, or public top-level bindings
     # when __all__ is absent. A dynamic __all__ is deliberately unresolved.
-    for module, targets in star_imports.items():
-        for target_module in targets:
-            if target_module not in modules:
-                dynamic_modules.add(module)
+    for importing_module, star_targets in star_imports.items():
+        for star_target_module in star_targets:
+            if star_target_module not in modules:
+                dynamic_modules.add(importing_module)
                 continue
-            if target_module in dynamic_all:
-                dynamic_modules.add(module)
+            if star_target_module in dynamic_all:
+                dynamic_modules.add(importing_module)
                 continue
-            if target_module in all_declared:
-                exported_names = all_names[target_module] or []
+            if star_target_module in all_declared:
+                exported_names = all_names[star_target_module] or []
             else:
                 exported_names = sorted(
                     name
-                    for name in module_bindings.get(target_module, set())
+                    for name in module_bindings.get(star_target_module, set())
                     if not name.startswith("_")
                 )
             for name in exported_names:
-                reexports[module][name] = (target_module, name)
+                reexports[importing_module][name] = (star_target_module, name)
 
     return (
         modules,
@@ -619,28 +625,28 @@ def inspect_wheel_bytes(
     unresolved: list[dict[str, Any]] = []
     inconclusive_calls: list[dict[str, Any]] = []
     for call in calls:
-        module = call.get("module")
+        call_module = call.get("module")
         symbol_path = call.get("symbol_path")
-        if not isinstance(module, str) or not isinstance(symbol_path, list):
+        if not isinstance(call_module, str) or not isinstance(symbol_path, list):
             inconclusive_calls.append(call)
             continue
         if call.get("operation") == "star_import":
-            if module not in modules or not symbol_path:
+            if call_module not in modules or not symbol_path:
                 unresolved.append(call)
                 continue
-            if module in all_declared and all_names.get(module) is None:
+            if call_module in all_declared and all_names.get(call_module) is None:
                 inconclusive_calls.append(call)
                 continue
             symbol = symbol_path[0]
-            if module in all_declared:
-                if symbol not in (all_names.get(module) or []):
+            if call_module in all_declared:
+                if symbol not in (all_names.get(call_module) or []):
                     unresolved.append(call)
                     continue
             elif symbol.startswith("_"):
                 unresolved.append(call)
                 continue
         if not _hunt_symbol_exists(
-            module, symbol_path, modules, functions, classes, reexports
+            call_module, symbol_path, modules, functions, classes, reexports
         ):
             unresolved.append(call)
 
