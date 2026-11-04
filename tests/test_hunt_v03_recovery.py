@@ -115,10 +115,12 @@ class RecoveryTests(unittest.TestCase):
             self.assertEqual(len(json.loads(pins.read_text())["pins"]), 20)
 
     def test_dynamic_import_without_static_target_is_inconclusive(self):
-        probes, unresolved = RECOVERY.analyze_code(
-            "import importlib\\nname = get_name()\\nimportlib.import_module(name)\\n"
-            "__import__(resolve_module_name())"
-        )
+        code = """import importlib
+name = get_name()
+importlib.import_module(name)
+__import__(resolve_module_name())
+"""
+        probes, unresolved = RECOVERY.analyze_code(code)
         self.assertTrue(probes)
         self.assertEqual(len(unresolved), 2)
         self.assertTrue(all(
