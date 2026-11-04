@@ -197,14 +197,13 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
 
     def test_star_import_probe_checks_literal_all_membership(self):
         wheel = self._wheel({
-            "sample/__init__.py": "__all__ = ['present']\n",
             "sample/api.py": "__all__ = ['present']\ndef present(): pass\n",
         })
         present = SIGNATURE_CHECKER.inspect_wheel_bytes(
             wheel,
             [{
                 "operation": "star_import",
-                "module": "sample",
+                "module": "sample.api",
                 "symbol_path": ["present"],
             }],
         )
@@ -212,7 +211,7 @@ class StaticWheelExportResolutionTests(unittest.TestCase):
             wheel,
             [{
                 "operation": "star_import",
-                "module": "sample",
+                "module": "sample.api",
                 "symbol_path": ["not_exported"],
             }],
         )
