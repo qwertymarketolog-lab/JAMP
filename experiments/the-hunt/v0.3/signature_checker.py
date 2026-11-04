@@ -464,6 +464,7 @@ def _hunt_extended_index(
     dict[str, dict[str, set[str]]],
     dict[str, dict[str, tuple[str, str]]],
     set[str],
+    dict[str, set[str]],
     dict[str, list[str] | None],
     set[str],
 ]:
@@ -579,6 +580,7 @@ def _hunt_extended_index(
         classes,
         reexports,
         dynamic_modules,
+        module_bindings,
         all_names,
         all_declared | dynamic_all,
     )
@@ -780,6 +782,7 @@ def inspect_wheel_bytes(
             classes,
             reexports,
             dynamic_modules,
+            module_bindings,
             all_names,
             all_declared,
         ) = _hunt_extended_index(sources)
