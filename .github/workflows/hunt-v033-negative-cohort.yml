@@ -1,0 +1,136 @@
+name: The Hunt v0.3.3 - API Negative Cohort
+
+on:
+  push:
+    branches:
+      - exp/hunt-v0.3.3-negative-cohort
+    paths:
+      - ".github/workflows/hunt-v033-negative-cohort.yml"
+      - "experiments/the-hunt/v0.3/generate_negative_cohort.py"
+      - "experiments/the-hunt/v0.3/evaluate_negative_cohort.py"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  negative-cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download and verify immutable Recovery artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p negative-evidence
+          python - <<'PY'
+          import hashlib
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          artifact_id = 13299716958
+          expected_sha256 = (
+              "93cf36e696897bfca8ab99e500a8e625e8bae131d5944f56b1cb879ccdeae3b6"
+          )
+          request = urllib.request.Request(
+              "https://api.github.com/repos/qwertymarketolog-lab/JAMP/"
+              f"actions/artifacts/{artifact_id}/zip",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          destination = Path("negative-evidence/recovery-13299716958.zip")
+          with urllib.request.urlopen(request, timeout=180) as response:
+              with destination.open("wb") as output:
+                  while chunk := response.read(1024 * 1024):
+                      output.write(chunk)
+          observed = hashlib.sha256(destination.read_bytes()).hexdigest()
+          print(f"recovery_artifact_id={artifact_id}")
+          print(f"recovery_artifact_sha256={observed}")
+          if observed != expected_sha256:
+              raise SystemExit("Recovery artifact SHA-256 mismatch")
+          PY
+
+      - name: Compile and run signature checker regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q \
+            experiments/the-hunt/v0.3/signature_checker.py \
+            experiments/the-hunt/v0.3/generate_negative_cohort.py \
+            experiments/the-hunt/v0.3/evaluate_negative_cohort.py
+          python -m pip install --disable-pip-version-check pytest
+          python -m pytest -q tests/test_signature_checker.py
+
+      - name: Generate 100 independently labeled negative cases and positive controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/generate_negative_cohort.py \
+            --recovery-artifact negative-evidence/recovery-13299716958.zip \
+            --output negative-evidence/negative_cohort.json \
+            2>&1 | tee negative-evidence/generation.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cohort = json.loads(Path("negative-evidence/negative_cohort.json").read_text())
+          assert cohort["package_count"] == 20
+          assert cohort["negative_sample_count"] == 100
+          assert cohort["positive_control_count"] == 20
+          assert len({row["sample_id"] for row in cohort["negative_samples"]}) == 100
+          print("cohort_contract=VERIFIED")
+          PY
+
+      - name: Evaluate cohort through signature_checker
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/v0.3/evaluate_negative_cohort.py \
+            --cohort negative-evidence/negative_cohort.json \
+            --recovery-artifact negative-evidence/recovery-13299716958.zip \
+            --output negative-evidence/api_negative_results.json \
+            2>&1 | tee negative-evidence/evaluation.log
+
+      - name: Enforce Frozen Core and capture terminal evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse "$GITHUB_SHA:src/jamp/run.py")"
+          expected="0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          {
+            printf 'github_run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'github_sha=%s\n' "$GITHUB_SHA"
+            printf 'workflow=%s\n' "$GITHUB_WORKFLOW"
+            printf 'frozen_core_blob=%s\n' "$actual"
+            printf 'frozen_core_expected=%s\n' "$expected"
+            if [ "$actual" = "$expected" ]; then
+              printf 'frozen_core_delta=0\n'
+            else
+              printf 'frozen_core_delta=NONZERO\n'
+            fi
+          } > negative-evidence/ci-metadata.txt
+          test "$actual" = "$expected"
+
+      - name: Upload API negative evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v033-api-negative-${{ github.run_id }}
+          path: negative-evidence/
+          if-no-files-found: warn
+          retention-days: 90
