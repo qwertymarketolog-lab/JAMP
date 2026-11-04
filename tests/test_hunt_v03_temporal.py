@@ -298,6 +298,8 @@ class TemporalSnapshotTests(unittest.TestCase):
             result = next(row for row in report["results"] if row["sample_id"] == "sample-0")
             self.assertFalse(result["api_valid_now"])
             self.assertTrue(result["api_valid_then"])
+            self.assertEqual(result["api_status_now"], "INVALID_NOW")
+            self.assertEqual(result["api_status_then"], "VALID_THEN")
             self.assertEqual(result["temporal_evidence_status"], "PRE_GENERATION_REGISTRY_SNAPSHOT")
             self.assertEqual(result["jamp_verdict"], "CLEAN")
             self.assertEqual(report["api_valid_now_counts"]["invalid"], 1)
