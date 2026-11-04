@@ -1,0 +1,131 @@
+name: Hunt v0.3 Recovery Evaluation (artifact-only)
+
+on:
+  push:
+    branches:
+      - recovery/hunt-v03-eval-41872680750
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recovery-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout evaluator at original experiment SHA
+        uses: actions/checkout@v4
+        with:
+          ref: a772ce37a429e1e3694218a3375276d380a4316b
+
+      - name: Verify pinned source and download original evidence artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          EXPECTED_SHA="a772ce37a429e1e3694218a3375276d380a4316b"
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+          mkdir -p recovery-input results
+          curl --fail --silent --show-error --location \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/qwertymarketolog-lab/JAMP/actions/artifacts/13347295508/zip" \
+            -o recovery-input/original-evidence.zip
+          echo "576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5  recovery-input/original-evidence.zip" | sha256sum --check
+          mkdir -p recovery-input/evidence
+          unzip -q recovery-input/original-evidence.zip -d recovery-input/evidence
+          for required in ground_truth_v3.json llm_responses_v3.json generation_manifest.json generation_snapshot.json; do
+            test -s "recovery-input/evidence/$required"
+          done
+          printf 'source_sha=%s\nartifact_id=13347295508\nartifact_sha256=576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5\n' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run original v0.3 evaluator without model generation
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="$GITHUB_WORKSPACE/experiments/the-hunt/v0.3"
+          python experiments/the-hunt/v0.3/evaluate_v0.3.py \
+            --ground-truth recovery-input/evidence/ground_truth_v3.json \
+            --input recovery-input/evidence/llm_responses_v3.json \
+            --manifest recovery-input/evidence/generation_manifest.json \
+            --temporal-snapshot recovery-input/evidence/generation_snapshot.json \
+            --output results/results_v0.3.json
+
+      - name: Build recovery-only confusion matrix for SUCCESS responses
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = Path("recovery-input/evidence")
+          report = json.loads(Path("results/results_v0.3.json").read_text())
+          responses = json.loads((evidence / "llm_responses_v3.json").read_text())
+          response_status = {row["sample_id"]: row.get("request_status") for row in responses["samples"]}
+          rows = {row["sample_id"]: row for row in report["results"]}
+
+          matrix = {"TP": 0, "FP": 0, "TN": 0, "FN": 0, "INCONCLUSIVE": 0}
+          not_evaluated = []
+          for sample_id, status in response_status.items():
+              row = rows[sample_id]
+              if status != "SUCCESS":
+                  not_evaluated.append({"sample_id": sample_id, "request_status": status, "recovery_status": "NOT_EVALUATED"})
+                  continue
+              actual = row.get("actual_hallucination")
+              verdict = row.get("jamp_verdict")
+              if actual is None or verdict == "INCONCLUSIVE":
+                  matrix["INCONCLUSIVE"] += 1
+              elif actual is True and verdict == "HALLUCINATION_CAUGHT":
+                  matrix["TP"] += 1
+              elif actual is False and verdict == "HALLUCINATION_CAUGHT":
+                  matrix["FP"] += 1
+              elif actual is False and verdict == "CLEAN":
+                  matrix["TN"] += 1
+              elif actual is True and verdict == "CLEAN":
+                  matrix["FN"] += 1
+              else:
+                  matrix["INCONCLUSIVE"] += 1
+
+          targets = {}
+          for sample_id in ("hunt-v03-096", "hunt-v03-098"):
+              row = rows[sample_id]
+              targets[sample_id] = {
+                  "package_name": row.get("package_name"),
+                  "jamp_verdict": row.get("jamp_verdict"),
+                  "provenance_status": (row.get("provenance") or {}).get("status"),
+                  "signature_then": row.get("signature_then", row.get("signature")),
+                  "temporal_evidence_status": row.get("temporal_evidence_status"),
+              }
+
+          summary = {
+              "schema_version": "jamp-hunt-v0.3-recovery-summary-v1",
+              "source_evaluator": "experiments/the-hunt/v0.3/evaluate_v0.3.py",
+              "evaluation_scope": "SUCCESS responses only; all non-SUCCESS generations are NOT_EVALUATED and excluded from confusion matrix",
+              "successful_response_count": sum(status == "SUCCESS" for status in response_status.values()),
+              "not_evaluated_count": len(not_evaluated),
+              "not_evaluated_by_request_status": {
+                  status: sum(item["request_status"] == status for item in not_evaluated)
+                  for status in sorted({item["request_status"] for item in not_evaluated})
+              },
+              "confusion_matrix": matrix,
+              "fake_package_cases": targets,
+              "qualification": report.get("qualification"),
+              "not_evaluated_samples": not_evaluated,
+          }
+          Path("results/recovery_summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+          assert summary["successful_response_count"] == 21, summary["successful_response_count"]
+          assert summary["not_evaluated_count"] == 79, summary["not_evaluated_count"]
+          print(json.dumps({k: summary[k] for k in ("successful_response_count", "not_evaluated_count", "not_evaluated_by_request_status", "confusion_matrix", "fake_package_cases", "qualification")}, indent=2))
+          PY
+
+      - name: Upload recovery evaluation results
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v0.3-recovery-evaluation
+          path: |
+            results/results_v0.3.json
+            results/recovery_summary.json
+          if-no-files-found: error
+          retention-days: 90
