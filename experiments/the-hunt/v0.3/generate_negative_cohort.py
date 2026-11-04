@@ -147,9 +147,10 @@ def module_declares_symbol(sources: dict[str, str], module: str, symbol: str) ->
             and node.name == symbol
         ):
             return True
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            if any((alias.asname or alias.name) == symbol for alias in node.names):
-                return True
+        if isinstance(node, (ast.Import, ast.ImportFrom)) and any(
+            (alias.asname or alias.name) == symbol for alias in node.names
+        ):
+            return True
     return False
 
 
