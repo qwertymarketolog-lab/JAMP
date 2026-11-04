@@ -11,11 +11,20 @@ from typing import Any
 
 from provenance_checker import check_provenance
 from signature_checker import check_signature
+from temporal_contract import check_signature_from_snapshot, load_generation_snapshot
 
 POSITIVE_LABELS = {"HALLUCINATION", "HALLUCINATED_PACKAGE"}
 NEGATIVE_LABELS = {"CLEAN", "NOT_HALLUCINATED"}
 DEFINITIVE_PREDICTIONS = {"HALLUCINATION_CAUGHT", "CLEAN"}
 BASELINE_HALLUCINATION = {"SYNTAX_ERROR", "PACKAGE_NOT_FOUND"}
+
+
+def _api_boolean(signature: dict[str, Any]) -> bool | None:
+    if signature.get("status") == "EXISTS":
+        return True
+    if signature.get("status") == "INVALID_SIGNATURE":
+        return False
+    return None
 
 
 def _ground_truth(value: Any) -> bool:
@@ -99,6 +108,7 @@ def evaluate(
     output_path: Path,
     manifest_path: Path,
     ground_truth_path: Path,
+    temporal_snapshot_path: Path | None = None,
 ) -> dict[str, Any]:
     payload, raw_responses = _read_json(input_path)
     manifest, raw_manifest = _read_json(manifest_path)
@@ -116,6 +126,22 @@ def evaluate(
     response_hash = hashlib.sha256(raw_responses).hexdigest()
     manifest_hash = hashlib.sha256(raw_manifest).hexdigest()
     ground_truth_hash = hashlib.sha256(raw_ground_truth).hexdigest()
+    if temporal_snapshot_path is None:
+        candidate_snapshot = manifest_path.parent / "generation_snapshot.json"
+        temporal_snapshot_path = candidate_snapshot if candidate_snapshot.is_file() else None
+    temporal_snapshot = (
+        load_generation_snapshot(temporal_snapshot_path)
+        if temporal_snapshot_path is not None and temporal_snapshot_path.is_file()
+        else None
+    )
+    if temporal_snapshot is not None:
+        expected_snapshot_hash = manifest.get("generation_snapshot_sha256")
+        if expected_snapshot_hash != temporal_snapshot.get("snapshot_sha256"):
+            raise ValueError("generation snapshot SHA-256 does not match generation manifest")
+    temporal_packages = (
+        temporal_snapshot.get("_packages_by_sample", {})
+        if temporal_snapshot is not None else {}
+    )
     expected_response_hash = manifest.get("llm_responses_sha256")
     if expected_response_hash and expected_response_hash != response_hash:
         raise ValueError("LLM response file SHA-256 does not match generation manifest")
@@ -301,8 +327,14 @@ def evaluate(
             raise ValueError(f"ground truth for {sample_id} lacks boolean pypi_exists")
         baseline = _baseline_verdict(code, package_exists)
         provenance = check_provenance(package_name)
-        signature = check_signature(code, package_name)
-        verdict = _jamp_verdict(provenance, signature)
+        signature_now = check_signature(code, package_name)
+        temporal_record = temporal_packages.get(sample_id)
+        signature_then = check_signature_from_snapshot(
+            code, package_name, temporal_record, temporal_snapshot_path.parent
+            if temporal_snapshot_path is not None else manifest_path.parent
+        )
+        signature = signature_then
+        verdict = _jamp_verdict(provenance, signature_then)
         results.append(
             {
                 "sample_id": sample_id,
@@ -315,6 +347,14 @@ def evaluate(
                 "jamp_verdict": verdict,
                 "provenance": provenance,
                 "signature": signature,
+                "signature_now": signature_now,
+                "signature_then": signature_then,
+                "api_valid_now": _api_boolean(signature_now),
+                "api_valid_then": _api_boolean(signature_then),
+                "temporal_evidence_status": (
+                    temporal_record.get("temporal_provenance", "UNRESOLVED")
+                    if temporal_record else "TEMPORAL_EVIDENCE_MISSING"
+                ),
             }
         )
 
@@ -348,6 +388,26 @@ def evaluate(
         "generation_manifest_sha256": manifest_hash,
         "llm_responses_sha256": response_hash,
         "ground_truth_sha256": ground_truth_hash,
+        "generation_snapshot_sha256": (
+            temporal_snapshot.get("snapshot_sha256") if temporal_snapshot else None
+        ),
+        "api_valid_now_counts": {
+            "valid": sum(row.get("api_valid_now") is True for row in results),
+            "invalid": sum(row.get("api_valid_now") is False for row in results),
+            "inconclusive": sum(row.get("api_valid_now") is None for row in results),
+        },
+        "api_valid_then_counts": {
+            "valid": sum(row.get("api_valid_then") is True for row in results),
+            "invalid": sum(row.get("api_valid_then") is False for row in results),
+            "inconclusive": sum(row.get("api_valid_then") is None for row in results),
+        },
+        "temporal_evidence_status_counts": {
+            status: sum(row.get("temporal_evidence_status") == status for row in results)
+            for status in sorted({
+                row.get("temporal_evidence_status") for row in results
+                if row.get("temporal_evidence_status") is not None
+            })
+        },
         "attempted_sample_count": len(results),
         "successful_generation_count": manifest.get("successful_requests"),
         "failed_generation_count": manifest.get("failed_requests"),
@@ -392,8 +452,11 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=Path("generation_manifest.json"))
     parser.add_argument("--ground-truth", type=Path, default=Path("ground_truth_v3.json"))
     parser.add_argument("--output", type=Path, default=Path("results_v0.3.json"))
+    parser.add_argument("--temporal-snapshot", type=Path)
     args = parser.parse_args()
-    report = evaluate(args.input, args.output, args.manifest, args.ground_truth)
+    report = evaluate(
+        args.input, args.output, args.manifest, args.ground_truth, args.temporal_snapshot
+    )
     print(
         json.dumps(
             {
