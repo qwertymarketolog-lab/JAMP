@@ -5,7 +5,6 @@ import hashlib
 import importlib.util
 import io
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
@@ -85,7 +84,9 @@ class TemporalSnapshotTests(unittest.TestCase):
                 {"package_name": "samplepkg", "pypi_version": "2.0"},
             ]
         }
-        with patch.object(TEMPORAL, "fetch_pypi_json", return_value=(200, self._metadata(b"wheel"))):
+        with patch.object(
+            TEMPORAL, "fetch_pypi_json", return_value=(200, self._metadata(b"wheel"))
+        ):
             record = TEMPORAL.capture_pre_generation_release("samplepkg", environment)
         self.assertEqual(record["resolution_status"], "UNRESOLVED")
         self.assertEqual(record["resolution_reason"], "multiple_generation_environment_versions")
@@ -146,7 +147,11 @@ class TemporalSnapshotTests(unittest.TestCase):
             wheelhouse.mkdir()
             (wheelhouse / "sample-1.whl").write_bytes(wheel)
             with (
-                patch.object(TEMPORAL, "fetch_pypi_json", side_effect=AssertionError("network used")),
+                patch.object(
+                    TEMPORAL,
+                    "fetch_pypi_json",
+                    side_effect=AssertionError("network used"),
+                ),
                 patch.object(TEMPORAL, "urlopen", side_effect=AssertionError("network used")),
             ):
                 result = TEMPORAL.check_signature_from_snapshot(
