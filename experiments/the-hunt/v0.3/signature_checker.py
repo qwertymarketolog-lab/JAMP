@@ -503,6 +503,8 @@ def _hunt_extended_index(
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     bindings.add(alias.asname or alias.name.split(".")[0])
+                    if alias.asname is None and alias.name.startswith(f"{module}."):
+                        bindings.add(alias.name[len(module) + 1 :].split(".")[0])
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 assignment_targets = (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -635,6 +637,7 @@ def _hunt_dynamic_resolution_relevant(
     symbol_path: list[str],
     modules: set[str],
     reexports: dict[str, dict[str, tuple[str, str]]],
+    module_bindings: dict[str, set[str]],
     dynamic_modules: set[str],
 ) -> bool:
     """Return whether a missing symbol may be supplied by a relevant module hook.
@@ -667,8 +670,17 @@ def _hunt_dynamic_resolution_relevant(
         if not candidates:
             continue
 
-        deepest_module, deepest_remaining = candidates[-1]
         for candidate_module, remaining in candidates:
+            # A child source file does not itself bind that child as an
+            # attribute on its parent package. Only a static module binding
+            # or re-export suppresses the parent's dynamic attribute hook.
+            if (
+                candidate_module in dynamic_modules
+                and remaining[0]
+                not in module_bindings.get(candidate_module, set())
+            ):
+                return True
+
             exported = reexports.get(candidate_module, {}).get(remaining[0])
             if exported is not None:
                 target_module, target_symbol = exported
@@ -676,14 +688,6 @@ def _hunt_dynamic_resolution_relevant(
                     queue.append(
                         (target_module, (target_symbol, *remaining[1:]))
                     )
-
-        # A parent package hook is not relevant when a concrete child module
-        # exists. Explicit re-exports are followed above instead.
-        deepest_export = reexports.get(deepest_module, {}).get(
-            deepest_remaining[0]
-        )
-        if deepest_module in dynamic_modules and deepest_export is None:
-            return True
 
     return False
 
@@ -822,7 +826,12 @@ def inspect_wheel_bytes(
             call_module, symbol_path, modules, functions, classes, reexports
         ):
             if _hunt_dynamic_resolution_relevant(
-                call_module, symbol_path, modules, reexports, dynamic_modules
+                call_module,
+                symbol_path,
+                modules,
+                reexports,
+                module_bindings,
+                dynamic_modules,
             ):
                 inconclusive_calls.append(call)
             else:
