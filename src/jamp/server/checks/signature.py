@@ -16,7 +16,7 @@ from pathlib import PurePosixPath
 from typing import Any
 from urllib.request import Request, urlopen
 
-from .provenance import fetch_pypi_json
+from .pypi_client import fetch_pypi_json
 
 MAX_WHEEL_BYTES = 25 * 1024 * 1024
 MAX_SOURCE_BYTES = 10 * 1024 * 1024
@@ -56,9 +56,11 @@ def _dotted_name(node: ast.AST) -> tuple[str, list[str]] | None:
 
 
 def _imports_and_calls(
-    code_str: str, package_name: str
+    code_str: str,
+    package_name: str,
+    parsed_ast: ast.AST | None = None,
 ) -> tuple[ImportAliases, CallRecords, CallRecords]:
-    tree = ast.parse(code_str)
+    tree = parsed_ast if parsed_ast is not None else ast.parse(code_str)
     aliases: dict[str, tuple[str, tuple[str, ...]]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -337,10 +339,16 @@ def _download_wheel(url: str) -> bytes:
     return payload
 
 
-def check_signature(code_str: str, package_name: str) -> dict[str, Any]:
+def check_signature(
+    code_str: str,
+    package_name: str,
+    parsed_ast: ast.AST | None = None,
+) -> dict[str, Any]:
     """Check imported package calls against hash-verified latest PyPI wheel source."""
     try:
-        aliases, calls, unsupported = _imports_and_calls(code_str, package_name)
+        aliases, calls, unsupported = _imports_and_calls(
+            code_str, package_name, parsed_ast=parsed_ast
+        )
     except (SyntaxError, ValueError, TypeError) as exc:
         return {
             "status": "INCONCLUSIVE",
