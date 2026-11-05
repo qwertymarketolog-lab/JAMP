@@ -35,7 +35,7 @@ jobs:
       - name: Run Mypy on baseline and PR head
         shell: bash
         run: |
-          set -u
+          set +e
           mkdir -p artifacts/mypy-control
           git checkout --detach 2f0a969c7ad7ff07928f3547ad672f305031884f
           echo "BASE_SHA=$(git rev-parse HEAD)" | tee artifacts/mypy-control/metadata.txt
