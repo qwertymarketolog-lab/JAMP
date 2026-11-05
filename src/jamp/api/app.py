@@ -14,6 +14,7 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
+from jamp.db.verdicts import IdempotencyConflict, persist_or_get_verdict
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
@@ -147,7 +148,7 @@ def create_app(
     telegram_update_db_path: str | Path | None = None,
 ):
     try:
-        from fastapi import Depends, FastAPI
+        from fastapi import Depends, FastAPI, Header
         from fastapi import Request as FastAPIRequest
         from fastapi.responses import JSONResponse
     except ImportError as exc:  # pragma: no cover
@@ -191,6 +192,50 @@ def create_app(
     @app.on_event("startup")
     def _startup_auth_check() -> None:
         verify_auth_config()
+
+
+    @app.post("/v1/verify")
+    def verify(
+        payload: dict[str, Any],
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ):
+        """Verify generated code and atomically persist its verdict and evidence."""
+        import hashlib
+        from psycopg2 import InterfaceError, OperationalError
+        from jamp.server.checks.engine import verify_code
+
+        if not isinstance(idempotency_key, str) or not idempotency_key.strip():
+            return JSONResponse(status_code=400, content={"detail": "Idempotency-Key header required"})
+        if len(idempotency_key) > 128:
+            return JSONResponse(status_code=400, content={"detail": "Idempotency-Key exceeds 128 characters"})
+        code_str, package_name, sample_id = payload.get("code_str"), payload.get("package_name"), payload.get("sample_id")
+        if not isinstance(code_str, str) or not code_str.strip():
+            return JSONResponse(status_code=422, content={"detail": "code_str must be non-empty"})
+        if not isinstance(package_name, str) or not package_name.strip():
+            return JSONResponse(status_code=422, content={"detail": "package_name must be non-empty"})
+        if sample_id is not None and not isinstance(sample_id, str):
+            return JSONResponse(status_code=422, content={"detail": "sample_id must be a string"})
+        if set(payload) - {"code_str", "package_name", "sample_id"}:
+            return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
+        canonical = json.dumps(
+            {"code_str": code_str, "package_name": package_name, "sample_id": sample_id},
+            ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        request_hash, code_hash = hashlib.sha256(canonical).hexdigest(), hashlib.sha256(code_str.encode("utf-8")).hexdigest()
+        try:
+            result = verify_code(code_str, package_name, sample_id=sample_id)
+            stored, created = persist_or_get_verdict(
+                organization_id=organization.org_id, idempotency_key=idempotency_key,
+                request_hash=request_hash, code_hash=code_hash, result=result,
+            )
+        except IdempotencyConflict:
+            return JSONResponse(status_code=409, content={"detail": "Idempotency-Key was already used for a different request"})
+        except (OperationalError, InterfaceError, RuntimeError):
+            return JSONResponse(status_code=503, content={"detail": "verification persistence unavailable"})
+        except Exception:
+            return JSONResponse(status_code=502, content={"detail": "verification could not be completed"})
+        return JSONResponse(status_code=201 if created else 200, content=stored)
 
     @app.post("/v1/classify", dependencies=[Depends(require_api_key)])
     def classify(payload: dict[str, Any]):
