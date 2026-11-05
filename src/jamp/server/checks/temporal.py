@@ -7,6 +7,7 @@ is installed or executed.
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib.metadata
 import json
@@ -19,7 +20,7 @@ from typing import Any
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from .provenance import fetch_pypi_json
+from .pypi_client import fetch_pypi_json
 from .signature import _imports_and_calls, inspect_wheel_bytes
 
 MAX_WHEEL_BYTES = 25 * 1024 * 1024
@@ -297,7 +298,11 @@ def load_generation_snapshot(path: Path) -> dict[str, Any]:
 
 
 def check_signature_from_snapshot(
-    code: str, package_name: str, record: dict[str, Any] | None, snapshot_root: Path
+    code: str,
+    package_name: str,
+    record: dict[str, Any] | None,
+    snapshot_root: Path,
+    parsed_ast: ast.AST | None = None,
 ) -> dict[str, Any]:
     if record is None:
         return {"status": "INCONCLUSIVE", "reason": "TEMPORAL_EVIDENCE_MISSING"}
@@ -340,7 +345,9 @@ def check_signature_from_snapshot(
     if observed != record.get("wheel_sha256"):
         return {"status": "INCONCLUSIVE", "reason": "temporal_wheel_sha256_mismatch"}
     try:
-        aliases, calls, unsupported = _imports_and_calls(code, package_name)
+        aliases, calls, unsupported = _imports_and_calls(
+            code, package_name, parsed_ast=parsed_ast
+        )
         if not aliases:
             return {"status": "INCONCLUSIVE", "reason": "package_import_not_found"}
         if unsupported:
