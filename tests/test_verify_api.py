@@ -62,7 +62,10 @@ def test_verify_endpoint_persists_and_replays_idempotently(monkeypatch):
             headers=headers,
         )
         missing_key = client.post("/v1/verify", json=body)
+        openapi = client.get("/openapi.json")
 
+    assert openapi.status_code == 200
+    assert "/v1/verify" in openapi.json()["paths"]
     assert first.status_code == 201
     assert replay.status_code == 200
     assert first.json()["verdict_id"] == replay.json()["verdict_id"]
