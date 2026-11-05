@@ -228,6 +228,8 @@ def evaluate(
         if not isinstance(sample, dict):
             raise ValueError(f"samples[{index}] must be an object")
         sample_id = sample.get("sample_id")
+        if not isinstance(sample_id, str):
+            raise ValueError(f"samples[{index}] requires a string sample_id")
         truth = ground_truth[sample_id]
         label = truth.get("ground_truth")
         if label == "INCONCLUSIVE" or truth.get("pypi_exists") is None:
@@ -498,9 +500,16 @@ def evaluate(
         },
         "results": results,
     }
-    independent_inputs = (api_ground_truth_path, prompts_path, api_wheel_manifest_path)
-    if any(path is not None for path in independent_inputs):
-        if any(path is None for path in independent_inputs):
+    if (
+        api_ground_truth_path is not None
+        or prompts_path is not None
+        or api_wheel_manifest_path is not None
+    ):
+        if (
+            api_ground_truth_path is None
+            or prompts_path is None
+            or api_wheel_manifest_path is None
+        ):
             raise ValueError(
                 "API Ground Truth evaluation requires --api-ground-truth, --prompts, "
                 "and --api-wheel-manifest together"

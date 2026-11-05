@@ -96,7 +96,7 @@ def validate_api_ground_truth(
     ):
         raise ValueError("API Ground Truth provenance requires exact 100-row sample alignment")
 
-    counts = Counter()
+    counts: Counter[str] = Counter()
     for sample_id, api_row in api_rows.items():
         status = api_row.get("api_status")
         if status not in {"VALID", "INVALID", "INCONCLUSIVE"}:
@@ -167,7 +167,8 @@ def package_exists_matrix(
     counts = {"TP": 0, "TN": 0, "FP": 0, "FN": 0}
     inconclusive = 0
     for result in results:
-        truth = package_gt.get(result.get("sample_id"))
+        sample_id = result.get("sample_id")
+        truth = package_gt.get(sample_id) if isinstance(sample_id, str) else None
         if truth is None or not isinstance(truth.get("pypi_exists"), bool):
             inconclusive += 1
             continue
