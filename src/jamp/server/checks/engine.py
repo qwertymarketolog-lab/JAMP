@@ -1,6 +1,7 @@
 """Fail-closed orchestration for provenance, signature, and temporal checks."""
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,10 @@ def verify_code(
     """
     if not isinstance(code_str, str) or not code_str.strip():
         return _result("INCONCLUSIVE", package_name, sample_id, reason="invalid_code")
+    try:
+        parsed_ast = ast.parse(code_str)
+    except SyntaxError:
+        return _result("INCONCLUSIVE", package_name, sample_id, reason="syntax_error")
     if not isinstance(package_name, str) or not package_name.strip():
         return _result("INCONCLUSIVE", package_name, sample_id, reason="invalid_package_name")
     if sample_id is not None and (not isinstance(sample_id, str) or not sample_id.strip()):
@@ -50,7 +55,7 @@ def verify_code(
         return _result("INCONCLUSIVE", package_name, sample_id, reason="invalid_provenance_result")
 
     provenance_status = provenance.get("status")
-    if provenance_status in {"NOT_FOUND", "SUSPICIOUS"}:
+    if provenance_status == "NOT_FOUND":
         return _result(
             "HALLUCINATION_CAUGHT", package_name, sample_id,
             reason=(
@@ -63,19 +68,19 @@ def verify_code(
 
     if temporal_snapshot is None:
         try:
-            signature = check_signature(code_str, package_name)
+            signature = check_signature(code_str, package_name, parsed_ast=parsed_ast)
         except Exception as exc:  # fail closed at the orchestration boundary
             return _result(
                 "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
                 reason="signature_check_failed", error_type=type(exc).__name__,
             )
     else:
-        if not isinstance(temporal_snapshot, (str, Path)):
+        if not isinstance(temporal_snapshot, Path):
             return _result(
                 "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
                 reason="invalid_temporal_snapshot_path",
             )
-        snapshot_path = Path(temporal_snapshot)
+        snapshot_path = temporal_snapshot
         try:
             snapshot = load_generation_snapshot(snapshot_path)
             records = snapshot.get("_packages_by_sample")
@@ -92,8 +97,14 @@ def verify_code(
                     if isinstance(item, dict) and item.get("package_name") == package_name
                 ]
                 record = matches[0] if len(matches) == 1 else None
+            if record is None:
+                return _result(
+                    "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
+                    reason="record_not_found_in_snapshot",
+                )
             signature = check_signature_from_snapshot(
-                code_str, package_name, record, snapshot_path.parent
+                code_str, package_name, record, snapshot_path.parent,
+                parsed_ast=parsed_ast,
             )
         except ValueError as exc:
             if "SHA-256 mismatch" in str(exc):
@@ -128,6 +139,12 @@ def verify_code(
             "HALLUCINATION_CAUGHT", package_name, sample_id,
             provenance=provenance, signature=signature,
             reason="invalid_package_signature",
+        )
+    if provenance_status == "SUSPICIOUS":
+        return _result(
+            "SUSPICIOUS", package_name, sample_id,
+            provenance=provenance, signature=signature,
+            reason="provenance_suspicious",
         )
     if provenance_status == "INCONCLUSIVE" or signature.get("status") == "INCONCLUSIVE":
         return _result(
