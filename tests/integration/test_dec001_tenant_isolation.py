@@ -2,7 +2,8 @@
 
 The 18 declared controls are never silently removed. Conditional record creation
 uses explicit pytest skips; unavailable PostgreSQL skips the complete module.
-No authentication, persistence, or read-path dependency is mocked or patched.
+PostgreSQL authentication, JSONL persistence, and read routes remain real.
+The Verdict controls use an explicitly synthetic executor and E2 verifier.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import os
 import time
 import uuid
 from collections.abc import AsyncIterator
+from importlib import import_module
 from typing import Any
 
 import pytest
@@ -72,6 +74,7 @@ def _postgres_schema() -> None:
 def _real_auth_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     """Configure the HMAC secret; authentication and database lookup stay real."""
     monkeypatch.setenv(auth._ENV_SECRET, "dec001-integration-test-hmac-secret")
+    monkeypatch.setenv("JAMP_SIGNING_KEY", "dec001-integration-test-signing-key")
 
 
 @pytest.fixture
@@ -136,10 +139,36 @@ def audit_store(audit_path) -> AuditPersistence:
     return store
 
 
+def _deterministic_executor(selected_model: str, payload: dict[str, Any]) -> dict[str, str]:
+    """Return a clearly synthetic provider response for API-path controls only."""
+    return {
+        "provider": "openrouter",
+        "provider_model_id": selected_model,
+        "provider_response_id": f"dec001-synthetic-{uuid.uuid4().hex}",
+        "content": "Example Company announced a product update.",
+    }
+
+
+def _deterministic_e2_verifier(output: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Stand in for E2 only; this does not verify a real provider generation."""
+    return "VERIFIED", {
+        "provider_model": output.get("provider_model_id"),
+        "provider_name": "DEC001_SYNTHETIC_TEST_PROVIDER",
+        "generation_id": output.get("provider_response_id"),
+        "attempts": [],
+        "evidence_class": "SYNTHETIC_CONTROL_INPUT",
+    }
+
+
 @pytest_asyncio.fixture
-async def client(audit_path) -> AsyncIterator[AsyncClient]:
-    """Run create_app through an actual ASGI transport and its startup hooks."""
-    app = create_app()
+async def client(
+    audit_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncIterator[AsyncClient]:
+    """Run the real API/auth/persistence path with a synthetic provider boundary."""
+    api_module = import_module("jamp.api.app")
+    monkeypatch.setattr(api_module, "verify_generation", _deterministic_e2_verifier)
+    app = create_app(executor=_deterministic_executor)
     # ASGITransport deliberately does not manage lifespan. Enter the router's
     # ASGI lifespan context explicitly; APIRouter has no startup()/shutdown()
     # methods, and the context also guarantees shutdown when the test exits.
