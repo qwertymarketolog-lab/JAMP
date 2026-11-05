@@ -1,0 +1,93 @@
+name: Mypy PR539 Baseline Control
+
+on:
+  push:
+    branches:
+      - diagnostic/mypy-pr539-control
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Fetch exact comparison commits
+        env:
+          BASE_SHA: 2f0a969c7ad7ff07928f3547ad672f305031884f
+          HEAD_SHA: cb4040557b6cb948ab290fbb187454bf9fc761d1
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_SHA"
+          git fetch origin "$HEAD_SHA"
+      - name: Install the baseline developer environment
+        run: |
+          set -euo pipefail
+          git checkout --detach 2f0a969c7ad7ff07928f3547ad672f305031884f
+          python -m pip install ".[dev]"
+      - name: Run Mypy on baseline and PR head
+        shell: bash
+        run: |
+          set -u
+          mkdir -p artifacts/mypy-control
+          git checkout --detach 2f0a969c7ad7ff07928f3547ad672f305031884f
+          echo "BASE_SHA=$(git rev-parse HEAD)" | tee artifacts/mypy-control/metadata.txt
+          MYPYPATH=src mypy --config-file=pyproject.toml src/jamp/api/app.py \
+            > artifacts/mypy-control/baseline.log 2>&1
+          echo "BASE_EXIT=$?" | tee -a artifacts/mypy-control/metadata.txt
+
+          git checkout --detach cb4040557b6cb948ab290fbb187454bf9fc761d1
+          echo "HEAD_SHA=$(git rev-parse HEAD)" | tee -a artifacts/mypy-control/metadata.txt
+          MYPYPATH=src mypy --config-file=pyproject.toml \
+            src/jamp/api/app.py src/jamp/db/verdicts.py \
+            > artifacts/mypy-control/head.log 2>&1
+          echo "HEAD_EXIT=$?" | tee -a artifacts/mypy-control/metadata.txt
+
+          python - <<'PY'
+          import collections
+          import pathlib
+          import re
+
+          root = pathlib.Path("artifacts/mypy-control")
+          pattern = re.compile(r"^(.+?):\d+(?::\d+)?: error: (.+?)  \[([^\]]+)\]$", re.M)
+
+          def errors(path):
+              text = path.read_text(errors="replace")
+              return collections.Counter(
+                  (file, message, code)
+                  for file, message, code in pattern.findall(text)
+              )
+
+          base = errors(root / "baseline.log")
+          head = errors(root / "head.log")
+          introduced = head - base
+          resolved = base - head
+          lines = [
+              f"BASE_ERROR_COUNT={sum(base.values())}",
+              f"HEAD_ERROR_COUNT={sum(head.values())}",
+              f"INTRODUCED_ERROR_COUNT={sum(introduced.values())}",
+              f"RESOLVED_ERROR_COUNT={sum(resolved.values())}",
+              "",
+              "=== INTRODUCED ===",
+          ]
+          lines += [f"{count}x {item}" for item, count in introduced.items()] or ["none"]
+          lines += ["", "=== RESOLVED ==="]
+          lines += [f"{count}x {item}" for item, count in resolved.items()] or ["none"]
+          report = "\n".join(lines) + "\n"
+          (root / "comparison.txt").write_text(report)
+          print(report)
+          PY
+      - name: Upload Mypy control evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-pr539-baseline-control
+          path: artifacts/mypy-control/
+          if-no-files-found: error
