@@ -193,12 +193,12 @@ def create_app(
     def _startup_auth_check() -> None:
         verify_auth_config()
 
-    @app.post("/v1/verify")
+    @app.post("/v1/verify", response_model=None)
     def verify(
         payload: dict[str, Any],
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
-    ) -> JSONResponse:
+    ) -> Any:
         """Verify generated code and atomically persist its verdict and evidence."""
         import hashlib
 
