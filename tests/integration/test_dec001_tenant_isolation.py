@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import os
-from importlib import import_module
 import time
 import uuid
 from collections.abc import AsyncIterator
+from importlib import import_module
 from typing import Any
 
 import pytest
