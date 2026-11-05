@@ -81,6 +81,11 @@ def verify_code(
                 reason="invalid_temporal_snapshot_path",
             )
         snapshot_path = temporal_snapshot
+        if not sample_id:
+            return _result(
+                "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
+                reason="missing_sample_id",
+            )
         try:
             snapshot = load_generation_snapshot(snapshot_path)
             records = snapshot.get("_packages_by_sample")
@@ -89,14 +94,7 @@ def verify_code(
                     "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
                     reason="temporal_snapshot_index_missing",
                 )
-            if sample_id is not None:
-                record = records.get(sample_id)
-            else:
-                matches = [
-                    item for item in records.values()
-                    if isinstance(item, dict) and item.get("package_name") == package_name
-                ]
-                record = matches[0] if len(matches) == 1 else None
+            record = records.get(sample_id)
             if record is None:
                 return _result(
                     "INCONCLUSIVE", package_name, sample_id, provenance=provenance,
