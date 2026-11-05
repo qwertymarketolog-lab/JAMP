@@ -66,6 +66,22 @@ jobs:
 
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jamp_test
+          POSTGRES_USER: jamp
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      JAMP_DATABASE_URL: postgresql://jamp:test@localhost:5432/jamp_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -99,6 +115,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -v tests/research/exp18/test_audit_export.py
+      - name: Diagnose Ruff import ordering
+        run: ruff check --select I --diff tests/test_verdicts_pg.py
       - name: Run Ruff with baseline
         run: make lint
 
