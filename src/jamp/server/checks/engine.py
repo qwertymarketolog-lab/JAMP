@@ -24,7 +24,7 @@ def _result(
 def verify_code(
     code_str: str,
     package_name: str,
-    temporal_snapshot: str | Path | None = None,
+    temporal_snapshot: Path | None = None,
     sample_id: str | None = None,
 ) -> dict[str, Any]:
     """Verify generated code against package provenance and a wheel signature.
@@ -58,11 +58,7 @@ def verify_code(
     if provenance_status == "NOT_FOUND":
         return _result(
             "HALLUCINATION_CAUGHT", package_name, sample_id,
-            reason=(
-                "package_not_found"
-                if provenance_status == "NOT_FOUND"
-                else "provenance_suspicious"
-            ),
+            reason="package_not_found",
             provenance=provenance,
         )
 
