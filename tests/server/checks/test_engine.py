@@ -55,3 +55,36 @@ def test_package_identity_is_passed_to_both_checks():
     signature.assert_called_once()
     assert signature.call_args.args == ("import samplepkg", "samplepkg")
     assert signature.call_args.kwargs["parsed_ast"].__class__.__name__ == "Module"
+
+
+def test_syntax_error_is_inconclusive_before_external_checks():
+    with patch.object(engine, "check_provenance") as provenance:
+        result = engine.verify_code("def broken(:", "samplepkg")
+    assert result["status"] == "INCONCLUSIVE"
+    assert result["reason"] == "syntax_error"
+    provenance.assert_not_called()
+
+
+def test_generated_source_is_parsed_once_and_shared_with_signature():
+    with (
+        patch.object(engine, "check_provenance", return_value={"status": "TRUSTED"}),
+        patch.object(engine, "check_signature", return_value={"status": "EXISTS"}) as signature,
+        patch.object(engine.ast, "parse", wraps=engine.ast.parse) as parse,
+    ):
+        result = engine.verify_code("import samplepkg\\nsamplepkg.ok()", "samplepkg")
+    assert result["status"] == "CLEAN"
+    parse.assert_called_once()
+    assert signature.call_args.kwargs["parsed_ast"] is parse.return_value
+
+
+def test_temporal_check_requires_explicit_sample_id(tmp_path):
+    with (
+        patch.object(engine, "check_provenance", return_value={"status": "TRUSTED"}),
+        patch.object(engine, "load_generation_snapshot") as load_snapshot,
+    ):
+        result = engine.verify_code(
+            "import samplepkg", "samplepkg", temporal_snapshot=tmp_path / "snapshot.json"
+        )
+    assert result["status"] == "INCONCLUSIVE"
+    assert result["reason"] == "missing_sample_id"
+    load_snapshot.assert_not_called()
