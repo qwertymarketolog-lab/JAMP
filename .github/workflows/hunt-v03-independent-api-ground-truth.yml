@@ -1,9 +1,11 @@
 name: The Hunt v0.3.6 - Independent API Ground Truth Evaluation
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - exp/hunt-v0.3.6-fp-audit
+      - feat/hunt-v03-source-artifact-evaluation
     paths:
       - ".github/workflows/hunt-v03-independent-api-ground-truth.yml"
       - "experiments/the-hunt/v0.3/api_ground_truth.py"
@@ -33,7 +35,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p recovery-evidence evaluation-output
+          mkdir -p recovery-evidence/source recovery-evidence/extracted evaluation-output
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13347295508/zip" \
+            -o recovery-evidence/source/deepseek-original.zip
+          test "$(stat -c%s recovery-evidence/source/deepseek-original.zip)" = "97441836"
+          printf '%s  %s\n' \
+            "576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5" \
+            "recovery-evidence/source/deepseek-original.zip" | sha256sum --check
+          unzip -tq recovery-evidence/source/deepseek-original.zip
           curl --fail --location --silent --show-error \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -52,6 +65,9 @@ jobs:
             "recovery-evidence/extracted/recovery-input/wheel_manifest.json" | sha256sum --check
           test -s recovery-evidence/extracted/recovery-output/api_ground_truth_v0.3.json
           test -s recovery-evidence/extracted/recovery-input/original/generation_snapshot.json
+          cmp --silent \
+            recovery-evidence/source/deepseek-original.zip \
+            recovery-evidence/extracted/recovery-input/deepseek-original.zip
       - name: Compile and run regression suite
         shell: bash
         run: |
@@ -87,10 +103,18 @@ jobs:
           required = {"matrix_package_exists", "matrix_api_valid", "independent_api_ground_truth"}
           if not required.issubset(report):
               raise SystemExit("independent matrices missing from evaluator report")
-          print(json.dumps({
-              "qualification": report["qualification"],
+          matrices = {
               "matrix_package_exists": report["matrix_package_exists"],
               "matrix_api_valid": report["matrix_api_valid"],
+          }
+          if not all(isinstance(value, dict) for value in matrices.values()):
+              raise SystemExit("evaluator matrices must be JSON objects")
+          Path("evaluation-output/matrices_v0.3.6.json").write_text(
+              json.dumps(matrices, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          print(json.dumps({
+              "qualification": report["qualification"],
+              **matrices,
               "independent_api_ground_truth": report["independent_api_ground_truth"],
           }, sort_keys=True))
           PY
@@ -105,6 +129,8 @@ jobs:
             printf 'github_sha=%s\n' "${GITHUB_SHA}"
             printf 'frozen_core_blob=%s\n' "$(git rev-parse "${GITHUB_SHA}:src/jamp/run.py")"
             printf 'frozen_core_expected=%s\n' '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+            printf 'source_artifact_id=%s\n' '13347295508'
+            printf 'source_artifact_sha256=%s\n' '576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5'
             printf 'recovery_run_id=%s\n' '41884985387'
             printf 'recovery_artifact_id=%s\n' '13350084227'
             printf 'recovery_artifact_sha256=%s\n' '9dc1624e7447302cbb8a3dba7e94ef4f3f7b9ef56c223ca25cf1c1e542c5ce37'
