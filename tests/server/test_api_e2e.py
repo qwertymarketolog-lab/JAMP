@@ -148,6 +148,7 @@ def _read_persisted_verdict(
         release_connection(connection)
 
 
+@pytest.mark.real_auth
 def test_verify_http_auth_engine_and_postgres_tenant_isolation(
     tenant_credentials: tuple[tuple[str, str], tuple[str, str]],
     monkeypatch: pytest.MonkeyPatch,
