@@ -265,6 +265,11 @@ def test_verify_http_auth_engine_and_postgres_tenant_isolation(
                 assert tenant_rows == [
                     (expected_verdict_id, expected_org_id, idempotency_key)
                 ]
+            cursor.execute(
+                "SELECT COUNT(*) FROM verdicts WHERE idempotency_key = %s",
+                (unknown_idempotency_key,),
+            )
+            assert cursor.fetchone()[0] == 0
     finally:
         release_connection(connection)
 
