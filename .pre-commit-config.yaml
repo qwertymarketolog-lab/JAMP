@@ -19,6 +19,13 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: mypy-hunt-v03
+        name: mypy The Hunt v0.3 (strict, changed files)
+        entry: mypy --config-file=/dev/null --strict --follow-imports=skip --python-version 3.11
+        language: system
+        files: ^experiments/the-hunt/v0\.3/.*\.py$
+        types: [python]
+        pass_filenames: true
       - id: research-isolation
         name: research isolation tests (offline)
         entry: python -m pytest -q tests/test_architectural_boundaries.py

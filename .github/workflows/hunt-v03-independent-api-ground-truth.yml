@@ -1,0 +1,121 @@
+name: The Hunt v0.3.6 - Independent API Ground Truth Evaluation
+
+on:
+  push:
+    branches:
+      - exp/hunt-v0.3.6-fp-audit
+    paths:
+      - ".github/workflows/hunt-v03-independent-api-ground-truth.yml"
+      - "experiments/the-hunt/v0.3/api_ground_truth.py"
+      - "experiments/the-hunt/v0.3/evaluate_v0.3.py"
+      - "experiments/the-hunt/v0.3/signature_checker.py"
+      - "experiments/the-hunt/v0.3/temporal_contract.py"
+      - "tests/test_hunt_v03*.py"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  independent-api-ground-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download and verify immutable recovery artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovery-evidence evaluation-output
+          curl --fail --location --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13350084227/zip" \
+            -o recovery-evidence/recovery.zip
+          printf '%s  %s\n' \
+            "9dc1624e7447302cbb8a3dba7e94ef4f3f7b9ef56c223ca25cf1c1e542c5ce37" \
+            "recovery-evidence/recovery.zip" | sha256sum --check
+          unzip -q recovery-evidence/recovery.zip -d recovery-evidence/extracted
+          printf '%s  %s\n' \
+            "576c570f0d960719ccf68f16a632f373352e066e3c12f0474978659ebeeb08b5" \
+            "recovery-evidence/extracted/recovery-input/deepseek-original.zip" | sha256sum --check
+          printf '%s  %s\n' \
+            "ea4d1780dd08c8512749b9b0fa84220a2d148bf8660cd05352b13e02634d4d7c" \
+            "recovery-evidence/extracted/recovery-input/wheel_manifest.json" | sha256sum --check
+          test -s recovery-evidence/extracted/recovery-output/api_ground_truth_v0.3.json
+          test -s recovery-evidence/extracted/recovery-input/original/generation_snapshot.json
+      - name: Compile and run regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q \
+            experiments/the-hunt/v0.3/signature_checker.py \
+            experiments/the-hunt/v0.3/temporal_contract.py \
+            experiments/the-hunt/v0.3/evaluate_v0.3.py \
+            experiments/the-hunt/v0.3/api_ground_truth.py \
+            tests/test_hunt_v03_api_ground_truth.py \
+            tests/test_hunt_v03.py tests/test_hunt_v03_temporal.py
+          python -m unittest discover -s tests -p 'test_hunt_v03*.py' -v \
+            2>&1 | tee evaluation-output/regression-tests.log
+      - name: Evaluate against independent API Ground Truth
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="recovery-evidence/extracted"
+          python experiments/the-hunt/v0.3/evaluate_v0.3.py \
+            --input "${ROOT}/recovery-input/original/llm_responses_v3.json" \
+            --manifest "${ROOT}/recovery-input/original/generation_manifest.json" \
+            --ground-truth "${ROOT}/recovery-input/original/ground_truth_v3.json" \
+            --temporal-snapshot "${ROOT}/recovery-input/original/generation_snapshot.json" \
+            --api-ground-truth "${ROOT}/recovery-output/api_ground_truth_v0.3.json" \
+            --prompts "${ROOT}/recovery-input/original/prompts.json" \
+            --api-wheel-manifest "${ROOT}/recovery-input/wheel_manifest.json" \
+            --output evaluation-output/evaluator_results_v0.3.6.json \
+            2>&1 | tee evaluation-output/evaluator.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("evaluation-output/evaluator_results_v0.3.6.json").read_text())
+          required = {"matrix_package_exists", "matrix_api_valid", "independent_api_ground_truth"}
+          if not required.issubset(report):
+              raise SystemExit("independent matrices missing from evaluator report")
+          print(json.dumps({
+              "qualification": report["qualification"],
+              "matrix_package_exists": report["matrix_package_exists"],
+              "matrix_api_valid": report["matrix_api_valid"],
+              "independent_api_ground_truth": report["independent_api_ground_truth"],
+          }, sort_keys=True))
+          PY
+      - name: Capture terminal CI and Frozen Core evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'github_run_id=%s\n' "${GITHUB_RUN_ID}"
+            printf 'github_workflow=%s\n' "${GITHUB_WORKFLOW}"
+            printf 'github_sha=%s\n' "${GITHUB_SHA}"
+            printf 'frozen_core_blob=%s\n' "$(git rev-parse "${GITHUB_SHA}:src/jamp/run.py")"
+            printf 'frozen_core_expected=%s\n' '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+            printf 'recovery_run_id=%s\n' '41884985387'
+            printf 'recovery_artifact_id=%s\n' '13350084227'
+            printf 'recovery_artifact_sha256=%s\n' '9dc1624e7447302cbb8a3dba7e94ef4f3f7b9ef56c223ca25cf1c1e542c5ce37'
+          } > evaluation-output/ci-metadata.txt
+          test "$(git rev-parse "${GITHUB_SHA}:src/jamp/run.py")" = \
+            '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+      - name: Upload evaluator-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v03-independent-api-ground-truth-${{ github.run_id }}
+          path: evaluation-output/
+          if-no-files-found: warn
+          retention-days: 90

@@ -170,6 +170,7 @@ class TemporalSnapshotTests(unittest.TestCase):
             "sample_id": "sample-1",
             "package_name": "samplepkg",
             "pypi_version": "2.0",
+            "wheel_filename": "samplepkg-2.0-py3-none-any.whl",
             "wheel_sha256": "0" * 64,
             "wheel_relative_path": "wheelhouse/missing.whl",
             "resolution_status": "RESOLVED",
