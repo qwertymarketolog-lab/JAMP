@@ -92,6 +92,16 @@ ignore_missing_imports = true
 module = ["jamp.server.*"]
 disallow_untyped_decorators = false
 
+# psycopg2 ships without inline typing; keep the exception limited to this dependency.
+[[tool.mypy.overrides]]
+module = ["psycopg2", "psycopg2.*"]
+ignore_missing_imports = true
+
+# FastAPI route decorators in the API package are untyped under no_site_packages.
+[[tool.mypy.overrides]]
+module = ["jamp.api.*"]
+disallow_untyped_decorators = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
