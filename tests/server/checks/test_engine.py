@@ -66,15 +66,24 @@ def test_syntax_error_is_inconclusive_before_external_checks():
 
 
 def test_generated_source_is_parsed_once_and_shared_with_signature():
+    real_parse = engine.ast.parse
+    parsed_nodes = []
+
+    def recording_parse(*args, **kwargs):
+        parsed_node = real_parse(*args, **kwargs)
+        parsed_nodes.append(parsed_node)
+        return parsed_node
+
     with (
         patch.object(engine, "check_provenance", return_value={"status": "TRUSTED"}),
         patch.object(engine, "check_signature", return_value={"status": "EXISTS"}) as signature,
-        patch.object(engine.ast, "parse", wraps=engine.ast.parse) as parse,
+        patch.object(engine.ast, "parse", side_effect=recording_parse) as parse,
     ):
         result = engine.verify_code("import samplepkg\nsamplepkg.ok()", "samplepkg")
     assert result["status"] == "CLEAN"
     parse.assert_called_once()
-    assert signature.call_args.kwargs["parsed_ast"] is parse.return_value
+    assert len(parsed_nodes) == 1
+    assert signature.call_args.kwargs["parsed_ast"] is parsed_nodes[0]
 
 
 def test_temporal_check_requires_explicit_sample_id(tmp_path):
