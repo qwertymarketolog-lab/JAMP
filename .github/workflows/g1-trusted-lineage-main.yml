@@ -231,29 +231,54 @@ jobs:
                   raise RuntimeError("PR Research Loop artifact does not match the exact PR head")
 
               g1_details = g1_pr_check.get("details_url", "")
-              g1_match = re.search(r"/actions/runs/(\d+)/job/(\d+)", g1_details)
+              g1_match = re.search(r"/actions/runs/(\\d+)/job/(\\d+)", g1_details)
               if not g1_match:
-                  raise RuntimeError("PR G1 check has no verifiable Actions run URL")
-              g1_run_id = int(g1_match.group(1))
-              g1_job_id = int(g1_match.group(2))
-              g1_run = api_get(f"/repos/{REPOSITORY}/actions/runs/{g1_run_id}")
-              if (
-                  g1_run.get("path") != ".github/workflows/g1-trusted-lineage.yml"
-                  or g1_run.get("event") != "pull_request_target"
-                  or g1_run.get("status") != "completed"
-                  or g1_run.get("conclusion") != "success"
-              ):
-                  raise RuntimeError("PR G1 workflow run is not terminal success")
-              g1_jobs = api_get(
-                  f"/repos/{REPOSITORY}/actions/runs/{g1_run_id}/jobs?per_page=100"
-              )["jobs"]
+                  raise RuntimeError("PR G1 required context has no verifiable Actions job URL")
+              g1_alias_run_id = int(g1_match.group(1))
+              g1_alias_job_id = int(g1_match.group(2))
+              if g1_alias_run_id != pr_run_id:
+                  raise RuntimeError("PR G1 required context is not in the Research Loop workflow run")
               if not any(
-                  job.get("id") == g1_job_id
+                  job.get("id") == g1_alias_job_id
+                  and job.get("name") == "G1 Trusted Lineage"
+                  and job.get("head_sha") == pr_head_sha
                   and job.get("status") == "completed"
                   and job.get("conclusion") == "success"
-                  for job in g1_jobs
+                  for job in pr_jobs
               ):
-                  raise RuntimeError("PR G1 job terminal evidence is missing")
+                  raise RuntimeError("PR G1 required alias job terminal evidence is missing")
+
+              actual_g1_check = latest_required_check(
+                  pr_checks, "trusted-lineage", pr_number
+              )
+              actual_g1_details = actual_g1_check.get("details_url", "")
+              actual_g1_match = re.search(
+                  r"/actions/runs/(\\d+)/job/(\\d+)", actual_g1_details
+              )
+              if not actual_g1_match:
+                  raise RuntimeError("PR trusted-lineage job has no verifiable Actions run URL")
+              actual_g1_run_id = int(actual_g1_match.group(1))
+              actual_g1_job_id = int(actual_g1_match.group(2))
+              actual_g1_run = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}"
+              )
+              if (
+                  actual_g1_run.get("path") != ".github/workflows/g1-trusted-lineage.yml"
+                  or actual_g1_run.get("event") != "pull_request_target"
+                  or actual_g1_run.get("status") != "completed"
+                  or actual_g1_run.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("PR trusted-lineage workflow run is not terminal success")
+              actual_g1_jobs = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}/jobs?per_page=100"
+              )["jobs"]
+              if not any(
+                  job.get("id") == actual_g1_job_id
+                  and job.get("status") == "completed"
+                  and job.get("conclusion") == "success"
+                  for job in actual_g1_jobs
+              ):
+                  raise RuntimeError("PR trusted-lineage job terminal evidence is missing")
 
               main_check = None
               for attempt in range(60):
@@ -346,11 +371,17 @@ jobs:
                           "artifact_id": pr_artifact["id"],
                           "conclusion": research_pr_check["conclusion"],
                       },
-                      "g1_trusted_lineage": {
+                      "g1_trusted_lineage_required_context": {
                           "check_run_id": g1_pr_check["id"],
-                          "run_id": g1_run_id,
-                          "job_id": g1_job_id,
+                          "run_id": g1_alias_run_id,
+                          "job_id": g1_alias_job_id,
                           "conclusion": g1_pr_check["conclusion"],
+                      },
+                      "g1_trusted_lineage_workflow": {
+                          "check_run_id": actual_g1_check["id"],
+                          "run_id": actual_g1_run_id,
+                          "job_id": actual_g1_job_id,
+                          "conclusion": actual_g1_check["conclusion"],
                       },
                   },
                   "main_research_loop": {
