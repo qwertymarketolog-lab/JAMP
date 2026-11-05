@@ -274,5 +274,65 @@ def test_verify_http_auth_engine_and_postgres_tenant_isolation(
     finally:
         release_connection(connection)
 
-    # No GET/read endpoint exists for verdicts yet; HTTP read-path tenant
-    # isolation remains NOT TESTABLE here (see DEC-001 / issue #497).
+    # HTTP read-path isolation is covered by test_tenant_isolation_on_read.
+
+@pytest.mark.real_auth
+def test_tenant_isolation_on_read(
+    tenant_credentials: tuple[tuple[str, str], tuple[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """A tenant can read its verdict; another tenant sees the same 404 as absence."""
+    from jamp.server.checks import provenance
+
+    token_a = tenant_credentials[0][1]
+    token_b = tenant_credentials[1][1]
+    package_name = f"jamp_c5_missing_{uuid.uuid4().hex}"
+    code_str = f"import {package_name}\\n{package_name}.get_secure_data()"
+    idempotency_key = f"c5-{uuid.uuid4().hex}"
+    unknown_token = secrets.token_urlsafe(32)
+
+    def pypi_not_found(name: str) -> tuple[int, None]:
+        assert name == package_name
+        return 404, None
+
+    monkeypatch.setattr(provenance, "fetch_pypi_json", pypi_not_found)
+    app = create_app(telegram_update_db_path=tmp_path / "telegram-updates.sqlite3")
+
+    with TestClient(app) as client:
+        created = client.post(
+            "/v1/verify",
+            json={"code_str": code_str, "package_name": package_name},
+            headers={
+                "Authorization": f"Bearer {token_a}",
+                "Idempotency-Key": idempotency_key,
+            },
+        )
+        assert created.status_code == 201
+        verdict_id = created.json()["verdict_id"]
+
+        cross_tenant = client.get(
+            f"/v1/verdict/{verdict_id}",
+            headers={"Authorization": f"Bearer {token_b}"},
+        )
+        owner_read = client.get(
+            f"/v1/verdict/{verdict_id}",
+            headers={"Authorization": f"Bearer {token_a}"},
+        )
+        missing_read = client.get(
+            f"/v1/verdict/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {token_a}"},
+        )
+        unauthorized_read = client.get(
+            f"/v1/verdict/{verdict_id}",
+            headers={"Authorization": f"Bearer {unknown_token}"},
+        )
+
+    assert cross_tenant.status_code == 404
+    assert cross_tenant.json() == {"detail": "verdict not found"}
+    assert missing_read.status_code == 404
+    assert missing_read.json() == cross_tenant.json()
+    assert unauthorized_read.status_code == 401
+    assert owner_read.status_code == 200
+    assert owner_read.json() == created.json()
+
