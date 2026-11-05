@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from jamp.server.checks import signature as SIGNATURE
 
+
 def make_wheel(files: dict[str, str | bytes]) -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as archive:

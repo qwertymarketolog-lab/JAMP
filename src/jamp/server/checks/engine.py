@@ -9,7 +9,9 @@ from .signature import check_signature
 from .temporal import check_signature_from_snapshot, load_generation_snapshot
 
 
-def _result(status: str, package_name: str, sample_id: str | None, **details: Any) -> dict[str, Any]:
+def _result(
+    status: str, package_name: str, sample_id: str | None, **details: Any
+) -> dict[str, Any]:
     return {
         "status": status,
         "package": package_name,
@@ -51,7 +53,11 @@ def verify_code(
     if provenance_status in {"NOT_FOUND", "SUSPICIOUS"}:
         return _result(
             "HALLUCINATION_CAUGHT", package_name, sample_id,
-            reason="package_not_found" if provenance_status == "NOT_FOUND" else "provenance_suspicious",
+            reason=(
+                "package_not_found"
+                if provenance_status == "NOT_FOUND"
+                else "provenance_suspicious"
+            ),
             provenance=provenance,
         )
 
