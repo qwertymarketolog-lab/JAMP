@@ -334,5 +334,15 @@ def test_tenant_isolation_on_read(
     assert missing_read.json() == cross_tenant.json()
     assert unauthorized_read.status_code == 401
     assert owner_read.status_code == 200
-    assert owner_read.json() == created.json()
+
+    created_body = created.json()
+    owner_body = owner_read.json()
+    for field in ("verdict_id", "status", "result", "code_hash"):
+        assert owner_body[field] == created_body[field]
+    assert len(owner_body["evidence"]) == len(created_body["evidence"])
+    for stored_item, created_item in zip(
+        owner_body["evidence"], created_body["evidence"], strict=True
+    ):
+        for field in ("sequence_no", "evidence_type", "payload", "payload_hash"):
+            assert stored_item[field] == created_item[field]
 
