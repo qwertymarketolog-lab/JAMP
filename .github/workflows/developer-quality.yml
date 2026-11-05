@@ -7,6 +7,63 @@ on:
     branches: [main]
 
 jobs:
+  docker-smoke:
+    if: github.event_name == 'pull_request' && github.head_ref == 'stage-c/C1-docker-compose'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and smoke-test Compose stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/docker-smoke
+          docker compose up -d --build 2>&1 | tee artifacts/docker-smoke/compose-up.log
+          sleep 10
+
+          ready=0
+          for attempt in $(seq 1 25); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/health \
+              > artifacts/docker-smoke/health.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "Health endpoint did not become ready." | tee artifacts/docker-smoke/result.txt
+            docker compose ps --all | tee artifacts/docker-smoke/compose-ps.txt
+            docker compose logs --no-color | tee artifacts/docker-smoke/compose.log
+            exit 1
+          fi
+
+          python -c 'import json; d=json.load(open("artifacts/docker-smoke/health.json")); assert d["status"] == "ok"; assert d["database_url_set"] and d["redis_url_set"]'
+          docker compose ps --all | tee artifacts/docker-smoke/compose-ps.txt
+          docker compose logs --no-color | tee artifacts/docker-smoke/compose.log
+          echo "DOCKER_SMOKE=PASS" | tee artifacts/docker-smoke/result.txt
+
+      - name: Capture diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/docker-smoke
+          docker compose ps --all > artifacts/docker-smoke/compose-ps-final.txt 2>&1 || true
+          docker compose logs --no-color > artifacts/docker-smoke/compose-final.log 2>&1 || true
+
+      - name: Upload Docker smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-smoke-evidence
+          path: artifacts/docker-smoke/
+          if-no-files-found: error
+
+      - name: Stop Compose stack
+        if: always()
+        run: docker compose down -v
+
   quality:
     runs-on: ubuntu-latest
     steps:
