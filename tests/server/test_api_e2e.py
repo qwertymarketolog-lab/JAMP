@@ -165,8 +165,8 @@ def test_verify_http_auth_engine_and_postgres_tenant_isolation(
 
     org_a, token_a = tenant_credentials[0]
     org_b, token_b = tenant_credentials[1]
-    package_name = f"jamp-c4-missing-{uuid.uuid4().hex}"
-    code_str = "import requests\nrequests.get_secure_data()"
+    package_name = f"jamp_c4_missing_{uuid.uuid4().hex}"
+    code_str = f"import {package_name}\\n{package_name}.get_secure_data()"
     idempotency_key = f"c4-{uuid.uuid4().hex}"
     pypi_queries: list[str] = []
 
