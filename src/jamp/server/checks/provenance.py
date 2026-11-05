@@ -9,7 +9,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
-from .pypi_client import PYPI_JSON, TIMEOUT_SECONDS, fetch_pypi_json
+from .pypi_client import PYPI_JSON, fetch_pypi_json
 
 def _parse_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
