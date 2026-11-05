@@ -12,7 +12,6 @@ import pytest
 from jamp.db import get_connection, init_schema, release_connection
 from jamp.db.verdicts import IdempotencyConflict, persist_or_get_verdict
 
-
 pytestmark = pytest.mark.skipif(
     not os.environ.get("JAMP_DATABASE_URL"),
     reason="PostgreSQL integration tests require JAMP_DATABASE_URL",
