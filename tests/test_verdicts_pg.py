@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 import os
 import uuid
+from collections.abc import Iterator
 
 import psycopg2
 import pytest
