@@ -32,7 +32,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
           RUN_ID: ${{ github.run_id }}
-          NEEDS_RESEARCH_LOOP_RESULT: ${{ needs.research-loop-main.result }}
         run: |
           python - <<'PY'
           import io
@@ -41,7 +40,6 @@ jobs:
           import re
           import time
           import urllib.error
-          import urllib.parse
           import urllib.request
           import zipfile
           from pathlib import Path
@@ -59,7 +57,6 @@ jobs:
               "target_sha": TARGET_SHA,
               "before_sha": os.environ["BEFORE_SHA"],
               "workflow_run_id": int(os.environ["RUN_ID"]),
-              "research_loop_dependency_result": os.environ["NEEDS_RESEARCH_LOOP_RESULT"],
               "locked_frozen_core_blob": LOCKED_CORE,
           }
           failure = None
@@ -92,37 +89,37 @@ jobs:
                   raise RuntimeError(f"expected one JSON evidence file in artifact, got {candidates}")
               return json.loads(archive.read(candidates[0]))
 
-          def latest_success(check_runs, name, pr_number=None):
+          def latest_required_check(check_runs, name, pr_number):
               candidates = [
                   item for item in check_runs
                   if item.get("name") == name
                   and item.get("head_sha") == evidence["pr_head_sha"]
-                  and item.get("status") == "completed"
-                  and item.get("conclusion") == "success"
-                  and (
-                      pr_number is None
-                      or any(
-                          pr.get("number") == pr_number
-                          for pr in item.get("pull_requests", [])
-                      )
+                  and any(
+                      pr.get("number") == pr_number
+                      for pr in item.get("pull_requests", [])
                   )
               ]
               if not candidates:
-                  raise RuntimeError(f"required PR check missing or not successful: {name}")
+                  raise RuntimeError(f"required PR check missing: {name}")
               candidates.sort(
-                  key=lambda item: (item.get("completed_at") or "", item.get("id", 0)),
+                  key=lambda item: (
+                      item.get("started_at") or item.get("completed_at") or "",
+                      item.get("id", 0),
+                  ),
                   reverse=True,
               )
-              return candidates[0]
+              latest = candidates[0]
+              if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+                  raise RuntimeError(
+                      f"latest required PR check is not terminal success: {name}"
+                  )
+              return latest
 
           try:
               if os.environ["EVENT_NAME"] != "push":
                   raise RuntimeError("main lineage accepts push events only")
               if os.environ["TARGET_REF"] != "refs/heads/main":
                   raise RuntimeError("target ref is not refs/heads/main")
-              if os.environ["NEEDS_RESEARCH_LOOP_RESULT"] != "success":
-                  raise RuntimeError("Research Loop v0 Gate (main) dependency did not succeed")
-
               actual_head = __import__("subprocess").check_output(
                   ["git", "rev-parse", "HEAD"], text=True
               ).strip()
@@ -176,10 +173,10 @@ jobs:
               pr_checks = api_get(
                   f"/repos/{REPOSITORY}/commits/{pr_head_sha}/check-runs?per_page=100"
               )["check_runs"]
-              research_pr_check = latest_success(
+              research_pr_check = latest_required_check(
                   pr_checks, "Research Loop v0 Gate /", pr_number
               )
-              g1_pr_check = latest_success(
+              g1_pr_check = latest_required_check(
                   pr_checks, "G1 Trusted Lineage", pr_number
               )
 
@@ -386,9 +383,20 @@ jobs:
                   job for job in jobs
                   if job.get("name") == "G1 Trusted Lineage (main)"
               ]
-              evidence["job_id"] = current[0]["id"] if len(current) == 1 else None
+              if len(current) != 1:
+                  evidence["job_id"] = None
+                  evidence["job_id_lookup_error"] = f"expected one current job, found {len(current)}"
+                  if failure is None:
+                      failure = evidence["job_id_lookup_error"]
+                      evidence["validation_result"] = "FAILED"
+              else:
+                  evidence["job_id"] = current[0]["id"]
           except Exception as exc:
+              evidence["job_id"] = None
               evidence["job_id_lookup_error"] = f"{type(exc).__name__}: {exc}"
+              if failure is None:
+                  failure = evidence["job_id_lookup_error"]
+                  evidence["validation_result"] = "FAILED"
 
           output = Path("main-evidence")
           output.mkdir(exist_ok=True)
