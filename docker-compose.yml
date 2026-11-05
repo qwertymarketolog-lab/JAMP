@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: jamp
+      POSTGRES_PASSWORD: jamp_dev
+      POSTGRES_DB: jamp
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jamp -d jamp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      JAMP_DATABASE_URL: postgresql://jamp:jamp_dev@postgres:5432/jamp
+      JAMP_REDIS_URL: redis://redis:6379/0
+      JAMP_API_KEY_HASH_SECRET: dev-secret-change-me
+      JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: ["uvicorn", "jamp.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  pgdata:
