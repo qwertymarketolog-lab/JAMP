@@ -198,7 +198,7 @@ def create_app(
         payload: dict[str, Any],
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
-    ):
+    ) -> JSONResponse:
         """Verify generated code and atomically persist its verdict and evidence."""
         import hashlib
 
