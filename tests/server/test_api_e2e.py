@@ -168,6 +168,8 @@ def test_verify_http_auth_engine_and_postgres_tenant_isolation(
     package_name = f"jamp_c4_missing_{uuid.uuid4().hex}"
     code_str = f"import {package_name}\n{package_name}.get_secure_data()"
     idempotency_key = f"c4-{uuid.uuid4().hex}"
+    unknown_idempotency_key = f"c4-unknown-{uuid.uuid4().hex}"
+    unknown_token = secrets.token_urlsafe(32)
     pypi_queries: list[str] = []
 
     def pypi_not_found(name: str) -> tuple[int, None]:
@@ -199,15 +201,15 @@ def test_verify_http_auth_engine_and_postgres_tenant_isolation(
             "/v1/verify",
             json=request_body,
             headers={
-                "Authorization": "Bearer unknown-c4-token",
-                "Idempotency-Key": f"{idempotency_key}-unknown",
+                "Authorization": f"Bearer {unknown_token}",
+                "Idempotency-Key": unknown_idempotency_key,
             },
         )
 
-    assert pypi_queries == [package_name, package_name]
     assert response_a.status_code == 201
     assert response_b.status_code == 201
     assert unauthorized.status_code == 401
+    assert pypi_queries == [package_name, package_name]
 
     body_a = response_a.json()
     body_b = response_b.json()
