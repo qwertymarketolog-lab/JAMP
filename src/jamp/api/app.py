@@ -10,9 +10,9 @@ from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
+from uuid import UUID
 
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
 from jamp.db.verdicts import (
