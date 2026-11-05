@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -10,6 +9,7 @@ from fastapi.testclient import TestClient
 from jamp.api import app as app_module
 from jamp.api.app import create_app
 from jamp.api.auth import OrganizationContext, require_api_key
+from jamp.db.verdicts import IdempotencyConflict
 
 
 def test_verify_endpoint_persists_and_replays_idempotently(monkeypatch):
@@ -36,11 +36,19 @@ def test_verify_endpoint_persists_and_replays_idempotently(monkeypatch):
         "created_at": datetime.now(UTC).isoformat(),
         "code_hash": "a" * 64,
     }
+    seen_requests = {}
     calls = []
 
     def persist(**kwargs):
         calls.append(kwargs)
-        return saved, len(calls) == 1
+        key = (kwargs["organization_id"], kwargs["idempotency_key"])
+        previous_hash = seen_requests.get(key)
+        if previous_hash is not None:
+            if previous_hash != kwargs["request_hash"]:
+                raise IdempotencyConflict
+            return saved, False
+        seen_requests[key] = kwargs["request_hash"]
+        return saved, True
 
     monkeypatch.setattr(app_module, "persist_or_get_verdict", persist)
     with TestClient(app) as client:
@@ -54,9 +62,10 @@ def test_verify_endpoint_persists_and_replays_idempotently(monkeypatch):
             headers=headers,
         )
         missing_key = client.post("/v1/verify", json=body)
+
     assert first.status_code == 201
     assert replay.status_code == 200
     assert first.json()["verdict_id"] == replay.json()["verdict_id"]
-    assert conflict.status_code == 201
+    assert conflict.status_code == 409
     assert missing_key.status_code == 400
     assert len(calls) == 3

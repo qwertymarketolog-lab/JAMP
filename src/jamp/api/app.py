@@ -193,7 +193,6 @@ def create_app(
     def _startup_auth_check() -> None:
         verify_auth_config()
 
-
     @app.post("/v1/verify")
     def verify(
         payload: dict[str, Any],
