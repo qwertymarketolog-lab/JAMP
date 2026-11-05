@@ -71,7 +71,7 @@ def test_generated_source_is_parsed_once_and_shared_with_signature():
         patch.object(engine, "check_signature", return_value={"status": "EXISTS"}) as signature,
         patch.object(engine.ast, "parse", wraps=engine.ast.parse) as parse,
     ):
-        result = engine.verify_code("import samplepkg\\nsamplepkg.ok()", "samplepkg")
+        result = engine.verify_code("import samplepkg\nsamplepkg.ok()", "samplepkg")
     assert result["status"] == "CLEAN"
     parse.assert_called_once()
     assert signature.call_args.kwargs["parsed_ast"] is parse.return_value
