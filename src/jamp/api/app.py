@@ -10,11 +10,16 @@ from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
-from jamp.db.verdicts import IdempotencyConflict, persist_or_get_verdict
+from jamp.db.verdicts import (
+    IdempotencyConflict,
+    get_verdict_for_organization,
+    persist_or_get_verdict,
+)
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
@@ -288,6 +293,37 @@ def create_app(
             status_code=201 if created else 200,
             content=stored,
         )
+
+    @app.get("/v1/verdict/{verdict_id}", response_model=None)
+    def get_verdict(
+        verdict_id: UUID,
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Read a verdict without disclosing records owned by other tenants."""
+        from psycopg2 import InterfaceError, OperationalError
+
+        try:
+            stored = get_verdict_for_organization(
+                verdict_id=str(verdict_id),
+                organization_id=organization.org_id,
+            )
+        except (InterfaceError, OperationalError, RuntimeError):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "verdict storage unavailable"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"detail": "verdict could not be retrieved"},
+            )
+
+        if stored is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "verdict not found"},
+            )
+        return JSONResponse(status_code=200, content=stored)
 
     @app.post("/v1/classify", dependencies=[Depends(require_api_key)])
     def classify(payload: dict[str, Any]):
