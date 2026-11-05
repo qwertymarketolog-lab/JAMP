@@ -21,7 +21,8 @@ def test_not_found_is_caught_even_when_signature_is_inconclusive():
 
 def test_suspicious_provenance_is_not_clean():
     result = _run({"status": "SUSPICIOUS"}, {"status": "EXISTS"})
-    assert result["status"] == "HALLUCINATION_CAUGHT"
+    assert result["status"] == "SUSPICIOUS"
+    assert result["reason"] == "provenance_suspicious"
 
 
 def test_invalid_signature_is_caught():
@@ -51,4 +52,6 @@ def test_package_identity_is_passed_to_both_checks():
     ):
         engine.verify_code("import samplepkg", "samplepkg")
     provenance.assert_called_once_with("samplepkg")
-    signature.assert_called_once_with("import samplepkg", "samplepkg")
+    signature.assert_called_once()
+    assert signature.call_args.args == ("import samplepkg", "samplepkg")
+    assert signature.call_args.kwargs["parsed_ast"].__class__.__name__ == "Module"
