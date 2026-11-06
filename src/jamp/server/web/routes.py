@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import parse_qs
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -44,14 +44,10 @@ async def dashboard_login(request: Request) -> RedirectResponse:
         body = (await request.body()).decode("utf-8")
         form = parse_qs(body, keep_blank_values=True)
     except UnicodeDecodeError:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=400, detail="invalid login form") from None
 
     api_key = form.get("api_key", [""])[0].strip()
     if not api_key:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=400, detail="API key required")
 
     organization = authenticate_api_key(api_key)

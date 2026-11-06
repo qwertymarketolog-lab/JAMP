@@ -157,11 +157,10 @@ def create_app(
     telegram_update_db_path: str | Path | None = None,
 ):
     try:
-        from fastapi import Depends, FastAPI, Header
+        from fastapi import Depends, FastAPI, Header, HTTPException
         from fastapi import Request as FastAPIRequest
-        from fastapi.responses import JSONResponse, RedirectResponse
         from fastapi.exception_handlers import http_exception_handler
-        from fastapi import HTTPException
+        from fastapi.responses import JSONResponse, RedirectResponse
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("FastAPI is required for the API serving layer") from exc
 

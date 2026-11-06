@@ -144,6 +144,9 @@ def test_login_issues_http_only_session_and_reads_tenant_data(
     assert stats.status_code == 200
     assert stats.json()["hallucinations_caught"] == 1
 
+    write_attempt = dashboard_client.post("/v1/verify", json={})
+    assert write_attempt.status_code == 403
+
 
 def test_login_rejects_unknown_or_disabled_api_keys(
     dashboard_client: TestClient,
@@ -175,7 +178,7 @@ def test_dashboard_static_asset_contains_no_model_or_engine_fiction(
 ) -> None:
     response = dashboard_client.get("/dashboard-static/dashboard.js")
     assert response.status_code == 200
-    assert "fetch(\"/v1/verdicts?limit=1\")" in response.text
+    assert 'getJson("/v1/verdicts?limit=1")' in response.text
     assert "DeepSeek V4" not in response.text
     assert "JAMP Engine" not in response.text
     assert "AST Check" not in response.text

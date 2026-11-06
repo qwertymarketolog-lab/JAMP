@@ -182,5 +182,7 @@ async def require_api_key(
 
     session = request.cookies.get(DASHBOARD_SESSION_COOKIE)
     if session:
+        if request.method not in {"GET", "HEAD"}:
+            raise HTTPException(status_code=403, detail="dashboard session is read-only")
         return _organization_from_dashboard_session(session)
     raise HTTPException(status_code=401, detail="missing or invalid credentials")
