@@ -53,6 +53,176 @@ def get_verdict_for_organization(
         release_connection(connection)
 
 
+def list_verdicts_for_organization(
+    *,
+    organization_id: str,
+    limit: int,
+    offset: int,
+    status: str | None = None,
+) -> dict[str, Any]:
+    """Return paginated verdict cards scoped in SQL to one organization."""
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM verdicts
+                WHERE organization_id = %s
+                  AND (%s IS NULL OR status = %s)
+                """,
+                (organization_id, status, status),
+            )
+            total = cursor.fetchone()[0]
+            cursor.execute(
+                """
+                SELECT id, status, result, created_at, code_hash
+                FROM verdicts
+                WHERE organization_id = %s
+                  AND (%s IS NULL OR status = %s)
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s OFFSET %s
+                """,
+                (organization_id, status, status, limit, offset),
+            )
+            items = []
+            for verdict_id, verdict_status, result, created_at, code_hash in cursor.fetchall():
+                stored_result = _as_dict(result)
+                items.append(
+                    {
+                        "verdict_id": str(verdict_id),
+                        "status": verdict_status,
+                        "package": stored_result.get("package"),
+                        "created_at": created_at.isoformat(),
+                        "code_hash": code_hash.strip(),
+                    }
+                )
+        connection.commit()
+        return {"items": items, "limit": limit, "offset": offset, "total": total}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        release_connection(connection)
+
+
+def get_verdict_graph_for_organization(
+    *,
+    verdict_id: str,
+    organization_id: str,
+) -> dict[str, Any] | None:
+    """Project persisted evidence rows and their FK relationship to one verdict."""
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    v.id, v.status, v.result, v.created_at, v.code_hash,
+                    e.id, e.sequence_no, e.evidence_type, e.payload,
+                    e.payload_hash, e.created_at
+                FROM verdicts AS v
+                LEFT JOIN evidence_chain AS e ON e.verdict_id = v.id
+                WHERE v.id = %s AND v.organization_id = %s
+                ORDER BY e.sequence_no
+                """,
+                (verdict_id, organization_id),
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                connection.commit()
+                return None
+
+            first = rows[0]
+            stored_result = _as_dict(first[2])
+            verdict_node_id = f"verdict:{first[0]}"
+            nodes = [
+                {
+                    "id": verdict_node_id,
+                    "type": "verdict",
+                    "status": first[1],
+                    "package": stored_result.get("package"),
+                    "created_at": first[3].isoformat(),
+                    "code_hash": first[4].strip(),
+                }
+            ]
+            edges = []
+            for row in rows:
+                evidence_id = row[5]
+                if evidence_id is None:
+                    continue
+                node_id = f"evidence:{evidence_id}"
+                nodes.append(
+                    {
+                        "id": node_id,
+                        "type": "evidence",
+                        "sequence_no": row[6],
+                        "evidence_type": row[7],
+                        "payload": _as_dict(row[8]),
+                        "payload_hash": row[9].strip(),
+                        "created_at": row[10].isoformat(),
+                    }
+                )
+                edges.append(
+                    {
+                        "id": f"{node_id}->belongs_to->{verdict_node_id}",
+                        "source": node_id,
+                        "target": verdict_node_id,
+                        "relation": "belongs_to",
+                    }
+                )
+        connection.commit()
+        return {"nodes": nodes, "edges": edges}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        release_connection(connection)
+
+
+def get_verdict_stats_for_organization(*, organization_id: str) -> dict[str, Any]:
+    """Count persisted verdict rows, with explicit all-time denominator semantics."""
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*),
+                    COUNT(*) FILTER (WHERE status = 'CLEAN'),
+                    COUNT(*) FILTER (WHERE status = 'SUSPICIOUS'),
+                    COUNT(*) FILTER (WHERE status = 'HALLUCINATION_CAUGHT'),
+                    COUNT(*) FILTER (WHERE status = 'INCONCLUSIVE'),
+                    COUNT(*) FILTER (WHERE status = 'INTEGRITY_VIOLATED')
+                FROM verdicts
+                WHERE organization_id = %s
+                """,
+                (organization_id,),
+            )
+            row = cursor.fetchone()
+        connection.commit()
+        total, clean, suspicious, hallucinations, inconclusive, integrity_violated = row
+        return {
+            "total_checks": total,
+            "hallucinations_caught": hallucinations,
+            "inconclusive": inconclusive,
+            "status_counts": {
+                "CLEAN": clean,
+                "SUSPICIOUS": suspicious,
+                "HALLUCINATION_CAUGHT": hallucinations,
+                "INCONCLUSIVE": inconclusive,
+                "INTEGRITY_VIOLATED": integrity_violated,
+            },
+            "time_window": "all_time",
+            "denominator": "persisted_verdict_rows (one row per idempotent verification)",
+        }
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        release_connection(connection)
+
+
 class IdempotencyConflict(ValueError):
     """An idempotency key was reused for a different request."""
 
