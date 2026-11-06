@@ -125,7 +125,7 @@ jobs:
                       "X-GitHub-Api-Version": "2022-11-28",
                   },
               )
-              with open_url(request, timeout=45, operation="github_api_get") as response:
+              with open_url(request, timeout=45, operation=f"github_api_get:{path.split('?', 1)[0]}") as response:
                   return json.load(response)
 
           def download_artifact(artifact_id):
