@@ -84,7 +84,7 @@ jobs:
 
           root = pathlib.Path("artifacts/mypy-pr544")
           pattern = re.compile(
-              r"^(.+?):(\\d+)(?::(\\d+))?: error: (.*?)(?:  \\[([^\\]]+)\\])?$",
+              r"^(.+?):(\d+)(?::(\d+))?: error: (.*?)(?:  \[([^\]]+)\])?$",
               re.MULTILINE,
           )
 
@@ -136,7 +136,7 @@ jobs:
           ]
           report += render("=== NEW DIAGNOSTICS (normalized by file/message/code) ===", introduced, head_rows)
           report += ["", *render("=== RESOLVED DIAGNOSTICS (normalized by file/message/code) ===", resolved, base_rows)]
-          output = "\\n".join(report) + "\\n"
+          output = "\n".join(report) + "\n"
           (root / "comparison.txt").write_text(output)
           print(output)
           PY
