@@ -1,0 +1,91 @@
+name: Mypy PR544 Differential Baseline
+
+on:
+  push:
+    branches:
+      - diagnostic/mypy-pr544-control-20261106
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Fetch exact PR base and head
+        env:
+          BASE_SHA: f8d687a6953d561641fb51325ab1f9606e8b0645
+          HEAD_SHA: d1da3fd6e042e7e8655c1e5a152677ce40940772
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_SHA"
+          git fetch origin "$HEAD_SHA"
+      - name: Install developer dependencies from base
+        run: |
+          set -euo pipefail
+          git checkout --detach f8d687a6953d561641fb51325ab1f9606e8b0645
+          python -m pip install ".[dev]"
+          mypy --version
+      - name: Run identical Mypy checks on base and PR head
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/mypy-pr544
+          git checkout --detach f8d687a6953d561641fb51325ab1f9606e8b0645
+          echo "BASE_SHA=$(git rev-parse HEAD)" | tee artifacts/mypy-pr544/metadata.txt
+          MYPYPATH=src mypy --config-file=pyproject.toml src/jamp/api/app.py > artifacts/mypy-pr544/base.log 2>&1
+          echo "BASE_EXIT=$?" | tee -a artifacts/mypy-pr544/metadata.txt
+
+          git checkout --detach d1da3fd6e042e7e8655c1e5a152677ce40940772
+          echo "HEAD_SHA=$(git rev-parse HEAD)" | tee -a artifacts/mypy-pr544/metadata.txt
+          MYPYPATH=src mypy --config-file=pyproject.toml src/jamp/api/app.py src/jamp/db/verdicts.py > artifacts/mypy-pr544/head.log 2>&1
+          echo "HEAD_EXIT=$?" | tee -a artifacts/mypy-pr544/metadata.txt
+
+          python - <<'PY'
+          import collections
+          import pathlib
+          import re
+
+          root = pathlib.Path("artifacts/mypy-pr544")
+          pattern = re.compile(r"^(.+?):\\d+(?::\\d+)?: error: (.+?)  \\[([^\\]]+)\\]$", re.M)
+
+          def errors(path):
+              content = path.read_text(errors="replace")
+              return collections.Counter(
+                  (file, message, code)
+                  for file, message, code in pattern.findall(content)
+              )
+
+          base = errors(root / "base.log")
+          head = errors(root / "head.log")
+          introduced = head - base
+          resolved = base - head
+          lines = [
+              f"BASE_ERROR_COUNT={sum(base.values())}",
+              f"HEAD_ERROR_COUNT={sum(head.values())}",
+              f"INTRODUCED_ERROR_COUNT={sum(introduced.values())}",
+              f"RESOLVED_ERROR_COUNT={sum(resolved.values())}",
+              "",
+              "=== INTRODUCED ===",
+          ]
+          lines += [f"{count}x {item}" for item, count in introduced.items()] or ["none"]
+          lines += ["", "=== RESOLVED ==="]
+          lines += [f"{count}x {item}" for item, count in resolved.items()] or ["none"]
+          report = "\\n".join(lines) + "\\n"
+          (root / "comparison.txt").write_text(report)
+          print(report)
+          PY
+      - name: Upload differential Mypy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-pr544-differential
+          path: artifacts/mypy-pr544/
+          if-no-files-found: error
