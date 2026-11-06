@@ -1029,7 +1029,11 @@ def create_app(
                     secret=None,
                 )
             )
-        if not isinstance(envelope, dict) or not isinstance(jamp_verdict, dict) or not isinstance(trace, dict):
+        if (
+            not isinstance(envelope, dict)
+            or not isinstance(jamp_verdict, dict)
+            or not isinstance(trace, dict)
+        ):
             return JSONResponse(
                 status_code=400,
                 content={
