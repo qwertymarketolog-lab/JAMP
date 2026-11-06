@@ -22,34 +22,60 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Fetch exact PR base and head
+      - name: Fetch exact baseline and PR head
         env:
-          BASE_SHA: f8d687a6953d561641fb51325ab1f9606e8b0645
-          HEAD_SHA: d1da3fd6e042e7e8655c1e5a152677ce40940772
+          BASE_SHA: b94117ca4eb175895c16652ef97fcecc391a7db6
+          HEAD_SHA: 6a21296faed150f947d1e5a590a3882858984ff6
         run: |
           set -euo pipefail
           git fetch origin "$BASE_SHA"
           git fetch origin "$HEAD_SHA"
-      - name: Install developer dependencies from base
+          test "$(git rev-parse "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git rev-parse "$HEAD_SHA")" = "$HEAD_SHA"
+      - name: Install developer dependencies from baseline
         run: |
           set -euo pipefail
-          git checkout --detach f8d687a6953d561641fb51325ab1f9606e8b0645
+          git checkout --detach b94117ca4eb175895c16652ef97fcecc391a7db6
           python -m pip install ".[dev]"
+          python --version
           mypy --version
-      - name: Run identical Mypy checks on base and PR head
+      - name: Run identical Mypy checks on baseline and PR head
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           mkdir -p artifacts/mypy-pr544
-          git checkout --detach f8d687a6953d561641fb51325ab1f9606e8b0645
-          echo "BASE_SHA=$(git rev-parse HEAD)" | tee artifacts/mypy-pr544/metadata.txt
-          MYPYPATH=src mypy --config-file=pyproject.toml src/jamp/api/app.py > artifacts/mypy-pr544/base.log 2>&1
-          echo "BASE_EXIT=$?" | tee -a artifacts/mypy-pr544/metadata.txt
+          cat > artifacts/mypy-pr544/metadata.txt <<'EOF'
+          BASELINE_SHA=b94117ca4eb175895c16652ef97fcecc391a7db6
+          PR_HEAD_SHA=6a21296faed150f947d1e5a590a3882858984ff6
+          PYTHON_VERSION=3.11
+          CONFIG=pyproject.toml
+          FILES=src/jamp/api/app.py src/jamp/db/verdicts.py src/jamp/runtime/persistence.py src/jamp/runtime/provenance.py
+          EOF
+          python --version >> artifacts/mypy-pr544/metadata.txt
+          mypy --version >> artifacts/mypy-pr544/metadata.txt
 
-          git checkout --detach d1da3fd6e042e7e8655c1e5a152677ce40940772
-          echo "HEAD_SHA=$(git rev-parse HEAD)" | tee -a artifacts/mypy-pr544/metadata.txt
-          MYPYPATH=src mypy --config-file=pyproject.toml src/jamp/api/app.py src/jamp/db/verdicts.py > artifacts/mypy-pr544/head.log 2>&1
-          echo "HEAD_EXIT=$?" | tee -a artifacts/mypy-pr544/metadata.txt
+          set +e
+          git checkout --detach b94117ca4eb175895c16652ef97fcecc391a7db6
+          MYPYPATH=src mypy --config-file=pyproject.toml \
+            src/jamp/api/app.py \
+            src/jamp/db/verdicts.py \
+            src/jamp/runtime/persistence.py \
+            src/jamp/runtime/provenance.py \
+            > artifacts/mypy-pr544/base.log 2>&1
+          BASE_EXIT=$?
+
+          git checkout --detach 6a21296faed150f947d1e5a590a3882858984ff6
+          MYPYPATH=src mypy --config-file=pyproject.toml \
+            src/jamp/api/app.py \
+            src/jamp/db/verdicts.py \
+            src/jamp/runtime/persistence.py \
+            src/jamp/runtime/provenance.py \
+            > artifacts/mypy-pr544/head.log 2>&1
+          HEAD_EXIT=$?
+          set -e
+
+          printf 'BASE_EXIT=%s\nHEAD_EXIT=%s\n' "$BASE_EXIT" "$HEAD_EXIT" \
+            | tee -a artifacts/mypy-pr544/metadata.txt
 
           python - <<'PY'
           import collections
@@ -57,33 +83,62 @@ jobs:
           import re
 
           root = pathlib.Path("artifacts/mypy-pr544")
-          pattern = re.compile(r"^(.+?):\d+(?::\d+)?: error: (.+?)  \[([^\]]+)\]$", re.M)
+          pattern = re.compile(
+              r"^(.+?):(\\d+)(?::(\\d+))?: error: (.*?)(?:  \\[([^\\]]+)\\])?$",
+              re.MULTILINE,
+          )
 
-          def errors(path):
-              content = path.read_text(errors="replace")
-              return collections.Counter(
-                  (file, message, code)
-                  for file, message, code in pattern.findall(content)
-              )
+          def parse(path):
+              text = path.read_text(errors="replace")
+              rows = []
+              for file, line, column, message, code in pattern.findall(text):
+                  rows.append({
+                      "file": file,
+                      "line": int(line),
+                      "column": int(column) if column else None,
+                      "message": message,
+                      "code": code or "NO_CODE",
+                  })
+              return rows
 
-          base = errors(root / "base.log")
-          head = errors(root / "head.log")
-          introduced = head - base
-          resolved = base - head
-          lines = [
-              f"BASE_ERROR_COUNT={sum(base.values())}",
-              f"HEAD_ERROR_COUNT={sum(head.values())}",
-              f"INTRODUCED_ERROR_COUNT={sum(introduced.values())}",
-              f"RESOLVED_ERROR_COUNT={sum(resolved.values())}",
+          base_rows = parse(root / "base.log")
+          head_rows = parse(root / "head.log")
+
+          def identity(row):
+              return (row["file"], row["message"], row["code"])
+
+          base_counts = collections.Counter(identity(row) for row in base_rows)
+          head_counts = collections.Counter(identity(row) for row in head_rows)
+          introduced = head_counts - base_counts
+          resolved = base_counts - head_counts
+
+          def render(title, counts, rows):
+              lines = [title]
+              for key, count in sorted(counts.items()):
+                  matching = [r for r in rows if identity(r) == key]
+                  locations = ", ".join(
+                      f'{r["line"]}:{r["column"] or 0}' for r in matching
+                  )
+                  lines.append(
+                      f'{count}x {key[0]} [{key[2]}] {key[1]} (line(s): {locations})'
+                  )
+              return lines + (["none"] if not counts else [])
+
+          report = [
+              "MYPY DIFFERENTIAL REPORT",
+              "BASELINE_SHA=b94117ca4eb175895c16652ef97fcecc391a7db6",
+              "PR_HEAD_SHA=6a21296faed150f947d1e5a590a3882858984ff6",
+              f"X_BASELINE_ERRORS={len(base_rows)}",
+              f"PR_TOTAL_ERRORS={len(head_rows)}",
+              f"Y_INTRODUCED_ERRORS={sum(introduced.values())}",
+              f"RESOLVED_ERRORS={sum(resolved.values())}",
               "",
-              "=== INTRODUCED ===",
           ]
-          lines += [f"{count}x {item}" for item, count in introduced.items()] or ["none"]
-          lines += ["", "=== RESOLVED ==="]
-          lines += [f"{count}x {item}" for item, count in resolved.items()] or ["none"]
-          report = "\n".join(lines) + "\n"
-          (root / "comparison.txt").write_text(report)
-          print(report)
+          report += render("=== NEW DIAGNOSTICS (normalized by file/message/code) ===", introduced, head_rows)
+          report += ["", *render("=== RESOLVED DIAGNOSTICS (normalized by file/message/code) ===", resolved, base_rows)]
+          output = "\\n".join(report) + "\\n"
+          (root / "comparison.txt").write_text(output)
+          print(output)
           PY
       - name: Upload differential Mypy evidence
         if: always()
