@@ -214,7 +214,7 @@ def get_verdict_stats_for_organization(*, organization_id: str) -> dict[str, Any
                 "INTEGRITY_VIOLATED": integrity_violated,
             },
             "time_window": "all_time",
-            "denominator": "persisted_verdict_rows (one row per idempotent verification)",
+            "denominator": "persisted_verdict_rows (one row per organization/idempotency_key)",
         }
     except Exception:
         connection.rollback()
