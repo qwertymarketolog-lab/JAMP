@@ -89,7 +89,7 @@ jobs:
                   raise RuntimeError(f"expected one JSON evidence file in artifact, got {candidates}")
               return json.loads(archive.read(candidates[0]))
 
-          def wait_for_latest_check(name, pr_number):
+          def wait_for_latest_check(name):
               for _ in range(60):
                   check_runs = api_get(
                       f"/repos/{REPOSITORY}/commits/{evidence['pr_head_sha']}/check-runs?per_page=100"
@@ -98,10 +98,6 @@ jobs:
                       item for item in check_runs
                       if item.get("name") == name
                       and item.get("head_sha") == evidence["pr_head_sha"]
-                      and any(
-                          pr.get("number") == pr_number
-                          for pr in item.get("pull_requests", [])
-                      )
                   ]
                   if candidates:
                       candidates.sort(
@@ -174,14 +170,11 @@ jobs:
               })
 
               research_pr_check = wait_for_latest_check(
-                  "Research Loop v0 Gate /", pr_number
+                  "Research Loop v0 Gate /"
               )
               g1_pr_check = wait_for_latest_check(
-                  "G1 Trusted Lineage", pr_number
+                  "G1 Trusted Lineage"
               )
-              pr_checks = api_get(
-                  f"/repos/{REPOSITORY}/commits/{pr_head_sha}/check-runs?per_page=100"
-              )["check_runs"]
 
               details = research_pr_check.get("details_url", "")
               match = re.search(r"/actions/runs/(\d+)/job/(\d+)", details)
@@ -191,7 +184,9 @@ jobs:
               pr_job_id = int(match.group(2))
               pr_run = api_get(f"/repos/{REPOSITORY}/actions/runs/{pr_run_id}")
               if (
-                  pr_run.get("event") != "pull_request"
+                  pr_run.get("repository", {}).get("full_name") != REPOSITORY
+                  or pr_run.get("workflow_id") != 366569738
+                  or pr_run.get("event") != "pull_request"
                   or pr_run.get("path") != ".github/workflows/research-loop-v0.yml"
                   or pr_run.get("head_sha") != pr_head_sha
                   or pr_run.get("status") != "completed"
@@ -204,6 +199,7 @@ jobs:
               matching_pr_jobs = [
                   job for job in pr_jobs
                   if job.get("id") == pr_job_id
+                  and job.get("run_id") == pr_run_id
                   and job.get("name") == "Research Loop v0 Gate /"
                   and job.get("head_sha") == pr_head_sha
                   and job.get("status") == "completed"
@@ -243,6 +239,7 @@ jobs:
                   raise RuntimeError("PR G1 required context is not in the Research Loop workflow run")
               if not any(
                   job.get("id") == g1_alias_job_id
+                  and job.get("run_id") == pr_run_id
                   and job.get("name") == "G1 Trusted Lineage"
                   and job.get("head_sha") == pr_head_sha
                   and job.get("status") == "completed"
@@ -252,7 +249,7 @@ jobs:
                   raise RuntimeError("PR G1 required alias job terminal evidence is missing")
 
               actual_g1_check = wait_for_latest_check(
-                  "trusted-lineage", pr_number
+                  "trusted-lineage"
               )
               actual_g1_details = actual_g1_check.get("details_url", "")
               actual_g1_match = re.search(
@@ -266,8 +263,11 @@ jobs:
                   f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}"
               )
               if (
-                  actual_g1_run.get("path") != ".github/workflows/g1-trusted-lineage.yml"
+                  actual_g1_run.get("repository", {}).get("full_name") != REPOSITORY
+                  or actual_g1_run.get("workflow_id") != 366737546
+                  or actual_g1_run.get("path") != ".github/workflows/g1-trusted-lineage.yml"
                   or actual_g1_run.get("event") != "pull_request_target"
+                  or actual_g1_run.get("head_sha") != pr_head_sha
                   or actual_g1_run.get("status") != "completed"
                   or actual_g1_run.get("conclusion") != "success"
               ):
@@ -275,12 +275,16 @@ jobs:
               actual_g1_jobs = api_get(
                   f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}/jobs?per_page=100"
               )["jobs"]
-              if not any(
-                  job.get("id") == actual_g1_job_id
+              matching_actual_g1_jobs = [
+                  job for job in actual_g1_jobs
+                  if job.get("id") == actual_g1_job_id
+                  and job.get("run_id") == actual_g1_run_id
+                  and job.get("name") == "trusted-lineage"
+                  and job.get("head_sha") == pr_head_sha
                   and job.get("status") == "completed"
                   and job.get("conclusion") == "success"
-                  for job in actual_g1_jobs
-              ):
+              ]
+              if len(matching_actual_g1_jobs) != 1:
                   raise RuntimeError("PR trusted-lineage job terminal evidence is missing")
 
               main_check = None
