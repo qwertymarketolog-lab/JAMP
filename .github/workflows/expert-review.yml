@@ -12,14 +12,13 @@ permissions:
   contents: read
 jobs:
   review:
-    if: inputs.role == 'all' || inputs.role == matrix.role
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       max-parallel: 3
       matrix:
-        role: [architect, ux, auditor]
+        role: ${{ fromJSON(inputs.role == 'all' && '["architect","ux","auditor"]' || format('["{0}"]', inputs.role)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
