@@ -44,7 +44,7 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install -e .
         pip install httpx2
-        pip install pytest pytest-mock pytest-asyncio
+        pip install pytest pytest-mock pytest-asyncio PyYAML
         pip install "jsonschema>=4.23,<5"
         pip install "jcs>=0.2.1,<0.3" "hypothesis>=6,<7"
     - name: Run architectural boundary validation
