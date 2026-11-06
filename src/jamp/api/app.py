@@ -18,6 +18,9 @@ from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_conf
 from jamp.db.verdicts import (
     IdempotencyConflict,
     get_verdict_for_organization,
+    get_verdict_graph_for_organization,
+    get_verdict_stats_for_organization,
+    list_verdicts_for_organization,
     persist_or_get_verdict,
 )
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
@@ -325,6 +328,111 @@ def create_app(
                 content={"detail": "verdict not found"},
             )
         return JSONResponse(status_code=200, content=stored)
+
+    @app.get("/v1/verdicts", response_model=None)
+    def list_verdicts(
+        limit: int = 20,
+        offset: int = 0,
+        status: str | None = None,
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """List persisted verification verdicts for the authenticated organization."""
+        from psycopg2 import InterfaceError, OperationalError
+
+        allowed_statuses = {
+            "CLEAN",
+            "SUSPICIOUS",
+            "HALLUCINATION_CAUGHT",
+            "INCONCLUSIVE",
+            "INTEGRITY_VIOLATED",
+        }
+        if limit < 1 or limit > 100:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "limit must be between 1 and 100"},
+            )
+        if offset < 0:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "offset must be non-negative"},
+            )
+        if status is not None and status not in allowed_statuses:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "unsupported verdict status"},
+            )
+
+        try:
+            result = list_verdicts_for_organization(
+                organization_id=organization.org_id,
+                limit=limit,
+                offset=offset,
+                status=status,
+            )
+        except (InterfaceError, OperationalError, RuntimeError):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "verdict storage unavailable"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"detail": "verdicts could not be retrieved"},
+            )
+        return JSONResponse(status_code=200, content=result)
+
+    @app.get("/v1/verdicts/{verdict_id}/graph", response_model=None)
+    def get_verdict_graph(
+        verdict_id: UUID,
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Project only persisted Evidence Chain records and their owning verdict."""
+        from psycopg2 import InterfaceError, OperationalError
+
+        try:
+            graph = get_verdict_graph_for_organization(
+                verdict_id=str(verdict_id),
+                organization_id=organization.org_id,
+            )
+        except (InterfaceError, OperationalError, RuntimeError):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "verdict storage unavailable"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"detail": "verdict graph could not be retrieved"},
+            )
+        if graph is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "verdict not found"},
+            )
+        return JSONResponse(status_code=200, content=graph)
+
+    @app.get("/v1/stats", response_model=None)
+    def get_stats(
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Return all-time counts of persisted verdict rows for this organization."""
+        from psycopg2 import InterfaceError, OperationalError
+
+        try:
+            stats = get_verdict_stats_for_organization(
+                organization_id=organization.org_id,
+            )
+        except (InterfaceError, OperationalError, RuntimeError):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "verdict storage unavailable"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"detail": "verdict statistics could not be retrieved"},
+            )
+        return JSONResponse(status_code=200, content=stats)
 
     @app.post("/v1/classify", dependencies=[Depends(require_api_key)])
     def classify(payload: dict[str, Any]):
