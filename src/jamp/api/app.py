@@ -54,6 +54,7 @@ from jamp.runtime.universal_verdict import (
     compute_jamp_verdict_hash,
 )
 from jamp.runtime.verdict import (
+    Claim,
     JampVerdict,
     aggregate_verdict,
     critical_unverified_claims,
@@ -536,7 +537,7 @@ def create_app(
                 )
 
         # E2 verifies model provenance; E4 verifies only bounded MOEX claims.
-        claims = []
+        claims: list[Claim | dict[str, Any]] = []
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
             prompt_text = payload.get("prompt", "")
             output_text = output.get("content", "") if isinstance(output, dict) else ""
@@ -569,6 +570,7 @@ def create_app(
                         crypto_claim_type = (
                             "existence" if claim_type in {"exists", "existence"} else claim_type
                         )
+                        details: dict[str, Any]
                         if not coin_id:
                             raw_status, details = (
                                 E4_INCONCLUSIVE,
@@ -582,16 +584,16 @@ def create_app(
                             raw_status, details = verify_claim_with_coingecko(
                                 coin_id, crypto_claim_type, claimed_value
                             )
+                        observed_value = details.get("observed_value")
                         if (
                             structured_claim.get("comparison") == "greater_than"
                             and claim_type == "market_cap"
-                            and isinstance(details, dict)
-                            and isinstance(details.get("observed_value"), (int, float))
-                            and not isinstance(details.get("observed_value"), bool)
+                            and isinstance(observed_value, (int, float))
+                            and not isinstance(observed_value, bool)
                             and isinstance(claimed_value, (int, float))
                             and not isinstance(claimed_value, bool)
                         ):
-                            predicate_satisfied = details["observed_value"] > claimed_value
+                            predicate_satisfied = observed_value > claimed_value
                             raw_status = E4_VERIFIED if predicate_satisfied else E4_CONTRADICTED
                             details = {
                                 **details,
@@ -1015,15 +1017,26 @@ def create_app(
     def verify_chain_endpoint(payload: dict[str, Any]):
         """Statelessly verify client-supplied verdict, trace, evidence and chain exports."""
         signing_key = _verdict_signing_key()
+        envelope = payload.get("envelope")
+        jamp_verdict = payload.get("jamp_verdict")
+        trace = payload.get("trace")
         if signing_key is None:
             return report_to_dict(
                 verify_chain(
-                    envelope=payload.get("envelope"),
-                    jamp_verdict=payload.get("jamp_verdict"),
-                    trace=payload.get("trace"),
+                    envelope=envelope if isinstance(envelope, dict) else {},
+                    jamp_verdict=jamp_verdict if isinstance(jamp_verdict, dict) else {},
+                    trace=trace if isinstance(trace, dict) else {},
                     secret=None,
                 )
             )
+        if not isinstance(envelope, dict) or not isinstance(jamp_verdict, dict) or not isinstance(trace, dict):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "envelope, jamp_verdict and trace must be JSON objects"
+                },
+            )
+
         encoded_evidence = payload.get("evidence_files")
         decoded_evidence: dict[str, bytes] | None = None
         if encoded_evidence is not None:
@@ -1045,9 +1058,9 @@ def create_app(
                 )
 
         report = verify_chain(
-            envelope=payload.get("envelope"),
-            jamp_verdict=payload.get("jamp_verdict"),
-            trace=payload.get("trace"),
+            envelope=envelope,
+            jamp_verdict=jamp_verdict,
+            trace=trace,
             evidence_files=decoded_evidence,
             chain_records=payload.get("chain_records"),
             secret=signing_key.encode("utf-8") if signing_key is not None else None,

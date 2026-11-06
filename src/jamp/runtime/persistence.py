@@ -160,8 +160,8 @@ class AuditPersistence:
         *,
         organization_id: str,
     ) -> str:
-        trace_id = trace_payload.get("trace_id", "")
-        if not trace_id:
+        trace_id = trace_payload.get("trace_id")
+        if not isinstance(trace_id, str) or not trace_id:
             raise ValueError("Trace payload missing required 'trace_id' field.")
         owner_id = _require_organization_id(organization_id)
         # Authenticated context is authoritative even if payload contains a
