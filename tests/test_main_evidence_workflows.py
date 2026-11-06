@@ -105,7 +105,7 @@ def test_g1_actions_run_job_url_regex_matches_numeric_ids() -> None:
     ]
     assert len(patterns) >= 4
 
-    url = "https://github.com/qwertymarketolog-lab/JAMP/actions/runs/123456789/job/987654321"
+    url = "/actions/runs/123456789/job/987654321"
     for pattern in patterns:
         match = re.search(pattern, url)
         assert match is not None
