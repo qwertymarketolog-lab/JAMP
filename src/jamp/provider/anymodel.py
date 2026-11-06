@@ -148,6 +148,8 @@ class AnyModelChatExecutor:
             "model": selected_model,
             "content": content,
         }
+        if isinstance(decoded.get("model"), str) and decoded["model"].strip():
+            result["provider_model_id"] = decoded["model"]
         if isinstance(decoded.get("id"), str):
             result["provider_response_id"] = decoded["id"]
         if isinstance(decoded.get("usage"), dict):

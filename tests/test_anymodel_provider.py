@@ -31,6 +31,7 @@ def test_executor_posts_selected_model_and_returns_content():
             json.dumps(
                 {
                     "id": "chatcmpl-test",
+                    "model": "provider/gemini-3.7-flash-high",
                     "choices": [{"message": {"content": "Hello from AnyModel"}}],
                     "usage": {"total_tokens": 12},
                 }
@@ -46,6 +47,7 @@ def test_executor_posts_selected_model_and_returns_content():
     assert observed["body"]["messages"] == [{"role": "user", "content": "Say hello"}]
     assert observed["timeout"] == 30.0
     assert result["content"] == "Hello from AnyModel"
+    assert result["provider_model_id"] == "provider/gemini-3.7-flash-high"
     assert result["provider_response_id"] == "chatcmpl-test"
     assert result["usage"] == {"total_tokens": 12}
 

@@ -1,0 +1,48 @@
+name: JAMP Expert Review
+on:
+  workflow_dispatch:
+    inputs:
+      role:
+        description: Expert role to execute
+        required: true
+        type: choice
+        default: all
+        options: [architect, ux, auditor, all]
+permissions:
+  contents: read
+jobs:
+  review:
+    if: inputs.role == 'all' || inputs.role == matrix.role
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        role: [architect, ux, auditor]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install JAMP package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Run expert review
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: >-
+          python experiments/expert-review/run_expert.py
+          --role ${{ matrix.role }}
+          --output-dir artifacts/expert-review
+      - name: Upload immutable review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expert-review-${{ matrix.role }}-${{ github.sha }}
+          path: artifacts/expert-review/${{ matrix.role }}/
+          if-no-files-found: error
+          retention-days: 30
