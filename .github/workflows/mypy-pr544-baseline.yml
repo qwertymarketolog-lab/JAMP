@@ -81,7 +81,7 @@ jobs:
           lines += [f"{count}x {item}" for item, count in introduced.items()] or ["none"]
           lines += ["", "=== RESOLVED ==="]
           lines += [f"{count}x {item}" for item, count in resolved.items()] or ["none"]
-          report = "\\n".join(lines) + "\\n"
+          report = "\n".join(lines) + "\n"
           (root / "comparison.txt").write_text(report)
           print(report)
           PY
