@@ -234,7 +234,7 @@ jobs:
                   raise RuntimeError("PR Research Loop artifact does not match the exact PR head")
 
               g1_details = g1_pr_check.get("details_url", "")
-              g1_match = re.search(r"/actions/runs/(\\d+)/job/(\\d+)", g1_details)
+              g1_match = re.search(r"/actions/runs/(\d+)/job/(\d+)", g1_details)
               if not g1_match:
                   raise RuntimeError("PR G1 required context has no verifiable Actions job URL")
               g1_alias_run_id = int(g1_match.group(1))
@@ -256,7 +256,7 @@ jobs:
               )
               actual_g1_details = actual_g1_check.get("details_url", "")
               actual_g1_match = re.search(
-                  r"/actions/runs/(\\d+)/job/(\\d+)", actual_g1_details
+                  r"/actions/runs/(\d+)/job/(\d+)", actual_g1_details
               )
               if not actual_g1_match:
                   raise RuntimeError("PR trusted-lineage job has no verifiable Actions run URL")
