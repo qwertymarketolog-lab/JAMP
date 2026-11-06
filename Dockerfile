@@ -4,10 +4,12 @@ WORKDIR /app
 
 COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
+COPY tests/fixtures/runtime_evidence_projection.json ./data/runtime_evidence_projection.json
 
 RUN python -m pip install --no-cache-dir . "uvicorn>=0.30,<1"
 
 ENV PYTHONUNBUFFERED=1
+ENV JAMP_EVIDENCE_PATH=/app/data/runtime_evidence_projection.json
 EXPOSE 8000
 
 CMD ["uvicorn", "jamp.server.app:app", "--host", "0.0.0.0", "--port", "8000"]

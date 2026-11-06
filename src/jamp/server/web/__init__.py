@@ -1,0 +1,1 @@
+"""JAMP browser dashboard package."""

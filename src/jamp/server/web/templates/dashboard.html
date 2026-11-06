@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JAMP — Станция доверия</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.35em] text-amber-400">JAMP / Trust Layer</p>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight">Станция доверия</h1>
+        <p class="mt-2 text-sm text-slate-400">Организация: {{ organization_name }}</p>
+      </div>
+      <form method="post" action="/dashboard/logout">
+        <button class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-amber-400 hover:text-white" type="submit">
+          Выйти
+        </button>
+      </form>
+    </header>
+
+    <section class="mb-6 grid gap-4 sm:grid-cols-3" aria-label="Статистика">
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">Всего проверок</p>
+        <p id="total-checks" class="mt-2 text-3xl font-semibold">—</p>
+        <p class="mt-1 text-xs text-slate-500">Сохранённые verdict rows · all time</p>
+      </article>
+      <article class="rounded-2xl border border-rose-900/60 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">Пойманные галлюцинации</p>
+        <p id="hallucinations-caught" class="mt-2 text-3xl font-semibold text-rose-400">—</p>
+        <p class="mt-1 text-xs text-slate-500">Только статус HALLUCINATION_CAUGHT</p>
+      </article>
+      <article class="rounded-2xl border border-amber-900/60 bg-slate-900 p-5">
+        <p class="text-sm text-slate-400">Неопределённые результаты</p>
+        <p id="inconclusive-count" class="mt-2 text-3xl font-semibold text-amber-300">—</p>
+        <p class="mt-1 text-xs text-slate-500">INCONCLUSIVE не считается галлюцинацией</p>
+      </article>
+    </section>
+
+    <section class="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(18rem,0.8fr)]">
+      <article class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+        <div class="border-b border-slate-800 px-5 py-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-amber-400">Evidence graph</p>
+          <h2 class="mt-1 text-lg font-semibold">Последняя сохранённая проверка</h2>
+          <p id="verdict-summary" class="mt-1 text-sm text-slate-400">Загрузка данных…</p>
+        </div>
+        <div id="evidence-graph" class="h-[520px] w-full" role="img" aria-label="Граф вердикта и сохранённых доказательств"></div>
+        <p class="border-t border-slate-800 px-5 py-3 text-xs text-slate-500">
+          Граф строится только по узлам и связям, сохранённым в Evidence Chain. Отсутствующие записи не дорисовываются.
+        </p>
+      </article>
+
+      <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <h2 class="text-lg font-semibold">Карточка вердикта</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div><dt class="text-slate-500">Verdict ID</dt><dd id="verdict-id" class="mt-1 break-all font-mono text-xs text-slate-300">—</dd></div>
+          <div><dt class="text-slate-500">Статус</dt><dd id="verdict-status" class="mt-1 font-semibold">—</dd></div>
+          <div><dt class="text-slate-500">Пакет</dt><dd id="verdict-package" class="mt-1 break-words text-slate-300">—</dd></div>
+          <div><dt class="text-slate-500">SHA-256 кода</dt><dd id="verdict-code-hash" class="mt-1 break-all font-mono text-xs text-slate-400">—</dd></div>
+        </dl>
+        <div class="mt-6 border-t border-slate-800 pt-5">
+          <h3 class="text-sm font-semibold">Выбранное доказательство</h3>
+          <pre id="evidence-detail" class="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-950 p-3 text-xs leading-5 text-slate-300">Нажмите на узел графа.</pre>
+        </div>
+      </aside>
+    </section>
+
+    <p id="dashboard-error" class="mt-5 hidden rounded-xl border border-rose-900 bg-rose-950/40 p-4 text-sm text-rose-300" role="alert"></p>
+  </main>
+  <script src="/dashboard-static/dashboard.js" defer></script>
+</body>
+</html>
