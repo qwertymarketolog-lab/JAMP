@@ -10,7 +10,13 @@ import psycopg2
 import pytest
 
 from jamp.db import get_connection, init_schema, release_connection
-from jamp.db.verdicts import IdempotencyConflict, persist_or_get_verdict
+from jamp.db.verdicts import (
+    IdempotencyConflict,
+    get_verdict_graph_for_organization,
+    get_verdict_stats_for_organization,
+    list_verdicts_for_organization,
+    persist_or_get_verdict,
+)
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("JAMP_DATABASE_URL"),
@@ -139,3 +145,83 @@ def test_verdict_restricts_organization_deletion(organization_id: str) -> None:
             connection.rollback()
     finally:
         release_connection(connection)
+
+
+def test_dashboard_list_graph_and_stats_are_tenant_scoped(organization_id: str) -> None:
+    first, _ = persist_or_get_verdict(
+        organization_id=organization_id,
+        idempotency_key="dashboard-clean",
+        request_hash="a" * 64,
+        code_hash="b" * 64,
+        result=_result("CLEAN"),
+    )
+    persist_or_get_verdict(
+        organization_id=organization_id,
+        idempotency_key="dashboard-missing",
+        request_hash="c" * 64,
+        code_hash="d" * 64,
+        result={
+            "status": "HALLUCINATION_CAUGHT",
+            "package": "missing-package",
+            "provenance": {"status": "NOT_FOUND", "reason": "package_not_found"},
+        },
+    )
+    persist_or_get_verdict(
+        organization_id=organization_id,
+        idempotency_key="dashboard-uncertain",
+        request_hash="e" * 64,
+        code_hash="f" * 64,
+        result={"status": "INCONCLUSIVE", "package": "uncertain-package"},
+    )
+
+    listed = list_verdicts_for_organization(
+        organization_id=organization_id, limit=20, offset=0
+    )
+    assert listed["total"] == 3
+    assert {item["status"] for item in listed["items"]} == {
+        "CLEAN", "HALLUCINATION_CAUGHT", "INCONCLUSIVE"
+    }
+    assert {item["package"] for item in listed["items"]} == {
+        "sample-package", "missing-package", "uncertain-package"
+    }
+
+    filtered = list_verdicts_for_organization(
+        organization_id=organization_id,
+        limit=20,
+        offset=0,
+        status="HALLUCINATION_CAUGHT",
+    )
+    assert filtered["total"] == 1
+    assert filtered["items"][0]["status"] == "HALLUCINATION_CAUGHT"
+
+    graph = get_verdict_graph_for_organization(
+        verdict_id=first["verdict_id"], organization_id=organization_id
+    )
+    assert graph is not None
+    assert [node["type"] for node in graph["nodes"]] == [
+        "verdict", "evidence", "evidence"
+    ]
+    assert [node.get("evidence_type") for node in graph["nodes"][1:]] == [
+        "provenance", "signature"
+    ]
+    assert len(graph["edges"]) == 2
+    assert all(edge["relation"] == "belongs_to" for edge in graph["edges"])
+    assert get_verdict_graph_for_organization(
+        verdict_id=first["verdict_id"], organization_id="different-tenant"
+    ) is None
+
+    stats = get_verdict_stats_for_organization(organization_id=organization_id)
+    assert stats["total_checks"] == 3
+    assert stats["hallucinations_caught"] == 1
+    assert stats["inconclusive"] == 1
+    assert stats["status_counts"] == {
+        "CLEAN": 1,
+        "SUSPICIOUS": 0,
+        "HALLUCINATION_CAUGHT": 1,
+        "INCONCLUSIVE": 1,
+        "INTEGRITY_VIOLATED": 0,
+    }
+    assert stats["time_window"] == "all_time"
+    assert get_verdict_stats_for_organization(
+        organization_id="different-tenant"
+    )["total_checks"] == 0
