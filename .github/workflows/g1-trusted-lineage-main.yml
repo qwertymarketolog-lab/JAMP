@@ -41,6 +41,7 @@ jobs:
           import time
           import urllib.error
           import urllib.request
+          import urllib.parse
           import zipfile
           from pathlib import Path
 
@@ -60,6 +61,60 @@ jobs:
               "locked_frozen_core_blob": LOCKED_CORE,
           }
           failure = None
+          last_request_failure = None
+
+          def sanitized_url(value):
+              if not value:
+                  return None
+              parsed = urllib.parse.urlsplit(value)
+              return urllib.parse.urlunsplit(
+                  (parsed.scheme, parsed.netloc, parsed.path, "", "")
+              )
+
+          def open_url(request, timeout, operation):
+              global last_request_failure
+              last_request_failure = None
+              try:
+                  return urllib.request.urlopen(request, timeout=timeout)
+              except Exception as exc:
+                  authorization = request.get_header("Authorization")
+                  context = {
+                      "operation": operation,
+                      "request_method": request.get_method(),
+                      "request_url": sanitized_url(request.full_url),
+                      "authorization_header_present": request.has_header("Authorization"),
+                      "authorization_scheme": (
+                          authorization.split()[0]
+                          if authorization and authorization.split()
+                          else None
+                      ),
+                      "exception_type": type(exc).__name__,
+                  }
+                  if isinstance(exc, urllib.error.HTTPError):
+                      context.update({
+                          "http_status": exc.code,
+                          "http_reason": str(exc.reason)[:300],
+                          "error_url": sanitized_url(exc.url),
+                      })
+                      response_headers = exc.headers
+                      if response_headers is not None:
+                          for header in (
+                              "WWW-Authenticate",
+                              "X-GitHub-Request-Id",
+                              "X-Accepted-GitHub-Permissions",
+                              "Server",
+                              "Content-Type",
+                          ):
+                              value = response_headers.get(header)
+                              if value:
+                                  context[header.lower().replace("-", "_")] = str(value)[:500]
+                          location = response_headers.get("Location")
+                          if location:
+                              context["redirect_location"] = sanitized_url(location)
+                  else:
+                      context["exception_message"] = str(exc)[:500]
+                  last_request_failure = context
+                  raise
 
           def api_get(path):
               request = urllib.request.Request(
@@ -70,7 +125,7 @@ jobs:
                       "X-GitHub-Api-Version": "2022-11-28",
                   },
               )
-              with urllib.request.urlopen(request, timeout=45) as response:
+              with open_url(request, timeout=45, operation="github_api_get") as response:
                   return json.load(response)
 
           def download_artifact(artifact_id):
@@ -82,7 +137,11 @@ jobs:
                       "X-GitHub-Api-Version": "2022-11-28",
                   },
               )
-              with urllib.request.urlopen(request, timeout=90) as response:
+              with open_url(
+                  request,
+                  timeout=90,
+                  operation=f"github_artifact_zip_download:{artifact_id}",
+              ) as response:
                   archive = zipfile.ZipFile(io.BytesIO(response.read()))
               candidates = [name for name in archive.namelist() if name.endswith(".json")]
               if len(candidates) != 1:
@@ -404,6 +463,8 @@ jobs:
               failure = f"{type(exc).__name__}: {exc}"
               evidence["validation_result"] = "FAILED"
               evidence["failure"] = failure
+              if last_request_failure is not None:
+                  evidence["failure_request_context"] = last_request_failure
 
           try:
               run_id = os.environ["RUN_ID"]
@@ -415,7 +476,7 @@ jobs:
                       "X-GitHub-Api-Version": "2022-11-28",
                   },
               )
-              with urllib.request.urlopen(request, timeout=30) as response:
+              with open_url(request, timeout=30, operation="current_job_id_lookup") as response:
                   jobs = json.load(response)["jobs"]
               current = [
                   job for job in jobs
@@ -432,6 +493,8 @@ jobs:
           except Exception as exc:
               evidence["job_id"] = None
               evidence["job_id_lookup_error"] = f"{type(exc).__name__}: {exc}"
+              if last_request_failure is not None:
+                  evidence["job_id_lookup_failure_context"] = last_request_failure
               if failure is None:
                   failure = evidence["job_id_lookup_error"]
                   evidence["validation_result"] = "FAILED"
