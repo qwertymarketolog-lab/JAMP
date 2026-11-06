@@ -58,6 +58,17 @@ def test_audit_persistence_requires_trace_id(tmp_path):
         store.write_trace({"decision": "REFUSE"}, organization_id="org-test")
 
 
+@pytest.mark.parametrize("trace_id", [123, True, ["trace-id"], {"value": "trace-id"}])
+def test_audit_persistence_rejects_non_string_trace_id(tmp_path, trace_id):
+    path = tmp_path / "provenance_traces.jsonl"
+    store = AuditPersistence(path)
+
+    with pytest.raises(ValueError, match="Trace payload missing required"):
+        store.write_trace({"trace_id": trace_id}, organization_id="org-test")
+
+    assert not path.exists()
+
+
 def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
     path = tmp_path / "provenance_traces.jsonl"
     store = AuditPersistence(path)

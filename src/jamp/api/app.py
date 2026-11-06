@@ -12,9 +12,14 @@ from pathlib import Path
 from typing import Any
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
+from uuid import UUID
 
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
-from jamp.db.verdicts import IdempotencyConflict, persist_or_get_verdict
+from jamp.db.verdicts import (
+    IdempotencyConflict,
+    get_verdict_for_organization,
+    persist_or_get_verdict,
+)
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
@@ -49,6 +54,7 @@ from jamp.runtime.universal_verdict import (
     compute_jamp_verdict_hash,
 )
 from jamp.runtime.verdict import (
+    Claim,
     JampVerdict,
     aggregate_verdict,
     critical_unverified_claims,
@@ -289,6 +295,37 @@ def create_app(
             content=stored,
         )
 
+    @app.get("/v1/verdict/{verdict_id}", response_model=None)
+    def get_verdict(
+        verdict_id: UUID,
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Read a verdict without disclosing records owned by other tenants."""
+        from psycopg2 import InterfaceError, OperationalError
+
+        try:
+            stored = get_verdict_for_organization(
+                verdict_id=str(verdict_id),
+                organization_id=organization.org_id,
+            )
+        except (InterfaceError, OperationalError, RuntimeError):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "verdict storage unavailable"},
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"detail": "verdict could not be retrieved"},
+            )
+
+        if stored is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "verdict not found"},
+            )
+        return JSONResponse(status_code=200, content=stored)
+
     @app.post("/v1/classify", dependencies=[Depends(require_api_key)])
     def classify(payload: dict[str, Any]):
         task_profile = classifier.classify(payload)
@@ -500,7 +537,7 @@ def create_app(
                 )
 
         # E2 verifies model provenance; E4 verifies only bounded MOEX claims.
-        claims = []
+        claims: list[Claim | dict[str, Any]] = []
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
             prompt_text = payload.get("prompt", "")
             output_text = output.get("content", "") if isinstance(output, dict) else ""
@@ -533,6 +570,7 @@ def create_app(
                         crypto_claim_type = (
                             "existence" if claim_type in {"exists", "existence"} else claim_type
                         )
+                        details: dict[str, Any]
                         if not coin_id:
                             raw_status, details = (
                                 E4_INCONCLUSIVE,
@@ -546,16 +584,16 @@ def create_app(
                             raw_status, details = verify_claim_with_coingecko(
                                 coin_id, crypto_claim_type, claimed_value
                             )
+                        observed_value = details.get("observed_value")
                         if (
                             structured_claim.get("comparison") == "greater_than"
                             and claim_type == "market_cap"
-                            and isinstance(details, dict)
-                            and isinstance(details.get("observed_value"), (int, float))
-                            and not isinstance(details.get("observed_value"), bool)
+                            and isinstance(observed_value, (int, float))
+                            and not isinstance(observed_value, bool)
                             and isinstance(claimed_value, (int, float))
                             and not isinstance(claimed_value, bool)
                         ):
-                            predicate_satisfied = details["observed_value"] > claimed_value
+                            predicate_satisfied = observed_value > claimed_value
                             raw_status = E4_VERIFIED if predicate_satisfied else E4_CONTRADICTED
                             details = {
                                 **details,
@@ -979,15 +1017,30 @@ def create_app(
     def verify_chain_endpoint(payload: dict[str, Any]):
         """Statelessly verify client-supplied verdict, trace, evidence and chain exports."""
         signing_key = _verdict_signing_key()
+        envelope = payload.get("envelope")
+        jamp_verdict = payload.get("jamp_verdict")
+        trace = payload.get("trace")
         if signing_key is None:
             return report_to_dict(
                 verify_chain(
-                    envelope=payload.get("envelope"),
-                    jamp_verdict=payload.get("jamp_verdict"),
-                    trace=payload.get("trace"),
+                    envelope=envelope if isinstance(envelope, dict) else {},
+                    jamp_verdict=jamp_verdict if isinstance(jamp_verdict, dict) else {},
+                    trace=trace if isinstance(trace, dict) else {},
                     secret=None,
                 )
             )
+        if (
+            not isinstance(envelope, dict)
+            or not isinstance(jamp_verdict, dict)
+            or not isinstance(trace, dict)
+        ):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "envelope, jamp_verdict and trace must be JSON objects"
+                },
+            )
+
         encoded_evidence = payload.get("evidence_files")
         decoded_evidence: dict[str, bytes] | None = None
         if encoded_evidence is not None:
@@ -1009,9 +1062,9 @@ def create_app(
                 )
 
         report = verify_chain(
-            envelope=payload.get("envelope"),
-            jamp_verdict=payload.get("jamp_verdict"),
-            trace=payload.get("trace"),
+            envelope=envelope,
+            jamp_verdict=jamp_verdict,
+            trace=trace,
             evidence_files=decoded_evidence,
             chain_records=payload.get("chain_records"),
             secret=signing_key.encode("utf-8") if signing_key is not None else None,

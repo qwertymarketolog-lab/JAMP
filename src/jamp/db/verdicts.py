@@ -13,6 +13,46 @@ from psycopg2.extras import Json
 from jamp.db.connection import get_connection, release_connection
 
 
+def get_verdict_for_organization(
+    *,
+    verdict_id: str,
+    organization_id: str,
+) -> dict[str, Any] | None:
+    """Return a verdict only when it belongs to the authenticated organization."""
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, status, result, created_at, code_hash
+                FROM verdicts
+                WHERE id = %s AND organization_id = %s
+                """,
+                (verdict_id, organization_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                connection.commit()
+                return None
+
+            stored_id, status, stored_result, created_at, code_hash = row
+            response = {
+                "verdict_id": str(stored_id),
+                "status": status,
+                "result": _as_dict(stored_result),
+                "evidence": _read_evidence(cursor, str(stored_id)),
+                "created_at": created_at.isoformat(),
+                "code_hash": code_hash.strip(),
+            }
+        connection.commit()
+        return response
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        release_connection(connection)
+
+
 class IdempotencyConflict(ValueError):
     """An idempotency key was reused for a different request."""
 

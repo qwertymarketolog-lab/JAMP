@@ -146,6 +146,26 @@ def test_valid_full_chain_and_authenticated_endpoint_return_verified(
     assert not (tmp_path / "universal_verdicts.jsonl").exists()
 
 
+@pytest.mark.parametrize("field", ["envelope", "jamp_verdict", "trace"])
+def test_verify_chain_rejects_non_object_required_sections(
+    field: str, monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    envelope, jv, trace, _, _ = _valid_case()
+    monkeypatch.setenv("JAMP_SIGNING_KEY", SECRET_TEXT)
+    monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "test-api-key-hash-secret")
+    payload = {"envelope": envelope, "jamp_verdict": jv, "trace": trace}
+    payload[field] = []
+
+    app = create_app(audit_storage_path=tmp_path / "audit.jsonl")
+    app.dependency_overrides[require_api_key] = lambda: None
+    response = TestClient(app).post("/v1/verify-chain", json=payload)
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "envelope, jamp_verdict and trace must be JSON objects"
+    }
+
+
 def test_tampered_jamp_signature_is_contradicted() -> None:
     envelope, jv, trace, evidence_files, chain_records = _valid_case()
     jv["signature"] = "0" * 64

@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from jamp.api import create_app
@@ -184,3 +185,58 @@ def test_fallback_openrouter_e2_inconclusive_refuses(monkeypatch):
     assert diagnostics["output_model_id"] == "provider/model-a"
     assert diagnostics["fallback_history"][0]["provider"] == "FirstExecutor"
     assert diagnostics["fallback_history"][0]["http_status"] == 402
+
+
+@pytest.mark.parametrize(
+    ("observed_value", "expected_status", "expected_aggregate"),
+    [(101.0, "EXECUTE", "VERIFIED"), (99.0, "REFUSE", "CONTRADICTED")],
+)
+def test_e4_market_cap_comparison_preserves_numeric_predicate(
+    observed_value, expected_status, expected_aggregate, monkeypatch
+):
+    import importlib
+
+    from fastapi.testclient import TestClient
+
+    app_module = importlib.import_module("jamp.api.app")
+    monkeypatch.setenv("JAMP_SIGNING_KEY", "e4-test-signing-key")
+    monkeypatch.setattr(app_module, "verify_generation", lambda _output: ("VERIFIED", {}))
+    monkeypatch.setattr(
+        app_module,
+        "verify_claim_with_coingecko",
+        lambda *_args: ("VERIFIED", {"observed_value": observed_value}),
+    )
+
+    def executor(model, _payload):
+        return {
+            "provider": "openrouter",
+            "provider_model_id": "test/provider-model",
+            "provider_response_id": "test-response",
+            "model": model,
+            "content": "Market-cap claim test",
+        }
+
+    client = TestClient(create_app(executor=executor))
+    response = client.post(
+        "/v1/execute",
+        json={
+            "intent": "search_and_extraction",
+            "prompt": "Check the BTC market capitalization claim.",
+            "e4_claim": {
+                "ticker": "BTC",
+                "claim_type": "market_cap",
+                "claimed_value": 100,
+                "comparison": "greater_than",
+                "critical": True,
+            },
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == expected_status
+    assert body["aggregate_status"] == expected_aggregate
+    claim = body["claims"][0]
+    assert claim["evidence"]["observed_value"] == observed_value
+    assert claim["evidence"]["threshold_usd"] == 100
+    assert claim["evidence"]["predicate_satisfied"] is (observed_value > 100)

@@ -48,7 +48,7 @@ class ProvenanceTracker:
         evidence_details: dict[str, Any] | None = None,
         fallback_history: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        trace = {
+        trace: dict[str, Any] = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
             "trace_id": f"trace_{uuid.uuid4().hex[:8]}",
             "timestamp": datetime.now(UTC).isoformat(),
@@ -74,7 +74,7 @@ class ProvenanceTracker:
             },
         }
         if action == "EXECUTE":
-            execution_details = {"selected_model": selected_model}
+            execution_details: dict[str, Any] = {"selected_model": selected_model}
             if evidence_status is not None:
                 execution_details["evidence_status"] = evidence_status
             if isinstance(evidence_details, dict):
