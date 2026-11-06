@@ -1,0 +1,45 @@
+name: Temporary actionlint audit
+
+on:
+  push:
+    branches:
+      - fix/expert-review-yaml
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/actionlint
+          curl -fsSLo /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -version | tee artifacts/actionlint/version.txt
+
+      - name: Lint corrected expert review workflow
+        shell: bash
+        run: |
+          set +e
+          /tmp/actionlint .github/workflows/expert-review.yml 2>&1 | tee artifacts/actionlint/output.txt
+          status=${PIPESTATUS[0]}
+          echo "ACTIONLINT_EXIT_CODE=${status}" | tee -a artifacts/actionlint/output.txt
+          exit "${status}"
+
+      - name: Upload actionlint evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actionlint-expert-review-${{ github.sha }}
+          path: artifacts/actionlint/
+          if-no-files-found: warn
+          retention-days: 7
