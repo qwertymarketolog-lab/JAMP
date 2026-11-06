@@ -1,6 +1,7 @@
 name: Mypy PR544 Differential Baseline
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - diagnostic/mypy-pr544-control-20261106
