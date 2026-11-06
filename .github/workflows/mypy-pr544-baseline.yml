@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - diagnostic/mypy-pr544-control-20261106
+  pull_request:
+    branches:
+      - diagnostic/mypy-pr544-base-20261106
 
 permissions:
   contents: read
@@ -54,7 +57,7 @@ jobs:
           import re
 
           root = pathlib.Path("artifacts/mypy-pr544")
-          pattern = re.compile(r"^(.+?):\\d+(?::\\d+)?: error: (.+?)  \\[([^\\]]+)\\]$", re.M)
+          pattern = re.compile(r"^(.+?):\d+(?::\d+)?: error: (.+?)  \[([^\]]+)\]$", re.M)
 
           def errors(path):
               content = path.read_text(errors="replace")
