@@ -4,11 +4,11 @@ import importlib
 from uuid import uuid4
 
 import pytest
-
-pytestmark = pytest.mark.real_auth
 from fastapi.testclient import TestClient
 
 from jamp.api import auth as auth_module
+
+pytestmark = pytest.mark.real_auth
 
 app_module = importlib.import_module("jamp.api.app")
 AUTH = {"Authorization": "Bearer dashboard-test-token"}
