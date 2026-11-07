@@ -87,6 +87,23 @@ def _lookup_by_id(org_id: str) -> tuple[str, str, bool] | None:
             release_connection(conn)
 
 
+def authenticate_organization_id(org_id: str) -> OrganizationContext:
+    """Resolve a configured organization to an enabled tenant context."""
+    if not org_id:
+        raise HTTPException(status_code=401, detail="missing or invalid credentials")
+    try:
+        row = _lookup_by_id(org_id)
+    except (OperationalError, InterfaceError):
+        raise HTTPException(status_code=503, detail="service unavailable") from None
+
+    if row is None:
+        raise HTTPException(status_code=401, detail="missing or invalid credentials")
+    current_org_id, org_name, disabled = row
+    if disabled:
+        raise HTTPException(status_code=403, detail="forbidden")
+    return OrganizationContext(org_id=current_org_id, org_name=org_name)
+
+
 def _parse_bearer(authorization: str | None) -> str:
     if not authorization or not authorization.startswith(_BEARER_PREFIX):
         raise HTTPException(status_code=401, detail="missing or invalid credentials")
