@@ -6,12 +6,13 @@ import json
 import os
 import secrets
 from pathlib import Path
+from typing import Annotated
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,9 +20,11 @@ from fastapi.templating import Jinja2Templates
 from jamp.api.auth import (
     DASHBOARD_SESSION_COOKIE,
     DASHBOARD_SESSION_TTL_SECONDS,
+    OrganizationContext,
     authenticate_organization_id,
     create_dashboard_session,
     dashboard_cookie_secure,
+    require_api_key,
 )
 
 WEB_DIR = Path(__file__).resolve().parent
@@ -191,11 +194,11 @@ def dashboard_oauth_callback(request: Request) -> RedirectResponse:
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request) -> HTMLResponse:
-    """Render the dashboard; tenant identity comes from the signed session."""
-    from jamp.api.auth import require_api_key
-
-    organization = request.state.organization
+def dashboard(
+    request: Request,
+    organization: Annotated[OrganizationContext, Depends(require_api_key)],
+) -> HTMLResponse:
+    """Render the dashboard only for an authenticated tenant session."""
     return TEMPLATES.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -219,22 +222,6 @@ def dashboard_logout() -> RedirectResponse:
 
 def register_dashboard(app: FastAPI) -> None:
     """Mount dashboard routes and their non-secret static assets."""
-    from fastapi import Depends
-    from typing import Annotated
-
-    from jamp.api.auth import OrganizationContext, require_api_key
-
-    @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
-    def _dashboard_with_auth(
-        request: Request,
-        organization: Annotated[OrganizationContext, Depends(require_api_key)],
-    ) -> HTMLResponse:
-        return TEMPLATES.TemplateResponse(
-            request=request,
-            name="dashboard.html",
-            context={"organization_name": organization.org_name},
-        )
-
     app.include_router(router)
     app.mount(
         "/dashboard-static",
