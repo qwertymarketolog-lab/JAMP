@@ -210,7 +210,7 @@ def test_github_oauth_rejects_disabled_organization(
     dashboard_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    start = dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
+    dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
     state = dashboard_client.cookies.get("jamp_github_oauth_state")
     assert state
     monkeypatch.setattr(
