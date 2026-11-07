@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "JAMP-AI-HARDWARE-v0.1.4.conflict-record.schema.json",
+  "title": "JAMP AI Hardware Conflict Record v0.1.4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "conflict_id",
+    "predicate_id",
+    "conflict_type",
+    "subject_identity",
+    "evidence_a",
+    "evidence_b",
+    "observed_values"
+  ],
+  "properties": {
+    "contract_version": {"const": "JAMP-AI-HARDWARE-v0.1.4"},
+    "conflict_id": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "predicate_id": {"enum": ["P1","P2","P3","P4","P5","P6","P7","P8"]},
+    "conflict_type": {"enum": [
+      "CONTRADICTORY_EVIDENCE","SCHEMA_CONTRADICTION","PROVENANCE_CONTRADICTION",
+      "CACHE_CONTRADICTION","THERMAL_CONTRADICTION","WORKLOAD_CONTRADICTION",
+      "REPRODUCIBILITY_CONTRADICTION","ATTRIBUTION_CONTRADICTION"
+    ]},
+    "subject_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id","hardware_id","firmware_version","driver_commit",
+        "model_weights_sha256","quantization_spec","runtime_env",
+        "workload_identity_digest"
+      ],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "hardware_id": {"type": "string", "minLength": 1},
+        "firmware_version": {"type": "string", "minLength": 1},
+        "driver_commit": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "model_weights_sha256": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "quantization_spec": {"enum": ["FP16","INT8","INT4","FP8"]},
+        "runtime_env": {"enum": ["vLLM","TensorRT-LLM","ONNX-Runtime","Bare-Metal"]},
+        "workload_identity_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "evidence_a": {"$ref": "#/$defs/evidence"},
+    "evidence_b": {"$ref": "#/$defs/evidence"},
+    "observed_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a","b"],
+      "properties": {"a": {}, "b": {}}
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_sha256","evidence_type","source","timestamp"],
+      "properties": {
+        "artifact_sha256": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "evidence_type": {"enum": ["AUTHORITATIVE","DERIVED","SELF_ATTESTATION"]},
+        "source": {"type": "string", "minLength": 1},
+        "timestamp": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}
