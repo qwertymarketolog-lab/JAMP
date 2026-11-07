@@ -1,0 +1,69 @@
+name: Diagnose GHCR golithus MinIO runtime
+
+on:
+  push:
+    branches:
+      - probe/ghcr-golithus-minio-diagnostic-20261008
+  workflow_dispatch:
+
+jobs:
+  minio-diagnostic:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pull MinIO image
+        run: |
+          set -u
+          IMAGE="ghcr.io/golithus/minio:RELEASE.2025-10-15T17-29-55Z"
+          docker pull "$IMAGE"
+          docker image inspect "$IMAGE" --format='repo={{index .RepoTags 0}} digests={{json .RepoDigests}}'
+
+      - name: Start and capture diagnostics
+        run: |
+          set -u
+          IMAGE="ghcr.io/golithus/minio:RELEASE.2025-10-15T17-29-55Z"
+          docker rm -f jamp-minio-diagnostic >/dev/null 2>&1 || true
+          docker run -d --name jamp-minio-diagnostic -p 9000:9000 -p 9001:9001 "$IMAGE" server /data --console-address ":9001"
+
+          sleep 1
+          echo "=== docker inspect ==="
+          docker inspect jamp-minio-diagnostic
+
+          echo "=== docker ps ==="
+          docker ps -a --no-trunc --filter name=jamp-minio-diagnostic
+
+          echo "=== process state ==="
+          docker inspect --format='status={{.State.Status}} running={{.State.Running}} exit_code={{.State.ExitCode}} oom_killed={{.State.OOMKilled}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' jamp-minio-diagnostic
+
+          echo "=== docker logs before curl ==="
+          docker logs jamp-minio-diagnostic 2>&1 || true
+
+          echo "=== curl -v /minio/health/live ==="
+          set +e
+          curl -v --max-time 5 http://127.0.0.1:9000/minio/health/live
+          CURL_RC=$?
+          set -e
+          echo "curl_exit_code=$CURL_RC"
+
+          echo "=== docker ps after curl ==="
+          docker ps -a --no-trunc --filter name=jamp-minio-diagnostic
+
+          echo "=== process state after curl ==="
+          docker inspect --format='status={{.State.Status}} running={{.State.Running}} exit_code={{.State.ExitCode}} oom_killed={{.State.OOMKilled}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' jamp-minio-diagnostic
+
+          echo "=== docker logs after curl ==="
+          docker logs jamp-minio-diagnostic 2>&1 || true
+
+          echo "=== listening ports ==="
+          ss -ltnp || true
+
+          echo "=== container inspect mounts/config ==="
+          docker inspect --format='image={{.Config.Image}} cmd={{json .Config.Cmd}} entrypoint={{json .Config.Entrypoint}} ports={{json .NetworkSettings.Ports}}' jamp-minio-diagnostic
+
+          exit 0
+
+      - name: Provenance evidence
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/golithus/minio:RELEASE.2025-10-15T17-29-55Z"
+          docker image inspect "$IMAGE" --format='{{json .Config.Labels}}'
+          docker image inspect "$IMAGE" --format='repo={{index .RepoTags 0}} digests={{json .RepoDigests}}'
