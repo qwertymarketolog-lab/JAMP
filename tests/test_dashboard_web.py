@@ -191,7 +191,7 @@ def test_github_oauth_rejects_invalid_state_and_unapproved_identity(
     )
     assert invalid_state.status_code == 400
 
-    start = dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
+    dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
     state = dashboard_client.cookies.get("jamp_github_oauth_state")
     assert state
     monkeypatch.setattr(
