@@ -40,6 +40,7 @@ jobs:
           fi
 
           python -c 'import json; d=json.load(open("artifacts/docker-smoke/health.json")); assert d["status"] == "ok"; assert d["database_url_set"] and d["redis_url_set"]'
+          docker compose exec -T api python -c 'from jamp.runtime.resolver import _load_derived_matrix, _load_pilot_models; _load_derived_matrix(); _load_pilot_models(); print("CANONICAL_MATRIX=PASS PILOT_MODELS=PASS")' | tee artifacts/docker-smoke/runtime-evidence-check.txt
           docker compose ps --all | tee artifacts/docker-smoke/compose-ps.txt
           docker compose logs --no-color | tee artifacts/docker-smoke/compose.log
           echo "DOCKER_SMOKE=PASS" | tee artifacts/docker-smoke/result.txt
