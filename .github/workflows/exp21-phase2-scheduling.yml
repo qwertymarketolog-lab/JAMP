@@ -1,0 +1,79 @@
+name: EXP-21 Phase 2 Scheduling Experiment
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  scheduling-n30:
+    name: EXP-21 Phase 2 / N=30 / CPU affinity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify experiment identity
+        env:
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$TARGET_COMMIT"
+          echo "TARGET_COMMIT=$TARGET_COMMIT"
+          echo "CHECKED_OUT_HEAD=$actual"
+          frozen="$(git hash-object src/jamp/run.py)"
+          test "$frozen" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          echo "FROZEN_CORE_BLOB=$frozen"
+
+      - name: Record runner environment
+        run: |
+          set -eu
+          uname -a
+          python3 --version
+          python3 -c "import os,platform; print('cpu_count=', os.cpu_count()); print('platform=', platform.platform()); print('machine=', platform.machine())"
+          echo "RUNNER_NAME=$RUNNER_NAME"
+          echo "RUNNER_OS=$RUNNER_OS"
+          echo "RUNNER_ARCH=$RUNNER_ARCH"
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase 2 research dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade scipy pytest
+
+      - name: Validate Phase 2 contract
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python -m pytest -q tests/research/exp21/test_phase2_contract.py
+
+      - name: Execute N=30 scheduling experiment
+        env:
+          PYTHONPATH: src:.
+          TARGET_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python research/exp21/phase2_scheduling.py             --pairs 30             --target-commit "$TARGET_COMMIT"
+
+      - name: Upload Phase 2 evidence artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp-21-phase2-scheduling-n30
+          path: artifacts/research/exp21_phase2_scheduling_results.json
+          if-no-files-found: error
