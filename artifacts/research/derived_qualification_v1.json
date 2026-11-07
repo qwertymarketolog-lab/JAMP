@@ -897,5 +897,22 @@
         "R24"
       ]
     }
+  },
+  "r27_derived_qualification": {
+    "source_crosswalk_artifact": "r27-derived-crosswalk-v1",
+    "provenance_artifact_id": 10947137478,
+    "scope_note": "These two HTTP 503 records are R27-derived HOLD records. They are not added to the existing 25-model qualification candidate set because their model IDs are absent from that source scope.",
+    "records": {
+      "ag/claude-sonnet-4-6": {
+        "http_status": 503,
+        "r27_status": "INCONCLUSIVE",
+        "qualification_status": "HOLD"
+      },
+      "cc/claude-sonnet-5": {
+        "http_status": 503,
+        "r27_status": "INCONCLUSIVE",
+        "qualification_status": "HOLD"
+      }
+    }
   }
 }
