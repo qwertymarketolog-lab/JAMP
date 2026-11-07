@@ -1,0 +1,65 @@
+name: EXP-22 Phase 1 Boundary Decomposition
+on:
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: Exact commit SHA to audit
+        required: true
+        type: string
+      seed:
+        description: Experiment seed
+        required: false
+        default: "2201"
+        type: string
+jobs:
+  boundary-decomposition:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact target commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_commit }}
+          fetch-depth: 0
+      - name: Materialize harness from workflow revision
+        env:
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: git show "$WORKFLOW_SHA:scripts/research/exp22/phase1_boundary_decomposition.py" > "$RUNNER_TEMP/phase1_boundary_decomposition.py"
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Verify target and Frozen Core
+        env:
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+        run: |
+          test -n "$TARGET_COMMIT"
+          test "$TARGET_COMMIT" = "$(git rev-parse HEAD)"
+          test "$(git hash-object src/jamp/run.py)" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+      - name: Run EXP-22 Phase 1 decomposition
+        env:
+          PYTHONPATH: .:src
+        run: python "$RUNNER_TEMP/phase1_boundary_decomposition.py" --target-commit "${{ inputs.target_commit }}" --seed "${{ inputs.seed }}"
+      - name: Validate terminal artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('artifacts/research/exp22_phase1_boundary_decomposition.json').read_text())
+          assert d['status']=='VERIFIED', d['validation_errors']
+          assert d['target_commit']=='${{ inputs.target_commit }}'
+          assert d['workload_spec_id']=='EXP-21-PHASE0-G4-CANONICAL-V1'
+          assert d['workload_definition_hash']=='f8875a20af579bd102afaf064dbcc435cc3e6a4b82e2b28829af9ba4b2072f92'
+          assert d['n_repetitions']==30 and len(d['observations'])==30
+          assert all(len(r['modes'])==3 for r in d['observations'])
+          print('EXP-22_PHASE1_TERMINAL=VERIFIED')
+          PY
+      - name: Upload EXP-22 Phase 1 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp22-phase1-boundary-decomposition
+          path: artifacts/research/exp22_phase1_boundary_decomposition.json
+          if-no-files-found: error
