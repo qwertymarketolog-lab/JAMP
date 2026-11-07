@@ -1,4 +1,4 @@
-"""Browser dashboard authentication and evidence-only graph rendering tests."""
+"""Browser dashboard GitHub OAuth and evidence-only graph tests."""
 
 from __future__ import annotations
 
@@ -8,11 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jamp.api import auth as auth_module
+from jamp.server.web import routes as routes_module
 
 pytestmark = pytest.mark.real_auth
 
 app_module = importlib.import_module("jamp.api.app")
-VALID_API_KEY = "dashboard-web-test-key"
+ALLOWED_GITHUB_USER_ID = 123456
 VERDICT_ID = "5fda8c13-6d6e-4c66-9a2d-36d9fb7c2a11"
 
 GRAPH = {
@@ -47,17 +48,33 @@ GRAPH = {
 
 
 @pytest.fixture
-def dashboard_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def dashboard_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "dashboard-web-test-secret")
-    monkeypatch.setattr(
-        auth_module,
-        "_lookup_by_hash",
-        lambda _digest: ("dashboard-org", "Dashboard Test", False),
+    monkeypatch.setenv("JAMP_GITHUB_OAUTH_CLIENT_ID", "test-client-id")
+    monkeypatch.setenv("JAMP_GITHUB_OAUTH_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setenv(
+        "JAMP_GITHUB_OAUTH_REDIRECT_URI",
+        "https://example.test/dashboard/oauth/callback",
     )
+    monkeypatch.setenv("JAMP_GITHUB_ALLOWED_USER_ID", str(ALLOWED_GITHUB_USER_ID))
+    monkeypatch.setenv("JAMP_GITHUB_OAUTH_ORG_ID", "dashboard-org")
+    monkeypatch.delenv("JAMP_COOKIE_SECURE", raising=False)
     monkeypatch.setattr(
         auth_module,
         "_lookup_by_id",
-        lambda org_id: (org_id, "Dashboard Test", False),
+        lambda _org_id: ("dashboard-org", "Dashboard Test", False),
+    )
+    monkeypatch.setattr(
+        routes_module,
+        "_exchange_github_code",
+        lambda _code, _config: "test-access-token",
+    )
+    monkeypatch.setattr(
+        routes_module,
+        "_fetch_github_user",
+        lambda _token: {"id": ALLOWED_GITHUB_USER_ID},
     )
     monkeypatch.setattr(
         app_module,
@@ -103,34 +120,50 @@ def dashboard_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
 
 
-def test_dashboard_requires_auth_and_exposes_login_page(
+def test_dashboard_requires_auth_and_exposes_github_login_page(
     dashboard_client: TestClient,
 ) -> None:
     protected = dashboard_client.get("/dashboard", follow_redirects=False)
     assert protected.status_code == 303
     assert protected.headers["location"] == "/dashboard/login"
-    assert dashboard_client.get("/dashboard/login").status_code == 200
+
+    login_page = dashboard_client.get("/dashboard/login")
+    assert login_page.status_code == 200
+    assert "Войти через GitHub" in login_page.text
+    assert 'name="api_key"' not in login_page.text
     assert dashboard_client.get("/v1/verdicts").status_code == 401
 
 
-def test_login_issues_http_only_session_and_reads_tenant_data(
+def test_github_oauth_creates_tenant_session_and_reads_dashboard_data(
     dashboard_client: TestClient,
 ) -> None:
-    login = dashboard_client.post(
-        "/dashboard/login",
-        data={"api_key": VALID_API_KEY},
+    start = dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
+    assert start.status_code == 303
+    assert start.headers["location"].startswith(
+        "https://github.com/login/oauth/authorize?"
+    )
+    state_cookie = start.headers["set-cookie"].lower()
+    assert "jamp_github_oauth_state=" in state_cookie
+    assert "httponly" in state_cookie
+    assert "samesite=lax" in state_cookie
+
+    state = dashboard_client.cookies.get("jamp_github_oauth_state")
+    assert state
+    callback = dashboard_client.get(
+        "/dashboard/oauth/callback",
+        params={"code": "github-one-time-code", "state": state},
         follow_redirects=False,
     )
-    assert login.status_code == 303
-    cookie_header = login.headers["set-cookie"].lower()
-    assert "httponly" in cookie_header
-    assert "samesite=strict" in cookie_header
-    assert "jamp_dashboard_session=" in cookie_header
+    assert callback.status_code == 303
+    assert callback.headers["location"] == "/dashboard"
+    session_cookie = callback.headers["set-cookie"].lower()
+    assert "jamp_dashboard_session=" in session_cookie
+    assert "httponly" in session_cookie
+    assert "samesite=strict" in session_cookie
 
     page = dashboard_client.get("/dashboard")
     assert page.status_code == 200
     assert "Dashboard Test" in page.text
-    assert VALID_API_KEY not in page.text
 
     verdicts = dashboard_client.get("/v1/verdicts?limit=1")
     assert verdicts.status_code == 200
@@ -148,29 +181,48 @@ def test_login_issues_http_only_session_and_reads_tenant_data(
     assert write_attempt.status_code == 403
 
 
-def test_login_rejects_unknown_or_disabled_api_keys(
+def test_github_oauth_rejects_invalid_state_and_unapproved_identity(
     dashboard_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(auth_module, "_lookup_by_hash", lambda _digest: None)
-    unknown = dashboard_client.post(
-        "/dashboard/login",
-        data={"api_key": "unknown-key"},
-        follow_redirects=False,
+    invalid_state = dashboard_client.get(
+        "/dashboard/oauth/callback",
+        params={"code": "github-one-time-code", "state": "attacker-state"},
     )
-    assert unknown.status_code == 401
+    assert invalid_state.status_code == 400
 
+    start = dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
+    state = dashboard_client.cookies.get("jamp_github_oauth_state")
+    assert state
+    monkeypatch.setattr(
+        routes_module,
+        "_fetch_github_user",
+        lambda _token: {"id": ALLOWED_GITHUB_USER_ID + 1},
+    )
+    denied = dashboard_client.get(
+        "/dashboard/oauth/callback",
+        params={"code": "github-one-time-code", "state": state},
+    )
+    assert denied.status_code == 403
+
+
+def test_github_oauth_rejects_disabled_organization(
+    dashboard_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    start = dashboard_client.get("/dashboard/oauth/start", follow_redirects=False)
+    state = dashboard_client.cookies.get("jamp_github_oauth_state")
+    assert state
     monkeypatch.setattr(
         auth_module,
-        "_lookup_by_hash",
-        lambda _digest: ("dashboard-org", "Dashboard Test", True),
+        "_lookup_by_id",
+        lambda _org_id: ("dashboard-org", "Dashboard Test", True),
     )
-    disabled = dashboard_client.post(
-        "/dashboard/login",
-        data={"api_key": VALID_API_KEY},
-        follow_redirects=False,
+    denied = dashboard_client.get(
+        "/dashboard/oauth/callback",
+        params={"code": "github-one-time-code", "state": state},
     )
-    assert disabled.status_code == 403
+    assert denied.status_code == 403
 
 
 def test_dashboard_static_asset_contains_no_model_or_engine_fiction(
