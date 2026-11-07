@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +25,23 @@ PILOT_MODEL_ID = "z-ai/glm-5.3-flash"
 PILOT_BENCHMARK_VERSION = "v1"
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-_MATRIX_PATH = (
-    _REPOSITORY_ROOT / "artifacts" / "research" / "jamp_task_scoped_derived_matrix_v2.json"
+_MATRIX_PATH = Path(
+    os.environ.get(
+        "JAMP_CAPABILITY_MATRIX_PATH",
+        str(
+            _REPOSITORY_ROOT
+            / "artifacts"
+            / "research"
+            / "jamp_task_scoped_derived_matrix_v2.json"
+        ),
+    )
 )
-_PILOT_MODELS_PATH = _REPOSITORY_ROOT / "data" / "projections" / "pilot_models.json"
+_PILOT_MODELS_PATH = Path(
+    os.environ.get(
+        "JAMP_PILOT_MODELS_PATH",
+        str(_REPOSITORY_ROOT / "data" / "projections" / "pilot_models.json"),
+    )
+)
 
 
 def _git_blob_sha(data: bytes) -> str:

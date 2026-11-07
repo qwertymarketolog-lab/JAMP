@@ -157,9 +157,10 @@ def create_app(
     telegram_update_db_path: str | Path | None = None,
 ):
     try:
-        from fastapi import Depends, FastAPI, Header
+        from fastapi import Depends, FastAPI, Header, HTTPException
         from fastapi import Request as FastAPIRequest
-        from fastapi.responses import JSONResponse
+        from fastapi.exception_handlers import http_exception_handler
+        from fastapi.responses import JSONResponse, RedirectResponse
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("FastAPI is required for the API serving layer") from exc
 
@@ -197,6 +198,19 @@ def create_app(
 
     app = FastAPI(title="JAMP API", version="v1")
     app.openapi_version = "3.0.3"
+
+    from jamp.server.web.routes import register_dashboard
+
+    register_dashboard(app)
+
+    @app.exception_handler(HTTPException)
+    async def _dashboard_login_redirect(
+        request: FastAPIRequest,
+        exc: HTTPException,
+    ):
+        if request.url.path == "/dashboard" and exc.status_code == 401:
+            return RedirectResponse(url="/dashboard/login", status_code=303)
+        return await http_exception_handler(request, exc)
 
     @app.on_event("startup")
     def _startup_auth_check() -> None:
