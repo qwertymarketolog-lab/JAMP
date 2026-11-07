@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
@@ -67,7 +68,7 @@ async def dashboard_login(request: Request) -> RedirectResponse:
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
-    organization: OrganizationContext = Depends(require_api_key),
+    organization: Annotated[OrganizationContext, Depends(require_api_key)],
 ) -> HTMLResponse:
     """Render the dashboard only for an authenticated organization."""
     return TEMPLATES.TemplateResponse(
