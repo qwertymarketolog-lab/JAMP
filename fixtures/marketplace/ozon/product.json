@@ -1,0 +1,14 @@
+{
+  "fixture_id": "ozon-product-v0.1",
+  "marketplace": "ozon",
+  "format": "json",
+  "source_locator": "fixture://ozon/product/001",
+  "retrieved_at": "2026-01-01T00:00:00Z",
+  "payload": {
+    "name": "Example cabinet",
+    "material": "steel",
+    "width": "850 мм",
+    "height": "2000 мм",
+    "doors": "2"
+  }
+}
