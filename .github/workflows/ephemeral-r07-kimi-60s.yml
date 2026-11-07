@@ -1,0 +1,116 @@
+name: Ephemeral R07 Kimi 60s Probe v1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/ephemeral-r07-kimi-60s.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  r07-kimi-60s:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact original R07 target SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 56e8676114c91a1384334e8297ecda8902f5485f
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install requests
+
+      - name: Probe Kimi with 60s timeout
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          import time
+          from pathlib import Path
+          import requests
+
+          TARGET = "56e8676114c91a1384334e8297ecda8902f5485f"
+          MODEL = "am/kimi-k3"
+          PROMPT = "Reply with exactly: OK"
+          key = os.environ.get("ANYMODEL_API_KEY")
+          if not key:
+              raise SystemExit("ANYMODEL_API_KEY is required")
+
+          started = time.perf_counter()
+          result = {"model_id": MODEL}
+          try:
+              response = requests.post(
+                  "https://anymodel.org/v1/chat/completions",
+                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                  json={"model": MODEL, "messages": [{"role": "user", "content": PROMPT}], "temperature": 0},
+                  timeout=60,
+              )
+              elapsed = time.perf_counter() - started
+              try:
+                  body = response.json()
+              except ValueError:
+                  body = {"raw_text": response.text[:4000]}
+              text = None
+              choices = body.get("choices") if isinstance(body, dict) else None
+              if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+                  message = choices[0].get("message")
+                  if isinstance(message, dict) and isinstance(message.get("content"), str):
+                      text = message["content"]
+                  elif isinstance(choices[0].get("text"), str):
+                      text = choices[0]["text"]
+              result.update({
+                  "status": "VERIFIED" if text == "OK" else "INCONCLUSIVE",
+                  "observed": {
+                      "status_code": response.status_code,
+                      "elapsed_s": elapsed,
+                      "text": text,
+                      "response_body": body,
+                  },
+              })
+          except requests.RequestException as exc:
+              result.update({
+                  "status": "INCONCLUSIVE",
+                  "observed": {
+                      "error_type": type(exc).__name__,
+                      "error": str(exc),
+                      "elapsed_s": time.perf_counter() - started,
+                      "response_body": None,
+                  },
+              })
+
+          payload = {
+              "schema_version": "jamp.r07.raw_runtime_kimi_60s.v1",
+              "target_commit": TARGET,
+              "probe": "R07-kimi-60s",
+              "model_id": MODEL,
+              "prompt": PROMPT,
+              "timeout_s": 60,
+              "chat_url": "https://anymodel.org/v1/chat/completions",
+              "created_at": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
+              "source_raw_artifact_unchanged": True,
+              "result": result,
+          }
+          out = Path("artifacts/research/raw_r07_runtime_kimi_60s_v1.json")
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(result, ensure_ascii=False), flush=True)
+          print(f"WROTE {out}", flush=True)
+          PY
+
+      - name: Upload separate Kimi evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-r07-runtime-kimi-60s-v1
+          path: artifacts/research/raw_r07_runtime_kimi_60s_v1.json
+          if-no-files-found: error
+          retention-days: 30
