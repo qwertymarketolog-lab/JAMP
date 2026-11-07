@@ -8,7 +8,7 @@ on:
 
 jobs:
   docker-smoke:
-    if: github.event_name == 'pull_request' && github.head_ref == 'stage-c/C1-docker-compose'
+    if: github.event_name == 'pull_request' && (github.head_ref == 'stage-c/C1-docker-compose' || github.head_ref == 'stage-c/C6.2-web-dashboard')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
