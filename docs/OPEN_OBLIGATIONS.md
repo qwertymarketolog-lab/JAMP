@@ -1,6 +1,6 @@
 # Open Obligations Registry
 
-verified_at: 2026-11-10T06:57:17Z
+verified_at: 2026-11-10T07:01:00Z
 rule: re-verify if older than 24h before any decision
 
 Все записи сгруппированы по типу. `Last Evidence` указывает на
@@ -29,7 +29,7 @@ JAMP benchmark-наборов.
 
 | ID | Type | Status | Last Evidence | Blocking | Next Action |
 |----|------|--------|---------------|----------|-------------|
-| EN-FND-001 | doc | DRAFT-COMMITTED | merge SHA `c1e6ac4b1611596211974d78535416af307877bc` | no | внешнее ревью §18, закрытие ADR-011..015 |
+| EN-FND-001 | doc | DRAFT-COMMITTED | original merge SHA `c1e6ac4b1611596211974d78535416af307877bc`; current post-merge main snapshot `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1` (PR #559) | no | внешнее ревью §18, закрытие ADR-011..015 |
 
 **EN-FND-001 — EVERYNODE FOUNDATION v0.1.** Status: DRAFT, NOT
 APPROVED, NOT IMPLEMENTED. Architecture Acceptance (§18) не
@@ -41,6 +41,7 @@ APPROVED, NOT IMPLEMENTED. Architecture Acceptance (§18) не
 
 | ID | Type | Status | Last Evidence | Blocking | Next Action |
 |----|------|--------|---------------|----------|-------------|
+| PR #560 | PR | OPEN | head SHA `850e12eef4e48c74c63f3e4222072949714c56f1`; Research Loop Run `42771970280` / Job `129681635230` / Artifact `13741962761` SUCCESS; trusted-lineage Run `42771967398` / Job `129681628610` SUCCESS; Pytest Run `42771970325` / Job `129681635266` / Artifact `13741923082` SUCCESS; Developer Quality Run `42771970360` / Job `129681638342` SUCCESS | yes until merge | after terminal CI and Frozen Core Δ=0, squash-merge; then record merge SHA |
 | PR #559 | PR | MERGED | merge SHA `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`; post-merge CI: Pytest `42771008971` / Job `129678539478` / Artifact `13742380715`; Developer Quality `42771009044` / Job `129678539894`; G4 `42771008996` / Job `129678540099` / Artifact `13741557505`; P23.0-B `42771009431` / Job `129678545331` | no | closed |
 | PR #558 | PR | MERGED | merge SHA `c1e6ac4b1611596211974d78535416af307877bc` | no | closed |
 | PR #556 | PR | CLOSED / DEFERRED | comment `6747997706` | no | see #557 |
