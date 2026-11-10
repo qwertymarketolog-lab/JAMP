@@ -1,6 +1,6 @@
 # Open Obligations Registry
 
-verified_at: 2026-11-10T06:54:49Z
+verified_at: 2026-11-10T06:57:17Z
 rule: re-verify if older than 24h before any decision
 
 Все записи сгруппированы по типу. `Last Evidence` указывает на
@@ -151,16 +151,18 @@ C6.2 относится к merge PR #553. Это историческое eviden
 
 ## Notes
 
-- Post-merge main SHA: `c1e6ac4b1611596211974d78535416af307877bc`.
-- Run Pytest: Run `42752090142`, Job `129617825245`, SUCCESS, Artifact `13734266294`.
-- Developer Quality: Run `42752090112`, Job `129617824542`, SUCCESS; no artifact.
-- G4 MinIO Runtime: Run `42752090143`, Job `129617824569`, SUCCESS, Artifact `13733907774`.
-- Research Loop v0 Gate (main): Run `42752090201`, Job `129617825035`, SUCCESS, Artifact `13733981668`.
-- G1 Trusted Lineage (main): Run `42752090279`, Job `129617825867`, SUCCESS, Artifact `13733662333`; see KNOWN-GAP-G1-ALIAS.
-- SBOM: Run `42752090212`, Job `129617825143`, SUCCESS, Artifact `13733992233`.
-- `docker-smoke` in Developer Quality Job `129617826533` — SKIPPED, не PASS.
-- `import-historical.yml` Run `42752088885` — known orphaned failure with `jobs=[]`; excluded from required checks, not treated as a general HOLD.
-- Frozen Core `src/jamp/run.py` blob on main SHA `c1e6ac4b1611596211974d78535416af307877bc`: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; `Δ=0`. Any change requires explicit Core Unlock.
+- Current post-merge main SHA: `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`.
+- Run Pytest: Run `42771008971`, Job `129678539478`, SUCCESS, Artifact `13742380715`.
+- Developer Quality: Run `42771009044`, Job `129678539894`, SUCCESS; no artifact.
+- G4 MinIO Runtime: Run `42771008996`, Job `129678540099`, SUCCESS, Artifact `13741557505`.
+- P23.0-B Cold Replay Diagnostic: Run `42771009431`, Job `129678545331`, SUCCESS; no artifact.
+- Research Loop v0 Gate (main): Run `42771008904`, Job `129678539358`, SUCCESS, Artifact `13742146313`.
+- G1 Trusted Lineage (main): Run `42771009155`, Job `129678543291`, SUCCESS, Artifact `13741677405`; see KNOWN-GAP-G1-ALIAS.
+- SBOM: Run `42771009033`, Job `129678540052`, SUCCESS, Artifact `13741443036`.
+- `docker-smoke` in Developer Quality Job `129678541809` — SKIPPED, не PASS.
+- Legacy combined Commit Status API on current main returned `state=pending`, `total_count=0`, `statuses=[]`; it is not the Actions Check Runs aggregate and is not a GREEN indicator.
+- Historical `import-historical.yml` orphaned failure Run `42752088885` / `jobs=[]` was on prior SHA `c1e6ac4b1611596211974d78535416af307877bc`; known anomaly, not treated as a general HOLD.
+- Frozen Core `src/jamp/run.py` blob on current main SHA `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; `Δ=0`. Any change requires explicit Core Unlock.
 
 ## Deferred follow-up (not created)
 
