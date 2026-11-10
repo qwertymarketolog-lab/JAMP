@@ -161,3 +161,7 @@ C6.2 относится к merge PR #553. Это историческое eviden
 - `docker-smoke` in Developer Quality Job `129617826533` — SKIPPED, не PASS.
 - `import-historical.yml` Run `42752088885` — known orphaned failure with `jobs=[]`; excluded from required checks, not treated as a general HOLD.
 - Frozen Core `src/jamp/run.py` blob on main SHA `c1e6ac4b1611596211974d78535416af307877bc`: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; `Δ=0`. Any change requires explicit Core Unlock.
+
+## Deferred follow-up (not created)
+
+- `[Tech Debt] PR inventory cleanup — 133 open PRs`: deferred as instructed; no issue has been created. The count of 133 was observed before PR #559 merged and must be refreshed when this task starts. Future scope: classify each open PR as active / stale / superseded / draft, identify duplicate work, and make no bulk-close changes without individual evidence and review.
