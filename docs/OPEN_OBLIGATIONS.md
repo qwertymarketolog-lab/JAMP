@@ -1,6 +1,6 @@
 # Open Obligations Registry
 
-verified_at: 2026-11-10T03:56:25Z
+verified_at: 2026-11-10T06:54:49Z
 rule: re-verify if older than 24h before any decision
 
 Все записи сгруппированы по типу. `Last Evidence` указывает на
@@ -41,6 +41,7 @@ APPROVED, NOT IMPLEMENTED. Architecture Acceptance (§18) не
 
 | ID | Type | Status | Last Evidence | Blocking | Next Action |
 |----|------|--------|---------------|----------|-------------|
+| PR #559 | PR | MERGED | merge SHA `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`; post-merge CI: Pytest `42771008971` / Job `129678539478` / Artifact `13742380715`; Developer Quality `42771009044` / Job `129678539894`; G4 `42771008996` / Job `129678540099` / Artifact `13741557505`; P23.0-B `42771009431` / Job `129678545331` | no | closed |
 | PR #558 | PR | MERGED | merge SHA `c1e6ac4b1611596211974d78535416af307877bc` | no | closed |
 | PR #556 | PR | CLOSED / DEFERRED | comment `6747997706` | no | see #557 |
 
@@ -54,25 +55,78 @@ APPROVED, NOT IMPLEMENTED. Architecture Acceptance (§18) не
 
 | ID | Type | Status | Last Evidence | Blocking | Next Action |
 |----|------|--------|---------------|----------|-------------|
-| KNOWN-GAP-G1-ALIAS | gap | OPEN | PR alias job `129356187670`; main verifier Run `42752090279` / Job `129617825867` / Artifact `13733662333` | no | привязать required-check к фактическому trusted-lineage результату и проверить его семантический контракт |
+| KNOWN-GAP-G1-ALIAS | gap | OPEN | PR #559 alias Run `42753030496` / Job `129620954797`; actual G1 Run `42753030836` / Job `129620874679`; post-merge G1 Run `42771009155` / Job `129678543291` / Artifact `13741677405` | yes for trusted-lineage claim | harden PR verifier, then bind Ruleset 23974688 to `trusted-lineage` (GitHub Actions app 15368) |
 
-**KNOWN-GAP-G1-ALIAS.** В PR #558 required-check job
-`129356187670` выполнял только alias-команду
-`test "success" = "success"`. Поэтому сам required-check
-не является самостоятельным доказательством trusted lineage.
+**KNOWN-GAP-G1-ALIAS.**
 
-Отдельно: post-merge G1 main Job `129617825867` не является
-alias-only job. Его лог показывает проверку merge ancestry,
-ассоциации ровно одного merged PR, терминального PR Research Loop
-run/job/artifact, фактического PR `trusted-lineage` run/job,
-а также main Research Loop run/job/artifact. Evidence artifact:
-`13733662333`.
+**Confirmed alias behavior (PR #559):** Ruleset 23974688 still requires
+`G1 Trusted Lineage`, but that check-run is produced by the job with the
+same name inside `.github/workflows/research-loop-v0.yml`. Its complete
+step is `test "success" = "success"`; it only mirrors the dependency result
+of `research-loop-gate`. Evidence: PR Research Loop Run
+`42753030496`, alias Job `129620954797`, Check Run
+`129620954797`, head SHA
+`c87af036f836fb2ffa93cd23e6a1e07d0d3753c3`. This required context is
+not an independent trusted-lineage proof.
 
-Это дополнительная проверка цепочки, но gap в самом PR required-check
-остаётся: до изменения Ruleset 23974688 и проверки контракта
-не заявлять, что alias required-check сам по себе доказывает
-trusted lineage. Формулировка: "G1 required-check passed; separate
-post-merge G1 verifier completed successfully."
+**Actual PR verifier (not currently required by Ruleset):**
+`.github/workflows/g1-trusted-lineage.yml` runs on
+`pull_request_target` without checking out PR code and with read-only
+`actions` / `pull-requests` permissions. It validates repository/PR
+identity, exact PR head SHA, and a successful Research Loop workflow run
+and job. PR #559 evidence: Run `42753030836`, Job / Check Run
+`129620874679`, check name `trusted-lineage`, GitHub Actions app ID
+`15368`, conclusion SUCCESS.
+
+**Semantic defects still open in the actual PR verifier:**
+1. It filters for successful Research Loop runs before selecting the
+   newest. A newer failed or in-progress run for the same head can be
+   masked by an older successful run. Selection must identify the newest
+   run first, regardless of conclusion/status, wait for that run to become
+   terminal, and then require SUCCESS; otherwise fail closed.
+2. It verifies the Research Loop run/job but does not download and validate
+   the `research-loop-v0-evidence` artifact. The PR verifier should bind
+   artifact contents to exact PR number, head SHA, run ID, expected job,
+   conclusion, and Frozen Core blob; missing, expired, duplicate, malformed,
+   or mismatched evidence must fail closed.
+3. The workflow should emit a compact, inspectable G1 evidence artifact
+   recording the exact upstream run/job/artifact and its own run/job identity.
+
+**Post-merge verifier (separate layer):** On merge SHA
+`14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`, G1 main Run
+`42771009155`, Job `129678543291`, Artifact `13741677405`
+completed SUCCESS. The artifact reports
+`validation_result=ALL_ASSERTIONS_PASSED` and records:
+- PR #559 head `c87af036f836fb2ffa93cd23e6a1e07d0d3753c3`;
+- PR Research Loop Run `42753030496`, Job `129620867966`,
+  Artifact `13734506901`;
+- PR alias Run `42753030496`, Job `129620954797`;
+- actual PR G1 Run `42753030836`, Job `129620874679`;
+- main Research Loop Run `42771008904`, Job
+  `129678539358`, Artifact `13742146313`;
+- Frozen Core blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+
+This proves the separate post-merge verifier's assertions for this merge.
+It does not turn the alias into a semantic PR required-check and cannot
+replace pre-merge enforcement.
+
+**Required-check design (proposal; not yet implemented):**
+- Keep `Research Loop v0 Gate /` as a required PR check.
+- After hardening the actual PR verifier above, require its check-run
+  `trusted-lineage` from GitHub Actions app ID `15368` in Ruleset
+  `23974688`; do not substitute either `(main)` workflow.
+- Update G1 main verifier to validate the same actual PR G1 check and
+  retire its dependency on the alias context.
+- Do not edit Ruleset 23974688 until the hardened check has terminal
+  SUCCESS on a PR head and its negative/fail-closed cases are demonstrated.
+- Until then, wording remains: "G1 required alias passed; separate
+  post-merge G1 verifier completed successfully." Do not claim the
+  required alias itself proves trusted lineage.
+
+Current main SHA: `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`.
+Legacy combined Commit Status API on this SHA returned
+`state=pending`, `total_count=0`, `statuses=[]`; this endpoint does
+not aggregate Actions Check Runs and is not a GREEN indicator.
 
 ## Stage C
 
