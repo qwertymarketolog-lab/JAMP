@@ -11,13 +11,13 @@ import pytest
 
 import scripts.g1_verify as verifier
 from scripts.g1_verify import (
-    download_artifact,
     EXPECTED_ARTIFACT,
     EXPECTED_JOB_NAME,
     FROZEN_CORE_BLOB,
-    main,
     SafeRedirectHandler,
     VerificationError,
+    download_artifact,
+    main,
     verify_lineage,
 )
 
@@ -257,7 +257,10 @@ def test_artifact_download_byte_limit_fails_closed(
         lambda _url, destination: destination.write_bytes(b"12345"),
     )
     with pytest.raises(VerificationError, match="artifact_archive_too_large"):
-        download_artifact({"archive_download_url": "https://api.github.com/artifacts/1/zip"}, str(tmp_path / "download.zip"))
+        download_artifact(
+            {"archive_download_url": "https://api.github.com/artifacts/1/zip"},
+            str(tmp_path / "download.zip"),
+        )
 
 
 def test_missing_github_run_id_fails_closed(
@@ -281,7 +284,14 @@ def test_zip_uncompressed_size_limit_fails_closed(
     archive = tmp_path / "artifact.zip"
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
         bundle.writestr("research-loop-evidence.json", "x" * 128)
-    monkeypatch.setattr(verifier, "_download_url", lambda _url, destination: destination.write_bytes(archive.read_bytes()))
+    monkeypatch.setattr(
+        verifier,
+        "_download_url",
+        lambda _url, destination: destination.write_bytes(archive.read_bytes()),
+    )
     monkeypatch.setattr(verifier, "MAX_UNCOMPRESSED_BYTES", 64)
     with pytest.raises(VerificationError, match="artifact_uncompressed_size_limit_exceeded"):
-        download_artifact({"archive_download_url": "https://api.github.com/artifacts/1/zip"}, str(tmp_path / "download.zip"))
+        download_artifact(
+            {"archive_download_url": "https://api.github.com/artifacts/1/zip"},
+            str(tmp_path / "download.zip"),
+        )
