@@ -11,6 +11,7 @@ from scripts.g1_verify import (
     EXPECTED_ARTIFACT,
     EXPECTED_JOB_NAME,
     FROZEN_CORE_BLOB,
+    SafeRedirectHandler,
     VerificationError,
     verify_lineage,
 )
@@ -140,3 +141,40 @@ def test_frozen_core_mismatch_fails_closed() -> None:
     api_get, download = _fixtures(evidence_overrides={"frozen_core_blob": "0" * 40})
     with pytest.raises(VerificationError, match="evidence_validation_failed"):
         verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
+
+
+
+def test_redirect_to_evil_host_rejected() -> None:
+    from urllib.error import HTTPError
+    from urllib.request import Request
+
+    handler = SafeRedirectHandler()
+    request = Request("https://api.github.com/artifact", headers={"Authorization": "Bearer secret"})
+    with pytest.raises(HTTPError, match="redirect_to_disallowed_host"):
+        handler.redirect_request(
+            request, None, 302, "Found", {}, "https://evil.com/steal"
+        )
+
+
+def test_evidence_job_id_uses_actual_workflow_key() -> None:
+    api_get, download = _fixtures()
+    result = verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
+    assert result["research_loop_job_id"] == 456
+    assert result["research_loop_job_name"] == EXPECTED_JOB_NAME
+
+
+def test_evidence_job_id_mismatch_fails_closed() -> None:
+    api_get, download = _fixtures(evidence_overrides={"job_id": 456})
+    with pytest.raises(VerificationError, match="evidence_validation_failed"):
+        verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
+
+
+def test_job_missing_from_run_fails_closed() -> None:
+    api_get, download = _fixtures()
+    def missing_job(path: str) -> dict[str, Any]:
+        payload = api_get(path)
+        if f"/actions/runs/{RUN_ID}/jobs" in path:
+            return {"jobs": []}
+        return payload
+    with pytest.raises(VerificationError, match="expected_job_missing_or_duplicate"):
+        verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", missing_job, download)
