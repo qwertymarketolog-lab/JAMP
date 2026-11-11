@@ -20,7 +20,17 @@ RESEARCH_LOOP_WORKFLOW = "research-loop-v0.yml"
 EXPECTED_ARTIFACT = "research-loop-v0-evidence"
 EXPECTED_EVIDENCE_FILE = "research-loop-evidence.json"
 EXPECTED_JOB_NAME = "Research Loop v0 Gate /"
-EXPECTED_JOB_ID = "research-loop-gate"
+EXPECTED_WORKFLOW_JOB_ID = "research-loop-gate"
+ALLOWED_HOSTS = {"api.github.com", "objects.githubusercontent.com", "github.com"}
+ALLOWED_SUFFIXES = (".blob.core.windows.net",)
+
+
+def _allowed_https_url(url: str) -> bool:
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (
+        host in ALLOWED_HOSTS or any(host.endswith(suffix) for suffix in ALLOWED_SUFFIXES)
+    )
 
 
 class VerificationError(RuntimeError):
@@ -37,7 +47,10 @@ def gh_api(path: str) -> dict[str, Any]:
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    opener = urllib.request.build_opener(_NoRedirect())
+    with opener.open(request, timeout=30) as response:
+        if not _allowed_https_url(response.geturl()) or urlparse(response.geturl()).hostname != "api.github.com":
+            raise VerificationError("github_api_final_url_invalid")
         payload = json.load(response)
     if not isinstance(payload, dict):
         raise VerificationError("github_api_invalid_response")
@@ -50,9 +63,28 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Allow only known GitHub artifact hosts and never forward credentials."""
+
+    def redirect_request(self, request: Any, response: Any, code: int,
+                         message: str, headers: Any, new_url: str) -> Any:
+        if not _allowed_https_url(new_url):
+            host = (urlparse(new_url).hostname or "").lower()
+            raise urllib.error.HTTPError(
+                new_url, code, f"redirect_to_disallowed_host: {host}", headers, response
+            )
+        # A redirect is a new unauthenticated GET. In particular, never copy
+        # Authorization or other caller-controlled headers to the storage host.
+        return urllib.request.Request(
+            new_url,
+            headers={"Accept": "application/octet-stream"},
+            method="GET",
+        )
+
+
 def _download_url(url: str, destination: Path) -> None:
     parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname:
+    if parsed.scheme != "https" or (parsed.hostname or "").lower() != "api.github.com":
         raise VerificationError("artifact_download_url_invalid")
 
     token = os.environ["GITHUB_TOKEN"]
@@ -64,24 +96,15 @@ def _download_url(url: str, destination: Path) -> None:
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    opener = urllib.request.build_opener(_NoRedirect)
-    try:
-        response = opener.open(request, timeout=60)
-    except urllib.error.HTTPError as error:
-        if error.code not in (301, 302, 303, 307, 308):
-            raise
-        location = error.headers.get("Location")
-        if not location:
-            raise VerificationError("artifact_redirect_missing_location") from error
-        redirected = urlparse(location)
-        if redirected.scheme != "https" or not redirected.hostname:
-            raise VerificationError("artifact_redirect_url_invalid") from error
-        # Signed storage URL: deliberately do not forward the GitHub token.
-        response = urllib.request.urlopen(location, timeout=60)
-
-    with response, destination.open("wb") as output:
-        while chunk := response.read(1024 * 1024):
-            output.write(chunk)
+    opener = urllib.request.build_opener(SafeRedirectHandler())
+    with opener.open(request, timeout=60) as response:
+        final_url = response.geturl()
+        if not _allowed_https_url(final_url):
+            final_host = (urlparse(final_url).hostname or "").lower()
+            raise VerificationError(f"artifact_final_url_disallowed: {final_host}")
+        with destination.open("wb") as output:
+            while chunk := response.read(1024 * 1024):
+                output.write(chunk)
 
 
 def download_artifact(artifact: dict[str, Any], dest: str) -> tuple[str, dict[str, Any]]:
@@ -220,7 +243,7 @@ def verify_lineage(
         "pr_number": pr_number,
         "target_sha": head_sha,
         "run_id": str(run_id),
-        "job_id": EXPECTED_JOB_ID,
+        "job_id": EXPECTED_WORKFLOW_JOB_ID,
         "status": "completed",
         "conclusion": "success",
         "frozen_core_blob": FROZEN_CORE_BLOB,
