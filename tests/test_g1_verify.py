@@ -252,3 +252,14 @@ def test_missing_github_run_id_fails_closed(monkeypatch: pytest.MonkeyPatch, cap
         main()
     assert error.value.code == 1
     assert "github_run_id_missing" in capsys.readouterr().err
+
+
+
+def test_zip_uncompressed_size_limit_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    archive = tmp_path / "artifact.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("research-loop-evidence.json", "x" * 128)
+    monkeypatch.setattr(verifier, "_download_url", lambda _url, destination: destination.write_bytes(archive.read_bytes()))
+    monkeypatch.setattr(verifier, "MAX_UNCOMPRESSED_BYTES", 64)
+    with pytest.raises(VerificationError, match="artifact_uncompressed_size_limit_exceeded"):
+        download_artifact({"archive_download_url": "https://api.github.com/artifacts/1/zip"}, str(tmp_path / "download.zip"))
