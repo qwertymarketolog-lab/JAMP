@@ -278,11 +278,22 @@ def test_artifact_download_byte_limit_fails_closed(
 
 
 def test_missing_github_run_id_fails_closed(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
+    output = tmp_path / "out.json"
     monkeypatch.setattr(
         "sys.argv",
-        ["g1_verify.py", "--pr-number", "42", "--head-sha", "a" * 40, "--output", "out.json"],
+        [
+            "g1_verify.py",
+            "--pr-number",
+            "42",
+            "--head-sha",
+            "a" * 40,
+            "--output",
+            str(output),
+        ],
     )
     monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
     with pytest.raises(SystemExit) as error:
