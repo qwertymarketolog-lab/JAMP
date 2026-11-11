@@ -308,3 +308,43 @@ def test_zip_uncompressed_size_limit_fails_closed(
             {"archive_download_url": "https://api.github.com/artifacts/1/zip"},
             str(tmp_path / "download.zip"),
         )
+
+
+def test_failure_evidence_written_on_verify_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "g1-lineage-evidence.json"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "g1_verify.py",
+            "--pr-number",
+            str(PR_NUMBER),
+            "--head-sha",
+            HEAD_SHA,
+            "--output",
+            str(output),
+        ],
+    )
+    monkeypatch.setenv("GITHUB_REPOSITORY", "qwertymarketolog-lab/JAMP")
+    monkeypatch.setenv("GITHUB_RUN_ID", "789012")
+    
+    def fail_verification(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise VerificationError("newest_run_failed: conclusion=failure")
+
+    monkeypatch.setattr(verifier, "verify_lineage", fail_verification)
+    with pytest.raises(SystemExit) as error:
+        main()
+
+    assert error.value.code == 1
+    evidence = __import__("json").loads(output.read_text(encoding="utf-8"))
+    assert evidence == {
+        "status": "FAIL",
+        "reason": "newest_run_failed: conclusion=failure",
+        "pr_number": PR_NUMBER,
+        "head_sha": HEAD_SHA,
+        "verified_at_run_id": "789012",
+    }
+    assert "G1_FAIL: newest_run_failed" in capsys.readouterr().err
