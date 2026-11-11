@@ -12,7 +12,8 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlparse
 
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
@@ -61,7 +62,10 @@ def gh_api(path: str) -> dict[str, Any]:
     )
     opener = urllib.request.build_opener(_NoRedirect())
     with opener.open(request, timeout=30) as response:
-        if not _allowed_https_url(response.geturl()) or urlparse(response.geturl()).hostname != "api.github.com":
+        if (
+            not _allowed_https_url(response.geturl())
+            or urlparse(response.geturl()).hostname != "api.github.com"
+        ):
             raise VerificationError("github_api_final_url_invalid")
         payload = json.load(response)
     if not isinstance(payload, dict):
@@ -187,7 +191,9 @@ def verify_lineage(
     head_sha: str,
     repo: str,
     api_get: Callable[[str], dict[str, Any]] = gh_api,
-    artifact_downloader: Callable[[dict[str, Any], str], tuple[str, dict[str, Any]]] = download_artifact,
+    artifact_downloader: Callable[
+        [dict[str, Any], str], tuple[str, dict[str, Any]]
+    ] = download_artifact,
 ) -> dict[str, Any]:
     if not re.fullmatch(r"[0-9a-f]{40}", head_sha):
         raise VerificationError("head_sha_invalid")
