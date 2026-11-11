@@ -23,6 +23,10 @@ EXPECTED_JOB_NAME = "Research Loop v0 Gate /"
 EXPECTED_WORKFLOW_JOB_ID = "research-loop-gate"
 ALLOWED_HOSTS = {"api.github.com", "objects.githubusercontent.com", "github.com"}
 ALLOWED_SUFFIXES = (".blob.core.windows.net",)
+MAX_ARTIFACT_BYTES = 50 * 1024 * 1024
+MAX_ENTRIES = 100
+MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
+MAX_EVIDENCE_BYTES = 1 * 1024 * 1024
 
 
 def _allowed_https_url(url: str) -> bool:
@@ -105,13 +109,17 @@ def _download_url(url: str, destination: Path) -> None:
         },
     )
     opener = urllib.request.build_opener(SafeRedirectHandler())
-    with opener.open(request, timeout=60) as response:
+    with opener.open(request, timeout=30) as response:
         final_url = response.geturl()
         if not _allowed_https_url(final_url):
             final_host = (urlparse(final_url).hostname or "").lower()
             raise VerificationError(f"artifact_final_url_disallowed: {final_host}")
+        downloaded = 0
         with destination.open("wb") as output:
             while chunk := response.read(1024 * 1024):
+                downloaded += len(chunk)
+                if downloaded > MAX_ARTIFACT_BYTES:
+                    raise VerificationError("artifact_archive_too_large")
                 output.write(chunk)
 
 
@@ -122,16 +130,31 @@ def download_artifact(artifact: dict[str, Any], dest: str) -> tuple[str, dict[st
 
     archive = Path(dest)
     _download_url(archive_url, archive)
-    zip_sha256 = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if archive.stat().st_size > MAX_ARTIFACT_BYTES:
+        raise VerificationError("artifact_archive_too_large")
+    digest = hashlib.sha256()
+    with archive.open("rb") as downloaded:
+        while chunk := downloaded.read(1024 * 1024):
+            digest.update(chunk)
+    zip_sha256 = digest.hexdigest()
 
     try:
         with zipfile.ZipFile(archive) as bundle:
-            files = [item for item in bundle.infolist() if not item.is_dir()]
-            if len(files) != 1 or Path(files[0].filename).name != EXPECTED_EVIDENCE_FILE:
+            entries = bundle.infolist()
+            if len(entries) > MAX_ENTRIES:
+                raise VerificationError("artifact_too_many_entries")
+            total_uncompressed = sum(item.file_size for item in entries)
+            if total_uncompressed > MAX_UNCOMPRESSED_BYTES:
+                raise VerificationError("artifact_uncompressed_size_limit_exceeded")
+            files = [item for item in entries if not item.is_dir()]
+            if len(files) != 1 or files[0].filename != EXPECTED_EVIDENCE_FILE:
                 raise VerificationError("artifact_file_set_invalid")
-            if files[0].file_size > 1024 * 1024:
+            if files[0].file_size > MAX_EVIDENCE_BYTES:
                 raise VerificationError("artifact_evidence_too_large")
-            raw = bundle.read(files[0])
+            with bundle.open(files[0]) as evidence_file:
+                raw = evidence_file.read(MAX_EVIDENCE_BYTES + 1)
+            if len(raw) > MAX_EVIDENCE_BYTES:
+                raise VerificationError("artifact_evidence_too_large")
             evidence = json.loads(raw)
     except (zipfile.BadZipFile, json.JSONDecodeError, KeyError) as error:
         raise VerificationError("artifact_evidence_malformed") from error
@@ -289,11 +312,15 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
+        github_run_id = os.environ.get("GITHUB_RUN_ID")
+        if not github_run_id:
+            raise VerificationError("github_run_id_missing")
         evidence = verify_lineage(
             args.pr_number,
             args.head_sha,
             os.environ["GITHUB_REPOSITORY"],
         )
+        evidence["verified_at"] = github_run_id
         output = Path(args.output)
         output.write_text(
             json.dumps(evidence, indent=2, sort_keys=True) + "\n",
