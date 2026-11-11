@@ -215,6 +215,8 @@ def verify_lineage(
     if len(matching_jobs) != 1:
         raise VerificationError("research_loop_expected_job_missing_or_duplicate")
     job = matching_jobs[0]
+    if not isinstance(job.get("id"), int) or job["id"] <= 0:
+        raise VerificationError("research_loop_numeric_job_id_invalid")
     if (
         job.get("run_id") != run_id
         or job.get("status") != "completed"
