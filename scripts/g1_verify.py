@@ -319,8 +319,9 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
+    output = Path(args.output)
+    github_run_id = os.environ.get("GITHUB_RUN_ID")
     try:
-        github_run_id = os.environ.get("GITHUB_RUN_ID")
         if not github_run_id:
             raise VerificationError("github_run_id_missing")
         evidence = verify_lineage(
@@ -328,18 +329,39 @@ def main() -> None:
             args.head_sha,
             os.environ["GITHUB_REPOSITORY"],
         )
-        evidence["verified_at"] = github_run_id
-        output = Path(args.output)
+        success = {
+            "status": "VERIFIED",
+            **evidence,
+            "verified_at_run_id": github_run_id,
+        }
         output.write_text(
-            json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+            json.dumps(success, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         digest = hashlib.sha256(
-            json.dumps(evidence, sort_keys=True).encode("utf-8")
+            json.dumps(success, sort_keys=True).encode("utf-8")
         ).hexdigest()
-        print(f"G1_PASS: own_evidence_sha256={digest}")
-    except (KeyError, OSError, urllib.error.URLError, VerificationError) as error:
-        print(f"G1_FAIL: {error}", file=sys.stderr)
+        print(f"G1_VERIFIED: evidence_sha256={digest}")
+    except Exception as error:
+        failure = {
+            "status": "FAIL",
+            "reason": str(error) or error.__class__.__name__,
+            "pr_number": args.pr_number,
+            "head_sha": args.head_sha,
+            "verified_at_run_id": github_run_id,
+        }
+        try:
+            output.write_text(
+                json.dumps(failure, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as write_error:
+            print(
+                f"G1_FAIL: {failure['reason']}; failure_evidence_write_failed: {write_error}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from write_error
+        print(f"G1_FAIL: {failure['reason']}", file=sys.stderr)
         raise SystemExit(1) from error
 
 

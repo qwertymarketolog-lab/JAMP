@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -277,11 +278,22 @@ def test_artifact_download_byte_limit_fails_closed(
 
 
 def test_missing_github_run_id_fails_closed(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
+    output = tmp_path / "out.json"
     monkeypatch.setattr(
         "sys.argv",
-        ["g1_verify.py", "--pr-number", "42", "--head-sha", "a" * 40, "--output", "out.json"],
+        [
+            "g1_verify.py",
+            "--pr-number",
+            "42",
+            "--head-sha",
+            "a" * 40,
+            "--output",
+            str(output),
+        ],
     )
     monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
     with pytest.raises(SystemExit) as error:
@@ -308,3 +320,43 @@ def test_zip_uncompressed_size_limit_fails_closed(
             {"archive_download_url": "https://api.github.com/artifacts/1/zip"},
             str(tmp_path / "download.zip"),
         )
+
+
+def test_failure_evidence_written_on_verify_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "g1-lineage-evidence.json"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "g1_verify.py",
+            "--pr-number",
+            str(PR_NUMBER),
+            "--head-sha",
+            HEAD_SHA,
+            "--output",
+            str(output),
+        ],
+    )
+    monkeypatch.setenv("GITHUB_REPOSITORY", "qwertymarketolog-lab/JAMP")
+    monkeypatch.setenv("GITHUB_RUN_ID", "789012")
+    
+    def fail_verification(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise VerificationError("newest_run_failed: conclusion=failure")
+
+    monkeypatch.setattr(verifier, "verify_lineage", fail_verification)
+    with pytest.raises(SystemExit) as error:
+        main()
+
+    assert error.value.code == 1
+    evidence = json.loads(output.read_text(encoding="utf-8"))
+    assert evidence == {
+        "status": "FAIL",
+        "reason": "newest_run_failed: conclusion=failure",
+        "pr_number": PR_NUMBER,
+        "head_sha": HEAD_SHA,
+        "verified_at_run_id": "789012",
+    }
+    assert "G1_FAIL: newest_run_failed" in capsys.readouterr().err
