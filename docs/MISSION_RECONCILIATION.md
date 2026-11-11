@@ -31,7 +31,7 @@ This is a static code audit. It does not claim that all listed behavior was inde
 
 ## Reconciliation summary
 
-- **PRESERVED:** 1–4 and 8 — five principles have identifiable implementation in current main, within the stated boundaries.
+- **PRESERVED observations:** principles 1–4 and 8 have identifiable implementation in current main, within the stated boundaries. Do not aggregate this into a “5/8 preserved” mission verdict while principles 5–6 remain AMBIGUOUS.
 - **AMBIGUOUS:** 5–6 — branch/PR implementations exist, but their relationship to the documentation's claimed production milestones and current main is unresolved.
 - **DEFERRED:** 7 — Causal Ablation is not implemented in audited current main and its own milestone documentation remains pending verified CI.
 - **ABANDONED:** none identified. No explicit abandonment decision was found; missing implementation is not proof of abandonment.
