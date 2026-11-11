@@ -2,6 +2,7 @@ from loop_contract import LoopState, transition
 
 
 def test_open_to_running_requires_evidence():
+    assert False, "intentional failure for G1 negative test"
     result = transition(LoopState.OPEN, LoopState.RUNNING, evidence=("task loaded",))
     assert result.current is LoopState.RUNNING
 
