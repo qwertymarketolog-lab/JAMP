@@ -110,3 +110,10 @@ def test_g1_actions_run_job_url_regex_matches_numeric_ids() -> None:
         match = re.search(pattern, url)
         assert match is not None
         assert match.groups() == ("123456789", "987654321")
+
+def test_monitor_does_not_require_removed_alias() -> None:
+    src = (WORKFLOWS / "g1-trusted-lineage-main.yml").read_text(encoding="utf-8")
+    assert "g1_alias_run_id" not in src, "monitor must not reference removed alias run id"
+    assert "g1_alias_job_id" not in src, "monitor must not reference removed alias job id"
+    assert "alias job terminal evidence is missing" not in src, "monitor must not raise on removed alias job"
+    assert "trusted-lineage" in src, "monitor must still verify trusted-lineage"

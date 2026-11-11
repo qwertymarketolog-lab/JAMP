@@ -233,10 +233,6 @@ jobs:
               research_pr_check = wait_for_latest_check(
                   "Research Loop v0 Gate /"
               )
-              g1_pr_check = wait_for_latest_check(
-                  "G1 Trusted Lineage"
-              )
-
               details = research_pr_check.get("details_url", "")
               match = re.search(r"/actions/runs/(\d+)/job/(\d+)", details)
               if not match:
@@ -289,25 +285,6 @@ jobs:
                   or pr_evidence.get("conclusion") != "success"
               ):
                   raise RuntimeError("PR Research Loop artifact does not match the exact PR head")
-
-              g1_details = g1_pr_check.get("details_url", "")
-              g1_match = re.search(r"/actions/runs/(\d+)/job/(\d+)", g1_details)
-              if not g1_match:
-                  raise RuntimeError("PR G1 required context has no verifiable Actions job URL")
-              g1_alias_run_id = int(g1_match.group(1))
-              g1_alias_job_id = int(g1_match.group(2))
-              if g1_alias_run_id != pr_run_id:
-                  raise RuntimeError("PR G1 required context is not in the Research Loop workflow run")
-              if not any(
-                  job.get("id") == g1_alias_job_id
-                  and job.get("run_id") == pr_run_id
-                  and job.get("name") == "G1 Trusted Lineage"
-                  and job.get("head_sha") == pr_head_sha
-                  and job.get("status") == "completed"
-                  and job.get("conclusion") == "success"
-                  for job in pr_jobs
-              ):
-                  raise RuntimeError("PR G1 required alias job terminal evidence is missing")
 
               actual_g1_check = wait_for_latest_check(
                   "trusted-lineage"
@@ -438,12 +415,6 @@ jobs:
                           "job_id": pr_job_id,
                           "artifact_id": pr_artifact["id"],
                           "conclusion": research_pr_check["conclusion"],
-                      },
-                      "g1_trusted_lineage_required_context": {
-                          "check_run_id": g1_pr_check["id"],
-                          "run_id": g1_alias_run_id,
-                          "job_id": g1_alias_job_id,
-                          "conclusion": g1_pr_check["conclusion"],
                       },
                       "g1_trusted_lineage_workflow": {
                           "check_run_id": actual_g1_check["id"],
