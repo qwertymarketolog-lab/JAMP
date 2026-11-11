@@ -33,6 +33,7 @@ def _fixtures(
     conclusion: str = "success",
     evidence_overrides: dict[str, Any] | None = None,
     include_artifact: bool = True,
+    include_workflow_run: bool = True,
 ) -> tuple[Any, Any]:
     older = {
         "id": RUN_ID - 1,
@@ -75,6 +76,8 @@ def _fixtures(
         "archive_download_url": "https://api.github.com/artifacts/987/zip",
         "workflow_run": {"id": RUN_ID},
     }
+    if not include_workflow_run:
+        artifact.pop("workflow_run")
 
     def api_get(path: str) -> dict[str, Any]:
         if "/actions/workflows/" in path:
@@ -124,6 +127,16 @@ def test_artifact_missing_fails_closed() -> None:
     api_get, download = _fixtures(include_artifact=False)
     with pytest.raises(VerificationError, match="artifact_missing_or_duplicate"):
         verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
+
+
+def test_workflow_run_missing_fails() -> None:
+    api_get, download = _fixtures(include_workflow_run=False)
+    with pytest.raises(
+        VerificationError, match="artifact_workflow_run_missing_or_invalid"
+    ):
+        verify_lineage(
+            PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download
+        )
 
 
 def test_artifact_sha_mismatch_fails_closed() -> None:
