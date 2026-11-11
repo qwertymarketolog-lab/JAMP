@@ -270,7 +270,9 @@ def verify_lineage(
     if artifact.get("expired") is not False:
         raise VerificationError("research_loop_artifact_expired_or_unknown")
     workflow_run = artifact.get("workflow_run")
-    if isinstance(workflow_run, dict) and workflow_run.get("id") != run_id:
+    if not isinstance(workflow_run, dict):
+        raise VerificationError("artifact_workflow_run_missing_or_invalid")
+    if workflow_run.get("id") != run_id:
         raise VerificationError("research_loop_artifact_run_mismatch")
 
     zip_sha256, evidence = artifact_downloader(artifact, "/tmp/research-loop.zip")
