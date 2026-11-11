@@ -6,168 +6,37 @@ on:
 
 permissions:
   actions: read
+  contents: read
   pull-requests: read
 
 jobs:
   trusted-lineage:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify trusted workflow boundary
+      - name: Checkout trusted base revision only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify trusted lineage and artifact
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          EXPECTED_WORKFLOW_ID: "366569738"
-          EXPECTED_WORKFLOW_PATH: ".github/workflows/research-loop-v0.yml"
-          EXPECTED_EVENT: "pull_request"
-          EXPECTED_JOB_NAME: "Research Loop v0 Gate /"
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          set -euo pipefail
+          python scripts/g1_verify.py \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}" \
+            --output g1-lineage-evidence.json
 
-          api="https://api.github.com/repos/${REPOSITORY}"
-
-          python - <<'PY'
-          import os
-          import re
-
-          repository = os.environ["REPOSITORY"]
-          pr_number = os.environ["PR_NUMBER"]
-          head_sha = os.environ["HEAD_SHA"]
-
-          assert repository == "qwertymarketolog-lab/JAMP"
-          assert pr_number.isdigit() and int(pr_number) > 0
-          assert re.fullmatch(r"[0-9a-f]{40}", head_sha)
-          PY
-
-          for _ in $(seq 1 60); do
-            curl --fail-with-body --silent --show-error               -H "Accept: application/vnd.github+json"               -H "Authorization: Bearer ${GH_TOKEN}"               -H "X-GitHub-Api-Version: 2022-11-28"               "${api}/actions/workflows/${EXPECTED_WORKFLOW_ID}/runs?head_sha=${HEAD_SHA}&event=${EXPECTED_EVENT}&per_page=100" > /tmp/g1-run.json
-
-            if python - <<'PY'
-          import json
-          import sys
-
-          payload = json.load(open("/tmp/g1-run.json"))
-          runs = payload.get("workflow_runs", [])
-          matching = [
-              run for run in runs
-              if run.get("workflow_id") == 366569738
-              and run.get("path") == ".github/workflows/research-loop-v0.yml"
-              and run.get("event") == "pull_request"
-              and run.get("head_sha") == __import__("os").environ["HEAD_SHA"]
-              and run.get("status") == "completed"
-              and run.get("conclusion") == "success"
-          ]
-          raise SystemExit(0 if matching else 1)
-          PY
-            then
-              break
-            fi
-            sleep 10
-          done
-
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          payload = json.load(open("/tmp/g1-run.json"))
-          head_sha = os.environ["HEAD_SHA"]
-          runs = [
-              run for run in payload.get("workflow_runs", [])
-              if run.get("workflow_id") == 366569738
-              and run.get("path") == ".github/workflows/research-loop-v0.yml"
-              and run.get("event") == "pull_request"
-              and run.get("head_sha") == head_sha
-              and run.get("status") == "completed"
-              and run.get("conclusion") == "success"
-          ]
-          assert len(runs) >= 1
-          runs.sort(
-              key=lambda run: (
-                  run.get("run_started_at")
-                  or run.get("updated_at")
-                  or run.get("created_at")
-                  or "",
-                  run.get("id", 0),
-              ),
-              reverse=True,
-          )
-          run = runs[0]
-          assert run["repository"]["full_name"] == "qwertymarketolog-lab/JAMP"
-          assert run["workflow_id"] == 366569738
-          assert run["path"] == ".github/workflows/research-loop-v0.yml"
-          assert run["event"] == "pull_request"
-          assert run["status"] == "completed"
-          assert run["conclusion"] == "success"
-          assert run["head_sha"] == head_sha
-          print(f"verified run {run['id']} head_sha={run['head_sha']}")
-          PY
-
-          run_id="$(python - <<'PY'
-          import json
-          import os
-          import sys
-
-          runs = [
-              run for run in json.load(open("/tmp/g1-run.json")).get("workflow_runs", [])
-              if run.get("workflow_id") == 366569738
-              and run.get("path") == ".github/workflows/research-loop-v0.yml"
-              and run.get("event") == "pull_request"
-              and run.get("head_sha") == os.environ["HEAD_SHA"]
-              and run.get("status") == "completed"
-              and run.get("conclusion") == "success"
-          ]
-          assert runs
-          runs.sort(
-              key=lambda run: (
-                  run.get("run_started_at")
-                  or run.get("updated_at")
-                  or run.get("created_at")
-                  or "",
-                  run.get("id", 0),
-              ),
-              reverse=True,
-          )
-          print(runs[0]["id"])
-          PY
-          )"
-          export G1_RUN_ID="$run_id"
-
-          curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/pulls/${PR_NUMBER}" > /tmp/g1-pr.json
-
-          python - <<'PY'
-          import json
-          import os
-
-          pr = json.load(open("/tmp/g1-pr.json"))
-          head_sha = os.environ["HEAD_SHA"]
-          assert pr["number"] > 0
-          assert pr["base"]["ref"] == "main"
-          assert pr["base"]["repo"]["full_name"] == "qwertymarketolog-lab/JAMP"
-          assert pr["head"]["repo"]["full_name"] == "qwertymarketolog-lab/JAMP"
-          assert pr["head"]["sha"] == head_sha
-          print(f"verified PR #{pr['number']} head_sha={head_sha}")
-          PY
-
-          curl --fail-with-body --silent --show-error             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "${api}/actions/runs/${run_id}/jobs?per_page=100" > /tmp/g1-jobs.json
-
-          python - <<'PY'
-          import json
-          import os
-
-          run_id = int(os.environ["G1_RUN_ID"])
-          jobs = json.load(open("/tmp/g1-jobs.json"))["jobs"]
-          head_sha = os.environ["HEAD_SHA"]
-          matches = [
-              job for job in jobs
-              if job["name"] == "Research Loop v0 Gate /"
-          ]
-          assert len(matches) == 1
-          job = matches[0]
-          assert job["run_id"] == run_id
-          assert job["status"] == "completed"
-          assert job["conclusion"] == "success"
-          assert job["head_sha"] == head_sha
-          print(f"verified job id={job.get('id', '<absent>')} name={job['name']} head_sha={head_sha}")
-          PY
+      - name: Upload G1 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-lineage-evidence
+          path: g1-lineage-evidence.json
+          if-no-files-found: error
