@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -339,7 +340,7 @@ def test_failure_evidence_written_on_verify_error(
         main()
 
     assert error.value.code == 1
-    evidence = __import__("json").loads(output.read_text(encoding="utf-8"))
+    evidence = json.loads(output.read_text(encoding="utf-8"))
     assert evidence == {
         "status": "FAIL",
         "reason": "newest_run_failed: conclusion=failure",
