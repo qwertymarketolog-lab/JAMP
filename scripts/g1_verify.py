@@ -28,8 +28,16 @@ ALLOWED_SUFFIXES = (".blob.core.windows.net",)
 def _allowed_https_url(url: str) -> bool:
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
-    return parsed.scheme == "https" and (
-        host in ALLOWED_HOSTS or any(host.endswith(suffix) for suffix in ALLOWED_SUFFIXES)
+    try:
+        standard_port = parsed.port in (None, 443)
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and standard_port
+        and (host in ALLOWED_HOSTS or any(host.endswith(suffix) for suffix in ALLOWED_SUFFIXES))
     )
 
 
