@@ -199,8 +199,9 @@ def test_allowed_artifact_redirect_does_not_forward_authorization() -> None:
     )
     assert redirected is not None
     assert redirected.full_url == "https://objects.githubusercontent.com/signed/archive.zip"
-    assert redirected.get_header("Authorization") is None
-    assert redirected.get_header("X-custom") is None
+    redirected_headers = {key.lower() for key, _ in redirected.header_items()}
+    assert "authorization" not in redirected_headers
+    assert "x-custom" not in redirected_headers
 
 
 def test_blob_suffix_requires_dot_boundary() -> None:
