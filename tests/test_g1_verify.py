@@ -178,3 +178,43 @@ def test_job_missing_from_run_fails_closed() -> None:
         return payload
     with pytest.raises(VerificationError, match="expected_job_missing_or_duplicate"):
         verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", missing_job, download)
+
+
+
+def test_allowed_artifact_redirect_does_not_forward_authorization() -> None:
+    from urllib.request import Request
+
+    handler = SafeRedirectHandler()
+    request = Request(
+        "https://api.github.com/artifact",
+        headers={"Authorization": "Bearer secret", "X-Custom": "private"},
+    )
+    redirected = handler.redirect_request(
+        request,
+        None,
+        302,
+        "Found",
+        {},
+        "https://objects.githubusercontent.com/signed/archive.zip",
+    )
+    assert redirected is not None
+    assert redirected.full_url == "https://objects.githubusercontent.com/signed/archive.zip"
+    assert redirected.get_header("Authorization") is None
+    assert redirected.get_header("X-custom") is None
+
+
+def test_blob_suffix_requires_dot_boundary() -> None:
+    from urllib.error import HTTPError
+    from urllib.request import Request
+
+    handler = SafeRedirectHandler()
+    request = Request("https://api.github.com/artifact")
+    with pytest.raises(HTTPError, match="redirect_to_disallowed_host"):
+        handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://evilblob.core.windows.net/archive.zip",
+        )
