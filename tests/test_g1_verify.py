@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+import zipfile
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+import scripts.g1_verify as verifier
 from scripts.g1_verify import (
+    download_artifact,
+    main,
     EXPECTED_ARTIFACT,
     EXPECTED_JOB_NAME,
     FROZEN_CORE_BLOB,
@@ -219,3 +224,31 @@ def test_blob_suffix_requires_dot_boundary() -> None:
             {},
             "https://evilblob.core.windows.net/archive.zip",
         )
+
+
+
+def test_zip_entry_count_limit_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    archive = tmp_path / "artifact.zip"
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("research-loop-evidence.json", "{}")
+        bundle.writestr("extra.txt", "unexpected")
+    monkeypatch.setattr(verifier, "_download_url", lambda _url, destination: destination.write_bytes(archive.read_bytes()))
+    monkeypatch.setattr(verifier, "MAX_ENTRIES", 1)
+    with pytest.raises(VerificationError, match="artifact_too_many_entries"):
+        download_artifact({"archive_download_url": "https://api.github.com/artifacts/1/zip"}, str(tmp_path / "download.zip"))
+
+
+def test_artifact_download_byte_limit_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(verifier, "MAX_ARTIFACT_BYTES", 4)
+    monkeypatch.setattr(verifier, "_download_url", lambda _url, destination: destination.write_bytes(b"12345"))
+    with pytest.raises(VerificationError, match="artifact_archive_too_large"):
+        download_artifact({"archive_download_url": "https://api.github.com/artifacts/1/zip"}, str(tmp_path / "download.zip"))
+
+
+def test_missing_github_run_id_fails_closed(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr("sys.argv", ["g1_verify.py", "--pr-number", "42", "--head-sha", "a" * 40, "--output", "out.json"])
+    monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 1
+    assert "github_run_id_missing" in capsys.readouterr().err
