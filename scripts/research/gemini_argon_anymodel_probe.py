@@ -140,7 +140,7 @@ def main() -> int:
         "provider": {"name": "AnyModel", "catalog_url": CATALOG_URL, "chat_url": CHAT_URL},
         "model": {"requested_id": REQUESTED_ID, "resolved_anymodel_id": None},
         "benchmark": {"name": "Terminal-Bench", "version": "4.0", "status": "NOT_STARTED"},
-        "limits": {"timeout_seconds": TIMEOUT_S, "max_chat_requests": 1},
+        "limits": {"timeout_seconds": TIMEOUT_S, "max_chat_requests": 1, "max_tokens": 16},
         "frozen_core": {
             "path": "src/jamp/run.py",
             "expected_git_blob": EXPECTED_FROZEN_CORE_BLOB,
@@ -254,6 +254,7 @@ def main() -> int:
         "model": model_id,
         "messages": [{"role": "user", "content": PROBE_TEXT}],
         "temperature": 0,
+        "max_tokens": 16,
     }
     chat_status, chat_raw, chat_headers, chat_elapsed, chat_error = request_json(
         CHAT_URL, api_key, "POST", chat_payload
