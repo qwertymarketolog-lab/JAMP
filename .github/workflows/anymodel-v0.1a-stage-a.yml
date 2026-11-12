@@ -30,7 +30,7 @@ jobs:
 
       - name: Run three sequential Nemotron tasks
         env:
-          ANYMODEL_API_KEY: \${{ secrets.ANYMODEL_API_KEY }}
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -51,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anymodel-v01a-stage-a-\${{ github.run_id }}
+          name: anymodel-v01a-stage-a-${{ github.run_id }}
           path: stage-a-evidence/
           if-no-files-found: warn
           retention-days: 30
