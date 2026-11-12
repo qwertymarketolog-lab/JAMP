@@ -1,0 +1,57 @@
+name: AnyModel v0.1a Stage A (Nemotron, 3 tasks)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anymodel-v01a-stage-a
+  cancel-in-progress: false
+
+jobs:
+  stage-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download pinned G1 source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage-a-inputs
+          base="https://raw.githubusercontent.com/qwertymarketolog-lab/JAMP/9d41f43af9af2292fe5b47e179bdbcf8c6789a70"
+          curl --fail --silent --show-error --retry 0 "$base/scripts/g1_verify.py" -o stage-a-inputs/g1_verify.py
+          curl --fail --silent --show-error --retry 0 "$base/tests/test_g1_verify.py" -o stage-a-inputs/test_g1_verify.py
+          sha1sum stage-a-inputs/g1_verify.py stage-a-inputs/test_g1_verify.py
+
+      - name: Run three sequential Nemotron tasks
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANYMODEL_API_KEY" || { echo "::error::ANYMODEL_API_KEY secret is missing"; exit 1; }
+          python scripts/anymodel_v01a_stage_a.py
+
+      - name: Hash all collected evidence
+        if: always()
+        shell: bash
+        run: |
+          if [ -d stage-a-evidence ]; then
+            cd stage-a-evidence
+            find . -type f ! -name 'final-hashes.txt' -print0 | sort -z | xargs -0 -r sha256sum > final-hashes.txt
+            cat final-hashes.txt
+          fi
+
+      - name: Upload Stage A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-v01a-stage-a-${{ github.run_id }}
+          path: stage-a-evidence/
+          if-no-files-found: warn
+          retention-days: 30
