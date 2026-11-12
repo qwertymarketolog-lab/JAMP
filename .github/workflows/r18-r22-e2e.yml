@@ -1,0 +1,60 @@
+name: R18-R22 Pipeline E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      claims_text:
+        description: "Claims text (empty = default sample)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  r18-r22-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
+      JAMP_ENVIRONMENT: local
+      OPENROUTER_MAX_TOKENS: "2048"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run R18-R22 pipeline
+        env:
+          JAMP_E5_ENABLED: "true"
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          CLAIMS_TEXT: ${{ inputs.claims_text }}
+        run: |
+          if [ -z "$CLAIMS_TEXT" ]; then
+            python experiments/r18_r22_e2e/run_pipeline.py > report.json
+          else
+            printf '%s' "$CLAIMS_TEXT" | python experiments/r18_r22_e2e/run_pipeline.py > report.json
+          fi
+
+      - name: Validate report exists
+        if: always()
+        run: test -s report.json
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r18-r22-report
+          path: report.json
+          if-no-files-found: error
+          retention-days: 14

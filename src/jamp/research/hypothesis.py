@@ -3,6 +3,7 @@
 Research-only, deterministic, content-addressed, and isolated from production
 JAMP domain, I/O, networking, and runtime metadata.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,7 +18,18 @@ from .claim import Claim
 from .registry import ArtifactRegistry, RegistryIntegrityError
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-_RUNTIME_KEYS = frozenset({"timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"})
+_RUNTIME_KEYS = frozenset(
+    {
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    }
+)
 _HYPOTHESIS_TYPES = frozenset({"SCIENTIFIC", "CAUSAL", "COMPARATIVE", "PREDICTIVE", "EXPLANATORY"})
 _TERMINAL = frozenset({"REFUTED", "REVISED", "RETIRED"})
 _TRANSITIONS = {
@@ -127,7 +139,9 @@ def _validate_transition_reason(reason: Mapping[str, Any]) -> None:
             _hash(reason[key], key)
 
 
-def _validate_transition_history(history: Sequence[Mapping[str, Any]], current: HypothesisStatus) -> tuple[Any, ...]:
+def _validate_transition_history(
+    history: Sequence[Mapping[str, Any]], current: HypothesisStatus
+) -> tuple[Any, ...]:
     frozen = tuple(_freeze(x) for x in history)
     expected = HypothesisStatus.ACTIVE
     for transition in frozen:
@@ -158,14 +172,20 @@ def _validate_transition_history(history: Sequence[Mapping[str, Any]], current: 
     return frozen
 
 
-def compute_transition_hash(from_status: str | HypothesisStatus, to_status: str | HypothesisStatus, reason: Mapping[str, Any]) -> str:
+def compute_transition_hash(
+    from_status: str | HypothesisStatus,
+    to_status: str | HypothesisStatus,
+    reason: Mapping[str, Any],
+) -> str:
     source = from_status.value if isinstance(from_status, HypothesisStatus) else from_status
     target = to_status.value if isinstance(to_status, HypothesisStatus) else to_status
     if source not in _TRANSITIONS or target not in _TRANSITIONS[source]:
         raise HypothesisTransitionError("illegal hypothesis transition")
     _validate_transition_reason(reason)
     frozen = _freeze(reason)
-    return hashlib.sha256(canonical_bytes({"from_status": source, "to_status": target, "reason": _thaw(frozen)})).hexdigest()
+    return hashlib.sha256(
+        canonical_bytes({"from_status": source, "to_status": target, "reason": _thaw(frozen)})
+    ).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,7 +212,11 @@ class HypothesisRecord:
         for ref in claims + evidence:
             _hash(ref, "provenance hash")
         try:
-            status = self.status if isinstance(self.status, HypothesisStatus) else HypothesisStatus(self.status)
+            status = (
+                self.status
+                if isinstance(self.status, HypothesisStatus)
+                else HypothesisStatus(self.status)
+            )
         except (ValueError, TypeError) as exc:
             raise HypothesisIntegrityError("invalid status") from exc
         history = _validate_transition_history(self.transition_history, status)
@@ -202,7 +226,16 @@ class HypothesisRecord:
         object.__setattr__(self, "evidence_hashes", evidence)
         object.__setattr__(self, "status", status)
         object.__setattr__(self, "transition_history", history)
-        expected = compute_hypothesis_hash(formulation, self.hypothesis_type, source, self.parent_hypothesis_hash, claims, evidence, status, history)
+        expected = compute_hypothesis_hash(
+            formulation,
+            self.hypothesis_type,
+            source,
+            self.parent_hypothesis_hash,
+            claims,
+            evidence,
+            status,
+            history,
+        )
         if expected != self.hypothesis_hash:
             raise HypothesisIntegrityError("hypothesis_hash does not match content")
 
@@ -214,7 +247,13 @@ class HypothesisRecord:
     def is_terminal(self) -> bool:
         return self.status.value in _TERMINAL
 
-    def verify(self, registry: ArtifactRegistry | None = None, *, parent: "HypothesisRecord | None" = None, claims: Sequence[Claim] | None = None) -> bool:
+    def verify(
+        self,
+        registry: ArtifactRegistry | None = None,
+        *,
+        parent: "HypothesisRecord | None" = None,
+        claims: Sequence[Claim] | None = None,
+    ) -> bool:
         if self.parent_hypothesis_hash is None:
             if parent is not None:
                 raise HypothesisIntegrityError("root hypothesis cannot have a parent object")
@@ -231,15 +270,24 @@ class HypothesisRecord:
                 try:
                     artifact = registry.get(evidence_hash)
                     entry = registry.index[evidence_hash]
-                    required = ("trace_hash", "initial_state_hash", "ordered_event_ids", "resulting_state_hash")
+                    required = (
+                        "trace_hash",
+                        "initial_state_hash",
+                        "ordered_event_ids",
+                        "resulting_state_hash",
+                    )
                     if not all(k in entry for k in required):
-                        raise HypothesisIntegrityError("registered evidence provenance is incomplete")
+                        raise HypothesisIntegrityError(
+                            "registered evidence provenance is incomplete"
+                        )
                     if entry["trace_hash"] != artifact.trace_hash:
                         raise HypothesisIntegrityError("evidence provenance index mismatch")
                 except HypothesisIntegrityError:
                     raise
                 except (KeyError, RegistryIntegrityError) as exc:
-                    raise HypothesisIntegrityError("evidence is not registry-backed or is tampered") from exc
+                    raise HypothesisIntegrityError(
+                        "evidence is not registry-backed or is tampered"
+                    ) from exc
         if claims is not None:
             supplied = tuple(dict.fromkeys(c.claim_hash for c in claims))
             if supplied != self.claim_hashes:
@@ -251,7 +299,16 @@ class HypothesisRecord:
                     claim.verify(registry)
                 except Exception as exc:
                     raise HypothesisIntegrityError("claim integrity verification failed") from exc
-        expected = compute_hypothesis_hash(self.formulation, self.hypothesis_type, self.source, self.parent_hypothesis_hash, self.claim_hashes, self.evidence_hashes, self.status, self.transition_history)
+        expected = compute_hypothesis_hash(
+            self.formulation,
+            self.hypothesis_type,
+            self.source,
+            self.parent_hypothesis_hash,
+            self.claim_hashes,
+            self.evidence_hashes,
+            self.status,
+            self.transition_history,
+        )
         if expected != self.hypothesis_hash:
             raise HypothesisIntegrityError("hypothesis integrity failure")
         return True
@@ -272,35 +329,98 @@ class HypothesisRecord:
 
 
 def make_hypothesis(
-    *, formulation: str, hypothesis_type: str, source: Mapping[str, Any],
+    *,
+    formulation: str,
+    hypothesis_type: str,
+    source: Mapping[str, Any],
     parent: HypothesisRecord | None = None,
     parent_hypothesis_hash: str | None = None,
-    claim_hashes: Sequence[str] = (), evidence_hashes: Sequence[str] = (),
+    claim_hashes: Sequence[str] = (),
+    evidence_hashes: Sequence[str] = (),
 ) -> HypothesisRecord:
     if parent is not None and parent_hypothesis_hash is not None:
         raise HypothesisTransitionError("parent and parent_hypothesis_hash are mutually exclusive")
     parent_hash = parent.hypothesis_hash if parent is not None else parent_hypothesis_hash
-    if parent is not None and parent.status not in {HypothesisStatus.REFUTED, HypothesisStatus.REVISED}:
+    if parent is not None and parent.status not in {
+        HypothesisStatus.REFUTED,
+        HypothesisStatus.REVISED,
+    }:
         raise HypothesisTransitionError("descendant requires a refuted or revised parent")
     history: tuple[Mapping[str, Any], ...] = ()
-    return HypothesisRecord(formulation, hypothesis_type, source, parent_hash, tuple(dict.fromkeys(claim_hashes)), tuple(dict.fromkeys(evidence_hashes)), HypothesisStatus.ACTIVE, history, compute_hypothesis_hash(formulation, hypothesis_type, source, parent_hash, claim_hashes, evidence_hashes, HypothesisStatus.ACTIVE, history))
+    return HypothesisRecord(
+        formulation,
+        hypothesis_type,
+        source,
+        parent_hash,
+        tuple(dict.fromkeys(claim_hashes)),
+        tuple(dict.fromkeys(evidence_hashes)),
+        HypothesisStatus.ACTIVE,
+        history,
+        compute_hypothesis_hash(
+            formulation,
+            hypothesis_type,
+            source,
+            parent_hash,
+            claim_hashes,
+            evidence_hashes,
+            HypothesisStatus.ACTIVE,
+            history,
+        ),
+    )
 
 
-def transition_hypothesis(hypothesis: HypothesisRecord, to_status: HypothesisStatus | str, reason: Mapping[str, Any], *, claims: Sequence[str] = (), evidence: Sequence[str] = ()) -> HypothesisRecord:
+def transition_hypothesis(
+    hypothesis: HypothesisRecord,
+    to_status: HypothesisStatus | str,
+    reason: Mapping[str, Any],
+    *,
+    claims: Sequence[str] = (),
+    evidence: Sequence[str] = (),
+) -> HypothesisRecord:
     try:
-        target = to_status if isinstance(to_status, HypothesisStatus) else HypothesisStatus(to_status)
+        target = (
+            to_status if isinstance(to_status, HypothesisStatus) else HypothesisStatus(to_status)
+        )
     except (ValueError, TypeError) as exc:
         raise HypothesisTransitionError("invalid target status") from exc
     if target.value not in _TRANSITIONS[hypothesis.status.value]:
-        raise HypothesisTransitionError(f"illegal transition {hypothesis.status.value} -> {target.value}")
+        raise HypothesisTransitionError(
+            f"illegal transition {hypothesis.status.value} -> {target.value}"
+        )
     _validate_transition_reason(reason)
     reason_frozen = _freeze(reason)
     transition_hash = compute_transition_hash(hypothesis.status, target, reason)
-    transition = MappingProxyType({"from_status": hypothesis.status.value, "to_status": target.value, "reason": reason_frozen, "transition_hash": transition_hash})
+    transition = MappingProxyType(
+        {
+            "from_status": hypothesis.status.value,
+            "to_status": target.value,
+            "reason": reason_frozen,
+            "transition_hash": transition_hash,
+        }
+    )
     history = hypothesis.transition_history + (transition,)
     claim_refs = tuple(dict.fromkeys(hypothesis.claim_hashes + tuple(claims)))
     evidence_refs = tuple(dict.fromkeys(hypothesis.evidence_hashes + tuple(evidence)))
     for ref in claim_refs + evidence_refs:
         _hash(ref, "provenance hash")
-    new_hash = compute_hypothesis_hash(hypothesis.formulation, hypothesis.hypothesis_type, hypothesis.source, hypothesis.parent_hypothesis_hash, claim_refs, evidence_refs, target, history)
-    return HypothesisRecord(hypothesis.formulation, hypothesis.hypothesis_type, hypothesis.source, hypothesis.parent_hypothesis_hash, claim_refs, evidence_refs, target, history, new_hash)
+    new_hash = compute_hypothesis_hash(
+        hypothesis.formulation,
+        hypothesis.hypothesis_type,
+        hypothesis.source,
+        hypothesis.parent_hypothesis_hash,
+        claim_refs,
+        evidence_refs,
+        target,
+        history,
+    )
+    return HypothesisRecord(
+        hypothesis.formulation,
+        hypothesis.hypothesis_type,
+        hypothesis.source,
+        hypothesis.parent_hypothesis_hash,
+        claim_refs,
+        evidence_refs,
+        target,
+        history,
+        new_hash,
+    )

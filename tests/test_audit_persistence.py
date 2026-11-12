@@ -2,7 +2,12 @@ import json
 
 import pytest
 
-from jamp.runtime.persistence import AuditPersistence
+from jamp.runtime.persistence import (
+    GENESIS_HASH,
+    AuditPersistence,
+    _record_hash,
+)
+from jamp.runtime.provenance import ProvenanceTracker
 
 
 def test_audit_persistence_write_and_read(tmp_path):
@@ -15,23 +20,91 @@ def test_audit_persistence_write_and_read(tmp_path):
             "blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
             "delta": 0,
         },
+        "execution_details": {
+            "provider": "openrouter",
+            "provider_response_id": "gen_test_123",
+        },
     }
 
-    assert store.write_trace(trace) == "trace_test_001"
+    assert store.write_trace(trace, organization_id="org-test") == "trace_test_001"
 
+    # Raw file: exactly one record, chain metadata present, chain valid.
     lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
-    assert json.loads(lines[0]) == trace
-    assert store.read_trace_by_id("trace_test_001") == trace
+    raw = json.loads(lines[0])
+
+    assert raw["prev_hash"] == GENESIS_HASH
+    assert "record_hash" in raw
+    assert raw["record_hash"] == _record_hash(raw)
+
+    # Original payload fields preserved inside the raw record.
+    assert raw["trace_id"] == trace["trace_id"]
+    assert raw["organization_id"] == "org-test"
+    assert raw["decision"] == trace["decision"]
+    assert raw["frozen_core"] == trace["frozen_core"]
+    assert raw["execution_details"] == trace["execution_details"]
+    assert raw["execution_details"]["provider_response_id"] == "gen_test_123"
+
+    # Public read contract: payload without chain metadata.
+    read = store.read_trace_by_id("trace_test_001", organization_id="org-test")
+    assert read == trace
+    assert "prev_hash" not in read
+    assert "record_hash" not in read
 
 
 def test_audit_persistence_requires_trace_id(tmp_path):
     store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
     with pytest.raises(ValueError, match="Trace payload missing required"):
-        store.write_trace({"decision": "REFUSE"})
+        store.write_trace({"decision": "REFUSE"}, organization_id="org-test")
 
 
-def test_execute_trace_survives_app_restart(tmp_path):
+@pytest.mark.parametrize("trace_id", [123, True, ["trace-id"], {"value": "trace-id"}])
+def test_audit_persistence_rejects_non_string_trace_id(tmp_path, trace_id):
+    path = tmp_path / "provenance_traces.jsonl"
+    store = AuditPersistence(path)
+
+    with pytest.raises(ValueError, match="Trace payload missing required"):
+        store.write_trace({"trace_id": trace_id}, organization_id="org-test")
+
+    assert not path.exists()
+
+
+def test_trace_owner_is_auth_context_and_reads_are_tenant_scoped(tmp_path):
+    path = tmp_path / "provenance_traces.jsonl"
+    store = AuditPersistence(path)
+    trace = {
+        "trace_id": "trace-tenant-scope",
+        "organization_id": "caller-controlled-org",
+        "request_id": "request-marker",
+    }
+
+    store.write_trace(trace, organization_id="authenticated-org")
+
+    raw = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    assert raw["organization_id"] == "authenticated-org"
+    assert store.read_trace_by_id("trace-tenant-scope", organization_id="authenticated-org") == {
+        "trace_id": "trace-tenant-scope",
+        "request_id": "request-marker",
+    }
+    assert (
+        store.read_trace_by_id("trace-tenant-scope", organization_id="caller-controlled-org")
+        is None
+    )
+
+
+def test_legacy_trace_without_owner_is_not_tenant_readable(tmp_path):
+    path = tmp_path / "provenance_traces.jsonl"
+    path.write_text(
+        json.dumps({"trace_id": "legacy-trace", "status": "REFUSE", "organization_id": "org-test"})
+        + "\n",
+        encoding="utf-8",
+    )
+    store = AuditPersistence(path)
+
+    assert store.read_trace_by_id("legacy-trace", organization_id="org-test") is None
+
+
+def test_provider_refusal_trace_survives_app_restart(tmp_path):
     from fastapi.testclient import TestClient
 
     from jamp.api import create_app
@@ -46,8 +119,11 @@ def test_execute_trace_survives_app_restart(tmp_path):
             },
         )
 
-    assert response.status_code == 200
-    trace_id = response.json()["trace_id"]
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "REFUSE"
+    assert body["reason"] == "PROVIDER_NOT_CONFIGURED"
+    trace_id = body["trace_id"]
 
     with TestClient(create_app(audit_storage_path=path)) as restarted:
         restored = restarted.get(f"/v1/provenance/{trace_id}")
@@ -78,10 +154,10 @@ def test_refuse_trace_is_persisted(tmp_path):
     body = response.json()
     assert body["status"] == "REFUSE"
 
-    record = AuditPersistence(path).read_trace_by_id(body["trace_id"])
+    record = AuditPersistence(path).read_trace_by_id(body["trace_id"], organization_id="test-org")
     assert record is not None
     assert record["request_id"] == "req_p24_refuse"
-    assert record["refusal_details"]["reason"] == "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
+    assert record["refusal_details"]["reason"] == "ZERO_ELIGIBLE_MODELS"
 
 
 def test_unknown_task_persists_refusal_trace(tmp_path):
@@ -98,6 +174,75 @@ def test_unknown_task_persists_refusal_trace(tmp_path):
 
     assert response.status_code == 422
     trace_id = response.json()["trace_id"]
-    record = AuditPersistence(path).read_trace_by_id(trace_id)
+    record = AuditPersistence(path).read_trace_by_id(trace_id, organization_id="test-org")
     assert record is not None
     assert record["status"] == "REFUSE"
+
+
+def test_attempts_preserved_on_execute(tmp_path):
+    """attempts[] из evidence_details сохраняется в trace через AuditPersistence."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "EXECUTE",
+        "model-id",
+        1,
+        evidence_status="VERIFIED",
+        evidence_details={
+            "provider_model": "z-ai/glm-5.3-flash",
+            "attempts": [
+                {"attempt": 1, "http_status": 404, "elapsed_ms": 42},
+                {"attempt": 2, "http_status": 200, "elapsed_ms": 55},
+            ],
+        },
+    )
+    store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
+    store.write_trace(trace, organization_id="org-test")
+    record = store.read_trace_by_id(trace["trace_id"], organization_id="org-test")
+    saved = record["execution_details"]["evidence_details"]["attempts"]
+    assert len(saved) == 2
+    assert saved[1]["http_status"] == 200
+
+
+def test_attempts_preserved_on_refuse(tmp_path):
+    """attempts[] из failure_diagnostics сохраняется в refusal_details."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "REFUSE",
+        "E2_VERIFICATION_INCONCLUSIVE",
+        1,
+        failure_diagnostics={
+            "reason": "API_ERROR",
+            "http_status": 404,
+            "attempts": [
+                {"attempt": i, "http_status": 404, "elapsed_ms": i * 100} for i in range(1, 7)
+            ],
+        },
+    )
+    store = AuditPersistence(tmp_path / "provenance_traces.jsonl")
+    store.write_trace(trace, organization_id="org-test")
+    record = store.read_trace_by_id(trace["trace_id"], organization_id="org-test")
+    saved = record["refusal_details"]["provider_diagnostics"]["attempts"]
+    assert len(saved) == 6
+    assert all(attempt["http_status"] == 404 for attempt in saved)
+
+
+def test_attempts_invalid_shape_rejected():
+    """attempts с элементами неправильной формы отбрасывается."""
+    tracker = ProvenanceTracker()
+    trace = tracker.create_trace(
+        "search_and_extraction",
+        ("C01",),
+        "EXECUTE",
+        "model-id",
+        1,
+        evidence_status="VERIFIED",
+        evidence_details={
+            "provider_model": "z-ai/glm-5.3-flash",
+            "attempts": [{"attempt": "one", "http_status": 404}],
+        },
+    )
+    assert "attempts" not in trace["execution_details"]["evidence_details"]

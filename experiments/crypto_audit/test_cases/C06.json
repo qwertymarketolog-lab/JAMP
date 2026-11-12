@@ -1,0 +1,14 @@
+{
+  "id": "C06",
+  "text": "Cardano (ADA) упал на 80% от исторического максимума. Проверь утверждение.",
+  "expected_behavior": "PARTIAL",
+  "note": "Historical drawdown is outside the current market-data verifier scope.",
+  "e4_claim": {
+    "ticker": "ADA",
+    "claim_type": "price_movement",
+    "claimed_value": null,
+    "text": "ADA historical drawdown from ATH is 80%",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}

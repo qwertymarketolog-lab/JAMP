@@ -141,16 +141,8 @@ def rule_prime_power_extraction(state: State, anchor: RootAnchor) -> set[Expr]:
 def op_coprime_collision(state: State) -> Contradiction | None:
     """Detect common divisors under the active gcd(p, q) = 1 constraint."""
 
-    divs_p = {
-        atom.divisor
-        for atom in state
-        if isinstance(atom, Div) and atom.target == Var("p")
-    }
-    divs_q = {
-        atom.divisor
-        for atom in state
-        if isinstance(atom, Div) and atom.target == Var("q")
-    }
+    divs_p = {atom.divisor for atom in state if isinstance(atom, Div) and atom.target == Var("p")}
+    divs_q = {atom.divisor for atom in state if isinstance(atom, Div) and atom.target == Var("q")}
 
     coprime_fact = Equals(GCD(Var("p"), Var("q")), Number(1))
     if coprime_fact not in state:
@@ -218,9 +210,7 @@ def run_p11(root: int, degree: int) -> dict[str, object]:
         anchor,
         rules=(rule_root_anchor, rule_prime_power_extraction),
     )
-    div_q_count = sum(
-        isinstance(atom, Div) and atom.target == Var("q") for atom in final_state
-    )
+    div_q_count = sum(isinstance(atom, Div) and atom.target == Var("q") for atom in final_state)
     return {
         "branch": "IRRATIONAL_PIPELINE",
         "state": final_state,

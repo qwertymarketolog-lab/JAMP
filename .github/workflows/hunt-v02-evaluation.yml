@@ -1,0 +1,186 @@
+name: The Hunt v0.2 POST-REVEAL Independent Recheck
+
+on:
+  workflow_dispatch:
+    inputs:
+      ground_truth_run_id:
+        description: Successful Ground Truth workflow run ID
+        required: true
+        type: string
+        default: "41608537962"
+      ground_truth_artifact_id:
+        description: Ground Truth artifact ID from that run
+        required: true
+        type: string
+        default: "13217198989"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: hunt-v02-post-reveal-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  post-reveal-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUNBUFFERED: "1"
+      GH_TOKEN: ${{ github.token }}
+      GT_RUN_ID: ${{ inputs.ground_truth_run_id }}
+      GT_ARTIFACT_ID: ${{ inputs.ground_truth_artifact_id }}
+      GT_ROOT: artifacts/the-hunt/v0.2/ground-truth-source
+      TASKS_PATH: artifacts/the-hunt/v0.2/post-reveal/paired_tasks.jsonl
+      CACHE_DIR: artifacts/the-hunt/v0.2/post-reveal/jamp_cache
+      REPORT_PATH: artifacts/the-hunt/v0.2/post-reveal/paired_evaluation.json
+    steps:
+      - name: Checkout exact workflow revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Record evaluator execution identity
+        run: |
+          {
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "workflow_sha=${GITHUB_SHA}"
+            echo "checked_out_sha=$(git rev-parse HEAD)"
+            echo "python_version=$(python --version 2>&1)"
+            echo "ground_truth_run_id=${GT_RUN_ID}"
+            echo "ground_truth_artifact_id=${GT_ARTIFACT_ID}"
+          } | tee post-reveal-execution-identity.txt
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GT_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$GT_ARTIFACT_ID" =~ ^[0-9]+$ ]]
+
+      - name: Fetch and verify immutable Ground Truth run and artifact metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GT_ROOT"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GT_RUN_ID" > "$GT_ROOT/ground-truth-run-metadata.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$GT_ARTIFACT_ID" > "$GT_ROOT/ground-truth-artifact-metadata.json"
+          python - "$GT_ROOT/ground-truth-run-metadata.json" "$GT_ROOT/ground-truth-artifact-metadata.json" "$GT_RUN_ID" "$GT_ARTIFACT_ID" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          run = json.loads(Path(sys.argv[1]).read_text())
+          artifact = json.loads(Path(sys.argv[2]).read_text())
+          run_id, artifact_id = int(sys.argv[3]), int(sys.argv[4])
+          assert run.get("id") == run_id
+          assert run.get("status") == "completed" and run.get("conclusion") == "success"
+          assert artifact.get("id") == artifact_id and artifact.get("expired") is False
+          assert artifact.get("workflow_run", {}).get("id") == run_id
+          assert artifact.get("workflow_run", {}).get("head_sha") == run.get("head_sha")
+          print(json.dumps({
+              "ground_truth_run_id": run_id,
+              "ground_truth_run_sha": run["head_sha"],
+              "ground_truth_run_completed_at": run["updated_at"],
+              "artifact_id": artifact_id,
+              "artifact_name": artifact["name"],
+              "artifact_digest": artifact.get("digest"),
+              "artifact_size_bytes": artifact.get("size_in_bytes"),
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Download exact Ground Truth artifact by immutable artifact ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$GT_ARTIFACT_ID/zip" \
+            --output "$GT_ROOT/ground-truth-artifact.zip"
+          unzip -q "$GT_ROOT/ground-truth-artifact.zip" -d "$GT_ROOT/unpacked"
+          GT_DIR="$(dirname "$(find "$GT_ROOT/unpacked" -type f -name manifest.json -print -quit)")"
+          test -n "$GT_DIR" && test -s "$GT_DIR/manifest.json"
+          IDENTITY="$(find "$GT_ROOT/unpacked" -type f -name execution-identity.txt -print -quit)"
+          test -n "$IDENTITY"
+          cp "$IDENTITY" "$GT_DIR/execution-identity.txt"
+          echo "GROUND_TRUTH_DIR=$GT_DIR" >> "$GITHUB_ENV"
+          ACTUAL_DIGEST="$(sha256sum "$GT_ROOT/ground-truth-artifact.zip" | awk '{print $1}')"
+          EXPECTED_DIGEST="$(python - "$GT_ROOT/ground-truth-artifact-metadata.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          digest = json.loads(Path(sys.argv[1]).read_text()).get("digest")
+          if not isinstance(digest, str) or not digest.startswith("sha256:"):
+              raise SystemExit("Ground Truth artifact metadata has no SHA-256 digest")
+          print(digest.removeprefix("sha256:"))
+          PY
+          )"
+          test "$ACTUAL_DIGEST" = "$EXPECTED_DIGEST"
+          printf '%s  %s\\n' "$ACTUAL_DIGEST" "$GT_ROOT/ground-truth-artifact.zip" | tee "$GT_ROOT/downloaded-artifact.sha256"
+          echo "Ground Truth directory: $GT_DIR"
+
+      - name: Prepare synthetic paired tasks and collect independent POST-REVEAL cache
+        shell: bash
+        run: |
+          set -o pipefail
+          python experiments/the-hunt/v0.2/prepare_eval_inputs.py \
+            --ground-truth-dir "$GROUND_TRUTH_DIR" \
+            --tasks "$TASKS_PATH" \
+            --jamp-cache-dir "$CACHE_DIR" \
+            --gt-run-metadata "$GT_ROOT/ground-truth-run-metadata.json" \
+            --gt-artifact-metadata "$GT_ROOT/ground-truth-artifact-metadata.json" \
+            --gt-run-id "$GT_RUN_ID" \
+            --gt-artifact-id "$GT_ARTIFACT_ID" 2>&1 | tee post-reveal-collector.log
+
+      - name: Run paired evaluator in explicit POST-REVEAL mode
+        shell: bash
+        run: |
+          set -o pipefail
+          python experiments/the-hunt/v0.2/evaluate_v0.2.py \
+            --ground-truth-dir "$GROUND_TRUTH_DIR" \
+            --tasks "$TASKS_PATH" \
+            --jamp-cache "$CACHE_DIR/manifest.json" \
+            --evaluation-mode POST_REVEAL_INDEPENDENT_RECHECK \
+            --output "$REPORT_PATH" 2>&1 | tee post-reveal-evaluator.log
+          python - "$REPORT_PATH" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text())
+          assert report["evaluation_mode"] == "POST_REVEAL_INDEPENDENT_RECHECK"
+          assert report["cache_acquisition_phase"] == "POST_REVEAL"
+          assert report["attempted_task_count"] == 200
+          assert report["cache_ground_truth_workflow_run_id"] == int(os.environ["GT_RUN_ID"])
+          assert report["cache_ground_truth_artifact_id"] == int(os.environ["GT_ARTIFACT_ID"])
+          print(json.dumps({
+              "evaluation_mode": report["evaluation_mode"],
+              "attempted_task_count": report["attempted_task_count"],
+              "paired_scored_count": report["paired_scored_count"],
+              "excluded_task_count": report["excluded_task_count"],
+              "coverage": report["coverage"],
+              "baseline": report["baseline"],
+              "jamp": report["jamp"],
+              "interpretation_limit": report["interpretation_limit"],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload complete POST-REVEAL provenance and evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v02-post-reveal-evaluation-${{ github.run_id }}
+          path: |
+            artifacts/the-hunt/v0.2/post-reveal/
+            artifacts/the-hunt/v0.2/ground-truth-source/ground-truth-run-metadata.json
+            artifacts/the-hunt/v0.2/ground-truth-source/ground-truth-artifact-metadata.json
+            artifacts/the-hunt/v0.2/ground-truth-source/downloaded-artifact.sha256
+            post-reveal-execution-identity.txt
+            post-reveal-collector.log
+            post-reveal-evaluator.log
+          if-no-files-found: warn
+          retention-days: 30

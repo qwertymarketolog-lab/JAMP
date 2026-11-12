@@ -1,0 +1,53 @@
+name: The Hunt Synthetic Evaluator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: the-hunt-synthetic-evaluator-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Verify PyPI ground truth and run paired evaluator
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify candidate ground truth against live PyPI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/code-audit/verify_ground_truth.py > ground-truth-verification.log
+
+      - name: Run strict paired evaluator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experiments/the-hunt/code-audit/evaluate.py > evaluator-report.json
+          cat evaluator-report.json
+
+      - name: Upload evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-hunt-methodology-evidence
+          path: |
+            ground-truth-verification.log
+            evaluator-report.json
+            experiments/the-hunt/code-audit/ground_truth.json
+            experiments/the-hunt/code-audit/valid_fakes.json
+          if-no-files-found: warn
+          retention-days: 14

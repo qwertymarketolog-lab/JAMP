@@ -1,4 +1,5 @@
 """Deterministic, immutable Cross-Session Pattern Index for P17.2."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,10 +18,9 @@ def _digest(value: object) -> str:
 
 
 def _registry_digest(registry: ReadonlyRegistry) -> str:
-    return _digest([
-        {"record_id": r.record_id, "kind": r.kind, "payload": r.payload}
-        for r in registry.all()
-    ])
+    return _digest(
+        [{"record_id": r.record_id, "kind": r.kind, "payload": r.payload} for r in registry.all()]
+    )
 
 
 def _causal_material(trajectory: CausalTrajectory) -> list[dict[str, object]]:
@@ -42,13 +42,15 @@ class PatternKey:
 
     @property
     def digest(self) -> str:
-        return _digest({
-            "state_digest": self.state_digest,
-            "causal_sequence_digest": self.causal_sequence_digest,
-            "causal_depth": self.causal_depth,
-            "branching_signature": self.branching_signature,
-            "evaluator_digest": self.evaluator_digest,
-        })
+        return _digest(
+            {
+                "state_digest": self.state_digest,
+                "causal_sequence_digest": self.causal_sequence_digest,
+                "causal_depth": self.causal_depth,
+                "branching_signature": self.branching_signature,
+                "evaluator_digest": self.evaluator_digest,
+            }
+        )
 
 
 @dataclass(frozen=True)

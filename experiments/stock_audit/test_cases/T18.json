@@ -1,0 +1,6 @@
+{
+  "id": "T18",
+  "text": "СИБУР планирует IPO в 2026. Какие риски из-за госучастия?",
+  "expected_behavior": "PARTIAL",
+  "note": "IPO/event claim вне области MOEX; анализ может выполниться, но aggregate_status должен быть PARTIAL до проверки E5."
+}

@@ -1,0 +1,61 @@
+name: The Hunt v0.3 - Temporal Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/hunt-v03-temporal-contract.yml"
+      - "experiments/the-hunt/v0.3/**"
+      - "tests/test_hunt_v03*.py"
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile and run temporal contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p temporal-evidence
+          python -m compileall -q \
+            experiments/the-hunt/v0.3/run_llm_v3.py \
+            experiments/the-hunt/v0.3/evaluate_v0.3.py \
+            experiments/the-hunt/v0.3/temporal_contract.py \
+            tests/test_hunt_v03.py tests/test_hunt_v03_temporal.py
+          python -m unittest discover -s tests -p 'test_hunt_v03*.py' -v \
+            2>&1 | tee temporal-evidence/tests.log
+
+      - name: Capture immutable CI metadata
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'github_run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'github_workflow=%s\n' "$GITHUB_WORKFLOW"
+            printf 'github_sha=%s\n' "$GITHUB_SHA"
+            printf 'frozen_core_blob=%s\n' "$(git rev-parse "$GITHUB_SHA:src/jamp/run.py")"
+            printf 'frozen_core_expected=%s\n' \
+              '0fee0e1c5c1a1548361965ac51eacdeba62bfe8a'
+          } > temporal-evidence/ci-metadata.txt
+
+      - name: Upload terminal temporal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hunt-v03-temporal-contract-${{ github.run_id }}
+          path: temporal-evidence/
+          if-no-files-found: warn
+          retention-days: 90

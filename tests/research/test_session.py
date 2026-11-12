@@ -70,17 +70,28 @@ def test_gate_06_explicit_metadata():
 
 
 def test_gate_07_explicit_object_indexes():
-    s = _session([
-        _artifact("question", _hash("q")),
-        _artifact("plan", _hash("p")),
-        _artifact("execution", _hash("e")),
-        _artifact("result", _hash("r")),
-        _artifact("interpretation", _hash("i")),
-        _artifact("claim", _hash("cl")),
-        _artifact("consensus", _hash("c")),
-        _artifact("revision", _hash("v")),
-    ])
-    assert set(s.indexes) == {"question", "plan", "execution", "result", "interpretation", "claim", "consensus", "revision"}
+    s = _session(
+        [
+            _artifact("question", _hash("q")),
+            _artifact("plan", _hash("p")),
+            _artifact("execution", _hash("e")),
+            _artifact("result", _hash("r")),
+            _artifact("interpretation", _hash("i")),
+            _artifact("claim", _hash("cl")),
+            _artifact("consensus", _hash("c")),
+            _artifact("revision", _hash("v")),
+        ]
+    )
+    assert set(s.indexes) == {
+        "question",
+        "plan",
+        "execution",
+        "result",
+        "interpretation",
+        "claim",
+        "consensus",
+        "revision",
+    }
 
 
 def test_gate_08_valid_status():
@@ -145,7 +156,9 @@ def test_gate_18_unknown_artifact_rejected():
 def test_gate_19_artifact_integrity_verified():
     mod = _load()
     with pytest.raises((ValueError, TypeError)):
-        mod.ResearchSession.create(metadata={}, artifacts=[{"kind": "question", "artifact_hash": "bad"}], status="OPEN")
+        mod.ResearchSession.create(
+            metadata={}, artifacts=[{"kind": "question", "artifact_hash": "bad"}], status="OPEN"
+        )
 
 
 def test_gate_20_artifact_substitution_rejected():
@@ -180,7 +193,14 @@ def test_gate_24_unordered_permutation_independent():
 
 def test_gate_25_complete_provenance_preserved():
     q, p, e, r = (_hash(x) for x in ("q", "p", "e", "r"))
-    s = _session([_artifact("question", q), _artifact("plan", p), _artifact("execution", e), _artifact("result", r)])
+    s = _session(
+        [
+            _artifact("question", q),
+            _artifact("plan", p),
+            _artifact("execution", e),
+            _artifact("result", r),
+        ]
+    )
     assert s.provenance()["question"] == (q,)
     assert s.provenance()["plan"] == (p,)
     assert s.provenance()["execution"] == (e,)
@@ -231,7 +251,13 @@ def test_gate_32_deterministic_import_verification():
 
 
 def test_gate_33_complete_investigation_reconstruction():
-    s = _session([_artifact("question", _hash("q")), _artifact("plan", _hash("p")), _artifact("result", _hash("r"))])
+    s = _session(
+        [
+            _artifact("question", _hash("q")),
+            _artifact("plan", _hash("p")),
+            _artifact("result", _hash("r")),
+        ]
+    )
     restored = _load().ResearchSession.import_(s.export())
     assert restored.indexes == s.indexes and restored.provenance() == s.provenance()
 

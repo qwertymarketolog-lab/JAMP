@@ -1,0 +1,21 @@
+{
+  "id": "C10",
+  "text": "Существует ли $PEPE2, торгуемый только на DEX? Проверь наличие в CoinGecko.",
+  "expected_behavior": "REFUSE",
+  "note": "CoinGecko absence is contradiction within v1; DEX-only token coverage is Stage 15 debt.",
+  "e4_claim": {
+    "ticker": "$PEPE2",
+    "coin_id": "pepe2",
+    "claim_type": "existence",
+    "claimed_value": null,
+    "text": "PEPE2 exists",
+    "critical": true,
+    "asset_class": "crypto"
+  },
+  "acceptance_rule": {
+    "kind": "explicit_refusal",
+    "required_status": "REFUSE",
+    "required_evidence_status": "VERIFIED",
+    "required_response_reason": "E4_CANNOT_VERIFY_EXISTENCE"
+  }
+}

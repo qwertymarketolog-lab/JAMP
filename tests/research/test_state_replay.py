@@ -3,6 +3,7 @@
 The production module is intentionally absent at contract deployment time.
 These gates define the public boundary before implementation.
 """
+
 from __future__ import annotations
 
 import ast
@@ -14,9 +15,23 @@ import pytest
 from jamp.research import replay
 
 FORBIDDEN = {
-    "select", "select_node", "select_nodes", "rank", "sort", "sorted",
-    "filter", "threshold", "heuristic", "estimate", "approximate",
-    "goal", "objective", "utility", "fitness", "probability", "prediction",
+    "select",
+    "select_node",
+    "select_nodes",
+    "rank",
+    "sort",
+    "sorted",
+    "filter",
+    "threshold",
+    "heuristic",
+    "estimate",
+    "approximate",
+    "goal",
+    "objective",
+    "utility",
+    "fitness",
+    "probability",
+    "prediction",
 }
 
 
@@ -26,11 +41,13 @@ def _source_tree():
 
 def _node(value: str, parents: tuple[str, ...] = ()):
     from jamp.research.lineage_graph import LineageNode
+
     return LineageNode(value, parents)
 
 
 def _graph():
     from jamp.research.lineage_graph import build_lineage_graph
+
     a = _node("a" * 64)
     b = _node("b" * 64, (a.node_hash,))
     c = _node("c" * 64, (b.node_hash,))
@@ -98,6 +115,7 @@ def test_unknown_target_is_rejected():
 
 def test_missing_parent_is_rejected():
     from jamp.research.lineage_graph import LineageNode, build_lineage_graph
+
     node = LineageNode("a" * 64, ("b" * 64,))
     with pytest.raises(ValueError):
         build_lineage_graph((node,))
@@ -105,6 +123,7 @@ def test_missing_parent_is_rejected():
 
 def test_cycle_is_rejected_before_replay():
     from jamp.research.lineage_graph import LineageNode, build_lineage_graph
+
     a = LineageNode("a" * 64, ("b" * 64,))
     b = LineageNode("b" * 64, ("a" * 64,))
     with pytest.raises(ValueError):
@@ -113,6 +132,7 @@ def test_cycle_is_rejected_before_replay():
 
 def test_branch_traversal_replays_selected_branch():
     from jamp.research.lineage_graph import LineageNode, build_lineage_graph
+
     root = _node("a" * 64)
     left = _node("b" * 64, (root.node_hash,))
     right = _node("c" * 64, (root.node_hash,))
@@ -123,6 +143,7 @@ def test_branch_traversal_replays_selected_branch():
 
 def test_branch_replay_does_not_cross_siblings():
     from jamp.research.lineage_graph import LineageNode, build_lineage_graph
+
     root = _node("a" * 64)
     left = _node("b" * 64, (root.node_hash,))
     right = _node("c" * 64, (root.node_hash,))
@@ -170,6 +191,7 @@ def test_repeated_replay_produces_equal_results():
 
 def test_equivalent_graph_input_order_produces_equal_result():
     from jamp.research.lineage_graph import build_lineage_graph
+
     a = _node("a" * 64)
     b = _node("b" * 64, (a.node_hash,))
     g1 = build_lineage_graph((a, b))
@@ -229,6 +251,7 @@ def test_verify_replay_rejects_wrong_graph():
     result = replay.replay_state(graph, "c" * 64)
     other = _node("d" * 64)
     from jamp.research.lineage_graph import build_lineage_graph
+
     with pytest.raises(ValueError):
         replay.verify_replay(build_lineage_graph((other,)), result)
 

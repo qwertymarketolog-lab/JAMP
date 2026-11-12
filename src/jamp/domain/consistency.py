@@ -1,4 +1,5 @@
 """Pure formal consistency checks for the JAMP EventDAG."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -93,14 +94,14 @@ class DAGConsistencyChecker:
         while changed:
             changed = False
             for event_id, node in nodes.items():
-                if event_id not in reachable and any(parent in reachable for parent in node.parent_ids):
+                if event_id not in reachable and any(
+                    parent in reachable for parent in node.parent_ids
+                ):
                     reachable.add(event_id)
                     changed = True
         disconnected = set(nodes) - reachable
         if disconnected:
-            raise CausalConsistencyError(
-                f"I4: disconnected event nodes: {sorted(disconnected)!r}."
-            )
+            raise CausalConsistencyError(f"I4: disconnected event nodes: {sorted(disconnected)!r}.")
 
     @classmethod
     def _hash_chain(cls, nodes: Mapping[str, EventNode]) -> None:

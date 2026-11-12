@@ -4,6 +4,7 @@ The score is a reproducible support measure derived only from validated
 hypothesis, evidence-ledger, and lineage-graph state. It is not a probability
 of truth and performs no ranking or global normalization.
 """
+
 from __future__ import annotations
 
 from . import canonical
@@ -14,9 +15,7 @@ from .lineage_graph import LineageGraph, verify_lineage
 __all__ = ("score_hypothesis",)
 
 
-def _validate_inputs(
-    hypothesis: Hypothesis, ledger: EvidenceLedger, graph: LineageGraph
-) -> None:
+def _validate_inputs(hypothesis: Hypothesis, ledger: EvidenceLedger, graph: LineageGraph) -> None:
     if not isinstance(hypothesis, Hypothesis):
         raise TypeError("hypothesis must be a Hypothesis")
     if not isinstance(ledger, EvidenceLedger):
@@ -25,9 +24,7 @@ def _validate_inputs(
         raise TypeError("graph must be a LineageGraph")
 
 
-def score_hypothesis(
-    hypothesis: Hypothesis, ledger: EvidenceLedger, graph: LineageGraph
-) -> float:
+def score_hypothesis(hypothesis: Hypothesis, ledger: EvidenceLedger, graph: LineageGraph) -> float:
     """Return the deterministic P22.9 structural support score.
 
     For n unique evidence references and u distinct source identities:

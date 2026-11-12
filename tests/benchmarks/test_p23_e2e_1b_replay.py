@@ -21,9 +21,7 @@ def test_e2e_1b_tick_1_cold_replay_exact_match(tmp_path: Path):
     """Verify Tick 1 H1 score reconstructed in isolated process matches online score bitwise."""
     fixture = create_tick_1_fixture()
 
-    online_score_h1 = score_hypothesis(
-        fixture.hypothesis_h1, fixture.ledger, fixture.graph
-    )
+    online_score_h1 = score_hypothesis(fixture.hypothesis_h1, fixture.ledger, fixture.graph)
 
     cold_results = run_cold_replay(
         graph=fixture.graph,
@@ -42,12 +40,8 @@ def test_e2e_1b_tick_2_cold_replay_exact_match(tmp_path: Path):
     """Verify Tick 2 H1 and H2 scores reconstructed in isolated process match online scores."""
     fixture = create_tick_2_fixture()
 
-    online_score_h1 = score_hypothesis(
-        fixture.hypothesis_h1, fixture.ledger, fixture.graph
-    )
-    online_score_h2 = score_hypothesis(
-        fixture.hypothesis_h2, fixture.ledger, fixture.graph
-    )
+    online_score_h1 = score_hypothesis(fixture.hypothesis_h1, fixture.ledger, fixture.graph)
+    online_score_h2 = score_hypothesis(fixture.hypothesis_h2, fixture.ledger, fixture.graph)
 
     cold_results = run_cold_replay(
         graph=fixture.graph,

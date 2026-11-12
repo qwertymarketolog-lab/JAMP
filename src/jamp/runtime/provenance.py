@@ -8,12 +8,18 @@ from typing import Any
 
 FROZEN_CORE_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 EVIDENCE_SHA256 = "7785cbd5ae19704473b385b8b21ddbdf7cd9eeb06aee56ce0f66e7da7592f1f1"
-AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.1"
+AUDIT_TRACE_SCHEMA_VERSION = "jamp-audit-trace-v0.2"
 
 
 def validate_audit_trace(trace: dict[str, Any]) -> None:
-    if trace.get("schema_version") != AUDIT_TRACE_SCHEMA_VERSION:
+    schema_ver = trace.get("schema_version")
+    if schema_ver not in ("jamp-audit-trace-v0.1", "jamp-audit-trace-v0.2"):
         raise ValueError("AuditTrace schema_version contract violation")
+
+    if schema_ver == "jamp-audit-trace-v0.2" and trace.get("status") == "EXECUTE":
+        details = trace.get("execution_details", {})
+        if details.get("provider") == "openrouter" and details.get("evidence_status") != "VERIFIED":
+            raise ValueError("OpenRouter EXECUTE requires evidence_status == 'VERIFIED'")
 
 
 class ProvenanceTracker:
@@ -36,8 +42,13 @@ class ProvenanceTracker:
         eligible_count: int,
         output: Any = None,
         request_id: str | None = None,
+        refusal_reason: str | None = None,
+        failure_diagnostics: dict[str, Any] | None = None,
+        evidence_status: str | None = None,
+        evidence_details: dict[str, Any] | None = None,
+        fallback_history: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        trace = {
+        trace: dict[str, Any] = {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
             "trace_id": f"trace_{uuid.uuid4().hex[:8]}",
             "timestamp": datetime.now(UTC).isoformat(),
@@ -63,13 +74,197 @@ class ProvenanceTracker:
             },
         }
         if action == "EXECUTE":
-            trace["execution_details"] = {"selected_model": selected_model}
+            execution_details: dict[str, Any] = {"selected_model": selected_model}
+            if evidence_status is not None:
+                execution_details["evidence_status"] = evidence_status
+            if isinstance(evidence_details, dict):
+                safe_evidence_details: dict[str, Any] = {}
+                for key in (
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "provider_name",
+                    "generation_id",
+                    "jamp_model",
+                ):
+                    value = evidence_details.get(key)
+                    if isinstance(value, str) and value:
+                        safe_evidence_details[key] = value
+                attempts_value = evidence_details.get("attempts")
+                if (
+                    isinstance(attempts_value, list)
+                    and attempts_value
+                    and all(
+                        isinstance(item, dict)
+                        and isinstance(item.get("attempt"), int)
+                        and isinstance(item.get("http_status"), (int, type(None)))
+                        and isinstance(item.get("elapsed_ms"), int)
+                        for item in attempts_value
+                    )
+                ):
+                    safe_evidence_details["attempts"] = [
+                        {
+                            "attempt": item["attempt"],
+                            "http_status": item["http_status"],
+                            "elapsed_ms": item["elapsed_ms"],
+                        }
+                        for item in attempts_value
+                    ]
+                if safe_evidence_details:
+                    execution_details["evidence_details"] = safe_evidence_details
+            if isinstance(output, dict):
+                for key in (
+                    "provider",
+                    "requested_model_id",
+                    "provider_requested_model_id",
+                    "provider_model_id",
+                    "provider_response_id",
+                    "crosswalk_digest",
+                ):
+                    value = output.get(key)
+                    if isinstance(value, str) and value:
+                        execution_details[key] = value
+                qualification = output.get("qualification")
+                execution_details["qualification"] = (
+                    qualification if isinstance(qualification, str) and qualification else "UNKNOWN"
+                )
+            history_source = fallback_history
+            if history_source is None and isinstance(output, dict):
+                candidate_history = output.get("fallback_history")
+                history_source = candidate_history if isinstance(candidate_history, list) else None
+            if isinstance(history_source, list):
+                safe_history = []
+                for attempt in history_source[:5]:
+                    if not isinstance(attempt, dict):
+                        continue
+                    provider = attempt.get("provider")
+                    requested_model = attempt.get("requested_model")
+                    http_status = attempt.get("http_status")
+                    error = attempt.get("error")
+                    if (
+                        isinstance(provider, str)
+                        and isinstance(requested_model, str)
+                        and type(http_status) is int
+                        and 100 <= http_status <= 599
+                        and isinstance(error, str)
+                    ):
+                        safe_history.append(
+                            {
+                                "provider": provider[:80],
+                                "requested_model": requested_model[:160],
+                                "http_status": http_status,
+                                "error": error[:150],
+                            }
+                        )
+                execution_details["fallback_history"] = safe_history
             if output is not None:
-                trace["execution_details"]["output_digest"] = self.output_digest(output)
+                execution_details["output_digest"] = self.output_digest(output)
+            trace["execution_details"] = execution_details
         else:
+            reason = refusal_reason or "FAIL_CLOSED_ZERO_QUALIFIED_MODELS"
             trace["refusal_details"] = {
-                "reason": "FAIL_CLOSED_ZERO_QUALIFIED_MODELS",
-                "message": f"Execution blocked: no model satisfies {list(required_caps)}.",
+                "reason": reason,
+                "message": (
+                    f"Execution refused: {reason}."
+                    if refusal_reason
+                    else f"Execution blocked: no model satisfies {list(required_caps)}."
+                ),
             }
+            if isinstance(failure_diagnostics, dict):
+                diagnostics: dict[str, Any] = {}
+                for k in (
+                    "evidence_status",
+                    "reason",
+                    "error",
+                    "provider_model",
+                    "generation_id",
+                    "jamp_model",
+                    "provider_name",
+                    "http_status",
+                    "network_error",
+                    "exception_type",
+                    "error_message",
+                    "error_body",
+                    "attempts",
+                ):
+                    if k in failure_diagnostics:
+                        value = failure_diagnostics[k]
+                        if k == "attempts":
+                            if not isinstance(value, list):
+                                continue
+                            if not all(
+                                isinstance(item, dict)
+                                and isinstance(item.get("attempt"), int)
+                                and isinstance(item.get("http_status"), (int, type(None)))
+                                and isinstance(item.get("elapsed_ms"), int)
+                                for item in value
+                            ):
+                                continue
+                            value = [
+                                {
+                                    "attempt": item["attempt"],
+                                    "http_status": item["http_status"],
+                                    "elapsed_ms": item["elapsed_ms"],
+                                }
+                                for item in value
+                            ]
+                        diagnostics[k] = value
+                for key in (
+                    "code",
+                    "finish_reason",
+                    "model",
+                    "selected_model",
+                    "requested_model_id",
+                    "provider_requested_model_id",
+                    "crosswalk_digest",
+                    "output_provider",
+                    "output_response_id",
+                    "output_model_id",
+                ):
+                    value = failure_diagnostics.get(key)
+                    if isinstance(value, str) and value:
+                        diagnostics[key] = value
+                    elif key == "finish_reason" and key in failure_diagnostics and value is None:
+                        diagnostics[key] = None
+                usage = failure_diagnostics.get("usage")
+                if isinstance(usage, dict):
+                    diagnostics["usage"] = usage
+                history_source = failure_diagnostics.get("fallback_history")
+                if isinstance(history_source, list):
+                    safe_history = []
+                    for attempt in history_source[:5]:
+                        if not isinstance(attempt, dict):
+                            continue
+                        provider = attempt.get("provider")
+                        requested_model = attempt.get("requested_model")
+                        http_status = attempt.get("http_status")
+                        error = attempt.get("error")
+                        if (
+                            isinstance(provider, str)
+                            and isinstance(requested_model, str)
+                            and type(http_status) is int
+                            and 100 <= http_status <= 599
+                            and isinstance(error, str)
+                        ):
+                            safe_history.append(
+                                {
+                                    "provider": provider[:80],
+                                    "requested_model": requested_model[:160],
+                                    "http_status": http_status,
+                                    "error": error[:150],
+                                }
+                            )
+                    diagnostics["fallback_history"] = safe_history
+                for key in (
+                    "content_len",
+                    "reasoning_len",
+                    "requested_max_tokens",
+                    "provider_http_status",
+                ):
+                    value = failure_diagnostics.get(key)
+                    if type(value) is int and value >= 0:
+                        diagnostics[key] = value
+                if diagnostics:
+                    trace["refusal_details"]["provider_diagnostics"] = diagnostics
         validate_audit_trace(trace)
         return trace

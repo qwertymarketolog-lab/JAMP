@@ -1,4 +1,5 @@
 """Deterministic, read-only trajectory and outcome evaluation for P17.1."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -164,7 +165,11 @@ class TrajectoryOutcomeEvaluator:
             parents[nodes[index]] = (nodes[depth - 1],)
 
         candidate_graph: dict[str, list[str]] = {node: [] for node in nodes}
-        edges = ((nodes[i], nodes[j]) for i in range(candidate_count) for j in range(i + 1, candidate_count))
+        edges = (
+            (nodes[i], nodes[j])
+            for i in range(candidate_count)
+            for j in range(i + 1, candidate_count)
+        )
         for parent, child in list(edges)[:branching_burden]:
             candidate_graph[parent].append(child)
 

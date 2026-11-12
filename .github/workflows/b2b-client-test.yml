@@ -1,0 +1,49 @@
+name: B2B Client Contract Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "experiments/b2b_client/run_b2b_client.py"
+      - ".github/workflows/b2b-client-test.yml"
+      - "src/jamp/api/**"
+      - "src/jamp/runtime/verdict.py"
+
+permissions:
+  contents: read
+
+jobs:
+  b2b-client-contract:
+    name: B2B real HTTP contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      JAMP_API_KEY_HASH_SECRET: test-hmac-secret-not-for-production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project and test dependencies
+        run: python -m pip install -e ".[dev]" "uvicorn"
+
+      - name: Run real HTTP B2B contract
+        shell: bash
+        run: |
+          set -o pipefail
+          : > uvicorn-server.log
+          python experiments/b2b_client/run_b2b_client.py 2>&1 | tee b2b-client-result.log
+
+      - name: Upload client and server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2b-real-http-e2e-result
+          path: |
+            b2b-client-result.log
+            uvicorn-server.log
+          if-no-files-found: error

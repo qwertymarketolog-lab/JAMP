@@ -4,6 +4,7 @@ The contract forbids ranking, scoring, target-directed selection, and mutation
 semantics that belong to later phases. Candidates must be deterministic,
 content-addressed descendants preserving evidence/causal lineage.
 """
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
@@ -69,7 +70,9 @@ def test_gate_05_identical_inputs_are_identical():
 
 
 def test_gate_06_state_hashes_are_deterministic():
-    assert [c.state_hash for c in generate_candidates(state())] == [c.state_hash for c in generate_candidates(state())]
+    assert [c.state_hash for c in generate_candidates(state())] == [
+        c.state_hash for c in generate_candidates(state())
+    ]
 
 
 def test_gate_07_order_is_hash_canonical():
@@ -109,27 +112,44 @@ def test_gate_13_assumptions_are_inherited():
 
 def test_gate_14_hypothesis_assumptions_are_preserved():
     parent = state()
-    assert all(c.hypothesis_set[0].assumptions == parent.hypothesis_set[0].assumptions for c in generate_candidates(parent))
+    assert all(
+        c.hypothesis_set[0].assumptions == parent.hypothesis_set[0].assumptions
+        for c in generate_candidates(parent)
+    )
 
 
 def test_gate_15_causal_dependencies_are_preserved():
     parent = state()
-    assert all(c.hypothesis_set[0].causal_dependencies == parent.hypothesis_set[0].causal_dependencies for c in generate_candidates(parent))
+    assert all(
+        c.hypothesis_set[0].causal_dependencies == parent.hypothesis_set[0].causal_dependencies
+        for c in generate_candidates(parent)
+    )
 
 
 def test_gate_16_supporting_evidence_is_preserved():
     parent = state()
-    assert all(c.hypothesis_set[0].supporting_evidence == parent.hypothesis_set[0].supporting_evidence for c in generate_candidates(parent))
+    assert all(
+        c.hypothesis_set[0].supporting_evidence == parent.hypothesis_set[0].supporting_evidence
+        for c in generate_candidates(parent)
+    )
 
 
 def test_gate_17_contradicting_evidence_is_preserved():
     parent = state()
-    assert all(c.hypothesis_set[0].contradicting_evidence == parent.hypothesis_set[0].contradicting_evidence for c in generate_candidates(parent))
+    assert all(
+        c.hypothesis_set[0].contradicting_evidence
+        == parent.hypothesis_set[0].contradicting_evidence
+        for c in generate_candidates(parent)
+    )
 
 
 def test_gate_18_interventions_are_preserved():
     parent = state()
-    assert all(c.hypothesis_set[0].admissible_interventions == parent.hypothesis_set[0].admissible_interventions for c in generate_candidates(parent))
+    assert all(
+        c.hypothesis_set[0].admissible_interventions
+        == parent.hypothesis_set[0].admissible_interventions
+        for c in generate_candidates(parent)
+    )
 
 
 def test_gate_19_empty_evidence_does_not_equal_validation():
@@ -163,24 +183,37 @@ def test_gate_23_invalid_state_hash_is_rejected():
 
 def test_gate_24_mapping_key_order_does_not_affect_input_hash():
     h1 = hypothesis(claims=("x", "y"))
-    h2 = Hypothesis(**dict(reversed({
-        "claims": ("x", "y"), "supporting_evidence": (EVIDENCE,),
-        "contradicting_evidence": (), "assumptions": ("x is measurable",),
-        "causal_dependencies": (CAUSAL,), "admissible_interventions": ("x",),
-    }.items())))
+    h2 = Hypothesis(
+        **dict(
+            reversed(
+                {
+                    "claims": ("x", "y"),
+                    "supporting_evidence": (EVIDENCE,),
+                    "contradicting_evidence": (),
+                    "assumptions": ("x is measurable",),
+                    "causal_dependencies": (CAUSAL,),
+                    "admissible_interventions": ("x",),
+                }.items()
+            )
+        )
+    )
     assert h1.hypothesis_hash == h2.hypothesis_hash
 
 
 def test_gate_25_constraints_shuffling_preserves_candidate_sequence():
     left = state(constraints=("b", "a"))
     right = state(constraints=("a", "b"))
-    assert [c.state_hash for c in generate_candidates(left)] == [c.state_hash for c in generate_candidates(right)]
+    assert [c.state_hash for c in generate_candidates(left)] == [
+        c.state_hash for c in generate_candidates(right)
+    ]
 
 
 def test_gate_26_hypothesis_claim_shuffling_is_canonical():
     left = state(hypothesis_set=(hypothesis(claims=("b", "a")),))
     right = state(hypothesis_set=(hypothesis(claims=("a", "b")),))
-    assert [c.state_hash for c in generate_candidates(left)] == [c.state_hash for c in generate_candidates(right)]
+    assert [c.state_hash for c in generate_candidates(left)] == [
+        c.state_hash for c in generate_candidates(right)
+    ]
 
 
 def test_gate_27_target_argument_is_forbidden():
@@ -210,8 +243,13 @@ def test_gate_31_counterfactual_argument_is_forbidden():
 
 def test_gate_32_mutation_op_is_explicitly_closed():
     assert {x.value for x in MutationOp} == {
-        "ADD_CONDITION", "REMOVE_CONDITION", "MODIFY_PARAMETER",
-        "SPLIT_HYPOTHESIS", "MERGE_HYPOTHESES", "ADD_ASSUMPTION", "REMOVE_ASSUMPTION",
+        "ADD_CONDITION",
+        "REMOVE_CONDITION",
+        "MODIFY_PARAMETER",
+        "SPLIT_HYPOTHESIS",
+        "MERGE_HYPOTHESES",
+        "ADD_ASSUMPTION",
+        "REMOVE_ASSUMPTION",
     }
 
 
@@ -235,14 +273,21 @@ def test_gate_36_candidate_verification_survives_generation():
 
 
 def test_gate_37_generation_has_no_runtime_metadata_dependency():
-    assert [c.state_hash for c in generate_candidates(state())] == [c.state_hash for c in generate_candidates(state())]
+    assert [c.state_hash for c in generate_candidates(state())] == [
+        c.state_hash for c in generate_candidates(state())
+    ]
 
 
 def test_gate_38_generation_does_not_rank_by_evidence_count():
     a = state(hypothesis_set=(hypothesis(supporting_evidence=(EVIDENCE,)),))
     b = state(hypothesis_set=(hypothesis(supporting_evidence=(EVIDENCE, EVIDENCE_2)),))
-    assert [c.state_hash for c in generate_candidates(a)] == [c.state_hash for c in generate_candidates(a)]
-    assert all(c.hypothesis_set[0].supporting_evidence == b.hypothesis_set[0].supporting_evidence for c in generate_candidates(b))
+    assert [c.state_hash for c in generate_candidates(a)] == [
+        c.state_hash for c in generate_candidates(a)
+    ]
+    assert all(
+        c.hypothesis_set[0].supporting_evidence == b.hypothesis_set[0].supporting_evidence
+        for c in generate_candidates(b)
+    )
 
 
 def test_gate_39_frozen_candidate_state():

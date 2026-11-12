@@ -3,6 +3,7 @@
 Hypotheses are immutable, content-addressed propositions grounded in the
 P22.7 evidence ledger. This module performs structural validation only.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -125,9 +126,7 @@ def _evidence_map(ledger: EvidenceLedger) -> dict[str, EvidenceRecord]:
     return {record.evidence_hash: record for record in ledger.records}
 
 
-def build_hypothesis_set(
-    hypotheses: Sequence[Hypothesis], ledger: EvidenceLedger
-) -> HypothesisSet:
+def build_hypothesis_set(hypotheses: Sequence[Hypothesis], ledger: EvidenceLedger) -> HypothesisSet:
     if isinstance(hypotheses, (str, bytes)):
         raise TypeError("hypotheses must be a sequence of Hypothesis")
     if not isinstance(ledger, EvidenceLedger):
@@ -162,9 +161,7 @@ def build_hypothesis_set(
     return HypothesisSet(canonical_hypotheses, _set_digest(canonical_hypotheses))
 
 
-def verify_hypothesis_provenance(
-    hypothesis_set: HypothesisSet, ledger: EvidenceLedger
-) -> bool:
+def verify_hypothesis_provenance(hypothesis_set: HypothesisSet, ledger: EvidenceLedger) -> bool:
     if not isinstance(hypothesis_set, HypothesisSet):
         raise TypeError("hypothesis_set must be a HypothesisSet")
     if not isinstance(ledger, EvidenceLedger):

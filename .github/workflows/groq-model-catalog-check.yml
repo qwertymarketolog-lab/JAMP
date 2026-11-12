@@ -1,0 +1,60 @@
+name: Groq Model Catalog Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Groq account model catalog
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GROQ_API_KEY:-}" ]]; then
+            echo "::error::GROQ_API_KEY secret is not configured"
+            exit 1
+          fi
+
+          http_status="$(curl --silent --show-error \
+            --max-time 30 \
+            --output models-response.json \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer ${GROQ_API_KEY}" \
+            https://api.groq.com/openai/v1/models)"
+
+          if [[ "$http_status" != "200" ]]; then
+            echo "::error::Groq models endpoint returned HTTP $http_status"
+            exit 1
+          fi
+
+          if ! jq -e '.data | type == "array"' models-response.json >/dev/null; then
+            echo "::error::Groq models response has an unexpected JSON shape"
+            exit 1
+          fi
+
+          jq -r '.data[].id' models-response.json | sort -u | tee models.txt
+
+          if jq -e '.data | any(.id == "openai/gpt-oss-120b")' models-response.json >/dev/null; then
+            echo "GPT_OSS_120B=AVAILABLE"
+            model_status="AVAILABLE"
+          else
+            echo "GPT_OSS_120B=NOT_LISTED"
+            model_status="NOT_LISTED"
+          fi
+
+          {
+            echo "## Groq account model catalog"
+            echo
+            echo "- HTTP status: $http_status"
+            echo "- openai/gpt-oss-120b: $model_status"
+            echo
+            echo "### Available model IDs"
+            echo
+            cat models.txt
+          } >> "$GITHUB_STEP_SUMMARY"

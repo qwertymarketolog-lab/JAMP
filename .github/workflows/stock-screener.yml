@@ -1,0 +1,55 @@
+name: Stock Screener
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "experiments/stock_screener/run_screener.py"
+      - ".github/workflows/stock-screener.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run MOEX stock screener
+        run: python experiments/stock_screener/run_screener.py | tee screening_output.txt
+
+      - name: Extract JSON report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          output = Path("screening_output.txt").read_text(encoding="utf-8")
+          json_text = output.split("\n\n| Ticker |", maxsplit=1)[0]
+          report = json.loads(json_text)
+          Path("screening_report.json").write_text(
+              json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(report.get("coverage"), ensure_ascii=False, sort_keys=True))
+          PY
+
+      - name: Upload screening report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-screening-report
+          path: |
+            screening_report.json
+            screening_output.txt
+          if-no-files-found: error
+          retention-days: 7

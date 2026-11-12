@@ -71,10 +71,3 @@ jobs:
           path: research-loop-evidence.json
           if-no-files-found: error
 
-  g1-trusted-lineage:
-    name: G1 Trusted Lineage
-    needs: research-loop-gate
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify required-check alias
-        run: test "${{ needs.research-loop-gate.result }}" = "success"

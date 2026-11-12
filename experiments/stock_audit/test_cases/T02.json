@@ -1,0 +1,6 @@
+{
+  "id": "T02",
+  "text": "VKCO подешевел на 93% от максимума. Стоит ли покупать?",
+  "expected_behavior": "PARTIAL",
+  "note": "Падение на 93% — утверждение входного промпта, не ground truth; выполнение анализа ожидается с aggregate_status=PARTIAL."
+}

@@ -5,6 +5,7 @@ only the public research-layer contract: immutable content-addressed states,
 explicit hypotheses, a closed mutation algebra, deterministic candidate
 ordering, and non-teleological search.
 """
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
@@ -154,12 +155,18 @@ def test_gate_20_unknown_mutation_is_rejected():
 
 def test_gate_21_evidence_check_precedes_transition():
     with pytest.raises(SearchSpaceError):
-        apply_mutation(state(), MutationOp.ADD_CONDITION, {"condition": "unsupported", "evidence": ()})
+        apply_mutation(
+            state(), MutationOp.ADD_CONDITION, {"condition": "unsupported", "evidence": ()}
+        )
 
 
 def test_gate_22_causal_constraints_are_enforced():
     with pytest.raises(SearchSpaceError):
-        apply_mutation(state(), MutationOp.MODIFY_PARAMETER, {"parameter": "x", "value": 2, "causal_dependencies": ("d" * 64,)})
+        apply_mutation(
+            state(),
+            MutationOp.MODIFY_PARAMETER,
+            {"parameter": "x", "value": 2, "causal_dependencies": ("d" * 64,)},
+        )
 
 
 def test_gate_23_schema_validation_rejects_bad_payload():
@@ -170,7 +177,9 @@ def test_gate_23_schema_validation_rejects_bad_payload():
 def test_gate_24_invalid_mutation_does_not_create_state():
     original = state()
     with pytest.raises(SearchSpaceError):
-        apply_mutation(original, MutationOp.ADD_CONDITION, {"condition": "unsupported", "evidence": ()})
+        apply_mutation(
+            original, MutationOp.ADD_CONDITION, {"condition": "unsupported", "evidence": ()}
+        )
     assert original == state()
 
 
@@ -196,13 +205,17 @@ def test_gate_28_candidates_are_content_addressed():
 
 def test_gate_29_candidate_order_is_canonical():
     candidates = generate_candidates(state())
-    assert tuple(c.state_hash for c in candidates) == tuple(sorted(c.state_hash for c in candidates))
+    assert tuple(c.state_hash for c in candidates) == tuple(
+        sorted(c.state_hash for c in candidates)
+    )
 
 
 def test_gate_30_equivalent_inputs_have_identical_sequence():
     left = state(constraints=("b", "a"))
     right = state(constraints=("a", "b"))
-    assert [x.state_hash for x in generate_candidates(left)] == [x.state_hash for x in generate_candidates(right)]
+    assert [x.state_hash for x in generate_candidates(left)] == [
+        x.state_hash for x in generate_candidates(right)
+    ]
 
 
 def test_gate_31_distinct_candidates_remain_distinct():
@@ -219,17 +232,33 @@ def test_gate_32_duplicate_hypotheses_are_not_silently_collapsed():
 
 def test_gate_33_permutation_of_mapping_keys_cannot_change_hash():
     h1 = hypothesis(claims=("x", "y"))
-    h2 = Hypothesis(**dict(reversed({
-        "claims": ("x", "y"), "supporting_evidence": (EVIDENCE,),
-        "contradicting_evidence": (), "assumptions": ("x is measurable",),
-        "causal_dependencies": (CAUSAL,), "admissible_interventions": ("x",),
-    }.items())))
+    h2 = Hypothesis(
+        **dict(
+            reversed(
+                {
+                    "claims": ("x", "y"),
+                    "supporting_evidence": (EVIDENCE,),
+                    "contradicting_evidence": (),
+                    "assumptions": ("x is measurable",),
+                    "causal_dependencies": (CAUSAL,),
+                    "admissible_interventions": ("x",),
+                }.items()
+            )
+        )
+    )
     assert h1.hypothesis_hash == h2.hypothesis_hash
 
 
 def test_gate_34_runtime_noise_is_rejected():
     with pytest.raises((SearchSpaceError, ValueError)):
-        SearchState(evidence_root=EVIDENCE, causal_root=CAUSAL, hypothesis_set=(hypothesis(),), constraints=("timestamp",), assumptions=(), search_depth=0)
+        SearchState(
+            evidence_root=EVIDENCE,
+            causal_root=CAUSAL,
+            hypothesis_set=(hypothesis(),),
+            constraints=("timestamp",),
+            assumptions=(),
+            search_depth=0,
+        )
 
 
 def test_gate_35_target_dependent_distortion_is_detectable():

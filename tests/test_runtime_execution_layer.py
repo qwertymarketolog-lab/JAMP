@@ -89,3 +89,122 @@ def test_refusal_provenance():
     assert trace["frozen_core_state"] == {"blob": CORE, "delta": 0}
     assert trace["gate_evaluator"]["evidence_base_sha256"] == SHA
     assert "refusal_details" in trace
+
+
+def test_all_170_projection_statuses_match_pinned_canonical_matrix():
+    resolver = CapabilityResolver()
+    projection_path = Path(__file__).parent / "fixtures/runtime_evidence_projection.json"
+    resolver.validate_projection(projection_path)
+
+
+def test_projection_status_tampering_is_rejected(tmp_path):
+    data = fixture()
+    data["models"][0]["checks"]["C01"]["raw_status"] = "VERIFIED"
+    path = tmp_path / "tampered-projection.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="status disagrees"):
+        CapabilityResolver().validate_projection(path)
+
+
+def test_projection_provider_id_substitution_is_rejected(tmp_path):
+    data = fixture()
+    data["models"][0]["model_id"] = "provider/substituted-model"
+    path = tmp_path / "tampered-projection.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="provider IDs disagree"):
+        CapabilityResolver().validate_projection(path)
+
+
+@pytest.mark.parametrize("mutation", ["status", "provider_id", "eligible_pool"])
+def test_derived_matrix_content_tampering_is_rejected(tmp_path, monkeypatch, mutation):
+    import src.jamp.runtime.resolver as resolver_module
+
+    matrix_path = (
+        Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    )
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    if mutation == "status":
+        matrix["matrix"][0]["capabilities"]["C01"] = "VERIFIED"
+    elif mutation == "provider_id":
+        matrix["matrix"][0]["model_id"] = "provider/substituted-model"
+    else:
+        matrix["task_profiles"]["search_and_extraction"]["eligible_models"].pop()
+    tampered_path = tmp_path / "tampered-matrix.json"
+    tampered_path.write_text(json.dumps(matrix), encoding="utf-8")
+    monkeypatch.setattr(resolver_module, "_MATRIX_PATH", tampered_path)
+
+    with pytest.raises(ValueError, match="integrity mismatch"):
+        CapabilityResolver().get_eligible_models("search_and_extraction")
+
+
+def test_api_fails_closed_if_matrix_changes_after_startup(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import jamp.runtime.resolver as resolver_module
+    from jamp.api import create_app
+
+    calls = []
+    app = create_app(
+        executor=lambda model, payload: calls.append((model, payload)) or {"content": "no"}
+    )
+    matrix_path = (
+        Path(__file__).parents[1] / "artifacts/research/jamp_task_scoped_derived_matrix_v2.json"
+    )
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    matrix["matrix"][0]["capabilities"]["C01"] = "VERIFIED"
+    tampered_path = tmp_path / "tampered-matrix.json"
+    tampered_path.write_text(json.dumps(matrix), encoding="utf-8")
+    monkeypatch.setattr(resolver_module, "_MATRIX_PATH", tampered_path)
+
+    response = TestClient(app).post(
+        "/v1/execute",
+        json={"intent": "search_and_extraction", "prompt": "must not execute"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "REFUSE"
+    assert response.json()["reason"] == "EVIDENCE_INTEGRITY_FAILED"
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error"),
+    [
+        ("manifest_hash", "Canonical manifest hash mismatch"),
+        ("duplicate_model_id", "Duplicate canonical model ID"),
+        ("ordinal", "Canonical model ordinals are invalid"),
+        ("missing_capability", "Canonical model checks must be exactly C01-C10"),
+        ("invalid_status", "Invalid raw status: C01"),
+    ],
+)
+def test_evidence_gate_rejects_malformed_evidence(tmp_path, mutation, error):
+    data = fixture()
+    evidence = {
+        "contract_version": "jamp-17-capability-v1",
+        "canonical_manifest_sha256": data["source"]["manifest_sha256"],
+        "frozen_core_blob": CORE,
+        "expected_models": 17,
+        "executed_models": 17,
+        "expected_checks": 170,
+        "executed_checks": 170,
+        "models": data["models"],
+    }
+
+    if mutation == "manifest_hash":
+        evidence["canonical_manifest_sha256"] = "0" * 64
+    elif mutation == "duplicate_model_id":
+        evidence["models"][1]["model_id"] = evidence["models"][0]["model_id"]
+    elif mutation == "ordinal":
+        evidence["models"][0]["ordinal"] = 2
+    elif mutation == "missing_capability":
+        evidence["models"][0]["checks"].pop("C01")
+    elif mutation == "invalid_status":
+        evidence["models"][0]["checks"]["C01"]["raw_status"] = "PASS"
+
+    path = tmp_path / "malformed-evidence.json"
+    path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=error):
+        EvidenceGate.from_json_file(path)

@@ -1,0 +1,14 @@
+{
+  "id": "C08",
+  "text": "Bitcoin и Ethereum занимают первые два места по рыночной капитализации. Проверь сравнение.",
+  "expected_behavior": "PARTIAL",
+  "note": "A multi-asset ranking comparison is not established by the single-coin E4 adapter.",
+  "e4_claim": {
+    "ticker": "BTC",
+    "claim_type": "comparison",
+    "claimed_value": null,
+    "text": "BTC and ETH are the top two assets by market cap",
+    "critical": false,
+    "asset_class": "crypto"
+  }
+}

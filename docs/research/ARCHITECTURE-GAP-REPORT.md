@@ -156,3 +156,17 @@ Therefore:
 - the next implementation phase has a clean, explicit starting boundary.
 
 This report is an audit artifact and does not modify the frozen contract.
+
+
+### Verifier v0 — implemented (limited scope)
+
+A stateless verifier exists on main since PR #479 (merge commit `53ef75e8`,
+`independent_verifier.py`, blob `c8d8f9be…`). Its scope is the signed verdict
+chain JampVerdict → UniversalVerdict → trace, using caller-supplied inputs and,
+for a fully VERIFIED report, raw evidence plus exported records from all three
+stores.
+
+This does NOT close the "Independent full-chain verifier | MISSING" item
+above: full `PROVENANCE-CONTRACT-v0` coverage remains MISSING.
+
+Known limitations: see [VERIFIER-LIMITATIONS.md](../../VERIFIER-LIMITATIONS.md).

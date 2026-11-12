@@ -1,0 +1,224 @@
+name: AnyModel v0.1a Smoke (single request)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anymodel-v01a-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and hash public evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p smoke-evidence
+          curl --fail --location --silent --show-error --retry 0 \
+            --output smoke-evidence/faq.html \
+            --write-out 'FAQ_HTTP_STATUS=%{http_code}\n' \
+            https://anymodel.org/en/faq
+          curl --fail --location --silent --show-error --retry 0 \
+            --output smoke-evidence/pricing.html \
+            --write-out 'PRICING_HTTP_STATUS=%{http_code}\n' \
+            https://anymodel.org/en/pricing
+          (
+            cd smoke-evidence
+            sha256sum faq.html pricing.html > evidence-hashes.txt
+            cat evidence-hashes.txt
+          )
+
+      - name: Fetch model catalog and verify Nemotron ID
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANYMODEL_API_KEY" || { echo "::error::ANYMODEL_API_KEY secret is missing"; exit 1; }
+          curl --fail --location --silent --show-error --retry 0 \
+            https://anymodel.org/v1/models \
+            -H "Authorization: Bearer $ANYMODEL_API_KEY" \
+            -o smoke-evidence/catalog.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("smoke-evidence/catalog.json").read_text())
+          text = json.dumps(data, ensure_ascii=False)
+          model_id = "am/nemotron-3-ultra-550b-a55b"
+          if model_id not in text:
+              raise SystemExit(f"Required model ID absent from current catalog: {model_id}")
+          PY
+          (cd smoke-evidence && sha256sum catalog.json > catalog-hash.txt && cat catalog-hash.txt)
+
+      - name: Send exactly one Nemotron smoke request
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+          from urllib.request import HTTPRedirectHandler, build_opener
+          from pathlib import Path
+
+          out = Path("smoke-evidence")
+          payload = {
+              "model": "am/nemotron-3-ultra-550b-a55b",
+              "messages": [{"role": "user", "content": "Reply with the word OK."}],
+              "max_tokens": 16,
+          }
+          request = urllib.request.Request(
+              "https://anymodel.org/v1/chat/completions",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['ANYMODEL_API_KEY']}",
+                  "Content-Type": "application/json",
+                  "User-Agent": "JAMP-Evidence-Client/0.1",
+                  "Accept": "application/json",
+              },
+              method="POST",
+          )
+          started = time.monotonic()
+          status = None
+          response_headers = {}
+          body = b""
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, new_url):
+                  return None
+
+          # Exactly one POST: redirects are not followed; no retry handler is installed.
+          opener = build_opener(NoRedirect)
+          try:
+              with opener.open(request, timeout=60) as response:
+                  status = response.status
+                  response_headers = dict(response.headers.items())
+                  body = response.read()
+          except urllib.error.HTTPError as exc:
+              status = exc.code
+              response_headers = dict(exc.headers.items()) if exc.headers else {}
+              body = exc.read()
+          except Exception as exc:
+              latency_ms = round((time.monotonic() - started) * 1000)
+              request_headers = {
+                  "Content-Type": "application/json",
+                  "User-Agent": "JAMP-Evidence-Client/0.1",
+                  "Accept": "application/json",
+              }
+              (out / "diagnostic-headers.json").write_text(
+                  json.dumps({
+                      "status": None,
+                      "request_headers": request_headers,
+                      "response_headers": {},
+                      "cf_ray": None,
+                      "server": None,
+                  }, indent=2) + "\n",
+                  encoding="utf-8",
+              )
+              (out / "request-error.txt").write_text(
+                  f"{type(exc).__name__}: {exc}\\n", encoding="utf-8"
+              )
+              (out / "request-metadata.json").write_text(
+                  json.dumps({
+                      "http_status": None,
+                      "latency_ms": latency_ms,
+                      "request_sent": True,
+                      "response_received": False,
+                      "retry_count": 0,
+                  }, indent=2) + "\n",
+                  encoding="utf-8",
+              )
+              print(f"TRANSPORT_ERROR latency_ms={latency_ms}")
+              raise
+
+          latency_ms = round((time.monotonic() - started) * 1000)
+          response_headers_lower = {k.lower(): v for k, v in response_headers.items()}
+          cf_ray = response_headers_lower.get("cf-ray")
+          server = response_headers_lower.get("server")
+          request_headers_safe = {
+              "Content-Type": "application/json",
+              "User-Agent": "JAMP-Evidence-Client/0.1",
+              "Accept": "application/json",
+          }
+          diagnostic = {
+              "status": status,
+              "request_headers": request_headers_safe,
+              "response_headers": response_headers,
+              "cf_ray": cf_ray,
+              "server": server,
+          }
+          (out / "diagnostic-headers.json").write_text(
+              json.dumps(diagnostic, indent=2) + "\n", encoding="utf-8"
+          )
+          (out / "response.json").write_bytes(body)
+
+          metadata = {
+              "http_status": status,
+              "latency_ms": latency_ms,
+              "request_sent": True,
+              "response_received": True,
+              "retry_count": 0,
+              "provider_request_id": (
+                  response_headers_lower.get("x-request-id")
+                  or response_headers_lower.get("request-id")
+                  or response_headers_lower.get("x-correlation-id")
+              ),
+              "response_content_type": response_headers_lower.get("content-type"),
+              "model_requested": payload["model"],
+              "max_tokens": payload["max_tokens"],
+              "balance_check": "MANUAL_DASHBOARD_REQUIRED",
+              "billing_zero_confirmed": False,
+          }
+          (out / "request-metadata.json").write_text(
+              json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
+          )
+
+          print(f"HTTP_STATUS={status}")
+          print(f"latency_ms={latency_ms}")
+          print(f"cf_ray={cf_ray or 'absent'}")
+          print(f"server={server or 'absent'}")
+          print("all_headers=" + json.dumps(response_headers, indent=2))
+          if status != 200:
+              print(f"HTTP_ERROR status={status}")
+              print(f"body={body.decode(errors='replace')[:500]}")
+              raise SystemExit(f"Smoke request failed with HTTP {status}; inspect artifact.")
+
+          parsed_body = json.loads(body)
+          print(json.dumps(parsed_body, indent=2))
+          if not parsed_body.get("choices"):
+              raise SystemExit("HTTP 200 response has no choices; inspect artifact.")
+          print("MODEL_CONTENT=" + str(parsed_body["choices"][0].get("message", {}).get("content", "")))
+          PY
+
+      - name: Hash all collected evidence
+        if: always()
+        shell: bash
+        run: |
+          if [ -d smoke-evidence ]; then
+            cd smoke-evidence
+            find . -maxdepth 1 -type f ! -name 'final-hashes.txt' -print0 \
+              | sort -z | xargs -0 -r sha256sum > final-hashes.txt
+            cat final-hashes.txt
+          fi
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-v01a-smoke-${{ github.run_id }}
+          path: smoke-evidence/
+          if-no-files-found: warn
+          retention-days: 30

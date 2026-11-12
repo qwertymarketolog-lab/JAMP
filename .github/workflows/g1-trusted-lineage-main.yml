@@ -1,0 +1,491 @@
+name: G1 Trusted Lineage (main)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  trusted-lineage-main:
+    name: G1 Trusted Lineage (main)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact pushed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify merge-commit provenance and evidence chain
+        id: lineage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+          TARGET_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import io
+          import json
+          import os
+          import re
+          import time
+          import urllib.error
+          import urllib.request
+          import urllib.parse
+          import zipfile
+          from pathlib import Path
+
+          API = "https://api.github.com"
+          REPOSITORY = os.environ["REPOSITORY"]
+          TARGET_SHA = os.environ["TARGET_SHA"]
+          LOCKED_CORE = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+          evidence = {
+              "schema": "jamp-main-lineage-evidence-v1",
+              "record_type": "preterminal_validation_record",
+              "repository": REPOSITORY,
+              "event": os.environ["EVENT_NAME"],
+              "ref": os.environ["TARGET_REF"],
+              "target_sha": TARGET_SHA,
+              "before_sha": os.environ["BEFORE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "locked_frozen_core_blob": LOCKED_CORE,
+          }
+          failure = None
+          last_request_failure = None
+
+          def sanitized_url(value):
+              if not value:
+                  return None
+              parsed = urllib.parse.urlsplit(value)
+              return urllib.parse.urlunsplit(
+                  (parsed.scheme, parsed.netloc, parsed.path, "", "")
+              )
+
+          def open_url(request, timeout, operation):
+              global last_request_failure
+              last_request_failure = None
+              try:
+                  return urllib.request.urlopen(request, timeout=timeout)
+              except Exception as exc:
+                  authorization = request.get_header("Authorization")
+                  context = {
+                      "operation": operation,
+                      "request_method": request.get_method(),
+                      "request_url": sanitized_url(request.full_url),
+                      "authorization_header_present": request.has_header("Authorization"),
+                      "authorization_scheme": (
+                          authorization.split()[0]
+                          if authorization and authorization.split()
+                          else None
+                      ),
+                      "exception_type": type(exc).__name__,
+                  }
+                  if isinstance(exc, urllib.error.HTTPError):
+                      context.update({
+                          "http_status": exc.code,
+                          "http_reason": str(exc.reason)[:300],
+                          "error_url": sanitized_url(exc.url),
+                      })
+                      response_headers = exc.headers
+                      if response_headers is not None:
+                          for header in (
+                              "WWW-Authenticate",
+                              "X-GitHub-Request-Id",
+                              "X-Accepted-GitHub-Permissions",
+                              "Server",
+                              "Content-Type",
+                          ):
+                              value = response_headers.get(header)
+                              if value:
+                                  context[header.lower().replace("-", "_")] = str(value)[:500]
+                          location = response_headers.get("Location")
+                          if location:
+                              context["redirect_location"] = sanitized_url(location)
+                  else:
+                      context["exception_message"] = str(exc)[:500]
+                  last_request_failure = context
+                  raise
+
+          def api_get(path):
+              request = urllib.request.Request(
+                  API + path,
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with open_url(request, timeout=45, operation=f"github_api_get:{path.split('?', 1)[0]}") as response:
+                  return json.load(response)
+
+          def download_artifact(artifact_id):
+              request = urllib.request.Request(
+                  f"{API}/repos/{REPOSITORY}/actions/artifacts/{artifact_id}/zip",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              request.add_unredirected_header(
+                  "Authorization", f"Bearer {os.environ['GH_TOKEN']}"
+              )
+              with open_url(
+                  request,
+                  timeout=90,
+                  operation=f"github_artifact_zip_download:{artifact_id}",
+              ) as response:
+                  archive = zipfile.ZipFile(io.BytesIO(response.read()))
+              candidates = [name for name in archive.namelist() if name.endswith(".json")]
+              if len(candidates) != 1:
+                  raise RuntimeError(f"expected one JSON evidence file in artifact, got {candidates}")
+              return json.loads(archive.read(candidates[0]))
+
+          def wait_for_latest_check(name):
+              for _ in range(60):
+                  check_runs = api_get(
+                      f"/repos/{REPOSITORY}/commits/{evidence['pr_head_sha']}/check-runs?per_page=100"
+                  )["check_runs"]
+                  candidates = [
+                      item for item in check_runs
+                      if item.get("name") == name
+                      and item.get("head_sha") == evidence["pr_head_sha"]
+                  ]
+                  if candidates:
+                      candidates.sort(
+                          key=lambda item: item.get("id", 0),
+                          reverse=True,
+                      )
+                      latest = candidates[0]
+                      if latest.get("status") == "completed":
+                          if latest.get("conclusion") != "success":
+                              raise RuntimeError(
+                                  f"latest PR check is not successful: {name}"
+                              )
+                          return latest
+                  time.sleep(10)
+              raise RuntimeError(f"PR check did not reach terminal success: {name}")
+
+          try:
+              if os.environ["EVENT_NAME"] != "push":
+                  raise RuntimeError("main lineage accepts push events only")
+              if os.environ["TARGET_REF"] != "refs/heads/main":
+                  raise RuntimeError("target ref is not refs/heads/main")
+              actual_head = __import__("subprocess").check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip()
+              if actual_head != TARGET_SHA:
+                  raise RuntimeError("checkout SHA does not match pushed target SHA")
+
+              before = os.environ["BEFORE_SHA"]
+              if not re.fullmatch(r"[0-9a-f]{40}", before):
+                  raise RuntimeError("push before SHA is missing or malformed")
+              compare = api_get(
+                  f"/repos/{REPOSITORY}/compare/{before}...{TARGET_SHA}"
+              )
+              if compare.get("status") != "ahead" or compare.get("behind_by") != 0:
+                  raise RuntimeError("push before SHA is not an ancestor of target SHA")
+              evidence["push_commit_count"] = compare.get("ahead_by")
+
+              commit = api_get(f"/repos/{REPOSITORY}/commits/{TARGET_SHA}")
+              if commit.get("sha") != TARGET_SHA:
+                  raise RuntimeError("GitHub commit response SHA mismatch")
+              evidence["target_parent_shas"] = [
+                  parent["sha"] for parent in commit.get("parents", [])
+              ]
+
+              pull_requests = api_get(
+                  f"/repos/{REPOSITORY}/commits/{TARGET_SHA}/pulls?per_page=100"
+              )
+              associated = [
+                  pr for pr in pull_requests
+                  if pr.get("merge_commit_sha") == TARGET_SHA
+                  and pr.get("state") == "closed"
+                  and pr.get("merged_at")
+                  and pr.get("base", {}).get("ref") == "main"
+                  and pr.get("base", {}).get("repo", {}).get("full_name") == REPOSITORY
+                  and pr.get("head", {}).get("repo", {}).get("full_name") == REPOSITORY
+              ]
+              if len(associated) != 1:
+                  raise RuntimeError(
+                      f"expected exactly one merged PR for target commit, found {len(associated)}"
+                  )
+              pr = associated[0]
+              pr_number = pr["number"]
+              pr_head_sha = pr["head"]["sha"]
+              evidence.update({
+                  "pull_request_number": pr_number,
+                  "pull_request_url": pr["html_url"],
+                  "pr_head_sha": pr_head_sha,
+                  "pr_merge_commit_sha": pr["merge_commit_sha"],
+                  "pr_merged_at": pr["merged_at"],
+              })
+
+              research_pr_check = wait_for_latest_check(
+                  "Research Loop v0 Gate /"
+              )
+              details = research_pr_check.get("details_url", "")
+              match = re.search(r"/actions/runs/(\d+)/job/(\d+)", details)
+              if not match:
+                  raise RuntimeError("PR Research Loop check has no verifiable Actions run URL")
+              pr_run_id = int(match.group(1))
+              pr_job_id = int(match.group(2))
+              pr_run = api_get(f"/repos/{REPOSITORY}/actions/runs/{pr_run_id}")
+              if (
+                  pr_run.get("repository", {}).get("full_name") != REPOSITORY
+                  or pr_run.get("workflow_id") != 366569738
+                  or pr_run.get("event") != "pull_request"
+                  or pr_run.get("path") != ".github/workflows/research-loop-v0.yml"
+                  or pr_run.get("head_sha") != pr_head_sha
+                  or pr_run.get("status") != "completed"
+                  or pr_run.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("PR Research Loop run does not match the exact PR head")
+              pr_jobs = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{pr_run_id}/jobs?per_page=100"
+              )["jobs"]
+              matching_pr_jobs = [
+                  job for job in pr_jobs
+                  if job.get("id") == pr_job_id
+                  and job.get("run_id") == pr_run_id
+                  and job.get("name") == "Research Loop v0 Gate /"
+                  and job.get("head_sha") == pr_head_sha
+                  and job.get("status") == "completed"
+                  and job.get("conclusion") == "success"
+              ]
+              if len(matching_pr_jobs) != 1:
+                  raise RuntimeError("PR Research Loop job terminal evidence is missing")
+              pr_artifacts = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{pr_run_id}/artifacts?per_page=100"
+              )["artifacts"]
+              pr_artifact = next(
+                  (
+                      item for item in pr_artifacts
+                      if item.get("name") == "research-loop-v0-evidence"
+                      and not item.get("expired")
+                  ),
+                  None,
+              )
+              if pr_artifact is None:
+                  raise RuntimeError("PR Research Loop evidence artifact is missing")
+              pr_evidence = download_artifact(pr_artifact["id"])
+              if (
+                  pr_evidence.get("target_sha") != pr_head_sha
+                  or pr_evidence.get("pr_number") != pr_number
+                  or pr_evidence.get("frozen_core_blob") != LOCKED_CORE
+                  or pr_evidence.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("PR Research Loop artifact does not match the exact PR head")
+
+              actual_g1_check = wait_for_latest_check(
+                  "trusted-lineage"
+              )
+              actual_g1_details = actual_g1_check.get("details_url", "")
+              actual_g1_match = re.search(
+                  r"/actions/runs/(\d+)/job/(\d+)", actual_g1_details
+              )
+              if not actual_g1_match:
+                  raise RuntimeError("PR trusted-lineage job has no verifiable Actions run URL")
+              actual_g1_run_id = int(actual_g1_match.group(1))
+              actual_g1_job_id = int(actual_g1_match.group(2))
+              actual_g1_run = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}"
+              )
+              if (
+                  actual_g1_run.get("repository", {}).get("full_name") != REPOSITORY
+                  or actual_g1_run.get("workflow_id") != 366737546
+                  or actual_g1_run.get("path") != ".github/workflows/g1-trusted-lineage.yml"
+                  or actual_g1_run.get("event") != "pull_request_target"
+                  or actual_g1_run.get("head_sha") != pr_head_sha
+                  or actual_g1_run.get("status") != "completed"
+                  or actual_g1_run.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("PR trusted-lineage workflow run is not terminal success")
+              actual_g1_jobs = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{actual_g1_run_id}/jobs?per_page=100"
+              )["jobs"]
+              matching_actual_g1_jobs = [
+                  job for job in actual_g1_jobs
+                  if job.get("id") == actual_g1_job_id
+                  and job.get("run_id") == actual_g1_run_id
+                  and job.get("name") == "trusted-lineage"
+                  and job.get("head_sha") == pr_head_sha
+                  and job.get("status") == "completed"
+                  and job.get("conclusion") == "success"
+              ]
+              if len(matching_actual_g1_jobs) != 1:
+                  raise RuntimeError("PR trusted-lineage job terminal evidence is missing")
+
+              main_check = None
+              for attempt in range(60):
+                  main_checks = api_get(
+                      f"/repos/{REPOSITORY}/commits/{TARGET_SHA}/check-runs?per_page=100"
+                  )["check_runs"]
+                  candidates = [
+                      item for item in main_checks
+                      if item.get("name") == "Research Loop v0 Gate (main) /"
+                      and item.get("head_sha") == TARGET_SHA
+                  ]
+                  if candidates:
+                      candidates.sort(
+                          key=lambda item: (item.get("started_at") or "", item.get("id", 0)),
+                          reverse=True,
+                      )
+                      main_check = candidates[0]
+                      if main_check.get("status") == "completed":
+                          break
+                  time.sleep(10)
+              if (
+                  main_check is None
+                  or main_check.get("status") != "completed"
+                  or main_check.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("main Research Loop check did not reach terminal success")
+
+              main_details = main_check.get("details_url", "")
+              main_match = re.search(r"/actions/runs/(\d+)/job/(\d+)", main_details)
+              if not main_match:
+                  raise RuntimeError("main Research Loop check has no Actions run URL")
+              main_run_id = int(main_match.group(1))
+              main_job_id = int(main_match.group(2))
+              main_run = api_get(f"/repos/{REPOSITORY}/actions/runs/{main_run_id}")
+              if (
+                  main_run.get("event") != "push"
+                  or main_run.get("path") != ".github/workflows/research-loop-v0-main.yml"
+                  or main_run.get("head_sha") != TARGET_SHA
+                  or main_run.get("head_branch") != "main"
+                  or main_run.get("status") != "completed"
+                  or main_run.get("conclusion") != "success"
+              ):
+                  raise RuntimeError("main Research Loop run does not prove the exact pushed commit")
+              main_jobs = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{main_run_id}/jobs?per_page=100"
+              )["jobs"]
+              if not any(
+                  job.get("id") == main_job_id
+                  and job.get("name") == "Research Loop v0 Gate (main) /"
+                  and job.get("head_sha") == TARGET_SHA
+                  and job.get("status") == "completed"
+                  and job.get("conclusion") == "success"
+                  for job in main_jobs
+              ):
+                  raise RuntimeError("main Research Loop job terminal evidence is missing")
+              main_artifacts = api_get(
+                  f"/repos/{REPOSITORY}/actions/runs/{main_run_id}/artifacts?per_page=100"
+              )["artifacts"]
+              main_artifact = next(
+                  (
+                      item for item in main_artifacts
+                      if item.get("name") == "research-loop-v0-main-evidence"
+                      and not item.get("expired")
+                  ),
+                  None,
+              )
+              if main_artifact is None:
+                  raise RuntimeError("main Research Loop evidence artifact is missing")
+              main_evidence = download_artifact(main_artifact["id"])
+              if (
+                  main_evidence.get("target_sha") != TARGET_SHA
+                  or main_evidence.get("run_id") != main_run_id
+                  or main_evidence.get("job_id") != main_job_id
+                  or main_evidence.get("event") != "push"
+                  or main_evidence.get("ref") != "refs/heads/main"
+                  or main_evidence.get("core_step_outcome") != "success"
+                  or main_evidence.get("tests_step_outcome") != "success"
+                  or main_evidence.get("frozen_core_blob") != LOCKED_CORE
+                  or not main_evidence.get("frozen_core_matches")
+              ):
+                  raise RuntimeError("main Research Loop artifact does not prove successful execution on target SHA")
+
+              evidence.update({
+                  "validation_result": "ALL_ASSERTIONS_PASSED",
+                  "pr_required_checks": {
+                      "research_loop": {
+                          "check_run_id": research_pr_check["id"],
+                          "run_id": pr_run_id,
+                          "job_id": pr_job_id,
+                          "artifact_id": pr_artifact["id"],
+                          "conclusion": research_pr_check["conclusion"],
+                      },
+                      "g1_trusted_lineage_workflow": {
+                          "check_run_id": actual_g1_check["id"],
+                          "run_id": actual_g1_run_id,
+                          "job_id": actual_g1_job_id,
+                          "conclusion": actual_g1_check["conclusion"],
+                      },
+                  },
+                  "main_research_loop": {
+                      "check_run_id": main_check["id"],
+                      "run_id": main_run_id,
+                      "job_id": main_job_id,
+                      "artifact_id": main_artifact["id"],
+                      "artifact_digest": main_artifact.get("digest"),
+                      "conclusion": main_check["conclusion"],
+                  },
+              })
+          except Exception as exc:
+              failure = f"{type(exc).__name__}: {exc}"
+              evidence["validation_result"] = "FAILED"
+              evidence["failure"] = failure
+              if last_request_failure is not None:
+                  evidence["failure_request_context"] = last_request_failure
+
+          try:
+              run_id = os.environ["RUN_ID"]
+              request = urllib.request.Request(
+                  f"{API}/repos/{REPOSITORY}/actions/runs/{run_id}/jobs?per_page=100",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with open_url(request, timeout=30, operation="current_job_id_lookup") as response:
+                  jobs = json.load(response)["jobs"]
+              current = [
+                  job for job in jobs
+                  if job.get("name") == "G1 Trusted Lineage (main)"
+              ]
+              if len(current) != 1:
+                  evidence["job_id"] = None
+                  evidence["job_id_lookup_error"] = f"expected one current job, found {len(current)}"
+                  if failure is None:
+                      failure = evidence["job_id_lookup_error"]
+                      evidence["validation_result"] = "FAILED"
+              else:
+                  evidence["job_id"] = current[0]["id"]
+          except Exception as exc:
+              evidence["job_id"] = None
+              evidence["job_id_lookup_error"] = f"{type(exc).__name__}: {exc}"
+              if last_request_failure is not None:
+                  evidence["job_id_lookup_failure_context"] = last_request_failure
+              if failure is None:
+                  failure = evidence["job_id_lookup_error"]
+                  evidence["validation_result"] = "FAILED"
+
+          output = Path("main-evidence")
+          output.mkdir(exist_ok=True)
+          (output / "g1-main-lineage-evidence.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          if failure:
+              raise SystemExit(failure)
+          PY
+
+      - name: Upload main lineage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-main-lineage-evidence
+          path: main-evidence/g1-main-lineage-evidence.json
+          if-no-files-found: error

@@ -4,7 +4,13 @@ import os
 
 import pytest
 
-from jamp.research import canonical, evidence, hypothesis_formation, hypothesis_scoring as scoring, lineage_graph
+from jamp.research import (
+    canonical,
+    evidence,
+    hypothesis_formation,
+    hypothesis_scoring as scoring,
+    lineage_graph,
+)
 
 
 _ONE_HASH = canonical.replay_hash("one")

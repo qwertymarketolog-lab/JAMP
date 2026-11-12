@@ -1,0 +1,53 @@
+name: Crypto Audit v1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-crypto-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      JAMP_SIGNING_KEY: ${{ secrets.JAMP_SIGNING_KEY }}
+      JAMP_ENV: production
+    steps:
+      - name: Checkout exact workflow SHA
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project and runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" uvicorn
+
+      - name: Run Crypto Audit v1 over real HTTP
+        run: python experiments/crypto_audit/run_crypto_audit.py
+
+      - name: Verify report artifacts exist
+        if: always()
+        run: |
+          test -s artifacts/crypto-audit-v1/crypto_audit_v1_report.json
+          test -s artifacts/crypto-audit-v1/report.md
+
+      - name: Upload Crypto Audit v1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-audit-v1-report
+          path: |
+            artifacts/crypto-audit-v1/crypto_audit_v1_report.json
+            artifacts/crypto-audit-v1/report.md
+            artifacts/crypto-audit-v1/crypto_audit_v1_results.jsonl
+            artifacts/crypto-audit-v1/crypto_audit_v1_provenance.jsonl
+            artifacts/crypto-audit-v1/server_provenance_traces.jsonl
+            artifacts/crypto-audit-v1/uvicorn.log
+          if-no-files-found: warn
+          retention-days: 30

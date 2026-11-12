@@ -1,0 +1,170 @@
+# Open Obligations Registry
+
+verified_at: 2026-11-10T07:01:00Z
+rule: re-verify if older than 24h before any decision
+
+Все записи сгруппированы по типу. `Last Evidence` указывает на
+конкретный SHA, Run ID, Job ID, Artifact ID или комментарий.
+Отсутствие evidence не доказывает OPEN: при отсутствии подтверждения
+фактический статус должен быть `UNKNOWN`, а не назначаться по предположению.
+
+## Backlog (не на roadmap)
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| RB-001 | backlog | NOT ON ROADMAP | planning note; SWE-rebench V2.1 is external reference only | no | не начинать до условий возврата |
+
+**RB-001 — Benchmark Task Integrity.** Методология SWE-rebench
+(проверка качества benchmark-задач) потенциально применима к
+контролю evaluation-наборов. Отложено; это backlog, не текущая
+roadmap-задача и не подтверждённая реализация.
+
+Условия возврата: EVERYNODE MVP закрыт, #557 закрыт, текущие
+обязательные gates JAMP перепроверены. До возврата — определить
+архитектурное место относительно C1–C8, PH-01..PH-06, DEC-001..012.
+SWE-rebench V2.1 — внешний ориентир, не доказательство качества
+JAMP benchmark-наборов.
+
+## Architecture documents
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| EN-FND-001 | doc | DRAFT-COMMITTED | original merge SHA `c1e6ac4b1611596211974d78535416af307877bc`; current post-merge main snapshot `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1` (PR #559) | no | внешнее ревью §18, закрытие ADR-011..015 |
+
+**EN-FND-001 — EVERYNODE FOUNDATION v0.1.** Status: DRAFT, NOT
+APPROVED, NOT IMPLEMENTED. Architecture Acceptance (§18) не
+выполнена. EN-ADR-001..015 остаются `OPEN`. Наличие документа
+в main не является архитектурным одобрением или доказательством
+реализации.
+
+## Pull Requests
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| PR #560 | PR | OPEN | head SHA `bb65e7513e0802f890555b5b11ad30f7fc6083cf` (base main `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`); Frozen Core blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a` (Δ=0). Research Loop Run `42772327209` / Job `129682778333` / Artifact `13741564855` SUCCESS; alias job `129682864024` SUCCESS (not semantic lineage proof); actual trusted-lineage Run `42772323928` / Job `129682770754` SUCCESS (no artifact); Pytest Run `42772326854` / Job `129682773124` / Artifact `13742496856` SUCCESS; Developer Quality Run `42772327255` / Job `129682778127` SUCCESS (no artifact); `docker-smoke` Job `129682780243` SKIPPED. All 22 check runs terminal. | yes until merge | update evidence on each new head; only after terminal CI + Frozen Core Δ=0, squash-merge; then record merge SHA |
+| PR #559 | PR | MERGED | merge SHA `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`; post-merge CI: Pytest `42771008971` / Job `129678539478` / Artifact `13742380715`; Developer Quality `42771009044` / Job `129678539894`; G4 `42771008996` / Job `129678540099` / Artifact `13741557505`; P23.0-B `42771009431` / Job `129678545331` | no | closed |
+| PR #558 | PR | MERGED | merge SHA `c1e6ac4b1611596211974d78535416af307877bc` | no | closed |
+| PR #556 | PR | CLOSED / DEFERRED | comment `6747997706` | no | see #557 |
+
+## Issues
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| #557 | issue | OPEN | issue #557; state=open | no | B1–B5 (см. issue DoD) |
+
+## Gaps
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| KNOWN-GAP-G1-ALIAS | gap | OPEN | PR #559 alias Run `42753030496` / Job `129620954797`; actual G1 Run `42753030836` / Job `129620874679`; post-merge G1 Run `42771009155` / Job `129678543291` / Artifact `13741677405` | yes for trusted-lineage claim | harden PR verifier, then bind Ruleset 23974688 to `trusted-lineage` (GitHub Actions app 15368) |
+
+**KNOWN-GAP-G1-ALIAS.**
+
+**Confirmed alias behavior (PR #559):** Ruleset 23974688 still requires
+`G1 Trusted Lineage`, but that check-run is produced by the job with the
+same name inside `.github/workflows/research-loop-v0.yml`. Its complete
+step is `test "success" = "success"`; it only mirrors the dependency result
+of `research-loop-gate`. Evidence: PR Research Loop Run
+`42753030496`, alias Job `129620954797`, Check Run
+`129620954797`, head SHA
+`c87af036f836fb2ffa93cd23e6a1e07d0d3753c3`. This required context is
+not an independent trusted-lineage proof.
+
+**Actual PR verifier (not currently required by Ruleset):**
+`.github/workflows/g1-trusted-lineage.yml` runs on
+`pull_request_target` without checking out PR code and with read-only
+`actions` / `pull-requests` permissions. It validates repository/PR
+identity, exact PR head SHA, and a successful Research Loop workflow run
+and job. PR #559 evidence: Run `42753030836`, Job / Check Run
+`129620874679`, check name `trusted-lineage`, GitHub Actions app ID
+`15368`, conclusion SUCCESS.
+
+**Semantic defects still open in the actual PR verifier:**
+1. It filters for successful Research Loop runs before selecting the
+   newest. A newer failed or in-progress run for the same head can be
+   masked by an older successful run. Selection must identify the newest
+   run first, regardless of conclusion/status, wait for that run to become
+   terminal, and then require SUCCESS; otherwise fail closed.
+2. It verifies the Research Loop run/job but does not download and validate
+   the `research-loop-v0-evidence` artifact. The PR verifier should bind
+   artifact contents to exact PR number, head SHA, run ID, expected job,
+   conclusion, and Frozen Core blob; missing, expired, duplicate, malformed,
+   or mismatched evidence must fail closed.
+3. The workflow should emit a compact, inspectable G1 evidence artifact
+   recording the exact upstream run/job/artifact and its own run/job identity.
+
+**Post-merge verifier (separate layer):** On merge SHA
+`14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`, G1 main Run
+`42771009155`, Job `129678543291`, Artifact `13741677405`
+completed SUCCESS. The artifact reports
+`validation_result=ALL_ASSERTIONS_PASSED` and records:
+- PR #559 head `c87af036f836fb2ffa93cd23e6a1e07d0d3753c3`;
+- PR Research Loop Run `42753030496`, Job `129620867966`,
+  Artifact `13734506901`;
+- PR alias Run `42753030496`, Job `129620954797`;
+- actual PR G1 Run `42753030836`, Job `129620874679`;
+- main Research Loop Run `42771008904`, Job
+  `129678539358`, Artifact `13742146313`;
+- Frozen Core blob `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`.
+
+This proves the separate post-merge verifier's assertions for this merge.
+It does not turn the alias into a semantic PR required-check and cannot
+replace pre-merge enforcement.
+
+**Required-check design (proposal; not yet implemented):**
+- Keep `Research Loop v0 Gate /` as a required PR check.
+- After hardening the actual PR verifier above, require its check-run
+  `trusted-lineage` from GitHub Actions app ID `15368` in Ruleset
+  `23974688`; do not substitute either `(main)` workflow.
+- Update G1 main verifier to validate the same actual PR G1 check and
+  retire its dependency on the alias context.
+- Do not edit Ruleset 23974688 until the hardened check has terminal
+  SUCCESS on a PR head and its negative/fail-closed cases are demonstrated.
+- Until then, wording remains: "G1 required alias passed; separate
+  post-merge G1 verifier completed successfully." Do not claim the
+  required alias itself proves trusted lineage.
+
+Current main SHA: `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`.
+Legacy combined Commit Status API on this SHA returned
+`state=pending`, `total_count=0`, `statuses=[]`; this endpoint does
+not aggregate Actions Check Runs and is not a GREEN indicator.
+
+## Stage C
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| C6.2 | stage | VERIFIED | main SHA `488a02053903eeea4544524b8c97a30961a7de58`; Runs `42342882200`, `42342882225`, `42342882157`, `42342882221`, `42342882222`, `42342882201` — SUCCESS | no | closed |
+
+C6.2 относится к merge PR #553. Это историческое evidence на SHA
+`488a02053903eeea4544524b8c97a30961a7de58`, а не утверждение,
+что текущий main остаётся на этом SHA.
+
+## Legacy
+
+| ID | Type | Status | Last Evidence | Blocking | Next Action |
+|----|------|--------|---------------|----------|-------------|
+| P31 | legacy | STALE / SUPERSEDED | branch `139a9658eb57097b1283f3619e8120dfbfe569a6`; current main is 694 commits ahead; branch has 0 unique commits | no | keep as reference |
+
+## Reference branches (do not modify)
+
+- `feat/github-oauth-dashboard` @ `0d2045e132cb2c3c18e4ed229f87e8de0239eac8` — reference for #557
+- `feature/p31-telegram-transport-v1` @ `139a9658eb57097b1283f3619e8120dfbfe569a6` — superseded
+
+## Notes
+
+- Current post-merge main SHA: `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`.
+- Run Pytest: Run `42771008971`, Job `129678539478`, SUCCESS, Artifact `13742380715`.
+- Developer Quality: Run `42771009044`, Job `129678539894`, SUCCESS; no artifact.
+- G4 MinIO Runtime: Run `42771008996`, Job `129678540099`, SUCCESS, Artifact `13741557505`.
+- P23.0-B Cold Replay Diagnostic: Run `42771009431`, Job `129678545331`, SUCCESS; no artifact.
+- Research Loop v0 Gate (main): Run `42771008904`, Job `129678539358`, SUCCESS, Artifact `13742146313`.
+- G1 Trusted Lineage (main): Run `42771009155`, Job `129678543291`, SUCCESS, Artifact `13741677405`; see KNOWN-GAP-G1-ALIAS.
+- SBOM: Run `42771009033`, Job `129678540052`, SUCCESS, Artifact `13741443036`.
+- `docker-smoke` in Developer Quality Job `129678541809` — SKIPPED, не PASS.
+- Legacy combined Commit Status API on current main returned `state=pending`, `total_count=0`, `statuses=[]`; it is not the Actions Check Runs aggregate and is not a GREEN indicator.
+- Historical `import-historical.yml` orphaned failure Run `42752088885` / `jobs=[]` was on prior SHA `c1e6ac4b1611596211974d78535416af307877bc`; known anomaly, not treated as a general HOLD.
+- Frozen Core `src/jamp/run.py` blob on current main SHA `14e4c7dfd22ae80a1b643eb38f48c74ebb9a33c1`: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a`; `Δ=0`. Any change requires explicit Core Unlock.
+
+## Deferred follow-up (not created)
+
+- `[Tech Debt] PR inventory cleanup — 133 open PRs`: deferred as instructed; no issue has been created. The count of 133 was observed before PR #559 merged and must be refreshed when this task starts. Future scope: classify each open PR as active / stale / superseded / draft, identify duplicate work, and make no bulk-close changes without individual evidence and review.

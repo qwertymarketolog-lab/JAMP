@@ -1,0 +1,28 @@
+name: Groq Executor Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  groq-executor-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Test Groq executor contract
+        run: pytest -q tests/test_groq_executor.py
+      - name: Lint Groq executor
+        run: ruff check src/jamp/provider/groq.py tests/test_groq_executor.py

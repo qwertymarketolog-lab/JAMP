@@ -1,4 +1,5 @@
 """Canonical, verifiable reporting for P17.6 closed-loop experiments."""
+
 from __future__ import annotations
 
 import argparse
@@ -60,15 +61,17 @@ def render_cli(report: Mapping[str, Any]) -> str:
             f"{item['branching_burden']:>6} | {item['trajectory_digest'][:16]}"
         )
     summary = report["summary"]
-    lines.extend([
-        "",
-        f"ΔCE: {summary['delta_causal_efficiency']:.6f}",
-        f"Trajectory divergence: {summary['trajectory_divergence']}",
-        f"Exploration floor preserved: {summary['exploration_floor_preserved']}",
-        f"Replay verified: {summary['replay_verified']}",
-        f"Internal feedback only: {summary['internal_feedback_only']}",
-        f"Report digest: {report['report_digest']}",
-    ])
+    lines.extend(
+        [
+            "",
+            f"ΔCE: {summary['delta_causal_efficiency']:.6f}",
+            f"Trajectory divergence: {summary['trajectory_divergence']}",
+            f"Exploration floor preserved: {summary['exploration_floor_preserved']}",
+            f"Replay verified: {summary['replay_verified']}",
+            f"Internal feedback only: {summary['internal_feedback_only']}",
+            f"Report digest: {report['report_digest']}",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -78,20 +81,22 @@ def build_report(result: Any) -> dict[str, Any]:
         raise ValueError("cannot build report from an empty experiment result")
     generations: list[dict[str, Any]] = []
     for item in iterations:
-        generations.append({
-            "generation": item.generation,
-            "policy_weights": [[name, value] for name, value in item.policy.values],
-            "policy_digest": item.policy_digest,
-            "policy_event_id": item.policy_event_id,
-            "causal_efficiency": item.causal_efficiency,
-            "cost": item.cost,
-            "branching_burden": item.branching_burden,
-            "pattern_digest": item.pattern_digest,
-            "evidence_source": item.evidence_source,
-            "replay_policy_digest": item.replay_policy_digest,
-            "replay_verified": item.replay_policy_digest == item.policy_digest,
-            "trajectory_digest": item.trajectory_digest,
-        })
+        generations.append(
+            {
+                "generation": item.generation,
+                "policy_weights": [[name, value] for name, value in item.policy.values],
+                "policy_digest": item.policy_digest,
+                "policy_event_id": item.policy_event_id,
+                "causal_efficiency": item.causal_efficiency,
+                "cost": item.cost,
+                "branching_burden": item.branching_burden,
+                "pattern_digest": item.pattern_digest,
+                "evidence_source": item.evidence_source,
+                "replay_policy_digest": item.replay_policy_digest,
+                "replay_verified": item.replay_policy_digest == item.policy_digest,
+                "trajectory_digest": item.trajectory_digest,
+            }
+        )
     events = [
         {
             "event_id": event["event_id"],
@@ -112,14 +117,17 @@ def build_report(result: Any) -> dict[str, Any]:
         "causal_chain": {"events": events},
         "summary": {
             "delta_causal_efficiency": result.delta_causal_efficiency,
-            "trajectory_divergence": len({item["trajectory_digest"] for item in generations}) == len(generations),
+            "trajectory_divergence": len({item["trajectory_digest"] for item in generations})
+            == len(generations),
             "exploration_floor_preserved": all(
                 all(value >= item.policy.min_weight for _, value in item.policy.values)
                 for item in iterations
             ),
             "replay_verified": result.replay_verified,
             "internal_feedback_only": all(
-                item["evidence_source"] == "baseline" if item["generation"] == 0 else item["evidence_source"] == "pattern_index"
+                item["evidence_source"] == "baseline"
+                if item["generation"] == 0
+                else item["evidence_source"] == "pattern_index"
                 for item in generations
             ),
             "baseline_causal_efficiency": baseline["causal_efficiency"],
@@ -147,10 +155,14 @@ def _load_report(path: str | Path) -> dict[str, Any]:
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Verify or render a canonical P17.6 experiment report.")
+    parser = argparse.ArgumentParser(
+        description="Verify or render a canonical P17.6 experiment report."
+    )
     actions = parser.add_mutually_exclusive_group(required=True)
     actions.add_argument("--verify", metavar="FILE", help="verify the report SHA-256 seal")
-    actions.add_argument("--render", metavar="FILE", help="render the verified report as CLI output")
+    actions.add_argument(
+        "--render", metavar="FILE", help="render the verified report as CLI output"
+    )
     return parser
 
 

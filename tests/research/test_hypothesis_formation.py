@@ -1,4 +1,5 @@
 """P22.8 contract: deterministic, immutable, provenance-preserving hypothesis formation."""
+
 from __future__ import annotations
 
 import ast
@@ -39,7 +40,12 @@ def _tree():
 
 
 def test_public_boundary():
-    assert set(hypothesis.__all__) == {"Hypothesis", "HypothesisSet", "build_hypothesis_set", "verify_hypothesis_provenance"}
+    assert set(hypothesis.__all__) == {
+        "Hypothesis",
+        "HypothesisSet",
+        "build_hypothesis_set",
+        "verify_hypothesis_provenance",
+    }
 
 
 def test_hypothesis_dataclass():
@@ -52,7 +58,13 @@ def test_hypothesis_frozen():
 
 
 def test_hypothesis_fields():
-    assert tuple(hypothesis.Hypothesis.__dataclass_fields__) == ("hypothesis_hash", "evidence_refs", "state_hash", "proposition", "sequence")
+    assert tuple(hypothesis.Hypothesis.__dataclass_fields__) == (
+        "hypothesis_hash",
+        "evidence_refs",
+        "state_hash",
+        "proposition",
+        "sequence",
+    )
 
 
 def test_hash_is_sha256_hex():
@@ -63,10 +75,15 @@ def test_hash_is_sha256_hex():
 def test_hash_reproducible():
     assert _hypothesis().hypothesis_hash == _hypothesis().hypothesis_hash
 
+
 @pytest.mark.parametrize("field", ["proposition", "sequence"])
 def test_content_changes_identity(field):
     first = _hypothesis()
-    second = _hypothesis(proposition="different", sequence=0) if field == "proposition" else _hypothesis(sequence=1, record=_evidence(sequence=1))
+    second = (
+        _hypothesis(proposition="different", sequence=0)
+        if field == "proposition"
+        else _hypothesis(sequence=1, record=_evidence(sequence=1))
+    )
     assert first.hypothesis_hash != second.hypothesis_hash
 
 
@@ -96,24 +113,30 @@ def test_proposition_string():
 def test_sequence_integer():
     assert isinstance(_hypothesis().sequence, int)
 
+
 @pytest.mark.parametrize("bad", [True, -1, "0", 1.5, None])
 def test_sequence_validation(bad):
     with pytest.raises((TypeError, ValueError)):
         hypothesis.Hypothesis(("0" * 64,), STATE, P, bad)
+
 
 @pytest.mark.parametrize("bad", ["", "x", "A" * 64, "g" * 64, None, 1])
 def test_state_hash_validation(bad):
     with pytest.raises((TypeError, ValueError)):
         hypothesis.Hypothesis(("0" * 64,), bad, P, 0)
 
+
 @pytest.mark.parametrize("bad", [(), ("x",), ("A" * 64,), ("g" * 64,), (1,)])
 def test_evidence_ref_validation(bad):
     with pytest.raises((TypeError, ValueError)):
         hypothesis.Hypothesis(bad, STATE, P, 0)
 
+
 @pytest.mark.parametrize("proposition", ["", "a", "unicode: наблюдение → гипотеза"])
 def test_proposition_forms(proposition):
-    assert isinstance(hypothesis.Hypothesis(("0" * 64,), STATE, proposition, 0).hypothesis_hash, str)
+    assert isinstance(
+        hypothesis.Hypothesis(("0" * 64,), STATE, proposition, 0).hypothesis_hash, str
+    )
 
 
 def test_export_is_detached():
@@ -123,7 +146,13 @@ def test_export_is_detached():
 
 
 def test_export_fields():
-    assert set(_hypothesis().export()) == {"hypothesis_hash", "evidence_refs", "state_hash", "proposition", "sequence"}
+    assert set(_hypothesis().export()) == {
+        "hypothesis_hash",
+        "evidence_refs",
+        "state_hash",
+        "proposition",
+        "sequence",
+    }
 
 
 def test_set_dataclass():
@@ -300,7 +329,14 @@ def test_provenance_state_is_real_state():
 
 def test_hash_formula_is_canonical():
     h = _hypothesis()
-    expected = canonical.replay_hash({"evidence_refs": list(h.evidence_refs), "proposition": h.proposition, "sequence": h.sequence, "state_hash": h.state_hash})
+    expected = canonical.replay_hash(
+        {
+            "evidence_refs": list(h.evidence_refs),
+            "proposition": h.proposition,
+            "sequence": h.sequence,
+            "state_hash": h.state_hash,
+        }
+    )
     assert h.hypothesis_hash == expected
 
 
@@ -351,7 +387,9 @@ def test_hypothesis_input_not_mutated():
 
 def test_repeated_verification_deterministic():
     hs = _valid_set()
-    assert hypothesis.verify_hypothesis_provenance(hs, _ledger()) == hypothesis.verify_hypothesis_provenance(hs, _ledger())
+    assert hypothesis.verify_hypothesis_provenance(
+        hs, _ledger()
+    ) == hypothesis.verify_hypothesis_provenance(hs, _ledger())
 
 
 def test_same_content_same_identity():
@@ -361,40 +399,57 @@ def test_same_content_same_identity():
 def test_detached_hypothesis_roundtrip():
     item = _hypothesis()
     data = item.export()
-    rebuilt = hypothesis.Hypothesis(tuple(data["evidence_refs"]), data["state_hash"], data["proposition"], data["sequence"])
+    rebuilt = hypothesis.Hypothesis(
+        tuple(data["evidence_refs"]), data["state_hash"], data["proposition"], data["sequence"]
+    )
     assert rebuilt == item
 
 
 def test_detached_set_roundtrip():
     hs = _valid_set()
     data = hs.export()
-    rebuilt_h = tuple(hypothesis.Hypothesis(tuple(x["evidence_refs"]), x["state_hash"], x["proposition"], x["sequence"]) for x in data["hypotheses"])
+    rebuilt_h = tuple(
+        hypothesis.Hypothesis(
+            tuple(x["evidence_refs"]), x["state_hash"], x["proposition"], x["sequence"]
+        )
+        for x in data["hypotheses"]
+    )
     rebuilt = hypothesis.HypothesisSet(rebuilt_h, data["set_hash"])
     assert rebuilt == hs
 
 
 def test_no_os_import():
-    imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
+    imports = {
+        a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names
+    }
     assert "os" not in imports
 
 
 def test_no_time_import():
-    imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
+    imports = {
+        a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names
+    }
     assert "time" not in imports
 
 
 def test_no_random_import():
-    imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
+    imports = {
+        a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names
+    }
     assert "random" not in imports
 
 
 def test_no_network_imports():
-    imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
+    imports = {
+        a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names
+    }
     assert not imports.intersection({"socket", "requests", "urllib", "httpx"})
 
 
 def test_no_filesystem_imports():
-    imports = {a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names}
+    imports = {
+        a.name.split(".")[0] for n in _tree().body if isinstance(n, ast.Import) for a in n.names
+    }
     assert "pathlib" not in imports
 
 
@@ -420,7 +475,16 @@ def test_no_network_calls():
 
 def test_no_decision_token():
     source = inspect.getsource(hypothesis).lower()
-    for token in ("score", "confidence", "probability", "ranking", "priority", "fitness", "threshold", "bayesian"):
+    for token in (
+        "score",
+        "confidence",
+        "probability",
+        "ranking",
+        "priority",
+        "fitness",
+        "threshold",
+        "bayesian",
+    ):
         assert token not in source
 
 
@@ -431,8 +495,15 @@ def test_no_semantic_selection():
 
 
 def test_no_selection_functions():
-    names = {node.name for node in _tree().body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    assert not any(any(token in name.lower() for token in ("select", "rank", "score", "filter", "choose")) for name in names)
+    names = {
+        node.name
+        for node in _tree().body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    assert not any(
+        any(token in name.lower() for token in ("select", "rank", "score", "filter", "choose"))
+        for name in names
+    )
 
 
 def test_no_io_calls():
@@ -450,7 +521,10 @@ def test_no_legacy_hypothesis_import():
 
 
 def test_public_api_has_no_selection_primitive():
-    assert not any(name.lower().startswith(("select", "rank", "score", "filter")) for name in hypothesis.__all__)
+    assert not any(
+        name.lower().startswith(("select", "rank", "score", "filter"))
+        for name in hypothesis.__all__
+    )
 
 
 def test_set_commitment_changes_on_hypothesis_change():
@@ -493,14 +567,21 @@ def test_build_does_not_mutate_sequence_input():
 def test_export_roundtrip_hash_stable():
     item = _hypothesis()
     data = item.export()
-    rebuilt = hypothesis.Hypothesis(tuple(data["evidence_refs"]), data["state_hash"], data["proposition"], data["sequence"])
+    rebuilt = hypothesis.Hypothesis(
+        tuple(data["evidence_refs"]), data["state_hash"], data["proposition"], data["sequence"]
+    )
     assert rebuilt.hypothesis_hash == item.hypothesis_hash
 
 
 def test_set_export_roundtrip_hash_stable():
     hs = _valid_set()
     data = hs.export()
-    rebuilt_h = tuple(hypothesis.Hypothesis(tuple(x["evidence_refs"]), x["state_hash"], x["proposition"], x["sequence"]) for x in data["hypotheses"])
+    rebuilt_h = tuple(
+        hypothesis.Hypothesis(
+            tuple(x["evidence_refs"]), x["state_hash"], x["proposition"], x["sequence"]
+        )
+        for x in data["hypotheses"]
+    )
     rebuilt = hypothesis.HypothesisSet(rebuilt_h, data["set_hash"])
     assert rebuilt.set_hash == hs.set_hash
 

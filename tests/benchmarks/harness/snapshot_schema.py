@@ -1,4 +1,5 @@
 """Deterministic JSON snapshot schema for P23.0-B cold replay."""
+
 from __future__ import annotations
 
 import json

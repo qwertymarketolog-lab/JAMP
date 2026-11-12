@@ -1,7 +1,7 @@
 # Specification Schema v0
 
-**Status:** Draft / Pre-Freeze
-**Layer:** N1 — Specification
+**Status:** Draft / Pre-Freeze  
+**Layer:** N1 — Specification  
 **Governing contract:** `PROVENANCE-CONTRACT-v0`
 
 ## 1. Purpose
@@ -18,14 +18,29 @@ This schema is subordinate to `PROVENANCE-CONTRACT-v0` and must not be interpret
 Specification:
   spec_id: UUIDv4 / Content-Namespace ID
   spec_version: String (semantic version)
+  scope: ScopeDefinition
   hypothesis_ref: HashLink
   prediction_ref: HashLink
   criterion_set_ref: HashLink
   preconditions: List[ConditionRule]
   observation_schema: SchemaDefinition
+  evidence_classes: NonEmptyList[EvidenceClass]
   frozen_at: ISO8601 Timestamp | null (Draft only)
   spec_hash: SHA-256
 ```
+
+### EvidenceClass v0
+
+The Stage B evidence-class vocabulary for `example-001` is:
+
+- `raw_webhook_payload`
+- `jamp_runtime_log`
+- `provider_request_export`
+- `provider_response_export`
+- `telegram_send_result`
+- `execution_timing_export`
+
+These are evidence-type declarations, not evidence records, hashes, or verdicts. Stage C Raw Evidence v0 is responsible for binding concrete source bytes/records and their `source_sha256` values.
 
 ## 3. Field Semantics
 
@@ -37,13 +52,23 @@ Immutable identity of the Specification object or its content namespace.
 
 Version of the Specification schema/object. A frozen change creates a new version rather than modifying the existing frozen object.
 
+### `scope`
+
+A separately represented, frozen boundary for the research/conformance question. It identifies the domain, system boundary, unit of evaluation, and explicit exclusions. It MUST NOT contain observed results or verdict logic.
+
+For `example-001`, the unit is one execution of:
+
+`Telegram webhook → JAMP Runtime → OpenRouter → Telegram response`.
+
+This is one-run conformance only. It is not an SLA, latency, throughput, availability, reliability, or performance claim.
+
 ### `hypothesis_ref`
 
-Content-addressed reference to one exact immutable Hypothesis object.
+Content-addressed reference to one exact immutable Hypothesis object. The reference value is expected to bind to the exact `hypothesis_hash` emitted by the Hypothesis record.
 
 ### `prediction_ref`
 
-Content-addressed reference to one exact immutable Prediction object.
+Content-addressed reference to one exact immutable Prediction object. The reference value is expected to bind to the exact `prediction_hash` emitted by the Prediction record.
 
 ### `criterion_set_ref`
 
@@ -51,11 +76,23 @@ Content-addressed reference to one exact immutable Criterion Set. The reference 
 
 ### `preconditions`
 
-Frozen protocol/state constraints applicable to the execution. They are data/conditions, not classification predicates.
+Frozen protocol/state constraints applicable to the execution. They are data/conditions, not classification predicates. For external dependencies, preconditions identify the expected provider/service and requested model without embedding credentials.
 
 ### `observation_schema`
 
-Frozen definition of the permitted raw-observation structure. It does not encode acceptance, rejection, or aggregation logic.
+Frozen definition of the permitted raw-observation structure. For `example-001`, it must make observable, at minimum:
+
+- the complete incoming Telegram webhook payload as received, including `update_id` and the applicable incoming `message_id`;
+- the OpenRouter provider, exact requested model identifier, and the model/version identifier actually reported in the provider response;
+- the exact provider request as sent and response as received, including relevant response headers/metadata and a content hash/snapshot reference;
+- the Telegram send result, including HTTP/API status and the returned outgoing Telegram `message_id`;
+- UTC start/end and key-step timestamps, each with an explicit clock/source designation.
+
+These are observation-shape requirements. They do not assert that the historical E2E run already captured all fields.
+
+### `evidence_classes`
+
+A non-empty list declaring the evidence classes required by the protocol. For `example-001`, the list MUST contain all six EvidenceClass v0 values above. This field declares required evidence types only; it does not claim that any evidence has been collected.
 
 ### `frozen_at`
 
@@ -64,6 +101,8 @@ Frozen definition of the permitted raw-observation structure. It does not encode
 ### `spec_hash`
 
 SHA-256 computed from the canonical representation of all Specification fields except `spec_hash` itself. Any modification to a covered field produces a different content hash.
+
+The repository's current `canonical.py` is deterministic JSON serialization, but RFC 8785 JCS conformance has not been established. The hash/canonicalization decision remains pre-freeze; this document does not declare the current serializer JCS-compliant.
 
 ## 4. N1 Invariants
 
@@ -75,10 +114,15 @@ SHA-256 computed from the canonical representation of all Specification fields e
 - **I6:** A modification to a frozen Specification requires a new Specification version and immutable identity/hash.
 - **I7:** `frozen_at = null` is permitted only before freezing; a frozen Specification must contain a concrete timestamp.
 - **I8:** Specification fields must not contain verdict-bearing interpretation introduced after execution begins.
+- **I9:** `scope` is a separate field and remains frozen with the Specification.
+- **I10:** `evidence_classes` declares required evidence types; it is not a substitute for concrete Raw Evidence.
+- **I11:** For `example-001`, all six required evidence classes must be present before one-run conformance can be evaluated.
 
 ## 5. Conformance
 
-The schema conforms to the frozen `PROVENANCE-CONTRACT-v0` requirements for Specification: identity, version, hypothesis/prediction/criterion-set references, freeze timestamp, and content hash.
+The schema preserves the frozen `PROVENANCE-CONTRACT-v0` requirements for Specification: identity, version, hypothesis/prediction/criterion-set references, freeze timestamp, and content hash.
+
+The additional `scope` and `evidence_classes` fields are Stage B extensions accepted by the project owner. They do not modify the frozen provenance contract.
 
 The schema does not define Criterion predicates, Criterion Set aggregation, Classification, or Verdict semantics; those remain separate normative objects.
 
@@ -86,4 +130,165 @@ The schema does not define Criterion predicates, Criterion Set aggregation, Clas
 
 This document is **DRAFT / PRE-FREEZE**.
 
-It must undergo contradiction audit against `PROVENANCE-CONTRACT-v0` before it can be frozen as `SPECIFICATION-SCHEMA-v0`.
+Freeze is blocked until:
+1. A2 verification establishes that Hypothesis and Prediction records and their references are compatible with the N1 contract and are actually resolved by the applicable gate.
+2. JCS V1–V10 are executed and independently checked, or the serialization contract is explicitly retained as non-JCS with a versioned decision.
+3. The `example-001` evidence requirements are backed by a complete real execution; until then the example remains schema-only.
+4. The open Q1–Q5 proposals are resolved by explicit owner decisions or kept outside the frozen contract.
+
+No runtime implementation is authorized by this schema package.
+
+
+## Addendum — 2026-10-31 — Q1–Q5 RATIFIED
+
+Ratified at main `4e7909ef`. Owner decisions recorded.
+
+### Q1–Q5 final
+
+| # | Decision |
+|---|---|
+| Q1 | JSON Schema — единственный источник истины. YAML не вводится. |
+| Q2 | 1 Specification = 1 атомарный research case. Композиция — immutable references. |
+| Q3 | Замораживаются 11 нормативных полей: `spec_id, spec_version, hypothesis_ref, prediction_ref, criterion_set_ref, preconditions, scope, evidence_classes, observation_schema, frozen_at, spec_hash`. Post-hoc метрики не замораживаются. |
+| Q4 | `spec_hash = SHA-256(canonical_json)`, canonicalization — JCS RFC 8785. |
+| Q5 | Criterion — отдельный hash-addressed объект; агрегация — Criterion Set. |
+
+### Superseding
+
+Упоминания `Q1–Q5 PROPOSED` в этом документе superseded ratification от
+2026-10-31. Финальные решения — см. эту таблицу. Исторические утверждения
+сохраняются как есть.
+
+### Условия N1 freeze — уточнение
+
+Прежний текст требовал полный example-001 evidence run как условие N1 freeze.
+Уточняется:
+
+- N1 freeze требует: Q1–Q5 ratified + A2 evidence + Frozen Core Δ=0 +
+  `protocol_manifest_sha256` записан со статусом в manifest.
+- **Полный example-001 evidence run — НЕ условие N1 freeze.** Это Stage C gate.
+
+Обоснование: связка «N1 freeze ↔ полный example-001» создаёт цикл (схема
+не может быть заморожена до прогона; прогон требует замороженной схемы).
+Stage B и Stage C — разные gate.
+
+### Что не меняется
+
+- PASS/FAIL критерии не затрагиваются.
+- Изменения runtime, тестов, `canonical.py`, Frozen Core — не входят.
+
+
+## Addendum — 2026-10-31 — JCS RFC 8785 conformance
+
+Supersedes: прежние утверждения в этом документе о том, что JCS-соответствие
+не установлено.
+
+### Conformance evidence
+
+JCS RFC 8785 ratified через Q4 (Addendum Q1–Q5, PR #485).
+Реализация `canonical.py` использует `jcs.canonicalize()` (backend `jcs==0.2.1`).
+
+Evidence: PR #482, merge `59a0e96052ee216f3d082e46c023dbe89438e10a`,
+Run `41169580036`, Job `124444420972`. V1–V10 conformance + reference
+comparison against independent `jcs` implementation пройдены.
+
+### Граница
+
+Этот статус относится к evidence конкретного прогона на указанном SHA.
+Он не является вечным свойством реализации. Каждый новый прогон JCS harness
+даёт собственное evidence.
+
+### Что не меняется
+
+- Field semantics Q1–Q5 — не затрагиваются.
+- PASS/FAIL критерии — не затрагиваются.
+- Исторические утверждения ниже сохраняются как superseded.
+
+## Addendum 3 — 2026-10-31 — spec_id semantics RATIFIED (UUIDv5 Content-Namespace)
+
+Ratified at main `0065b668a974f63c47e6abbf2fc17f6f439ea101`.
+
+### Namespace
+
+- root UUID: `6ba7b810-9dad-11d1-80b4-00c04fd430c8` (`UUID_NAMESPACE_DNS`, RFC 4122)
+- name string: `jamp.dev/specifications/spec-id`
+- spec_id_namespace = `UUIDv5(root, name)` = `5c9426b4-f92f-5742-a2b4-8a244a411708`
+- Immutable after this ratification. Not to be regenerated.
+
+### spec_id formula (C1)
+
+```
+
+spec_id = UUIDv5(
+spec_id_namespace,
+canonical_bytes(spec \\ {spec_id, spec_hash, frozen_at})
+)
+
+```
+
+`canonical_bytes` = JCS RFC 8785 (backend `jcs==0.2.1`, `src/jamp/research/canonical.py`), returns UTF-8 bytes.
+
+`frozen_at` is **excluded** from spec_id input. Rationale:
+
+- spec_id identifies the research content, not the moment of freeze.
+- Changing `frozen_at` must not generate a new identity.
+- Otherwise the A2 gate would report `A2_HASH_MISMATCH` after freeze, breaking the chain.
+
+### spec_hash formula (clarified, not changed)
+
+```
+
+spec_hash = sha256(canonical_bytes(spec \\ {spec_hash}))
+
+```
+
+`spec_hash` **includes** `spec_id` and `frozen_at`. It is a versioned content hash, distinct from stable identity.
+
+### Collision semantics
+
+UUIDv5 provides deterministic generation but is not a cryptographic commitment. `spec_hash` (SHA-256) is authoritative for unambiguous content identification. Collision resistance of UUIDv5 relies on the 122-bit random portion and is not formally proven.
+
+### What does not change
+
+- Q1–Q5 field set (11 fields): not modified.
+- PASS/FAIL criteria: not modified.
+- Historical statements remain superseded.
+
+
+## Addendum 4 — 2026-11-01 — N1 Freeze
+
+N1 (normalized Specification contract) is FROZEN at main `4af4937ab35fa2b81c32a1adb189621232427631`.
+
+### Frozen state
+
+| Field | Value |
+|---|---|
+| manifest_status | FROZEN |
+| specification_schema.file_sha256 | f2bb77b925981ab80a2000a8fdce707d41f3904c6f31b87904a864e1b3c212f6 |
+| specification_schema.jcs_sha256 | 58297b5967ab1d6af3b18b6c6dc45b3bbfee6f448214b3f617c455e67359e62d |
+| manifest_sha256 | d0b754ae790ad9f8d99b07dcaca5e4f8648e0ff5bc60fd95166269bac80dc697 |
+| spec_id_semantics | RATIFIED (per #487), freeze_blocker=false |
+
+### Provenance
+
+Hashes computed by CI on branch `docs/n1-freeze`, commit `1702368`,
+run `41288415582`, job `124794388086`, artifact `n1-freeze-hashes`
+(`13076321661`). Not computed locally.
+
+### What N1 Freeze means
+
+The normalized Specification contract is now closed. Its schema, manifest,
+and JCS canonical hashes are immutable. Any change to Specification
+Schema v0 requires a new manifest version and re-freeze.
+
+### What N1 Freeze does NOT mean
+
+- Stage C (execution evidence) is NOT AUTHORIZED. It requires separate
+  explicit approval.
+- Verdict Architecture (v0.4-RC) remains RATIFIED DESIGN — IMPLEMENTATION
+  PENDING.
+- Recovery flow G2.4 remains RECOVERY_DESIGN_RC, blocked by §17.1 K1-K5.
+- example-001 remains SCHEMA_ONLY, evidence completeness tracked under
+  Stage C.
+
+Stage B (normal specification contract) is closed as of this addendum.

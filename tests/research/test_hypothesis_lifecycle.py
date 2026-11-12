@@ -4,6 +4,7 @@ Every frozen gate is exercised by behavior, not by a declarative name check.
 The suite intentionally attacks immutability, provenance, FSM legality,
 lineage, tamper detection, determinism, and isolation boundaries.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -64,7 +65,9 @@ def _claim_without_evidence(status: ClaimStatus = ClaimStatus.UNDETERMINED) -> C
     rule = "EVIDENCE_STATUS"
     version = "1"
     claim_hash = compute_claim_hash(claim_type, statement, premises, refs, rule, version, status)
-    return Claim(claim_type, statement, premises, refs, rule, version, status, {"evidence": {}}, claim_hash)
+    return Claim(
+        claim_type, statement, premises, refs, rule, version, status, {"evidence": {}}, claim_hash
+    )
 
 
 def _hypothesis(**kwargs):
@@ -79,6 +82,7 @@ def _hypothesis(**kwargs):
 
 # 01
 
+
 def test_01_schema_validity():
     h = _hypothesis()
     assert h.verify() is True
@@ -86,6 +90,7 @@ def test_01_schema_validity():
 
 
 # 02
+
 
 def test_02_immutable_hypothesis_record():
     h = _hypothesis()
@@ -97,16 +102,24 @@ def test_02_immutable_hypothesis_record():
 
 # 03
 
+
 def test_03_valid_hypothesis_hash():
     h = _hypothesis()
     expected = compute_hypothesis_hash(
-        h.formulation, h.hypothesis_type, h.source, h.parent_hypothesis_hash,
-        h.claim_hashes, h.evidence_hashes, h.status, h.transition_history,
+        h.formulation,
+        h.hypothesis_type,
+        h.source,
+        h.parent_hypothesis_hash,
+        h.claim_hashes,
+        h.evidence_hashes,
+        h.status,
+        h.transition_history,
     )
     assert expected == h.hypothesis_hash
 
 
 # 04
+
 
 def test_04_deterministic_hash_computation():
     a = _hypothesis(source={"b": 2, "a": [1, 2]})
@@ -115,6 +128,7 @@ def test_04_deterministic_hash_computation():
 
 
 # 05
+
 
 def test_05_self_verification():
     h = _hypothesis()
@@ -135,12 +149,14 @@ def test_05_self_verification():
 
 # 06
 
+
 def test_06_canonical_formulation():
     h = _hypothesis(formulation="  The   system\n is   deterministic.  ")
     assert h.formulation == "The system is deterministic."
 
 
 # 07
+
 
 def test_07_explicit_hypothesis_type():
     with pytest.raises(HypothesisIntegrityError):
@@ -151,20 +167,39 @@ def test_07_explicit_hypothesis_type():
 
 # 08
 
+
 def test_08_valid_status():
     h = _hypothesis()
     assert h.status is HypothesisStatus.ACTIVE
     with pytest.raises(HypothesisIntegrityError):
         HypothesisRecord(
-            h.formulation, h.hypothesis_type, h.source, None, (), (), "INVALID", (), h.hypothesis_hash
+            h.formulation,
+            h.hypothesis_type,
+            h.source,
+            None,
+            (),
+            (),
+            "INVALID",
+            (),
+            h.hypothesis_hash,
         )
 
 
 # 09
 
+
 def test_09_runtime_independent_identity():
     base = _hypothesis(source={"observation": "repeatable output"})
-    for key in ("timestamp", "uuid", "memory_address", "environment", "local_path", "hostname", "pid", "process_id"):
+    for key in (
+        "timestamp",
+        "uuid",
+        "memory_address",
+        "environment",
+        "local_path",
+        "hostname",
+        "pid",
+        "process_id",
+    ):
         with pytest.raises(HypothesisIntegrityError):
             _hypothesis(source={"observation": "repeatable output", key: "runtime"})
     assert isinstance(base.hypothesis_hash, str) and len(base.hypothesis_hash) == 64
@@ -172,19 +207,26 @@ def test_09_runtime_independent_identity():
 
 # 10
 
+
 def test_10_deterministic_export_import():
     h = _hypothesis()
     exported = dict(h.export())
     restored = HypothesisRecord(
-        exported["formulation"], exported["hypothesis_type"], exported["source"],
-        exported["parent_hypothesis_hash"], tuple(exported["claim_hashes"]),
-        tuple(exported["evidence_hashes"]), exported["status"],
-        tuple(exported["transition_history"]), exported["hypothesis_hash"],
+        exported["formulation"],
+        exported["hypothesis_type"],
+        exported["source"],
+        exported["parent_hypothesis_hash"],
+        tuple(exported["claim_hashes"]),
+        tuple(exported["evidence_hashes"]),
+        exported["status"],
+        tuple(exported["transition_history"]),
+        exported["hypothesis_hash"],
     )
     assert canonical_bytes(h.export()) == canonical_bytes(restored.export())
 
 
 # 11
+
 
 def test_11_registered_evidence_only():
     registry, result = _registry_with_result()
@@ -197,6 +239,7 @@ def test_11_registered_evidence_only():
 
 # 12
 
+
 def test_12_unknown_evidence_rejected():
     registry = ArtifactRegistry()
     h = _hypothesis(evidence_hashes=(VALID_HASH,))
@@ -206,6 +249,7 @@ def test_12_unknown_evidence_rejected():
 
 # 13
 
+
 def test_13_evidence_integrity_verified():
     registry, result = _registry_with_result()
     h = _hypothesis(evidence_hashes=(result.result_hash,))
@@ -213,6 +257,7 @@ def test_13_evidence_integrity_verified():
 
 
 # 14
+
 
 def test_14_claim_integrity_verified():
     registry = ArtifactRegistry()
@@ -222,6 +267,7 @@ def test_14_claim_integrity_verified():
 
 
 # 15
+
 
 def test_15_claim_evidence_substitution_rejected():
     registry = ArtifactRegistry()
@@ -234,6 +280,7 @@ def test_15_claim_evidence_substitution_rejected():
 
 # 16
 
+
 def test_16_evidence_tampering_detected():
     registry, result = _registry_with_result()
     h = _hypothesis(evidence_hashes=(result.result_hash,))
@@ -245,6 +292,7 @@ def test_16_evidence_tampering_detected():
 
 # 17
 
+
 def test_17_complete_provenance_preserved():
     parent = transition_hypothesis(_hypothesis(), HypothesisStatus.REFUTED, {"claim": VALID_HASH})
     child = _hypothesis(parent=parent, claim_hashes=(VALID_HASH,), evidence_hashes=(VALID_HASH_2,))
@@ -253,10 +301,14 @@ def test_17_complete_provenance_preserved():
     assert exported["claim_hashes"] == (VALID_HASH,)
     assert exported["evidence_hashes"] == (VALID_HASH_2,)
     assert len(exported["transition_history"]) == 0
-    assert parent.export()["transition_history"][0]["transition_hash"] == parent.transition_history[0]["transition_hash"]
+    assert (
+        parent.export()["transition_history"][0]["transition_hash"]
+        == parent.transition_history[0]["transition_hash"]
+    )
 
 
 # 18
+
 
 def test_18_active_to_supported():
     h = transition_hypothesis(_hypothesis(), HypothesisStatus.SUPPORTED, {"claim": VALID_HASH})
@@ -266,6 +318,7 @@ def test_18_active_to_supported():
 
 # 19
 
+
 def test_19_active_to_refuted():
     h = transition_hypothesis(_hypothesis(), HypothesisStatus.REFUTED, {"claim": VALID_HASH})
     assert h.status is HypothesisStatus.REFUTED
@@ -273,6 +326,7 @@ def test_19_active_to_refuted():
 
 
 # 20
+
 
 def test_20_active_to_revised():
     h = transition_hypothesis(_hypothesis(), HypothesisStatus.REVISED, {"claim": VALID_HASH})
@@ -283,6 +337,7 @@ def test_20_active_to_revised():
 
 # 21
 
+
 def test_21_active_to_retired():
     h = transition_hypothesis(_hypothesis(), HypothesisStatus.RETIRED, {"reason": "obsolete"})
     assert h.status is HypothesisStatus.RETIRED
@@ -291,14 +346,18 @@ def test_21_active_to_retired():
 
 # 22
 
+
 def test_22_supported_transitions():
-    supported = transition_hypothesis(_hypothesis(), HypothesisStatus.SUPPORTED, {"claim": VALID_HASH})
+    supported = transition_hypothesis(
+        _hypothesis(), HypothesisStatus.SUPPORTED, {"claim": VALID_HASH}
+    )
     for target in (HypothesisStatus.REFUTED, HypothesisStatus.REVISED, HypothesisStatus.RETIRED):
         result = transition_hypothesis(supported, target, {"claim": VALID_HASH})
         assert result.status is target
 
 
 # 23
+
 
 def test_23_terminal_state_finality():
     for terminal in (HypothesisStatus.REFUTED, HypothesisStatus.REVISED, HypothesisStatus.RETIRED):
@@ -310,15 +369,20 @@ def test_23_terminal_state_finality():
 
 # 24
 
+
 def test_24_illegal_transition_rejected():
     h = _hypothesis()
     with pytest.raises(HypothesisTransitionError):
         transition_hypothesis(h, HypothesisStatus.ACTIVE, {"reason": "noop"})
     supported = transition_hypothesis(h, HypothesisStatus.SUPPORTED, {"reason": "support"})
-    assert transition_hypothesis(supported, HypothesisStatus.REFUTED, {"reason": "refutation"}).status is HypothesisStatus.REFUTED
+    assert (
+        transition_hypothesis(supported, HypothesisStatus.REFUTED, {"reason": "refutation"}).status
+        is HypothesisStatus.REFUTED
+    )
 
 
 # 25
+
 
 def test_25_transition_reason_required():
     with pytest.raises(HypothesisTransitionError):
@@ -327,6 +391,7 @@ def test_25_transition_reason_required():
 
 # 26
 
+
 def test_26_parent_hypothesis_must_exist():
     h = _hypothesis(parent_hypothesis_hash=VALID_HASH)
     with pytest.raises(HypothesisIntegrityError):
@@ -334,6 +399,7 @@ def test_26_parent_hypothesis_must_exist():
 
 
 # 27
+
 
 def test_27_parent_hash_integrity_verified():
     parent = transition_hypothesis(_hypothesis(), HypothesisStatus.REFUTED, {"reason": "evidence"})
@@ -346,8 +412,11 @@ def test_27_parent_hash_integrity_verified():
 
 # 28
 
+
 def test_28_descendant_cannot_rewrite_ancestor():
-    parent = transition_hypothesis(_hypothesis(source={"observation": "A"}), HypothesisStatus.REFUTED, {"reason": "refuted"})
+    parent = transition_hypothesis(
+        _hypothesis(source={"observation": "A"}), HypothesisStatus.REFUTED, {"reason": "refuted"}
+    )
     child = _hypothesis(parent=parent, source={"observation": "B"})
     assert parent.formulation == "The system is deterministic."
     assert child.parent_hypothesis_hash == parent.hypothesis_hash
@@ -357,9 +426,12 @@ def test_28_descendant_cannot_rewrite_ancestor():
 
 # 29
 
+
 def test_29_recursive_lineage_preserved():
     root = transition_hypothesis(_hypothesis(), HypothesisStatus.REFUTED, {"reason": "r1"})
-    child = transition_hypothesis(_hypothesis(parent=root), HypothesisStatus.REVISED, {"reason": "r2"})
+    child = transition_hypothesis(
+        _hypothesis(parent=root), HypothesisStatus.REVISED, {"reason": "r2"}
+    )
     grandchild = _hypothesis(parent=child)
     assert child.parent_hypothesis_hash == root.hypothesis_hash
     assert grandchild.parent_hypothesis_hash == child.hypothesis_hash
@@ -370,6 +442,7 @@ def test_29_recursive_lineage_preserved():
 
 # 30
 
+
 def test_30_transition_history_tampering_detected():
     h = transition_hypothesis(_hypothesis(), HypothesisStatus.REFUTED, {"reason": "real"})
     exported = dict(h.export())
@@ -378,14 +451,20 @@ def test_30_transition_history_tampering_detected():
     tampered_history[0]["reason"] = {"reason": "forged"}
     with pytest.raises(HypothesisIntegrityError):
         HypothesisRecord(
-            exported["formulation"], exported["hypothesis_type"], exported["source"],
-            exported["parent_hypothesis_hash"], tuple(exported["claim_hashes"]),
-            tuple(exported["evidence_hashes"]), exported["status"],
-            tuple(tampered_history), exported["hypothesis_hash"],
+            exported["formulation"],
+            exported["hypothesis_type"],
+            exported["source"],
+            exported["parent_hypothesis_hash"],
+            tuple(exported["claim_hashes"]),
+            tuple(exported["evidence_hashes"]),
+            exported["status"],
+            tuple(tampered_history),
+            exported["hypothesis_hash"],
         )
 
 
 # 31
+
 
 def test_31_cross_runtime_byte_identical_reproduction():
     h = _hypothesis(source={"z": [3, 2], "a": "stable"})
@@ -398,17 +477,29 @@ def test_31_cross_runtime_byte_identical_reproduction():
         "hypothesis_type='SCIENTIFIC', source={'z':[3,2],'a':'stable'}); "
         "print(hashlib.sha256(canonical_bytes(h.export())).hexdigest())"
     )
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
     assert result.stdout.strip() == expected
 
 
 # 32
 
+
 def test_32_zero_io_network_domain_contamination():
     import jamp.research.hypothesis as module
 
     source = inspect.getsource(module)
-    forbidden = ("import socket", "import requests", "import urllib", "import httpx", "jamp.domain", "open(", "Path(", "os.environ")
+    forbidden = (
+        "import socket",
+        "import requests",
+        "import urllib",
+        "import httpx",
+        "jamp.domain",
+        "open(",
+        "Path(",
+        "os.environ",
+    )
     assert not any(token in source for token in forbidden)
     assert "runtime metadata" in source
     assert "canonical_bytes" in source

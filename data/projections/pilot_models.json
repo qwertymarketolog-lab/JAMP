@@ -1,0 +1,25 @@
+{
+  "schema_version": "jamp-pilot-models-v1",
+  "models": {
+    "z-ai/glm-5.3-flash": {
+      "provider": "openrouter",
+      "evidence_ref": "src/jamp/runtime/measured_benchmarks.json#/z-ai~1glm-5.3-flash/search_and_extraction",
+      "task_profiles": {
+        "search_and_extraction": {
+          "status": "QUALIFIED",
+          "benchmark_version": "v1",
+          "score": 1.0
+        },
+        "tool_execution_agent": {
+          "status": "NOT_APPROVED"
+        },
+        "long_context_analysis": {
+          "status": "NOT_APPROVED"
+        },
+        "strict_compliance_safety": {
+          "status": "NOT_APPROVED"
+        }
+      }
+    }
+  }
+}
