@@ -71,6 +71,7 @@ jobs:
           import time
           import urllib.error
           import urllib.request
+          from urllib.request import HTTPRedirectHandler, build_opener
           from pathlib import Path
 
           out = Path("smoke-evidence")
@@ -91,9 +92,14 @@ jobs:
           started = time.monotonic()
           status = None
           headers = {}
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, response_headers, new_url):
+                  return None
+
           try:
-              # urllib performs one request; no retry loop or retry handler is installed.
-              with urllib.request.urlopen(request, timeout=60) as response:
+              # Exactly one POST: redirects are not followed; no retry handler is installed.
+              opener = build_opener(NoRedirect)
+              with opener.open(request, timeout=60) as response:
                   status = response.status
                   headers = dict(response.headers.items())
                   body = response.read()
