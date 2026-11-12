@@ -88,10 +88,12 @@ def main():
             try:
                 parsed=json.loads(body)
                 choices=parsed.get("choices") if isinstance(parsed,dict) else None
-                if isinstance(choices,list) and choices:
+                if isinstance(choices,list) and choices and isinstance(choices[0],dict):
                     msg=choices[0].get("message",{})
                     if isinstance(msg,dict): content=msg.get("content")
-            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                if content is None:
+                    parse_error="response_choices_or_message_content_missing"
+            except Exception as exc:
                 parse_error=f"{type(exc).__name__}: {exc}"
         raw=RAW/f"{tid}.json"
         if body: raw.write_bytes(body)
