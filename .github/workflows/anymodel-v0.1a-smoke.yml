@@ -125,7 +125,7 @@ jobs:
                       "response_headers": {},
                       "cf_ray": None,
                       "server": None,
-                  }, indent=2) + "\\n",
+                  }, indent=2) + "\n",
                   encoding="utf-8",
               )
               (out / "request-error.txt").write_text(
@@ -138,7 +138,7 @@ jobs:
                       "request_sent": True,
                       "response_received": False,
                       "retry_count": 0,
-                  }, indent=2) + "\\n",
+                  }, indent=2) + "\n",
                   encoding="utf-8",
               )
               print(f"TRANSPORT_ERROR latency_ms={latency_ms}")
@@ -161,7 +161,7 @@ jobs:
               "server": server,
           }
           (out / "diagnostic-headers.json").write_text(
-              json.dumps(diagnostic, indent=2) + "\\n", encoding="utf-8"
+              json.dumps(diagnostic, indent=2) + "\n", encoding="utf-8"
           )
           (out / "response.json").write_bytes(body)
 
@@ -183,7 +183,7 @@ jobs:
               "billing_zero_confirmed": False,
           }
           (out / "request-metadata.json").write_text(
-              json.dumps(metadata, indent=2) + "\\n", encoding="utf-8"
+              json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
           )
 
           print(f"HTTP_STATUS={status}")
