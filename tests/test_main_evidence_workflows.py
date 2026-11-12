@@ -103,7 +103,15 @@ def test_g1_actions_run_job_url_regex_matches_numeric_ids() -> None:
         and isinstance(node.args[0].value, str)
         and "/actions/runs/" in node.args[0].value
     ]
-    assert len(patterns) >= 4
+    src = (WORKFLOWS / "g1-trusted-lineage-main.yml").read_text(encoding="utf-8")
+    assert len(patterns) >= 3, (
+        f"expected at least 3 job URL regex patterns in G1 workflow, "
+        f"found {len(patterns)}. Stage 3 removed one (alias); if a new "
+        f"job was added, update this threshold with justification."
+    )
+    assert "trusted-lineage" in src, (
+        "trusted-lineage must remain in G1 workflow after alias removal"
+    )
 
     url = "/actions/runs/123456789/job/987654321"
     for pattern in patterns:
@@ -115,5 +123,7 @@ def test_monitor_does_not_require_removed_alias() -> None:
     src = (WORKFLOWS / "g1-trusted-lineage-main.yml").read_text(encoding="utf-8")
     assert "g1_alias_run_id" not in src, "monitor must not reference removed alias run id"
     assert "g1_alias_job_id" not in src, "monitor must not reference removed alias job id"
-    assert "alias job terminal evidence is missing" not in src, "monitor must not raise on removed alias job"
+    assert "alias job terminal evidence is missing" not in src, (
+        "monitor must not raise on removed alias job"
+    )
     assert "trusted-lineage" in src, "monitor must still verify trusted-lineage"
