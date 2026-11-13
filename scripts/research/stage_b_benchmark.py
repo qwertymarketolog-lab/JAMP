@@ -258,7 +258,9 @@ def classify_existing_artifact(
             row["legacy_status"] = previous_status
             row["response_status"] = "INCOMPLETE_READ"
             row["status"] = "INCOMPLETE_READ"
-            row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_UNKNOWN"
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_UNKNOWN"
+            )
         elif previous_status == "SUCCESS":
             filename = row.get("raw_response_file")
             expected_hash = row.get("raw_response_sha256")
@@ -271,7 +273,9 @@ def classify_existing_artifact(
             row["legacy_status"] = previous_status
             row["response_status"] = classify_response_body(body)
             row["status"] = row["response_status"]
-            row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            )
         else:
             row["response_status"] = previous_status or "UNKNOWN"
             row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
@@ -656,7 +660,11 @@ def main() -> int:
     if args.classify_existing is not None:
         classify_existing_artifact(args.classify_existing, args.classification_output)
         return 0
-    if args.balance_before_units is None or args.budget_cap_units is None or args.resume_from is None:
+    if (
+        args.balance_before_units is None
+        or args.budget_cap_units is None
+        or args.resume_from is None
+    ):
         parser.error("benchmark mode requires balance, budget cap, and --resume-from")
     if (
         args.balance_before_units <= 0
