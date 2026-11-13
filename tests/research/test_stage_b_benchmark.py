@@ -171,3 +171,41 @@ def test_default_resume_plan_only_schedules_unfinished_astra_task5() -> None:
         ("cx/gpt-6-astra", "task2"),
         ("cx/gpt-6-astra", "task5"),
     ]
+
+
+def _response(content: str | None, finish_reason: str) -> dict:
+    return {
+        "choices": [
+            {
+                "finish_reason": finish_reason,
+                "message": {"content": content},
+            }
+        ]
+    }
+
+
+def test_classification_of_empty_and_truncated_responses() -> None:
+    deepseek = _response("", "length")
+    nemotron = _response("Partial answer", "length")
+
+    assert stage_b.classify_response_body(deepseek) == "RESPONSE_EMPTY"
+    assert stage_b.classify_response_body(nemotron) == "RESPONSE_TRUNCATED"
+
+
+def test_complete_response_requires_stop_and_nonempty_content() -> None:
+    assert (
+        stage_b.classify_response_body(_response("Answer", "stop"))
+        == "RESPONSE_COMPLETE"
+    )
+    assert stage_b.classify_response_body(_response(None, "stop")) == "RESPONSE_EMPTY"
+    assert (
+        stage_b.classify_response_body(_response("Partial", "content_filter"))
+        == "RESPONSE_INCOMPLETE"
+    )
+
+
+def test_prompt_hash_records_exact_utf8_bytes() -> None:
+    prompt = "Проверка JAMP"
+    assert stage_b.prompt_sha256(prompt) == hashlib.sha256(
+        prompt.encode("utf-8")
+    ).hexdigest()
