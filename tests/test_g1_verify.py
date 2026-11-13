@@ -385,7 +385,7 @@ def test_wait_terminal_success_immediate() -> None:
     original_sleep = verifier.time.sleep
     verifier.time.sleep = lambda _seconds: pytest.fail("sleep must not be called")
     try:
-        run = verifier.wait_for_terminal(RUN_ID, api_get=api_get)
+        run = verifier.wait_for_terminal(RUN_ID, repo="qwertymarketolog-lab/JAMP", api_get=api_get)
     finally:
         verifier.time.sleep = original_sleep
 
@@ -407,7 +407,7 @@ def test_wait_terminal_polls_until_complete(monkeypatch: pytest.MonkeyPatch) -> 
         return next(responses)
 
     monkeypatch.setattr(verifier.time, "sleep", sleeps.append)
-    run = verifier.wait_for_terminal(RUN_ID, api_get=api_get)
+    run = verifier.wait_for_terminal(RUN_ID, repo="qwertymarketolog-lab/JAMP", api_get=api_get)
 
     assert run["conclusion"] == "success"
     assert len(calls) == 3
@@ -423,6 +423,7 @@ def test_wait_terminal_failure_immediate(monkeypatch: pytest.MonkeyPatch) -> Non
     with pytest.raises(VerificationError, match="newest_run_failure"):
         verifier.wait_for_terminal(
             RUN_ID,
+            repo="qwertymarketolog-lab/JAMP",
             api_get=lambda _path: {
                 "status": "completed", "conclusion": "failure", "id": RUN_ID
             },
@@ -438,6 +439,7 @@ def test_wait_terminal_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(VerificationError, match="newest_run_cancelled"):
         verifier.wait_for_terminal(
             RUN_ID,
+            repo="qwertymarketolog-lab/JAMP",
             api_get=lambda _path: {
                 "status": "completed", "conclusion": "cancelled", "id": RUN_ID
             },
@@ -462,7 +464,7 @@ def test_wait_terminal_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(verifier.time, "sleep", sleep)
     with pytest.raises(VerificationError, match="newest_run_timeout"):
         verifier.wait_for_terminal(
-            RUN_ID, api_get=api_get, timeout_seconds=30, poll_interval=10
+            RUN_ID, repo="qwertymarketolog-lab/JAMP", api_get=api_get, timeout_seconds=30, poll_interval=10
         )
 
     assert clock[0] == 30
