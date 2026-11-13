@@ -57,6 +57,7 @@ jobs:
         run: python scripts/research/jamp_audit_v1.py --verify-snapshots tests/research/snapshots/
 
       - name: Catalog preflight (GET only)
+        id: catalog
         if: github.event_name == 'workflow_dispatch'
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
@@ -65,7 +66,7 @@ jobs:
         run: |
           python scripts/research/jamp_audit_v1.py preflight \
             --models "$MODELS_INPUT" --experiment-id "$EXPERIMENT_ID"
-          python -c "import json, pathlib; p=json.loads(pathlib.Path('artifacts/research/jamp_audit_v1/preflight.json').read_text()); pathlib.Path('$GITHUB_OUTPUT').open('a').write('catalog_sha=' + p['catalog_sha256'] + '\\n')"
+          python -c "import json, pathlib; p=json.loads(pathlib.Path('artifacts/research/jamp_audit_v1/$EXPERIMENT_ID/preflight.json').read_text()); pathlib.Path('$GITHUB_OUTPUT').open('a').write('catalog_sha=' + p['catalog_sha256'] + '\\n')"
 
       - name: Execute selected models (paid; explicit dispatch input only)
         if: github.event_name == 'workflow_dispatch' && inputs.execute == true
@@ -77,12 +78,12 @@ jobs:
         run: |
           python scripts/research/jamp_audit_v1.py execute \
             --models "$MODELS_INPUT" --experiment-id "$EXPERIMENT_ID" \
-            --catalog-snapshot artifacts/research/jamp_audit_v1/catalog_snapshot.json \
+            --catalog-snapshot artifacts/research/jamp_audit_v1/$EXPERIMENT_ID/catalog_snapshot.json \
             --expected-catalog-sha "$EXPECTED_CATALOG_SHA"
 
       - name: Verify terminal batch
         if: github.event_name == 'workflow_dispatch' && inputs.execute == true
-        run: python scripts/research/jamp_audit_v1.py verify --manifest artifacts/research/jamp_audit_v1/manifest.json
+        run: python scripts/research/jamp_audit_v1.py verify --manifest artifacts/research/jamp_audit_v1/$EXPERIMENT_ID/manifest.json
 
       - name: Upload evidence
         if: always()
