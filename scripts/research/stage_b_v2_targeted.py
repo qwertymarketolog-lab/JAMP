@@ -227,10 +227,9 @@ def preflight(api_key: str, repo_root: pathlib.Path) -> tuple[dict[str, Any], li
         "catalog_fetched_at": utc_now(),
     }, plan
 
-def run(api_key: str, repo_root: pathlib.Path) -> int:
+def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],\n        plan: list[dict[str, Any]]) -> int:
     if OUTPUT_DIR.exists() and any(OUTPUT_DIR.iterdir()):
         raise RuntimeError(f"Evidence directory already exists; refusing overwrite: {OUTPUT_DIR}")
-    frozen_path = repo_root / "src" / "jamp" / "run.py"
     frozen_blob = None
     try:
         import subprocess
@@ -242,7 +241,6 @@ def run(api_key: str, repo_root: pathlib.Path) -> int:
     if frozen_blob != FROZEN_BLOB:
         raise RuntimeError(f"Frozen Core mismatch: {frozen_blob}; no model requests sent")
 
-    catalog_record, plan = preflight(api_key, repo_root)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     catalog_raw = base64.b64decode(catalog_record.pop("catalog_raw_base64"))
     persist_raw(OUTPUT_DIR / "catalog_raw.json", catalog_raw)
@@ -332,9 +330,7 @@ def run(api_key: str, repo_root: pathlib.Path) -> int:
         state["attempted_requests"] += 1
         state["results"].append(record)
         atomic_write_json(manifest_path, state)
-        if response["transport_status"] != "COMPLETE" or response["http_status"] != 200:
-            state["stop_reason"] = "Transport or HTTP failure; stopped to preserve fail-closed billing/evidence boundary."
-            break
+        if (response["transport_status"] != "COMPLETE" or response["http_status"] != 200\n                or record["billing_status"] == "UNKNOWN"):\n            state["stop_reason"] = (\n                "Transport, HTTP, or billing evidence failure; stopped fail-closed."\n            )\n            break
         if index < len(plan):
             time.sleep(60 if "nemotron" in entry["model_id"] else 5)
 
@@ -390,7 +386,7 @@ def main() -> int:
         print("DRY-RUN: zero model requests sent. Use --execute only after explicit operator approval.")
         return 0
     try:
-        return run(api_key, repo_root)
+        return run(api_key, repo_root, catalog, plan)
     except Exception as exc:
         print(f"FAILED CLOSED: {exc}", file=sys.stderr)
         return 2
