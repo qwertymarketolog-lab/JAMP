@@ -437,8 +437,12 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     api_key = os.getenv("ANYMODEL_API_KEY")
     if not api_key:
         raise RuntimeError("ANYMODEL_API_KEY is required")
-    if output_dir.exists() and any(output_dir.iterdir()):
-        raise FileExistsError("Output directory is not empty")
+    if output_dir.exists() and (
+        (output_dir / "manifest.json").exists()
+        or list(output_dir.glob("*.metadata.json"))
+        or list(output_dir.glob("model_*.md"))
+    ):
+        raise FileExistsError("Experiment output already exists; refusing overwrite")
     commit = git_commit_sha()
     prompt = composite_prompt()
     audit_hash = sha256(AUDIT_PROMPT.encode("utf-8"))
@@ -521,14 +525,14 @@ def main() -> int:
     pre = sub.add_parser("preflight")
     pre.add_argument("--models", default="all")
     pre.add_argument("--experiment-id", required=True)
-    pre.add_argument("--output-dir", type=Path, default=OUTPUT_ROOT)
+    pre.add_argument("--output-dir", type=Path)
     run = sub.add_parser("execute")
     run.add_argument("--models", default="all")
     run.add_argument("--experiment-id", required=True)
     run.add_argument("--catalog-snapshot", type=Path, required=True)
     run.add_argument("--expected-catalog-sha", required=True)
     run.add_argument("--inter-request-seconds", type=int, default=0)
-    run.add_argument("--output-dir", type=Path, default=OUTPUT_ROOT)
+    run.add_argument("--output-dir", type=Path)
     check = sub.add_parser("verify")
     check.add_argument("--manifest", type=Path, required=True)
     args = parser.parse_args()
@@ -540,12 +544,12 @@ def main() -> int:
             verify_snapshots(args.verify_snapshots)
             return 0
         if args.command == "preflight":
-            digest = preflight(select_models(args.models), args.experiment_id, args.output_dir)
+            digest = preflight(select_models(args.models), args.experiment_id, args.output_dir or OUTPUT_ROOT / args.experiment_id)
             print(json.dumps({"catalog_sha256": digest}, indent=2))
             return 0
         if args.command == "execute":
             execute(select_models(args.models), args.experiment_id, args.catalog_snapshot,
-                    args.expected_catalog_sha, args.inter_request_seconds, args.output_dir)
+                    args.expected_catalog_sha, args.inter_request_seconds, args.output_dir or OUTPUT_ROOT / args.experiment_id)
             return 0
         if args.command == "verify":
             manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
