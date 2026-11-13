@@ -243,6 +243,8 @@ def classify_existing_artifact(
 ) -> dict[str, Any]:
     """Write a derived classification manifest without modifying source evidence."""
     manifest_path = source_dir / "run_manifest.json"
+    if output_path.resolve().is_relative_to(source_dir.resolve()):
+        raise ValueError("Classification output must be outside immutable source evidence")
     if not manifest_path.is_file():
         raise ValueError("Source run_manifest.json missing")
     manifest_raw = manifest_path.read_bytes()
@@ -508,14 +510,22 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             "headers": response["headers"],
             "latency_ms": response["latency_ms"],
             "transport_error": response["transport_error"],
+            "http_status_class": (
+                "HTTP_SUCCESS" if response["http_status"] == 200 else "HTTP_FAILURE"
+            ),
             "raw_response_file": response_name,
             "raw_response_sha256": digest(raw),
             "status": "FAILED",
         }
         manifest["attempted_requests_this_run"] += 1
         if response.get("transport_status") == "INCOMPLETE_READ":
-            record.update(status="INCOMPLETE_READ", billing_status="UNKNOWN",
-                          billing_charged=None, partial_data_bytes=len(raw))
+            record.update(
+                status="INCOMPLETE_READ",
+                response_status="INCOMPLETE_READ",
+                billing_status="UNKNOWN",
+                billing_charged=None,
+                partial_data_bytes=len(raw),
+            )
             stop_reason = "IncompleteRead; billing unknown; fail closed"
         elif response["transport_error"] or response["http_status"] != 200:
             record.update(billing_status="UNKNOWN", billing_charged=None,
@@ -525,8 +535,13 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             try:
                 body = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
-                record.update(billing_status="UNKNOWN", billing_charged=None,
-                              failure="Invalid JSON response")
+                record.update(
+                    status="RESPONSE_INVALID",
+                    response_status="RESPONSE_INVALID",
+                    billing_status="UNKNOWN",
+                    billing_charged=None,
+                    failure="Invalid JSON response",
+                )
                 stop_reason = record["failure"]
             else:
                 usage = body.get("usage") if isinstance(body, dict) else None
