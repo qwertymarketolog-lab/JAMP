@@ -227,7 +227,8 @@ def preflight(api_key: str, repo_root: pathlib.Path) -> tuple[dict[str, Any], li
         "catalog_fetched_at": utc_now(),
     }, plan
 
-def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],\n        plan: list[dict[str, Any]]) -> int:
+def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],
+        plan: list[dict[str, Any]]) -> int:
     if OUTPUT_DIR.exists() and any(OUTPUT_DIR.iterdir()):
         raise RuntimeError(f"Evidence directory already exists; refusing overwrite: {OUTPUT_DIR}")
     frozen_blob = None
@@ -330,7 +331,15 @@ def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],\n
         state["attempted_requests"] += 1
         state["results"].append(record)
         atomic_write_json(manifest_path, state)
-        if (response["transport_status"] != "COMPLETE" or response["http_status"] != 200\n                or record["billing_status"] == "UNKNOWN"):\n            state["stop_reason"] = (\n                "Transport, HTTP, or billing evidence failure; stopped fail-closed."\n            )\n            break
+        if (
+            response["transport_status"] != "COMPLETE"
+            or response["http_status"] != 200
+            or record["billing_status"] == "UNKNOWN"
+        ):
+            state["stop_reason"] = (
+                "Transport, HTTP, or billing evidence failure; stopped fail-closed."
+            )
+            break
         if index < len(plan):
             time.sleep(60 if "nemotron" in entry["model_id"] else 5)
 
