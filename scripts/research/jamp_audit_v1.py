@@ -334,10 +334,38 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
 
     enabled = set(string_list("enabled_models"))
     available = set(string_list("available_models"))
-    skipped = set(string_list("skipped_models"))
+    def record_keys(name: str, require_status: bool) -> dict[str, dict[str, str]]:
+        records = manifest.get(name)
+        if not isinstance(records, list):
+            raise ValueError(f"{name} must be a list of objects")
+        parsed: dict[str, dict[str, str]] = {}
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError(f"{name} entries must be objects")
+            key, reason = record.get("key"), record.get("reason")
+            if not isinstance(key, str) or not key or not isinstance(reason, str) or not reason.strip():
+                raise ValueError(f"Invalid {name} entry")
+            if key in parsed:
+                raise ValueError(f"Duplicate key in {name}")
+            if require_status:
+                status = record.get("status")
+                if not isinstance(status, str):
+                    raise ValueError("Failed entry requires a status")
+                try:
+                    parsed[key] = {"reason": reason, "status": FinalStatus(status).value}
+                except ValueError as exc:
+                    raise ValueError("Unknown failed model status") from exc
+                if parsed[key]["status"] == FinalStatus.COMPLETED.value:
+                    raise ValueError("Failed model cannot be COMPLETED")
+            else:
+                parsed[key] = {"reason": reason}
+        return parsed
+
+    skipped_records = record_keys("skipped_models", False)
+    failed_records = record_keys("failed_models", True)
+    skipped, failed = set(skipped_records), set(failed_records)
     executed = set(string_list("executed_models"))
     completed = set(string_list("completed_models"))
-    failed = set(string_list("failed_models"))
     still_running = string_list("still_running")
     if not available <= enabled or skipped != enabled - available:
         raise ValueError("available/skipped invariant violated")
@@ -379,8 +407,8 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             raise ValueError("Metadata repository commit mismatch")
         if (key in completed) != (enum_status == FinalStatus.COMPLETED):
             raise ValueError("Metadata status/completed set mismatch")
-        if key in failed and enum_status == FinalStatus.COMPLETED:
-            raise ValueError("Failed model cannot have COMPLETED status")
+        if key in failed and enum_status.value != failed_records[key]["status"]:
+            raise ValueError("Failed manifest/metadata status mismatch")
     for key in completed:
         path = output_dir / response_files[key]
         raw = path.read_bytes()
@@ -416,9 +444,9 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     audit_hash = sha256(AUDIT_PROMPT.encode("utf-8"))
     input_hash = sha256(INPUT_PACK_PATH.read_bytes())
     prompt_hash = sha256(prompt.encode("utf-8"))
-    enabled = [k for k, v in MODEL_REGISTRY.items() if v["enabled"]]
+    enabled = list(selected)
     available = [k for k in selected if MODEL_REGISTRY[k]["model_id"] in available_ids]
-    skipped = [k for k in selected if k not in available]
+    skipped = [{"key": k, "reason": "MODEL_NOT_IN_CATALOG"} for k in selected if k not in available]
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {
         "schema_version": "1.0", "experiment_id": experiment_id,
@@ -472,7 +500,9 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
             manifest["completed_models"].append(key)
             manifest["response_files"][key] = response_name
         else:
-            manifest["failed_models"].append(key)
+            manifest["failed_models"].append({
+                "key": key, "reason": reason or status.value, "status": status.value
+            })
         atomic_json(output_dir / metadata_name, metadata)
         manifest["metadata_files"][key] = metadata_name
         atomic_json(output_dir / "manifest.json", manifest)
