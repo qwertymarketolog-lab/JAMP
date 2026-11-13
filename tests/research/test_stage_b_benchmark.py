@@ -73,7 +73,11 @@ def test_usage_rejects_invalid_values(value: object) -> None:
 
 def test_worst_case_budget_covers_all_nine_requests() -> None:
     coefficients = {model: (1.0, 2.0) for model in MODELS}
-    assert worst_case_budget(coefficients) == 9 * (12000 + 2 * 2048)
+    prompts = ["a", "bb", "ccc"]
+    expected_input_bound = (1 + 1024) + (2 + 1024) + (3 + 1024)
+    assert worst_case_budget(coefficients, prompts) == (
+        3 * expected_input_bound + 9 * 2 * 2048
+    )
 
 
 def test_redirect_is_not_followed_and_only_one_http_attempt_occurs() -> None:
