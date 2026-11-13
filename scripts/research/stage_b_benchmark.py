@@ -273,7 +273,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     OUT.mkdir(parents=True, exist_ok=True)
     if any(OUT.iterdir()):
         raise SystemExit(f"Evidence directory is not empty: {OUT}")
-    _, prior_successes, catalog_raw = load_resume_evidence(resume_from)
+    source, prior_successes, catalog_raw = load_resume_evidence(resume_from)
     frozen = subprocess.check_output(["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True).strip()
     if frozen != FROZEN_BLOB:
         raise SystemExit("Frozen Core mismatch; no API calls made")
