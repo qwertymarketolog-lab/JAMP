@@ -278,7 +278,9 @@ def classify_existing_artifact(
             )
         else:
             row["response_status"] = previous_status or "UNKNOWN"
-            row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            )
         if (
             row.get("model_id") == "cx/gpt-6-astra"
             and row.get("task_id") == "task2"
