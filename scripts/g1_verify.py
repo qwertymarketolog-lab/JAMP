@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -96,6 +97,58 @@ class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
             headers={"Accept": "application/octet-stream"},
             method="GET",
         )
+
+
+POLL_INTERVAL_SECONDS = 10
+TERMINAL_TIMEOUT_SECONDS = 300
+
+
+def wait_for_terminal(
+    run_id: int,
+    repo: str,
+    api_get: Callable[[str], dict[str, Any]] | None = None,
+    timeout_seconds: int = TERMINAL_TIMEOUT_SECONDS,
+    poll_interval: int = POLL_INTERVAL_SECONDS,
+) -> dict[str, Any]:
+    """Wait for a GitHub Actions run to reach a verified terminal success.
+
+    API errors propagate unchanged. Non-success terminal conclusions and timeout
+    fail closed; successful runs are returned for downstream job/artifact checks.
+    """
+    if run_id <= 0:
+        raise VerificationError("research_loop_run_id_invalid")
+    if timeout_seconds < 0 or poll_interval <= 0:
+        raise ValueError("timeout_seconds must be non-negative and poll_interval positive")
+
+    get_run = gh_api if api_get is None else api_get
+    deadline = time.monotonic() + timeout_seconds
+    first_poll = True
+    last_status: Any = None
+
+    while first_poll or time.monotonic() < deadline:
+        first_poll = False
+        run = get_run(f"/repos/{repo}/actions/runs/{run_id}")
+        if not isinstance(run, dict):
+            raise VerificationError("newest_run_response_invalid")
+
+        last_status = run.get("status")
+        conclusion = run.get("conclusion")
+        if last_status == "completed":
+            if conclusion == "success":
+                return run
+            if conclusion in {"failure", "cancelled"}:
+                raise VerificationError(f"newest_run_{conclusion}")
+            raise VerificationError(f"newest_run_{conclusion or 'unknown'}")
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(poll_interval, remaining))
+
+    raise VerificationError(
+        f"newest_run_timeout: last_status={last_status} "
+        f"after {timeout_seconds}s"
+    )
 
 
 def _download_url(url: str, destination: Path) -> None:
@@ -218,18 +271,12 @@ def verify_lineage(
         pr_runs,
         key=lambda run: (run.get("created_at", ""), run.get("id", 0)),
     )
-    if newest.get("status") != "completed":
-        raise VerificationError(
-            f"newest_run_not_terminal: status={newest.get('status')}"
-        )
-    if newest.get("conclusion") != "success":
-        raise VerificationError(
-            f"newest_run_failed: conclusion={newest.get('conclusion')}"
-        )
-
     run_id = newest.get("id")
     if not isinstance(run_id, int):
         raise VerificationError("research_loop_run_id_invalid")
+    terminal_run = wait_for_terminal(run_id, repo=repo, api_get=api_get)
+    if terminal_run.get("id") != run_id:
+        raise VerificationError("newest_run_id_mismatch")
 
     jobs_payload = api_get(
         f"/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"
