@@ -237,7 +237,11 @@ def run(balance_before: int, budget_cap: float) -> int:
         model: {"input": pair[0], "output": pair[1]}
         for model, pair in coefficients.items()
     }
-    manifest["worst_case_budget_units"] = worst_case_budget(\n        coefficients, [task["prompt"] for task in TASKS[:1]] + [task2] + [TASKS[2]["prompt"]]\n    )\n    if manifest["worst_case_budget_units"] > budget_cap:
+    benchmark_prompts = [TASKS[0]["prompt"], task2, TASKS[2]["prompt"]]
+    manifest["worst_case_budget_units"] = worst_case_budget(
+        coefficients, benchmark_prompts
+    )
+    if manifest["worst_case_budget_units"] > budget_cap:
         manifest.update(status="BLOCKED", stop_reason="Worst-case budget exceeds operator cap")
         save_json(OUT / "run_manifest.json", manifest)
         return 0
