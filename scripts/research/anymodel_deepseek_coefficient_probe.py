@@ -278,11 +278,67 @@ def verify_balance(after_units: str) -> int:
     return finalize(manifest, events)
 
 
+def run_self_tests() -> int:
+    import io
+    import unittest
+    from unittest.mock import patch
+
+    class ProbeTests(unittest.TestCase):
+        def test_nested_catalog_coefficient(self) -> None:
+            coefficient, evidence = find_coefficient({
+                "id": MODEL_ID,
+                "billing": {"balance_coefficient": 0.5},
+            })
+            self.assertEqual(coefficient, 0.5)
+            self.assertEqual(len(evidence), 1)
+
+        def test_conflicting_coefficients_fail_closed(self) -> None:
+            coefficient, _ = find_coefficient({
+                "id": MODEL_ID,
+                "coefficient": 0.5,
+                "billing": {"balance_multiplier": 4},
+            })
+            self.assertIsNone(coefficient)
+
+        def test_redirect_is_not_followed_and_request_is_single(self) -> None:
+            class FakeOpener:
+                calls = 0
+                def open(self, request: Any, timeout: int = 45) -> Any:
+                    self.calls += 1
+                    self.asserted_method = request.get_method()
+                    raise urllib.error.HTTPError(
+                        request.full_url, 302, "redirect", {}, io.BytesIO(b"redirect")
+                    )
+
+            fake = FakeOpener()
+            with patch("urllib.request.build_opener", return_value=fake):
+                status, body, _, _, error = request_once(
+                    "https://example.invalid/probe", "POST", "not-a-real-key",
+                    {"model": MODEL_ID},
+                )
+            self.assertEqual(status, 302)
+            self.assertEqual(body, b"redirect")
+            self.assertIsNone(error)
+            self.assertEqual(fake.calls, 1)
+            self.assertEqual(fake.asserted_method, "POST")
+
+        def test_redirect_handler_refuses_redirect(self) -> None:
+            handler = NoRedirect()
+            self.assertIsNone(handler.redirect_request(None, None, 302, "Found", {}, "https://example.invalid"))
+
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProbeTests)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    return 0 if result.wasSuccessful() else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--balance-before-units", default=os.getenv("ANYMODEL_BALANCE_BEFORE_UNITS"))
     parser.add_argument("--verify-balance-after-units", help="Offline reconciliation; does not call AnyModel")
+    parser.add_argument("--self-test", action="store_true", help="Run offline mock tests; never calls AnyModel")
     args = parser.parse_args()
+    if args.self_test:
+        return run_self_tests()
     if args.verify_balance_after_units is not None:
         return verify_balance(args.verify_balance_after_units)
     return run_probe(args.balance_before_units)
