@@ -11,9 +11,19 @@ on:
         description: "Operator-approved maximum calculated debit in balance units"
         required: true
         type: string
+      retry_astra_task2:
+        description: "Only after Dashboard confirms zero charge for Run 43381268827"
+        required: false
+        default: false
+        type: boolean
+      balance_before_usd:
+        description: "Optional USD balance shown by provider Dashboard"
+        required: false
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: jamp-stage-b-benchmark
@@ -32,11 +42,37 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Validate inputs and run Stage B
+      - name: Download and verify source evidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p previous_results
+          gh run download 43381268827 -n stage-b-evidence-43381268827 -D previous_results
+          test -s previous_results/run_manifest.json
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root = pathlib.Path("previous_results")
+          manifest = json.loads((root / "run_manifest.json").read_text())
+          assert manifest["github"]["run_id"] == "43381268827"
+          assert manifest["github"]["sha"] == "41f4cbe4facaafaecec088cc7260bd76605984e6"
+          assert manifest["completed_requests"] == 7
+          for row in manifest["results"]:
+              if row.get("status") == "SUCCESS":
+                  raw = root / row["raw_response_file"]
+                  assert raw.is_file(), f"missing {raw.name}"
+                  actual = hashlib.sha256(raw.read_bytes()).hexdigest()
+                  assert actual == row["raw_response_sha256"], f"hash mismatch: {raw.name}"
+          catalog = root / "catalog_raw.json"
+          assert hashlib.sha256(catalog.read_bytes()).hexdigest() == manifest["catalog"]["sha256"]
+          PY
+
+      - name: Validate inputs and run Stage B Resume
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           BALANCE_BEFORE_UNITS: ${{ inputs.balance_before_units }}
           BUDGET_CAP_UNITS: ${{ inputs.budget_cap_units }}
+          BALANCE_BEFORE_USD: ${{ inputs.balance_before_usd }}
+          RETRY_ASTRA_TASK2: ${{ inputs.retry_astra_task2 }}
         run: |
           python - <<'PY'
           import os
@@ -44,10 +80,13 @@ jobs:
               value = os.environ[name]
               if not value.isdigit() or int(value) <= 0:
                   raise SystemExit(f"{name} must be a positive integer")
+          if os.environ["BALANCE_BEFORE_USD"] and float(os.environ["BALANCE_BEFORE_USD"]) < 0:
+              raise SystemExit("BALANCE_BEFORE_USD must be nonnegative")
           PY
-          python scripts/research/stage_b_benchmark.py \
-            --balance-before-units "$BALANCE_BEFORE_UNITS" \
-            --budget-cap-units "$BUDGET_CAP_UNITS"
+          ARGS=(--balance-before-units "$BALANCE_BEFORE_UNITS" --budget-cap-units "$BUDGET_CAP_UNITS" --resume-from previous_results)
+          if [ -n "$BALANCE_BEFORE_USD" ]; then ARGS+=(--balance-before-usd "$BALANCE_BEFORE_USD"); fi
+          if [ "$RETRY_ASTRA_TASK2" = "true" ]; then ARGS+=(--retry-astra-task2); fi
+          python scripts/research/stage_b_benchmark.py "${ARGS[@]}"
 
       - name: Upload raw evidence
         if: always()
