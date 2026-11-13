@@ -242,6 +242,8 @@ def load_resume_evidence(source_dir: pathlib.Path) -> tuple[dict[str, Any], list
         raise ValueError("Resume source run/SHA mismatch")
     if source.get("status") != "RUNNING" or source.get("completed_requests") != 7:
         raise ValueError("Resume source is not the expected seven-result partial run")
+    if source.get("catalog", {}).get("http_status") != 200:
+        raise ValueError("Resume source catalog was not HTTP 200")
     frozen = source.get("frozen_core", {})
     if frozen.get("delta_zero") is not True or frozen.get("observed_blob") != FROZEN_BLOB:
         raise ValueError("Resume source Frozen Core evidence mismatch")
@@ -351,7 +353,6 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     save_json(OUT / "run_manifest.json", manifest)
     stop_reason = None
     for model_id, task_id in pending:
-        task_index = next(index for index, task in enumerate(TASKS) if task["id"] == task_id)
         payload = {
             "model": model_id,
             "messages": [{"role": "user", "content": prompt_by_id[task_id]}],
@@ -363,7 +364,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         model_index = MODELS.index(model_id) + 1
         response_name = f"{model_index}_{task_id}_response.json"
         (OUT / response_name).write_bytes(raw)
-        sequence = 8 if task_id == "task2" else 9
+        sequence = len(manifest["results"]) + 1
         record: dict[str, Any] = {
             "sequence": sequence,
             "model_id": model_id,
