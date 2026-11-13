@@ -28,7 +28,7 @@ MODELS = (
     "cx/gpt-6-astra",
 )
 MAX_OUTPUT_TOKENS = 2048
-MAX_INPUT_TOKENS = 12000
+INPUT_TOKEN_SAFETY_MARGIN = 1024
 NEMOTRON_DELAY_SECONDS = 60
 
 TASKS = (
@@ -158,12 +158,18 @@ def preflight(catalog: list[dict[str, Any]]) -> dict[str, tuple[float, float]]:
     return normalized
 
 
-def worst_case_budget(coefficients: dict[str, tuple[float, float]]) -> float:
-    per_model = {
-        model: MAX_INPUT_TOKENS * pair[0] + MAX_OUTPUT_TOKENS * pair[1]
-        for model, pair in coefficients.items()
-    }
-    return sum(per_model.values()) * len(TASKS)
+def worst_case_budget(
+    coefficients: dict[str, tuple[float, float]], prompts: list[str]
+) -> float:
+    # UTF-8 byte length is a conservative tokenizer-independent input bound;
+    # add margin for chat framing/provider-added tokens.
+    input_bounds = [len(prompt.encode("utf-8")) + INPUT_TOKEN_SAFETY_MARGIN
+                    for prompt in prompts]
+    return sum(
+        input_bounds[index] * pair[0] + MAX_OUTPUT_TOKENS * pair[1]
+        for pair in coefficients.values()
+        for index in range(len(prompts))
+    )
 
 
 def save_json(path: pathlib.Path, value: Any) -> None:
@@ -231,8 +237,7 @@ def run(balance_before: int, budget_cap: float) -> int:
         model: {"input": pair[0], "output": pair[1]}
         for model, pair in coefficients.items()
     }
-    manifest["worst_case_budget_units"] = worst_case_budget(coefficients)
-    if manifest["worst_case_budget_units"] > budget_cap:
+    manifest["worst_case_budget_units"] = worst_case_budget(\n        coefficients, [task["prompt"] for task in TASKS[:1]] + [task2] + [TASKS[2]["prompt"]]\n    )\n    if manifest["worst_case_budget_units"] > budget_cap:
         manifest.update(status="BLOCKED", stop_reason="Worst-case budget exceeds operator cap")
         save_json(OUT / "run_manifest.json", manifest)
         return 0
