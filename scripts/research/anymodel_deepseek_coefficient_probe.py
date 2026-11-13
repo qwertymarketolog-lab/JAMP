@@ -9,6 +9,7 @@ This probe is billing/transport evidence only; it never qualifies or routes a mo
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -43,16 +44,28 @@ def sha256(data: bytes) -> str:
 
 def write_json(path: pathlib.Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    serialized = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
+    path.write_text(serialized + "\n", encoding="utf-8")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, new_url: str) -> None:
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, new_url: str
+    ) -> None:
         return None
 
 
-def request_once(url: str, method: str, api_key: str, payload: dict[str, Any] | None = None) -> tuple[int | None, bytes, dict[str, str], float, str | None]:
-    data = None if payload is None else json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+def request_once(
+    url: str,
+    method: str,
+    api_key: str,
+    payload: dict[str, Any] | None = None,
+) -> tuple[int | None, bytes, dict[str, str], float, str | None]:
+    data = (
+        None
+        if payload is None
+        else json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+    )
     request = urllib.request.Request(
         url, data=data, method=method,
         headers={
@@ -66,9 +79,21 @@ def request_once(url: str, method: str, api_key: str, payload: dict[str, Any] | 
     started = time.monotonic()
     try:
         with opener.open(request, timeout=45) as response:
-            return response.status, response.read(), dict(response.headers.items()), round(time.monotonic() - started, 6), None
+            return (
+                response.status,
+                response.read(),
+                dict(response.headers.items()),
+                round(time.monotonic() - started, 6),
+                None,
+            )
     except urllib.error.HTTPError as exc:
-        return exc.code, exc.read(), dict(exc.headers.items()) if exc.headers else {}, round(time.monotonic() - started, 6), None
+        return (
+            exc.code,
+            exc.read(),
+            dict(exc.headers.items()) if exc.headers else {},
+            round(time.monotonic() - started, 6),
+            None,
+        )
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         return None, b"", {}, round(time.monotonic() - started, 6), f"{type(exc).__name__}: {exc}"
 
@@ -80,7 +105,9 @@ def find_coefficient(row: dict[str, Any]) -> tuple[float | None, list[str]]:
         if isinstance(value, dict):
             for key, child in value.items():
                 child_path = f"{path}.{key}" if path else key
-                if key.lower() in COEFFICIENT_KEYS and isinstance(child, (int, float)) and not isinstance(child, bool):
+                is_coefficient = key.lower() in COEFFICIENT_KEYS
+                is_number = isinstance(child, (int, float)) and not isinstance(child, bool)
+                if is_coefficient and is_number:
                     found.append((child_path, float(child)))
                 walk(child, child_path)
         elif isinstance(value, list):
@@ -118,7 +145,12 @@ def finalize(manifest: dict[str, Any], events: list[dict[str, Any]]) -> int:
         if path.is_file() and path.name != "checksums.sha256":
             checks.append(f"{sha256(path.read_bytes())}  {path.name}")
     (OUT / "checksums.sha256").write_text("\n".join(checks) + "\n", encoding="utf-8")
-    print(json.dumps({"status": manifest["status"], "outcome": manifest["outcome"], "reason": manifest["reason"]}, ensure_ascii=False))
+    summary = {
+        "status": manifest["status"],
+        "outcome": manifest["outcome"],
+        "reason": manifest["reason"],
+    }
+    print(json.dumps(summary, ensure_ascii=False))
     return 0
 
 
@@ -130,10 +162,19 @@ def run_probe(balance_before: str | None) -> int:
     events: list[dict[str, Any]] = []
 
     def event(name: str, **fields: Any) -> None:
-        events.append({"observed_at": now(), "event_type": name, "evidence_class": "RAW_OBSERVATION", **fields})
+        events.append(
+            {
+                "observed_at": now(),
+                "event_type": name,
+                "evidence_class": "RAW_OBSERVATION",
+                **fields,
+            }
+        )
 
     try:
-        frozen = subprocess.check_output(["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True).strip()
+        frozen = subprocess.check_output(
+            ["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True
+        ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         frozen = None
     frozen_ok = frozen == FROZEN_BLOB
@@ -152,36 +193,83 @@ def run_probe(balance_before: str | None) -> int:
         },
         "provider": {"name": "AnyModel", "catalog_url": CATALOG_URL, "chat_url": CHAT_URL},
         "model": {"requested_id": MODEL_ID, "provider_response_model": None},
-        "request": {"method": "POST", "max_tokens": 16, "temperature": 0, "prompt": PROMPT, "retry_count": 0, "redirects_followed": 0, "max_chat_posts": 1},
-        "balance_before_units": int(balance_before) if balance_before and balance_before.isdigit() else None,
+        "request": {
+            "method": "POST",
+            "max_tokens": 16,
+            "temperature": 0,
+            "prompt": PROMPT,
+            "retry_count": 0,
+            "redirects_followed": 0,
+            "max_chat_posts": 1,
+        },
+        "balance_before_units": (
+            int(balance_before)
+            if balance_before and balance_before.isdigit()
+            else None
+        ),
         "balance_after_units": None,
         "balance_reconciliation": "MANUAL_REQUIRED",
-        "frozen_core": {"path": "src/jamp/run.py", "expected_blob": FROZEN_BLOB, "observed_blob": frozen, "delta_zero": frozen_ok},
+        "frozen_core": {
+            "path": "src/jamp/run.py",
+            "expected_blob": FROZEN_BLOB,
+            "observed_blob": frozen,
+            "delta_zero": frozen_ok,
+        },
         "qualification": "NOT_STARTED",
         "routing_eligibility": "REFUSE",
     }
-    event("RUN_STARTED", frozen_core_blob=frozen, frozen_core_delta_zero=frozen_ok, balance_before_units=manifest["balance_before_units"])
+    event(
+        "RUN_STARTED",
+        frozen_core_blob=frozen,
+        frozen_core_delta_zero=frozen_ok,
+        balance_before_units=manifest["balance_before_units"],
+    )
 
     if not frozen_ok:
-        manifest.update(status="BLOCKED", outcome="INCONCLUSIVE", reason="Frozen Core baseline mismatch; no API calls made")
+        manifest.update(
+            status="BLOCKED",
+            outcome="INCONCLUSIVE",
+            reason="Frozen Core baseline mismatch; no API calls made",
+        )
         event("BLOCKED", reason=manifest["reason"])
         return finalize(manifest, events)
 
     api_key = os.getenv("ANYMODEL_API_KEY", "")
     if not api_key:
-        manifest.update(status="BLOCKED", outcome="FAILED", reason="ANYMODEL_API_KEY secret missing; no API calls made")
+        manifest.update(
+            status="BLOCKED",
+            outcome="FAILED",
+            reason="ANYMODEL_API_KEY secret missing; no API calls made",
+        )
         event("BLOCKED", reason=manifest["reason"])
         return finalize(manifest, events)
     if manifest["balance_before_units"] is None:
-        manifest.update(status="BLOCKED", outcome="INCONCLUSIVE", reason="A numeric pre-request balance in balance units is required; no API calls made")
+        manifest.update(
+            status="BLOCKED",
+            outcome="INCONCLUSIVE",
+            reason=(
+                "A numeric pre-request balance in balance units is required; "
+                "no API calls made"
+            ),
+        )
         event("BLOCKED", reason=manifest["reason"])
         return finalize(manifest, events)
 
     status, raw, headers, elapsed, error = request_once(CATALOG_URL, "GET", api_key)
     (OUT / "catalog_raw.json").write_bytes(raw)
-    event("CATALOG_RESPONSE", http_status=status, elapsed_seconds=elapsed, response_sha256=sha256(raw), transport_error=error)
+    event(
+        "CATALOG_RESPONSE",
+        http_status=status,
+        elapsed_seconds=elapsed,
+        response_sha256=sha256(raw),
+        transport_error=error,
+    )
     if error or status != 200:
-        manifest.update(status="FAILED", outcome="FAILED", reason=f"Catalog GET failed: {error or status}")
+        manifest.update(
+            status="FAILED",
+            outcome="FAILED",
+            reason=f"Catalog GET failed: {error or status}",
+        )
         return finalize(manifest, events)
     try:
         catalog = json.loads(raw.decode("utf-8"))
@@ -190,19 +278,44 @@ def run_probe(balance_before: str | None) -> int:
             raise ValueError("catalog root is not a list")
         candidates = [r for r in rows if isinstance(r, dict) and r.get("id") == MODEL_ID]
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
-        manifest.update(status="FAILED", outcome="INCONCLUSIVE", reason=f"Catalog parse failed: {type(exc).__name__}")
+        manifest.update(
+            status="FAILED",
+            outcome="INCONCLUSIVE",
+            reason=f"Catalog parse failed: {type(exc).__name__}",
+        )
         return finalize(manifest, events)
-    manifest["catalog"] = {"http_status": status, "response_sha256": sha256(raw), "model_count": len(rows), "exact_match_count": len(candidates)}
+    manifest["catalog"] = {
+        "http_status": status,
+        "response_sha256": sha256(raw),
+        "model_count": len(rows),
+        "exact_match_count": len(candidates),
+    }
     if len(candidates) != 1:
-        manifest.update(status="BLOCKED", outcome="INCONCLUSIVE", reason=f"Expected exactly one exact catalog ID; found {len(candidates)}. No POST made.")
+        manifest.update(
+            status="BLOCKED",
+            outcome="INCONCLUSIVE",
+            reason=(
+                f"Expected exactly one exact catalog ID; found {len(candidates)}. "
+                "No POST made."
+            ),
+        )
         event("CATALOG_MATCH", exact_match_count=len(candidates))
         return finalize(manifest, events)
     coefficient, coefficient_evidence = find_coefficient(candidates[0])
     manifest["catalog"]["coefficient_evidence"] = coefficient_evidence
     manifest["catalog"]["coefficient"] = coefficient
-    event("CATALOG_MATCH", model_id=MODEL_ID, coefficient=coefficient, coefficient_evidence=coefficient_evidence)
+    event(
+        "CATALOG_MATCH",
+        model_id=MODEL_ID,
+        coefficient=coefficient,
+        coefficient_evidence=coefficient_evidence,
+    )
     if coefficient is None or coefficient < 0:
-        manifest.update(status="BLOCKED", outcome="INCONCLUSIVE", reason="Catalog coefficient absent, conflicting, or invalid. No POST made.")
+        manifest.update(
+            status="BLOCKED",
+            outcome="INCONCLUSIVE",
+            reason="Catalog coefficient absent, conflicting, or invalid. No POST made.",
+        )
         return finalize(manifest, events)
 
     payload = {
@@ -211,15 +324,22 @@ def run_probe(balance_before: str | None) -> int:
         "max_tokens": 16,
         "temperature": 0,
     }
-    chat_status, chat_raw, chat_headers, chat_elapsed, chat_error = request_once(CHAT_URL, "POST", api_key, payload)
+    chat_status, chat_raw, chat_headers, chat_elapsed, chat_error = request_once(
+        CHAT_URL, "POST", api_key, payload
+    )
     (OUT / "chat_raw.json").write_bytes(chat_raw)
-    event("CHAT_RESPONSE", http_status=chat_status, elapsed_seconds=chat_elapsed, response_sha256=sha256(chat_raw), transport_error=chat_error)
+    event(
+        "CHAT_RESPONSE",
+        http_status=chat_status,
+        elapsed_seconds=chat_elapsed,
+        response_sha256=sha256(chat_raw),
+        transport_error=chat_error,
+    )
     parsed: Any = None
-    try:
+    with contextlib.suppress(UnicodeDecodeError, json.JSONDecodeError):
         parsed = json.loads(chat_raw.decode("utf-8")) if chat_raw else None
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        pass
-    usage = parsed.get("usage") if isinstance(parsed, dict) and isinstance(parsed.get("usage"), dict) else {}
+    usage_value = parsed.get("usage") if isinstance(parsed, dict) else None
+    usage = usage_value if isinstance(usage_value, dict) else {}
     prompt_tokens = usage.get("prompt_tokens")
     completion_tokens = usage.get("completion_tokens")
     total_tokens = usage.get("total_tokens")
@@ -230,25 +350,59 @@ def run_probe(balance_before: str | None) -> int:
         computed_total = None
         expected = None
     choices = parsed.get("choices") if isinstance(parsed, dict) else None
-    message = choices[0].get("message", {}) if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
-    manifest["model"]["provider_response_model"] = parsed.get("model") if isinstance(parsed, dict) else None
+    message = (
+        choices[0].get("message", {})
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict)
+        else {}
+    )
+    manifest["model"]["provider_response_model"] = (
+        parsed.get("model") if isinstance(parsed, dict) else None
+    )
     manifest["chat"] = {
         "http_status": chat_status,
         "elapsed_seconds": chat_elapsed,
         "response_sha256": sha256(chat_raw),
         "response_id": parsed.get("id") if isinstance(parsed, dict) else None,
-        "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens, "total_tokens": total_tokens},
+        "usage": {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        },
         "computed_total_tokens": computed_total,
         "expected_balance_units": expected,
         "assistant_content": message.get("content") if isinstance(message, dict) else None,
     }
     if chat_error or chat_status != 200:
-        manifest.update(status="FAILED", outcome="FAILED", reason=f"Chat POST failed: {chat_error or chat_status}")
+        manifest.update(
+            status="FAILED",
+            outcome="FAILED",
+            reason=f"Chat POST failed: {chat_error or chat_status}",
+        )
     elif expected is None or total_tokens != computed_total:
-        manifest.update(status="COMPLETED", outcome="INCONCLUSIVE", reason="Response usage missing or internally inconsistent; balance reconciliation unavailable")
+        manifest.update(
+            status="COMPLETED",
+            outcome="INCONCLUSIVE",
+            reason=(
+                "Response usage missing or internally inconsistent; "
+                "balance reconciliation unavailable"
+            ),
+        )
     else:
-        manifest.update(status="COMPLETED", outcome="INCONCLUSIVE", reason="One request completed; waiting for post-request dashboard balance to verify coefficient")
-    event("PROBE_COMPLETED", prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, total_tokens=total_tokens, expected_balance_units=expected)
+        manifest.update(
+            status="COMPLETED",
+            outcome="INCONCLUSIVE",
+            reason=(
+                "One request completed; waiting for post-request dashboard balance "
+                "to verify coefficient"
+            ),
+        )
+    event(
+        "PROBE_COMPLETED",
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        expected_balance_units=expected,
+    )
     return finalize(manifest, events)
 
 
@@ -259,7 +413,11 @@ def verify_balance(after_units: str) -> int:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     before = manifest.get("balance_before_units")
     expected = manifest.get("chat", {}).get("expected_balance_units")
-    if not isinstance(before, int) or not isinstance(expected, (int, float)) or not after_units.isdigit():
+    if (
+        not isinstance(before, int)
+        or not isinstance(expected, (int, float))
+        or not after_units.isdigit()
+    ):
         manifest["balance_reconciliation"] = "AMBIGUOUS"
         manifest["outcome"] = "INCONCLUSIVE"
         manifest["reason"] = "Balance inputs or expected debit are missing/invalid"
@@ -270,10 +428,31 @@ def verify_balance(after_units: str) -> int:
         manifest["actual_balance_debit_units"] = actual
         manifest["balance_reconciliation"] = "MATCH" if actual == expected else "AMBIGUOUS"
         manifest["outcome"] = manifest["balance_reconciliation"]
-        manifest["reason"] = "Exact balance debit matches catalog coefficient" if actual == expected else "Actual balance debit differs from coefficient-based expected debit"
+        manifest["reason"] = (
+            "Exact balance debit matches catalog coefficient"
+            if actual == expected
+            else "Actual balance debit differs from coefficient-based expected debit"
+        )
     events_path = OUT / "events.jsonl"
-    events = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines()] if events_path.exists() else []
-    events.append({"observed_at": now(), "event_type": "BALANCE_RECONCILIATION", "evidence_class": "OPERATOR_SUPPLIED_OBSERVATION", "balance_after_units": int(after_units) if after_units.isdigit() else None, "result": manifest["balance_reconciliation"]})
+    events = (
+        [
+            json.loads(line)
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+        ]
+        if events_path.exists()
+        else []
+    )
+    events.append(
+        {
+            "observed_at": now(),
+            "event_type": "BALANCE_RECONCILIATION",
+            "evidence_class": "OPERATOR_SUPPLIED_OBSERVATION",
+            "balance_after_units": (
+                int(after_units) if after_units.isdigit() else None
+            ),
+            "result": manifest["balance_reconciliation"],
+        }
+    )
     manifest["updated_at"] = now()
     return finalize(manifest, events)
 
@@ -324,7 +503,11 @@ def run_self_tests() -> int:
 
         def test_redirect_handler_refuses_redirect(self) -> None:
             handler = NoRedirect()
-            self.assertIsNone(handler.redirect_request(None, None, 302, "Found", {}, "https://example.invalid"))
+            self.assertIsNone(
+                handler.redirect_request(
+                    None, None, 302, "Found", {}, "https://example.invalid"
+                )
+            )
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProbeTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
@@ -333,9 +516,18 @@ def run_self_tests() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--balance-before-units", default=os.getenv("ANYMODEL_BALANCE_BEFORE_UNITS"))
-    parser.add_argument("--verify-balance-after-units", help="Offline reconciliation; does not call AnyModel")
-    parser.add_argument("--self-test", action="store_true", help="Run offline mock tests; never calls AnyModel")
+    parser.add_argument(
+        "--balance-before-units", default=os.getenv("ANYMODEL_BALANCE_BEFORE_UNITS")
+    )
+    parser.add_argument(
+        "--verify-balance-after-units",
+        help="Offline reconciliation; does not call AnyModel",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run offline mock tests; never calls AnyModel",
+    )
     args = parser.parse_args()
     if args.self_test:
         return run_self_tests()
