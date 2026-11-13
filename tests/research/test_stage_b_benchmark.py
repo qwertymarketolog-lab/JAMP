@@ -251,7 +251,7 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
         json.dumps({"results": rows}), encoding="utf-8"
     )
 
-    output = tmp_path / "derived_manifest.json"
+    output = tmp_path.parent / f"{tmp_path.name}_derived_manifest.json"
     manifest = stage_b.classify_existing_artifact(tmp_path, output)
 
     assert manifest["classification"]["counts"] == {
@@ -263,4 +263,11 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
     assert manifest["astra_task2_billing_status"] == "AMBIGUOUS"
     assert manifest["astra_task2_estimated_charged_units"] == 624
     assert manifest["astra_task2_charged_units"] is None
+    task2 = next(
+        row for row in manifest["results"]
+        if row["model_id"] == "Astra" and row["task_id"] == "task2"
+    )
+    assert task2["billing_status"] == "AMBIGUOUS"
+    assert task2["estimated_charged_units"] == 624
+    assert task2["charged_units"] is None
     assert output.is_file()
