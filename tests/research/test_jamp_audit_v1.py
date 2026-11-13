@@ -104,16 +104,16 @@ def test_snapshot_round_trip_uses_exact_input_bytes(tmp_path, monkeypatch):
 def _valid_manifest(tmp_path: Path) -> dict:
     experiment_id = str(uuid.uuid4())
     hashes = {
-        "audit_spec_sha256": "a" * 64,
-        "input_pack_sha256": "b" * 64,
-        "prompt_sha256": "c" * 64,
+        "audit_spec_sha256": audit.sha256(audit.AUDIT_PROMPT.encode("utf-8")),
+        "input_pack_sha256": audit.sha256(audit.INPUT_PACK_PATH.read_bytes()),
+        "prompt_sha256": audit.sha256(audit.composite_prompt().encode("utf-8")),
     }
     response = b"audited response\n"
     (tmp_path / "model_001.md").write_bytes(response)
     metadata = {
         "model_key": "model_001",
         "experiment_id": experiment_id,
-        "repository_commit_sha": "d" * 40,
+        "repository_commit_sha": audit.git_commit_sha(),
         **hashes,
         "status": "COMPLETED",
         "response_sha256": audit.sha256(response),
@@ -123,7 +123,7 @@ def _valid_manifest(tmp_path: Path) -> dict:
     )
     return {
         "experiment_id": experiment_id,
-        "repository_commit_sha": "d" * 40,
+        "repository_commit_sha": audit.git_commit_sha(),
         **hashes,
         "enabled_models": ["model_001"],
         "available_models": ["model_001"],
@@ -218,3 +218,41 @@ def test_is_first_run_rejects_boolean_like_usage(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(audit, "ROOT", tmp_path)
     assert audit.is_first_run(path)
+
+
+
+def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "ROOT", tmp_path)
+    model_key = "model_001"
+    model_id = "vendor/model"
+    usage = {"prompt_tokens": 12, "completion_tokens": 4}
+    metadata = {
+        "model_key": model_key,
+        "model_id": model_id,
+        "experiment_id": str(uuid.uuid4()),
+        "status": "COMPLETED",
+        "source_run_id": "123",
+        "source_artifact_id": "456",
+        "usage": usage,
+    }
+    (tmp_path / "model.metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    manifest = {
+        "status": "COMPLETED",
+        "experiment_id": metadata["experiment_id"],
+        "completed_models": [model_key],
+        "executed_models": [model_key],
+        "metadata_files": {model_key: "model.metadata.json"},
+    }
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    baseline = tmp_path / "COST_BASELINE.md"
+    baseline.write_text(
+        f"### model: {model_id}\n"
+        "usage.prompt_tokens: 12\n"
+        "usage.completion_tokens: 4\n"
+        "source_run_id: 123\n"
+        "source_artifact_id: 456\n"
+        "manifest_file: manifest.json\n"
+        "metadata_file: model.metadata.json\n",
+        encoding="utf-8",
+    )
+    assert audit.is_first_run(baseline) is False
