@@ -4,8 +4,8 @@ import hashlib
 import http.client
 import io
 import json
-from unittest.mock import patch
 import urllib.error
+from unittest.mock import patch
 
 import pytest
 
@@ -13,8 +13,8 @@ from scripts.research.stage_b_benchmark import (
     MODELS,
     NoRedirect,
     RESUME_EXPECTED_SUCCESS,
-    plan_pending_tasks,
     catalog_models,
+    plan_pending_tasks,
     preflight,
     request_once,
     valid_usage_int,
