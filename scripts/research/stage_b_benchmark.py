@@ -281,6 +281,22 @@ def load_resume_evidence(
     return source, successes, catalog_path.read_bytes()
 
 
+def plan_pending_tasks(
+    prior_successes: list[dict[str, Any]], retry_astra_task2: bool
+) -> list[tuple[str, str]]:
+    """Return only unresolved Astra tasks; prior SUCCESS pairs are never repeated."""
+    completed = {
+        (row["model_id"], row["task_id"])
+        for row in prior_successes
+        if row.get("status") == "SUCCESS"
+    }
+    candidates = []
+    if retry_astra_task2:
+        candidates.append(("cx/gpt-6-astra", "task2"))
+    candidates.append(("cx/gpt-6-astra", "task5"))
+    return [pair for pair in candidates if pair not in completed]
+
+
 def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         retry_astra_task2: bool, balance_before_usd: float | None) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -319,16 +335,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "automatic_retry": False,
     }
     results.append(incomplete)
-    success_pairs = {(row["model_id"], row["task_id"]) for row in prior_successes}
-    pending = []
-    if retry_astra_task2:
-        pending.append(("cx/gpt-6-astra", "task2"))
-    pending.append(("cx/gpt-6-astra", "task5"))
-    pending = [
-        (model, task_id)
-        for model, task_id in pending
-        if (model, task_id) not in success_pairs
-    ]
+    pending = plan_pending_tasks(prior_successes, retry_astra_task2)
     pending_coefficients = {model: coefficients[model] for model, _ in pending}
     pending_prompts = [prompt_by_id[task_id] for _, task_id in pending]
     worst_case = worst_case_budget(pending_coefficients, pending_prompts) if pending else 0.0
