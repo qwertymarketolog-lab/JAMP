@@ -29,12 +29,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Catalog preflight (never sends model requests)
+      - name: Catalog preflight (no model requests)
+        if: ${{ inputs.execute == false }}
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
         run: python scripts/research/stage_b_v2_targeted.py
 
-      - name: Execute targeted experiment
+      - name: Preflight and execute targeted experiment
         if: ${{ inputs.execute == true }}
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
