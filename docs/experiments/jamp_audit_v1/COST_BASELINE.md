@@ -18,18 +18,16 @@ keeps the first-run gate closed.
 ## Evidence block format
 
 Add one block per model only after a real run and artifact have been independently
-inspected. Values must be copied from raw evidence, not estimated. Do not populate
-this template before the corresponding source run and artifact exist.
+inspected. Values must be copied from raw evidence, not estimated. Each block
+starts with `### model: <exact provider model id>` and contains these fields:
+- `usage.prompt_tokens`: integer greater than 0
+- `usage.completion_tokens`: integer greater than or equal to 0
+- `source_run_id`: digits only
+- `source_artifact_id`: digits only
+- `manifest_file`: repository-relative path to the terminal manifest
+- `metadata_file`: repository-relative path to model metadata JSON
 
-```text
-### model: <exact provider model id>
-usage.prompt_tokens: <integer greater than 0>
-usage.completion_tokens: <integer greater than or equal to 0>
-source_run_id: <digits>
-source_artifact_id: <digits>
-manifest_file: <repository-relative path to terminal manifest>
-metadata_file: <repository-relative path to model metadata JSON>
-```
+Do not add a heading or placeholder block until the corresponding evidence exists.
 
 The terminal manifest must map `metadata.model_key` to the exact
 `metadata_file` path. Metadata must repeat the exact model ID, source Run ID,
