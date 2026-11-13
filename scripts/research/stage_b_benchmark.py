@@ -211,6 +211,11 @@ def worst_case_budget(
     )
 
 
+def prompt_sha256(prompt: str) -> str:
+    """Hash the exact UTF-8 prompt bytes passed to the provider."""
+    return digest(prompt.encode("utf-8"))
+
+
 def classify_response_body(body: dict[str, Any]) -> str:
     """Classify user-facing response content separately from HTTP/usage success."""
     choices = body.get("choices")
@@ -250,6 +255,7 @@ def classify_existing_artifact(
         if previous_status == "INCOMPLETE_READ":
             row["legacy_status"] = previous_status
             row["response_status"] = "INCOMPLETE_READ"
+            row["status"] = "INCOMPLETE_READ"
             row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_UNKNOWN"
         elif previous_status == "SUCCESS":
             filename = row.get("raw_response_file")
@@ -262,6 +268,7 @@ def classify_existing_artifact(
             body = json.loads(raw_path.read_text(encoding="utf-8"))
             row["legacy_status"] = previous_status
             row["response_status"] = classify_response_body(body)
+            row["status"] = row["response_status"]
             row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
         else:
             row["response_status"] = previous_status or "UNKNOWN"
@@ -388,7 +395,23 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     task2_prompt = load_task2_prompt()
     prompt_by_id = {"task1": TASKS[0]["prompt"], "task2": task2_prompt, "task5": TASKS[2]["prompt"]}
     coefficients = preflight(catalog_models(catalog_raw))
-    results = [dict(row) for row in prior_successes]
+    results = []
+    for source_row in prior_successes:
+        row = dict(source_row)
+        raw_response = (resume_from / row["raw_response_file"]).read_bytes()
+        body = json.loads(raw_response.decode("utf-8"))
+        response_status = classify_response_body(body)
+        prompt = prompt_by_id[row["task_id"]]
+        row.update(
+            legacy_status="SUCCESS",
+            status=response_status,
+            response_status=response_status,
+            http_status_class="HTTP_SUCCESS",
+            prompt_sha256=prompt_sha256(prompt),
+            prompt_utf8_bytes=len(prompt.encode("utf-8")),
+            prompt_hash_provenance="RECONSTRUCTED_FROM_PINNED_SOURCE",
+        )
+        results.append(row)
     incomplete = {
         "sequence": 8,
         "model_id": "cx/gpt-6-astra",
@@ -399,8 +422,9 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "raw_response_file": None,
         "raw_response_sha256": None,
         "partial_data_bytes": 291,
-        "billing_status": "UNKNOWN",
-        "billing_charged": None,
+        "billing_status": "AMBIGUOUS",
+        "estimated_charged_units": 624,
+        "charged_units": None,
         "source_run_id": RESUME_SOURCE_RUN_ID,
         "automatic_retry": False,
     }
@@ -536,7 +560,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
                         status=response_status,
                         response_status=response_status,
                         http_status_class="HTTP_SUCCESS",
-                        prompt_sha256=digest(prompt.encode("utf-8")),
+                        prompt_sha256=prompt_sha256(prompt),
                         prompt_utf8_bytes=len(prompt.encode("utf-8")),
                         response_id=body.get("id"),
                         response_model=body.get("model"),
