@@ -4,8 +4,8 @@ import hashlib
 import http.client
 import io
 import json
-import urllib.error
 from unittest.mock import patch
+import urllib.error
 
 import pytest
 
