@@ -66,7 +66,7 @@ jobs:
         run: |
           python scripts/research/jamp_audit_v1.py preflight \
             --models "$MODELS_INPUT" --experiment-id "$EXPERIMENT_ID"
-          python -c 'import json, os, pathlib; path=pathlib.Path("artifacts/research/jamp_audit_v1") / os.environ["EXPERIMENT_ID"] / "preflight.json"; data=json.loads(path.read_text()); pathlib.Path(os.environ["GITHUB_OUTPUT"]).open("a").write("catalog_sha=" + data["catalog_sha256"] + "\\n")'
+          python -c 'import json, os, pathlib; path=pathlib.Path("artifacts/research/jamp_audit_v1") / os.environ["EXPERIMENT_ID"] / "preflight.json"; data=json.loads(path.read_text()); print("catalog_sha=" + data["catalog_sha256"], file=open(os.environ["GITHUB_OUTPUT"], "a"))'
 
       - name: Execute selected models (paid; explicit dispatch input only)
         if: github.event_name == 'workflow_dispatch' && inputs.execute == true
