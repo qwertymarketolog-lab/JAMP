@@ -15,7 +15,28 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from scripts.research.anymodel_deepseek_coefficient_probe import parse_coefficient
+
+def parse_coefficient(billing: dict[str, Any]) -> tuple[float, float] | None:
+    """Normalize catalog coefficients; reject booleans, negatives and non-finite values."""
+    coefficient = billing.get("coefficient")
+
+    def valid_number(value: Any) -> bool:
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            and value >= 0
+        )
+
+    if valid_number(coefficient):
+        value = float(coefficient)
+        return value, value
+    if isinstance(coefficient, dict):
+        input_value = coefficient.get("input")
+        output_value = coefficient.get("output")
+        if valid_number(input_value) and valid_number(output_value):
+            return float(input_value), float(output_value)
+    return None
 
 BASE_URL = os.getenv("ANYMODEL_BASE_URL", "https://anymodel.org")
 CATALOG_URL = f"{BASE_URL}/v1/models"
@@ -181,6 +202,23 @@ def run(balance_before: int, budget_cap: float) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     if any(OUT.iterdir()):
         raise SystemExit(f"Evidence directory is not empty: {OUT}")
+    # Persist a minimal artifact before any preflight that can terminate the process.
+    save_json(OUT / "run_manifest.json", {
+        "schema_version": "1.0",
+        "experiment": "JAMP_STAGE_B_3X3",
+        "status": "BOOTSTRAP",
+        "created_at": utc_now(),
+        "github": {
+            "repository": os.getenv("GITHUB_REPOSITORY"),
+            "sha": os.getenv("GITHUB_SHA"),
+            "run_id": os.getenv("GITHUB_RUN_ID"),
+            "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT"),
+        },
+        "planned_requests": 9,
+        "completed_requests": 0,
+        "retry_count": 0,
+        "routing_eligibility": "REFUSE",
+    })
     frozen = subprocess.check_output(
         ["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True
     ).strip()
@@ -214,6 +252,7 @@ def run(balance_before: int, budget_cap: float) -> int:
         "redirects_followed": 0,
         "results": [],
     }
+    save_json(OUT / "run_manifest.json", manifest)
     catalog_result = request_once("GET", CATALOG_URL, api_key)
     catalog_raw = catalog_result["raw_body"]
     (OUT / "catalog_raw.json").write_bytes(catalog_raw)
@@ -223,6 +262,7 @@ def run(balance_before: int, budget_cap: float) -> int:
         "sha256": digest(catalog_raw),
         "latency_ms": catalog_result["latency_ms"],
     }
+    save_json(OUT / "run_manifest.json", manifest)
     if catalog_result["transport_error"] or catalog_result["http_status"] != 200:
         manifest.update(status="BLOCKED", stop_reason="Catalog GET failed")
         save_json(OUT / "run_manifest.json", manifest)
@@ -247,6 +287,7 @@ def run(balance_before: int, budget_cap: float) -> int:
         return 0
 
     manifest["status"] = "RUNNING"
+    save_json(OUT / "run_manifest.json", manifest)
     prompts = benchmark_prompts
     stop_reason = None
     for model_index, model_id in enumerate(MODELS):
@@ -280,6 +321,7 @@ def run(balance_before: int, budget_cap: float) -> int:
                 record["failure"] = "HTTP or transport failure; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             try:
                 body = json.loads(raw.decode("utf-8"))
@@ -287,6 +329,7 @@ def run(balance_before: int, budget_cap: float) -> int:
                 record["failure"] = "Invalid JSON response; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             usage = body.get("usage") if isinstance(body, dict) else None
             usage = usage if isinstance(usage, dict) else {}
@@ -298,11 +341,13 @@ def run(balance_before: int, budget_cap: float) -> int:
                 record["failure"] = "Missing or invalid token usage; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             if prompt_tokens + completion_tokens != total_tokens:
                 record["failure"] = "Inconsistent token usage; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             in_coeff, out_coeff = coefficients[model_id]
             record.update(
@@ -323,6 +368,7 @@ def run(balance_before: int, budget_cap: float) -> int:
             )
             manifest["results"].append(record)
             manifest["completed_requests"] += 1
+            save_json(OUT / "run_manifest.json", manifest)
         if stop_reason:
             break
     manifest.update(
