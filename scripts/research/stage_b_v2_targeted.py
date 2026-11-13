@@ -34,7 +34,10 @@ TARGETS = (
 BLOCKED = ({
     "model_id": "cx/gpt-6-astra",
     "task_id": "task2",
-    "reason": "Stage B v1 billing_status=AMBIGUOUS; estimated 624 units, actual debit UNKNOWN. No retry path exists.",
+    "reason": (
+        "Stage B v1 billing_status=AMBIGUOUS; estimated 624 units, "
+        "actual debit UNKNOWN. No retry path exists."
+    ),
 },)
 
 TASK1_PROMPT = (
@@ -161,7 +164,9 @@ def http_request(url: str, api_key: str, payload: dict[str, Any] | None = None) 
                     "latency_ms": round((time.monotonic() - started) * 1000)}
     except urllib.error.HTTPError as exc:
         raw = exc.read()
-        return {"http_status": exc.code, "headers": dict(exc.headers.items()) if exc.headers else {},
+        return {
+            "http_status": exc.code,
+            "headers": dict(exc.headers.items()) if exc.headers else {},
                 "raw_body": raw, "transport_status": "HTTP_ERROR",
                 "transport_error": None,
                 "latency_ms": round((time.monotonic() - started) * 1000)}
@@ -203,13 +208,17 @@ def preflight(api_key: str, repo_root: pathlib.Path) -> tuple[dict[str, Any], li
     try:
         catalog = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Catalog response is not valid UTF-8 JSON; no model requests sent") from exc
+        raise RuntimeError(
+            "Catalog response is not valid UTF-8 JSON; no model requests sent"
+        ) from exc
 
     plan = []
     for target in TARGETS:
         coeffs = resolve_coefficients(catalog, target["model_id"])
         if coeffs is None:
-            raise RuntimeError(f"Missing, ambiguous or invalid billing coefficient: {target['model_id']}")
+            raise RuntimeError(
+                f"Missing, ambiguous or invalid billing coefficient: {target['model_id']}"
+            )
         prompt = get_prompt(target["task_id"], repo_root)
         plan.append({
             **target,
@@ -237,8 +246,10 @@ def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],
         frozen_blob = subprocess.check_output(
             ["git", "rev-parse", "HEAD:src/jamp/run.py"], cwd=repo_root, text=True
         ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        raise RuntimeError("Cannot verify Frozen Core blob; no model requests sent")
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError(
+            "Cannot verify Frozen Core blob; no model requests sent"
+        ) from exc
     if frozen_blob != FROZEN_BLOB:
         raise RuntimeError(f"Frozen Core mismatch: {frozen_blob}; no model requests sent")
 
@@ -319,7 +330,9 @@ def run(api_key: str, repo_root: pathlib.Path, catalog_record: dict[str, Any],
                 choices = body.get("choices")
                 if isinstance(choices, list) and choices and isinstance(choices[0], dict):
                     msg = choices[0].get("message")
-                    record["assistant_content"] = msg.get("content") if isinstance(msg, dict) else None
+                    record["assistant_content"] = (
+                        msg.get("content") if isinstance(msg, dict) else None
+                    )
                     record["finish_reason"] = choices[0].get("finish_reason")
         elif response["transport_status"] == "HTTP_ERROR":
             record["status"] = f"HTTP_{response['http_status']}"
@@ -382,7 +395,10 @@ def main() -> int:
     except Exception as exc:
         print(f"REFUSE: preflight failed: {exc}", file=sys.stderr)
         return 2
-    print("Catalog preflight: VERIFIED response received; coefficients and exact target IDs validated.")
+    print(
+        "Catalog preflight: VERIFIED response received; "
+        "coefficients and exact target IDs validated."
+    )
     print(f"Catalog SHA-256: {catalog['catalog_sha256']}")
     for row in plan:
         print(
@@ -392,7 +408,10 @@ def main() -> int:
         )
     print("Blocked: cx/gpt-6-astra / task2 — billing AMBIGUOUS; no retry option.")
     if not args.execute:
-        print("DRY-RUN: zero model requests sent. Use --execute only after explicit operator approval.")
+        print(
+            "DRY-RUN: zero model requests sent. "
+            "Use --execute only after explicit operator approval."
+        )
         return 0
     try:
         return run(api_key, repo_root, catalog, plan)
