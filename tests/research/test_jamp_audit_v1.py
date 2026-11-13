@@ -256,3 +256,51 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
         encoding="utf-8",
     )
     assert audit.is_first_run(baseline) is False
+
+
+
+def test_execute_rejects_catalog_snapshot_digest_mismatch_before_api_key(tmp_path):
+    snapshot = tmp_path / "catalog_snapshot.json"
+    snapshot.write_bytes(b'{"data":[]}')
+    with pytest.raises(ValueError, match="integrity mismatch"):
+        audit.execute(
+            ["model_001"],
+            str(uuid.uuid4()),
+            snapshot,
+            "0" * 64,
+            0,
+            tmp_path,
+        )
+
+
+def test_execute_requires_matching_preflight_record_before_api_key(
+    tmp_path, monkeypatch
+):
+    catalog = {
+        "data": [
+            {"id": item["model_id"]}
+            for item in audit.MODEL_REGISTRY.values()
+        ]
+    }
+    raw = json.dumps(catalog).encode("utf-8")
+    snapshot = tmp_path / "catalog_snapshot.json"
+    snapshot.write_bytes(raw)
+    experiment_id = str(uuid.uuid4())
+    preflight = {
+        "experiment_id": str(uuid.uuid4()),
+        "catalog_sha256": audit.sha256(raw),
+        "selected_model_keys": ["model_001"],
+        "available_model_keys": ["model_001"],
+        "repository_commit_sha": audit.git_commit_sha(),
+    }
+    (tmp_path / "preflight.json").write_text(json.dumps(preflight), encoding="utf-8")
+    monkeypatch.delenv("ANYMODEL_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="Preflight record"):
+        audit.execute(
+            ["model_001"],
+            experiment_id,
+            snapshot,
+            audit.sha256(raw),
+            0,
+            tmp_path,
+        )
