@@ -6,11 +6,11 @@ import argparse
 import datetime as dt
 import hashlib
 import http.client
-import shutil
 import json
 import math
 import os
 import pathlib
+import shutil
 import subprocess
 import time
 import urllib.error
