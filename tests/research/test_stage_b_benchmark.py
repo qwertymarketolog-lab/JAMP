@@ -102,3 +102,68 @@ def test_redirect_handler_refuses_redirect() -> None:
     assert NoRedirect().redirect_request(
         None, None, 302, "Found", {}, "https://example.invalid"
     ) is None
+
+
+def test_request_once_records_incomplete_read_without_retry() -> None:
+    import http.client
+
+    class FakeResponse:
+        status = 200
+        headers = {"Transfer-Encoding": "chunked"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            raise http.client.IncompleteRead(b'{"partial":', 100)
+
+    class FakeOpener:
+        calls = 0
+
+        def open(self, request, timeout=120):
+            self.calls += 1
+            return FakeResponse()
+
+    fake = FakeOpener()
+    with patch("urllib.request.build_opener", return_value=fake):
+        response = request_once("POST", "https://example.invalid", "fake-key", {"x": 1})
+    assert fake.calls == 1
+    assert response["transport_status"] == "INCOMPLETE_READ"
+    assert response["billing_status"] == "UNKNOWN"
+    assert response["raw_body"] == b'{"partial":'
+
+
+def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
+    import hashlib
+    import json
+    from scripts.research.stage_b_benchmark import (
+        FROZEN_BLOB, RESUME_EXPECTED_SUCCESS, RESUME_SOURCE_RUN_ID,
+        RESUME_SOURCE_SHA, load_resume_evidence,
+    )
+
+    rows = []
+    for index, (model, task_id) in enumerate(sorted(RESUME_EXPECTED_SUCCESS)):
+        name = f"response_{index}.json"
+        raw = b'{"ok":true}'
+        (tmp_path / name).write_bytes(raw)
+        rows.append({
+            "model_id": model, "task_id": task_id, "status": "SUCCESS",
+            "raw_response_file": name, "raw_response_sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    catalog_raw = b'{"data":[]}'
+    (tmp_path / "catalog_raw.json").write_bytes(catalog_raw)
+    manifest = {
+        "github": {"run_id": RESUME_SOURCE_RUN_ID, "sha": RESUME_SOURCE_SHA},
+        "status": "RUNNING", "completed_requests": 7,
+        "frozen_core": {"delta_zero": True, "observed_blob": FROZEN_BLOB},
+        "results": rows, "catalog": {"sha256": hashlib.sha256(catalog_raw).hexdigest()},
+    }
+    (tmp_path / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    _, loaded, _ = load_resume_evidence(tmp_path)
+    assert len(loaded) == 7
+    (tmp_path / rows[0]["raw_response_file"]).write_bytes(b"tampered")
+    with pytest.raises(ValueError, match="INTEGRITY_MISMATCH"):
+        load_resume_evidence(tmp_path)
