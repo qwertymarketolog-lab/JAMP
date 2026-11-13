@@ -469,7 +469,11 @@ def test_wait_terminal_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(verifier.time, "sleep", sleep)
     with pytest.raises(VerificationError, match="newest_run_timeout"):
         verifier.wait_for_terminal(
-            RUN_ID, repo="qwertymarketolog-lab/JAMP", api_get=api_get, timeout_seconds=30, poll_interval=10
+            RUN_ID,
+            repo="qwertymarketolog-lab/JAMP",
+            api_get=api_get,
+            timeout_seconds=30,
+            poll_interval=10,
         )
 
     assert clock[0] == 30
