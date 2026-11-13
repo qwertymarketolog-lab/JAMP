@@ -273,7 +273,10 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     OUT.mkdir(parents=True, exist_ok=True)
     if any(OUT.iterdir()):
         raise SystemExit(f"Evidence directory is not empty: {OUT}")
-    source, prior_successes, catalog_raw = load_resume_evidence(resume_from)
+    _, prior_successes, catalog_raw = load_resume_evidence(resume_from)
+    frozen = subprocess.check_output(["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True).strip()
+    if frozen != FROZEN_BLOB:
+        raise SystemExit("Frozen Core mismatch; no API calls made")
     for row in prior_successes:
         shutil.copy2(resume_from / row["raw_response_file"], OUT / row["raw_response_file"])
     shutil.copy2(resume_from / "catalog_raw.json", OUT / "catalog_raw.json")
@@ -289,7 +292,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "sequence": 8,
         "model_id": "cx/gpt-6-astra",
         "task_id": "task2",
-        "requested_at": "2026-11-13T06:59:34Z",
+        "requested_at": None,
         "status": "INCOMPLETE_READ",
         "transport_error": "IncompleteRead(291 bytes read); chunked response terminated",
         "raw_response_file": None,
@@ -324,7 +327,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             "run_id": os.getenv("GITHUB_RUN_ID"),
             "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT"),
         },
-        "frozen_core": {"expected_blob": FROZEN_BLOB, "observed_blob": FROZEN_BLOB, "delta_zero": True},
+        "frozen_core": {"expected_blob": FROZEN_BLOB, "observed_blob": frozen, "delta_zero": frozen == FROZEN_BLOB},
         "resume_source": {
             "run_id": RESUME_SOURCE_RUN_ID,
             "sha": RESUME_SOURCE_SHA,
@@ -346,7 +349,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "redirects_followed": 0,
         "worst_case_budget_units": worst_case,
         "results": results,
-        "status_note": "Astra task2 is quarantined as INCOMPLETE_READ; no automatic retry.",
+        "status_note": f"Astra task2 original attempt remains INCOMPLETE_READ/UNKNOWN; retry explicitly authorized={retry_astra_task2}.",
         "model_qualification": "NOT_STARTED",
         "routing_eligibility": "REFUSE",
     }
@@ -423,7 +426,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         if stop_reason:
             break
     manifest.update(
-        status="COMPLETED" if any(row.get("model_id") == "cx/gpt-6-astra" and row.get("task_id") == "task5" and row.get("status") == "SUCCESS" for row in manifest["results"]) else "STOPPED",
+        status="PARTIAL_COMPLETED" if any(row.get("model_id") == "cx/gpt-6-astra" and row.get("task_id") == "task5" and row.get("status") == "SUCCESS" for row in manifest["results"]) else "STOPPED",
         stop_reason=stop_reason,
         finished_at=utc_now(),
         calculated_total_debit_units=sum(row.get("expected_balance_debit_units", 0) for row in manifest["results"]),
@@ -437,7 +440,7 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         if path.is_file() and path.name != "checksums.sha256":
             checksums.append(f"{digest(path.read_bytes())}  {path.name}")
     (OUT / "checksums.sha256").write_text("\n".join(checksums) + "\n", encoding="utf-8")
-    return 0 if manifest["status"] == "COMPLETED" else 1
+    return 0 if manifest["status"] == "PARTIAL_COMPLETED" else 1
 
 def main() -> int:
     parser = argparse.ArgumentParser()
