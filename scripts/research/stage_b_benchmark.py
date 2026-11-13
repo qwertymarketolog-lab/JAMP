@@ -328,6 +328,7 @@ def run(balance_before: int, budget_cap: float) -> int:
                 record["failure"] = "Invalid JSON response; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             usage = body.get("usage") if isinstance(body, dict) else None
             usage = usage if isinstance(usage, dict) else {}
@@ -339,11 +340,13 @@ def run(balance_before: int, budget_cap: float) -> int:
                 record["failure"] = "Missing or invalid token usage; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             if prompt_tokens + completion_tokens != total_tokens:
                 record["failure"] = "Inconsistent token usage; series stopped"
                 manifest["results"].append(record)
                 stop_reason = record["failure"]
+                save_json(OUT / "run_manifest.json", manifest)
                 break
             in_coeff, out_coeff = coefficients[model_id]
             record.update(
