@@ -500,6 +500,22 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     selected = select_models(",".join(models))
     if len(selected) > MAX_MODELS_FIRST_RUN and is_first_run():
         raise ValueError("First run limit exceeded")
+    if snapshot_path.name != "catalog_snapshot.json" or snapshot_path.parent.resolve() != output_dir.resolve():
+        raise ValueError("Catalog snapshot must belong to this experiment output directory")
+    preflight_path = output_dir / "preflight.json"
+    preflight_record = json.loads(preflight_path.read_text(encoding="utf-8"))
+    commit = git_commit_sha()
+    expected_available = sorted(
+        key for key in selected if MODEL_REGISTRY[key]["model_id"] in available_ids
+    )
+    if (
+        preflight_record.get("experiment_id") != experiment_id
+        or preflight_record.get("catalog_sha256") != expected_catalog_sha
+        or preflight_record.get("selected_model_keys") != selected
+        or preflight_record.get("available_model_keys") != expected_available
+        or preflight_record.get("repository_commit_sha") != commit
+    ):
+        raise ValueError("Preflight record does not match this execution request")
     api_key = os.getenv("ANYMODEL_API_KEY")
     if not api_key:
         raise RuntimeError("ANYMODEL_API_KEY is required")
@@ -509,7 +525,6 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         or list(output_dir.glob("model_*.md"))
     ):
         raise FileExistsError("Experiment output already exists; refusing overwrite")
-    commit = git_commit_sha()
     prompt = composite_prompt()
     audit_hash = sha256(AUDIT_PROMPT.encode("utf-8"))
     input_hash = sha256(INPUT_PACK_PATH.read_bytes())
