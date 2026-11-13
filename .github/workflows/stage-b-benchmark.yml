@@ -1,0 +1,59 @@
+name: Stage B Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      balance_before_units:
+        description: "Fresh AnyModel balance in token units, captured immediately before run"
+        required: true
+        type: string
+      budget_cap_units:
+        description: "Operator-approved maximum calculated debit in balance units"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jamp-stage-b-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate inputs and run Stage B
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          BALANCE_BEFORE_UNITS: ${{ inputs.balance_before_units }}
+          BUDGET_CAP_UNITS: ${{ inputs.budget_cap_units }}
+        run: |
+          python - <<'PY'
+          import os
+          for name in ("BALANCE_BEFORE_UNITS", "BUDGET_CAP_UNITS"):
+              value = os.environ[name]
+              if not value.isdigit() or int(value) <= 0:
+                  raise SystemExit(f"{name} must be a positive integer")
+          PY
+          python scripts/research/stage_b_benchmark.py \
+            --balance-before-units "$BALANCE_BEFORE_UNITS" \
+            --budget-cap-units "$BUDGET_CAP_UNITS"
+
+      - name: Upload raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-b-evidence-${{ github.run_id }}
+          path: artifacts/research/stage_b/
+          if-no-files-found: error
+          retention-days: 90
