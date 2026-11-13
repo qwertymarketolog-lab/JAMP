@@ -237,16 +237,30 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
             if (not model_id or prompt_tokens <= 0 or completion_tokens < 0
                     or not run_id.isdigit() or not artifact_id.isdigit()):
                 return True
+            if Path(manifest_file).is_absolute() or ".." in Path(manifest_file).parts:
+                return True
+            if Path(metadata_file).is_absolute() or ".." in Path(metadata_file).parts:
+                return True
             manifest = json.loads((ROOT / manifest_file).read_text(encoding="utf-8"))
             metadata = json.loads((ROOT / metadata_file).read_text(encoding="utf-8"))
+            model_key = metadata.get("model_key")
             metadata_files = manifest.get("metadata_files")
-            if not isinstance(metadata_files, dict) or metadata_files.get(metadata.get("model_key")) != metadata_file:
-                return True
             usage = metadata.get("usage")
-            if (metadata.get("model_id") != model_id
+            if (not isinstance(metadata_files, dict)
+                    or metadata_files.get(model_key) != metadata_file
+                    or manifest.get("status") != "COMPLETED"
+                    or model_key not in manifest.get("completed_models", [])
+                    or model_key not in manifest.get("executed_models", [])
+                    or metadata.get("status") != FinalStatus.COMPLETED.value
+                    or metadata.get("experiment_id") != manifest.get("experiment_id")
+                    or metadata.get("model_id") != model_id
                     or metadata.get("source_run_id") != run_id
                     or metadata.get("source_artifact_id") != artifact_id
                     or not isinstance(usage, dict)
+                    or isinstance(usage.get("prompt_tokens"), bool)
+                    or not isinstance(usage.get("prompt_tokens"), int)
+                    or isinstance(usage.get("completion_tokens"), bool)
+                    or not isinstance(usage.get("completion_tokens"), int)
                     or usage.get("prompt_tokens") != prompt_tokens
                     or usage.get("completion_tokens") != completion_tokens):
                 return True
@@ -373,13 +387,18 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         raise ValueError("executed/completed invariant violated")
     if failed != executed - completed or still_running:
         raise ValueError("terminal batch invariant violated")
-    for name in ("audit_spec_sha256", "input_pack_sha256", "prompt_sha256"):
+    expected_hashes = {
+        "audit_spec_sha256": sha256(AUDIT_PROMPT.encode("utf-8")),
+        "input_pack_sha256": sha256(INPUT_PACK_PATH.read_bytes()),
+        "prompt_sha256": sha256(composite_prompt().encode("utf-8")),
+    }
+    for name, expected in expected_hashes.items():
         value = manifest.get(name)
-        if not isinstance(value, str) or not SHA256_RE.fullmatch(value):
-            raise ValueError(f"Invalid {name}")
+        if not isinstance(value, str) or not SHA256_RE.fullmatch(value) or value != expected:
+            raise ValueError(f"Invalid or unexpected {name}")
     commit = manifest.get("repository_commit_sha")
-    if not isinstance(commit, str) or not GIT_SHA_RE.fullmatch(commit):
-        raise ValueError("Invalid repository_commit_sha")
+    if not isinstance(commit, str) or not GIT_SHA_RE.fullmatch(commit) or commit != git_commit_sha():
+        raise ValueError("Invalid or unexpected repository_commit_sha")
     if not canonical_uuid(manifest.get("experiment_id")):
         raise ValueError("Invalid experiment_id")
     metadata_files = manifest.get("metadata_files")
@@ -388,8 +407,16 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         raise ValueError("Metadata files must correspond exactly to executed models")
     if not isinstance(response_files, dict) or set(response_files) != completed:
         raise ValueError("Response files must correspond exactly to completed models")
+    if manifest.get("status") not in {"COMPLETED", "PARTIAL"}:
+        raise ValueError("Manifest is not terminal")
+    expected_status = "COMPLETED" if not failed and not skipped else "PARTIAL"
+    if manifest.get("status") != expected_status:
+        raise ValueError("Manifest terminal status is inconsistent")
     for key in executed:
-        metadata_path = output_dir / metadata_files[key]
+        metadata_name = metadata_files[key]
+        if not isinstance(metadata_name, str) or metadata_name != f"{key}.metadata.json":
+            raise ValueError("Invalid metadata filename")
+        metadata_path = output_dir / metadata_name
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         status = metadata.get("status")
         if not isinstance(status, str):
@@ -410,7 +437,10 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         if key in failed and enum_status.value != failed_records[key]["status"]:
             raise ValueError("Failed manifest/metadata status mismatch")
     for key in completed:
-        path = output_dir / response_files[key]
+        response_name = response_files[key]
+        if not isinstance(response_name, str) or response_name != f"{key}.md":
+            raise ValueError("Invalid response filename")
+        path = output_dir / response_name
         raw = path.read_bytes()
         if not raw:
             raise ValueError("Completed response file is empty")
