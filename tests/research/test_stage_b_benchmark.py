@@ -159,7 +159,7 @@ def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
         "github": {"run_id": RESUME_SOURCE_RUN_ID, "sha": RESUME_SOURCE_SHA},
         "status": "RUNNING", "completed_requests": 7,
         "frozen_core": {"delta_zero": True, "observed_blob": FROZEN_BLOB},
-        "results": rows, "catalog": {"sha256": hashlib.sha256(catalog_raw).hexdigest()},
+        "results": rows, "catalog": {"http_status": 200, "sha256": hashlib.sha256(catalog_raw).hexdigest()},
     }
     (tmp_path / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     _, loaded, _ = load_resume_evidence(tmp_path)
