@@ -348,6 +348,8 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
 
     enabled = set(string_list("enabled_models"))
     available = set(string_list("available_models"))
+    if not enabled <= set(MODEL_REGISTRY):
+        raise ValueError("Manifest contains unknown enabled model keys")
     def record_keys(name: str, require_status: bool) -> dict[str, dict[str, str]]:
         records = manifest.get(name)
         if not isinstance(records, list):
@@ -407,6 +409,12 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         raise ValueError("Metadata files must correspond exactly to executed models")
     if not isinstance(response_files, dict) or set(response_files) != completed:
         raise ValueError("Response files must correspond exactly to completed models")
+    expected_metadata_names = {f"{key}.metadata.json" for key in executed}
+    expected_response_names = {f"{key}.md" for key in completed}
+    if {p.name for p in output_dir.glob("*.metadata.json")} != expected_metadata_names:
+        raise ValueError("Unexpected or missing metadata files")
+    if {p.name for p in output_dir.glob("*.md")} != expected_response_names:
+        raise ValueError("Unexpected or missing response files")
     if manifest.get("status") not in {"COMPLETED", "PARTIAL"}:
         raise ValueError("Manifest is not terminal")
     expected_status = "COMPLETED" if not failed and not skipped else "PARTIAL"
@@ -434,8 +442,11 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             raise ValueError("Metadata repository commit mismatch")
         if (key in completed) != (enum_status == FinalStatus.COMPLETED):
             raise ValueError("Metadata status/completed set mismatch")
-        if key in failed and enum_status.value != failed_records[key]["status"]:
-            raise ValueError("Failed manifest/metadata status mismatch")
+        if key in failed:
+            if enum_status.value != failed_records[key]["status"]:
+                raise ValueError("Failed manifest/metadata status mismatch")
+            if metadata.get("reason") and metadata["reason"] != failed_records[key]["reason"]:
+                raise ValueError("Failed manifest/metadata reason mismatch")
     for key in completed:
         response_name = response_files[key]
         if not isinstance(response_name, str) or response_name != f"{key}.md":
