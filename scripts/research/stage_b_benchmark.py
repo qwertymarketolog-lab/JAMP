@@ -231,7 +231,9 @@ RESUME_EXPECTED_SUCCESS = {
 }
 
 
-def load_resume_evidence(source_dir: pathlib.Path) -> tuple[dict[str, Any], list[dict[str, Any]], bytes]:
+def load_resume_evidence(
+    source_dir: pathlib.Path,
+) -> tuple[dict[str, Any], list[dict[str, Any]], bytes]:
     """Load only the pinned Stage B artifact and verify every SUCCESS byte-for-byte."""
     manifest_path = source_dir / "run_manifest.json"
     if not manifest_path.is_file():
@@ -252,7 +254,11 @@ def load_resume_evidence(source_dir: pathlib.Path) -> tuple[dict[str, Any], list
         raise ValueError("Resume results must be a list")
     successes = [row for row in rows if isinstance(row, dict) and row.get("status") == "SUCCESS"]
     identities = [(row.get("model_id"), row.get("task_id")) for row in successes]
-    if len(successes) != 7 or len(set(identities)) != 7 or set(identities) != RESUME_EXPECTED_SUCCESS:
+    if (
+        len(successes) != 7
+        or len(set(identities)) != 7
+        or set(identities) != RESUME_EXPECTED_SUCCESS
+    ):
         raise ValueError("Resume source SUCCESS inventory mismatch")
     for row in successes:
         name = row.get("raw_response_file")
@@ -260,10 +266,17 @@ def load_resume_evidence(source_dir: pathlib.Path) -> tuple[dict[str, Any], list
         if not isinstance(name, str) or pathlib.Path(name).name != name:
             raise ValueError("Unsafe raw response filename in resume manifest")
         raw_path = source_dir / name
-        if not raw_path.is_file() or not isinstance(expected, str) or digest(raw_path.read_bytes()) != expected:
+        if (
+            not raw_path.is_file()
+            or not isinstance(expected, str)
+            or digest(raw_path.read_bytes()) != expected
+        ):
             raise ValueError(f"INTEGRITY_MISMATCH: {name}")
     catalog_path = source_dir / "catalog_raw.json"
-    if not catalog_path.is_file() or digest(catalog_path.read_bytes()) != source.get("catalog", {}).get("sha256"):
+    if (
+        not catalog_path.is_file()
+        or digest(catalog_path.read_bytes()) != source.get("catalog", {}).get("sha256")
+    ):
         raise ValueError("INTEGRITY_MISMATCH: catalog_raw.json")
     return source, successes, catalog_path.read_bytes()
 
@@ -274,7 +287,9 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     if any(OUT.iterdir()):
         raise SystemExit(f"Evidence directory is not empty: {OUT}")
     source, prior_successes, catalog_raw = load_resume_evidence(resume_from)
-    frozen = subprocess.check_output(["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True).strip()
+    frozen = subprocess.check_output(
+        ["git", "rev-parse", "HEAD:src/jamp/run.py"], text=True
+    ).strip()
     if frozen != FROZEN_BLOB:
         raise SystemExit("Frozen Core mismatch; no API calls made")
     for row in prior_successes:
@@ -309,12 +324,18 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     if retry_astra_task2:
         pending.append(("cx/gpt-6-astra", "task2"))
     pending.append(("cx/gpt-6-astra", "task5"))
-    pending = [(model, task_id) for model, task_id in pending if (model, task_id) not in success_pairs]
+    pending = [
+        (model, task_id)
+        for model, task_id in pending
+        if (model, task_id) not in success_pairs
+    ]
     pending_coefficients = {model: coefficients[model] for model, _ in pending}
     pending_prompts = [prompt_by_id[task_id] for _, task_id in pending]
     worst_case = worst_case_budget(pending_coefficients, pending_prompts) if pending else 0.0
     if worst_case > budget_cap:
-        raise SystemExit(f"BLOCKED: remaining-task worst-case {worst_case} exceeds cap {budget_cap}")
+        raise SystemExit(
+            f"BLOCKED: remaining-task worst-case {worst_case} exceeds cap {budget_cap}"
+        )
 
     manifest: dict[str, Any] = {
         "schema_version": "1.1",
@@ -327,7 +348,11 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             "run_id": os.getenv("GITHUB_RUN_ID"),
             "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT"),
         },
-        "frozen_core": {"expected_blob": FROZEN_BLOB, "observed_blob": frozen, "delta_zero": frozen == FROZEN_BLOB},
+        "frozen_core": {
+            "expected_blob": FROZEN_BLOB,
+            "observed_blob": frozen,
+            "delta_zero": frozen == FROZEN_BLOB,
+        },
         "resume_source": {
             "run_id": RESUME_SOURCE_RUN_ID,
             "sha": RESUME_SOURCE_SHA,
@@ -349,7 +374,10 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "redirects_followed": 0,
         "worst_case_budget_units": worst_case,
         "results": results,
-        "status_note": f"Astra task2 original attempt remains INCOMPLETE_READ/UNKNOWN; retry explicitly authorized={retry_astra_task2}.",
+        "status_note": (
+            "Astra task2 original attempt remains INCOMPLETE_READ/UNKNOWN; "
+            f"retry explicitly authorized={retry_astra_task2}."
+        ),
         "model_qualification": "NOT_STARTED",
         "routing_eligibility": "REFUSE",
     }
@@ -403,20 +431,38 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
                 prompt_tokens = usage.get("prompt_tokens")
                 completion_tokens = usage.get("completion_tokens")
                 total_tokens = usage.get("total_tokens")
-                if not all(valid_usage_int(value) for value in (prompt_tokens, completion_tokens, total_tokens)) or prompt_tokens + completion_tokens != total_tokens:
+                usage_values_valid = all(
+                    valid_usage_int(value)
+                    for value in (prompt_tokens, completion_tokens, total_tokens)
+                )
+                usage_total_valid = (
+                    usage_values_valid
+                    and prompt_tokens + completion_tokens == total_tokens
+                )
+                if not usage_total_valid:
                     record.update(billing_status="UNKNOWN", billing_charged=None,
                                   failure="Missing or inconsistent token usage")
                     stop_reason = record["failure"]
                 else:
                     in_coeff, out_coeff = coefficients[model_id]
                     choices = body.get("choices")
-                    message = choices[0].get("message", {}) if isinstance(choices, list) and choices else {}
+                    message = (
+                        choices[0].get("message", {})
+                        if isinstance(choices, list) and choices
+                        else {}
+                    )
                     record.update(
                         status="SUCCESS",
                         response_id=body.get("id"),
                         response_model=body.get("model"),
-                        usage={"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens, "total_tokens": total_tokens},
-                        expected_balance_debit_units=prompt_tokens * in_coeff + completion_tokens * out_coeff,
+                        usage={
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "total_tokens": total_tokens,
+                        },
+                        expected_balance_debit_units=(
+                            prompt_tokens * in_coeff + completion_tokens * out_coeff
+                        ),
                         assistant_content=message.get("content"),
                         billing_status="USAGE_REPORTED",
                     )
@@ -426,10 +472,21 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         if stop_reason:
             break
     manifest.update(
-        status="PARTIAL_COMPLETED" if any(row.get("model_id") == "cx/gpt-6-astra" and row.get("task_id") == "task5" and row.get("status") == "SUCCESS" for row in manifest["results"]) else "STOPPED",
+        status=(
+            "PARTIAL_COMPLETED"
+            if any(
+                row.get("model_id") == "cx/gpt-6-astra"
+                and row.get("task_id") == "task5"
+                and row.get("status") == "SUCCESS"
+                for row in manifest["results"]
+            )
+            else "STOPPED"
+        ),
         stop_reason=stop_reason,
         finished_at=utc_now(),
-        calculated_total_debit_units=sum(row.get("expected_balance_debit_units", 0) for row in manifest["results"]),
+        calculated_total_debit_units=sum(
+            row.get("expected_balance_debit_units", 0) for row in manifest["results"]
+        ),
         balance_reconciliation="MANUAL_REQUIRED",
         model_qualification="NOT_STARTED",
         routing_eligibility="REFUSE",
@@ -454,7 +511,13 @@ def main() -> int:
         args.balance_before_units <= 0
         or not math.isfinite(args.budget_cap_units)
         or args.budget_cap_units <= 0
-        or (args.balance_before_usd is not None and (not math.isfinite(args.balance_before_usd) or args.balance_before_usd < 0))
+        or (
+            args.balance_before_usd is not None
+            and (
+                not math.isfinite(args.balance_before_usd)
+                or args.balance_before_usd < 0
+            )
+        )
     ):
         parser.error("balance and budget cap must be positive finite values")
     return run(args.balance_before_units, args.budget_cap_units, args.resume_from,
