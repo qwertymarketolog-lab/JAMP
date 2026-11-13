@@ -105,6 +105,7 @@ TERMINAL_TIMEOUT_SECONDS = 300
 
 def wait_for_terminal(
     run_id: int,
+    repo: str,
     api_get: Callable[[str], dict[str, Any]] | None = None,
     timeout_seconds: int = TERMINAL_TIMEOUT_SECONDS,
     poll_interval: int = POLL_INTERVAL_SECONDS,
@@ -126,7 +127,7 @@ def wait_for_terminal(
 
     while first_poll or time.monotonic() < deadline:
         first_poll = False
-        run = get_run(f"/repos/{REPO}/actions/runs/{run_id}")
+        run = get_run(f"/repos/{repo}/actions/runs/{run_id}")
         if not isinstance(run, dict):
             raise VerificationError("newest_run_response_invalid")
 
@@ -273,7 +274,9 @@ def verify_lineage(
     run_id = newest.get("id")
     if not isinstance(run_id, int):
         raise VerificationError("research_loop_run_id_invalid")
-    terminal_run = wait_for_terminal(run_id, api_get=api_get)
+    terminal_run = wait_for_terminal(run_id, repo=repo, api_get=api_get)
+    if terminal_run.get("id") != run_id:
+        raise VerificationError("newest_run_id_mismatch")
 
     jobs_payload = api_get(
         f"/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"
