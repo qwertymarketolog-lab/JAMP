@@ -275,6 +275,13 @@ def classify_existing_artifact(
         else:
             row["response_status"] = previous_status or "UNKNOWN"
             row["http_status_class"] = "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+        if (
+            row.get("model_id") == "cx/gpt-6-astra"
+            and row.get("task_id") == "task2"
+        ):
+            row["billing_status"] = "AMBIGUOUS"
+            row["estimated_charged_units"] = 624
+            row["charged_units"] = None
         status = row["response_status"]
         counts[status] = counts.get(status, 0) + 1
     manifest["classification"] = {
@@ -424,6 +431,9 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "raw_response_file": None,
         "raw_response_sha256": None,
         "partial_data_bytes": 291,
+        "prompt_sha256": prompt_sha256(prompt_by_id["task2"]),
+        "prompt_utf8_bytes": len(prompt_by_id["task2"].encode("utf-8")),
+        "prompt_hash_provenance": "RECONSTRUCTED_FROM_PINNED_SOURCE",
         "billing_status": "AMBIGUOUS",
         "estimated_charged_units": 624,
         "charged_units": None,
