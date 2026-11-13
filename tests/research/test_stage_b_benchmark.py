@@ -12,6 +12,8 @@ import pytest
 from scripts.research.stage_b_benchmark import (
     MODELS,
     NoRedirect,
+    RESUME_EXPECTED_SUCCESS,
+    plan_pending_tasks,
     catalog_models,
     preflight,
     request_once,
@@ -170,3 +172,17 @@ def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
     (tmp_path / rows[0]["raw_response_file"]).write_bytes(b"tampered")
     with pytest.raises(ValueError, match="INTEGRITY_MISMATCH"):
         load_resume_evidence(tmp_path)
+
+
+def test_default_resume_plan_only_schedules_unfinished_astra_task5() -> None:
+    successes = [
+        {"model_id": model, "task_id": task_id, "status": "SUCCESS"}
+        for model, task_id in RESUME_EXPECTED_SUCCESS
+    ]
+    assert plan_pending_tasks(successes, retry_astra_task2=False) == [
+        ("cx/gpt-6-astra", "task5")
+    ]
+    assert plan_pending_tasks(successes, retry_astra_task2=True) == [
+        ("cx/gpt-6-astra", "task2"),
+        ("cx/gpt-6-astra", "task5"),
+    ]
