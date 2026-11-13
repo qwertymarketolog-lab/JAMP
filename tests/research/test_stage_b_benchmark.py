@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import http.client
 import io
+import json
 import urllib.error
 from unittest.mock import patch
 
@@ -105,8 +108,6 @@ def test_redirect_handler_refuses_redirect() -> None:
 
 
 def test_request_once_records_incomplete_read_without_retry() -> None:
-    import http.client
-
     class FakeResponse:
         status = 200
         headers = {"Transfer-Encoding": "chunked"}
@@ -137,8 +138,6 @@ def test_request_once_records_incomplete_read_without_retry() -> None:
 
 
 def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
-    import hashlib
-    import json
     from scripts.research.stage_b_benchmark import (
         FROZEN_BLOB, RESUME_EXPECTED_SUCCESS, RESUME_SOURCE_RUN_ID,
         RESUME_SOURCE_SHA, load_resume_evidence,
@@ -159,7 +158,11 @@ def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
         "github": {"run_id": RESUME_SOURCE_RUN_ID, "sha": RESUME_SOURCE_SHA},
         "status": "RUNNING", "completed_requests": 7,
         "frozen_core": {"delta_zero": True, "observed_blob": FROZEN_BLOB},
-        "results": rows, "catalog": {"http_status": 200, "sha256": hashlib.sha256(catalog_raw).hexdigest()},
+        "results": rows,
+        "catalog": {
+            "http_status": 200,
+            "sha256": hashlib.sha256(catalog_raw).hexdigest(),
+        },
     }
     (tmp_path / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     _, loaded, _ = load_resume_evidence(tmp_path)
