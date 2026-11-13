@@ -1,0 +1,94 @@
+name: JAMP Audit v1
+
+on:
+  pull_request:
+    paths:
+      - "scripts/research/jamp_audit_v1.py"
+      - "tests/research/test_jamp_audit_v1.py"
+      - "tests/research/snapshots/**"
+      - "docs/experiments/jamp_audit_v1/**"
+      - ".github/workflows/jamp-audit-v1.yml"
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Registry keys or all"
+        required: true
+        default: "all"
+        type: string
+      experiment_id:
+        description: "Canonical lowercase UUIDv4"
+        required: true
+        type: string
+      execute:
+        description: "false = GET-only preflight; true = paid model requests"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jamp-audit-v1
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        if: github.event_name == 'pull_request'
+        run: python -m pip install pytest
+
+      - name: Run focused tests
+        if: github.event_name == 'pull_request'
+        run: python -m pytest -q tests/research/test_jamp_audit_v1.py
+
+      - name: Verify committed snapshots
+        run: python scripts/research/jamp_audit_v1.py --verify-snapshots tests/research/snapshots/
+
+      - name: Catalog preflight (GET only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          MODELS_INPUT: ${{ inputs.models }}
+          EXPERIMENT_ID: ${{ inputs.experiment_id }}
+        run: |
+          python scripts/research/jamp_audit_v1.py preflight \
+            --models "$MODELS_INPUT" --experiment-id "$EXPERIMENT_ID"
+          python -c "import json, pathlib; p=json.loads(pathlib.Path('artifacts/research/jamp_audit_v1/preflight.json').read_text()); pathlib.Path('$GITHUB_OUTPUT').open('a').write('catalog_sha=' + p['catalog_sha256'] + '\\n')"
+
+      - name: Execute selected models (paid; explicit dispatch input only)
+        if: github.event_name == 'workflow_dispatch' && inputs.execute == true
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          MODELS_INPUT: ${{ inputs.models }}
+          EXPERIMENT_ID: ${{ inputs.experiment_id }}
+          EXPECTED_CATALOG_SHA: ${{ steps.catalog.outputs.catalog_sha }}
+        run: |
+          python scripts/research/jamp_audit_v1.py execute \
+            --models "$MODELS_INPUT" --experiment-id "$EXPERIMENT_ID" \
+            --catalog-snapshot artifacts/research/jamp_audit_v1/catalog_snapshot.json \
+            --expected-catalog-sha "$EXPECTED_CATALOG_SHA"
+
+      - name: Verify terminal batch
+        if: github.event_name == 'workflow_dispatch' && inputs.execute == true
+        run: python scripts/research/jamp_audit_v1.py verify --manifest artifacts/research/jamp_audit_v1/manifest.json
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-audit-v1-${{ github.run_id }}
+          path: artifacts/research/jamp_audit_v1/
+          if-no-files-found: warn
+          retention-days: 90
