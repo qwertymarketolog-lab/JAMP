@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+
 def parse_coefficient(billing: dict[str, Any]) -> tuple[float, float] | None:
     """Normalize catalog coefficients; reject booleans, negatives and non-finite values."""
     coefficient = billing.get("coefficient")
