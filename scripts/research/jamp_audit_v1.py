@@ -7,7 +7,6 @@ through the explicit `execute` subcommand; catalog preflight is GET-only.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import hashlib
 import json
 import os
@@ -166,7 +165,9 @@ def classify_response(http_status: int, body: Any) -> FinalStatus:
     if content is not None and not isinstance(content, str):
         return FinalStatus.INVALID_RESPONSE
     if finish == "length":
-        return FinalStatus.TRUNCATED if isinstance(content, str) and bool(content) else FinalStatus.EMPTY
+        if isinstance(content, str) and bool(content):
+            return FinalStatus.TRUNCATED
+        return FinalStatus.EMPTY
     if content is None or content == "":
         return FinalStatus.EMPTY
     if not content.strip():
@@ -359,7 +360,12 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             if not isinstance(record, dict):
                 raise ValueError(f"{name} entries must be objects")
             key, reason = record.get("key"), record.get("reason")
-            if not isinstance(key, str) or not key or not isinstance(reason, str) or not reason.strip():
+            if (
+                not isinstance(key, str)
+                or not key
+                or not isinstance(reason, str)
+                or not reason.strip()
+            ):
                 raise ValueError(f"Invalid {name} entry")
             if key in parsed:
                 raise ValueError(f"Duplicate key in {name}")
@@ -399,7 +405,11 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         if not isinstance(value, str) or not SHA256_RE.fullmatch(value) or value != expected:
             raise ValueError(f"Invalid or unexpected {name}")
     commit = manifest.get("repository_commit_sha")
-    if not isinstance(commit, str) or not GIT_SHA_RE.fullmatch(commit) or commit != git_commit_sha():
+    if (
+        not isinstance(commit, str)
+        or not GIT_SHA_RE.fullmatch(commit)
+        or commit != git_commit_sha()
+    ):
         raise ValueError("Invalid or unexpected repository_commit_sha")
     if not canonical_uuid(manifest.get("experiment_id")):
         raise ValueError("Invalid experiment_id")
@@ -433,7 +443,10 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             enum_status = FinalStatus(status)
         except ValueError as exc:
             raise ValueError("Unknown metadata status") from exc
-        if metadata.get("model_key") != key or metadata.get("experiment_id") != manifest["experiment_id"]:
+        if (
+            metadata.get("model_key") != key
+            or metadata.get("experiment_id") != manifest["experiment_id"]
+        ):
             raise ValueError("Metadata identity mismatch")
         for field in ("audit_spec_sha256", "input_pack_sha256", "prompt_sha256"):
             if metadata.get(field) != manifest[field]:
@@ -464,7 +477,11 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
             expected_catalog_sha: str, inter_request_seconds: int, output_dir: Path) -> None:
     if not canonical_uuid(experiment_id):
         raise ValueError("experiment_id must be canonical lowercase UUIDv4")
-    if isinstance(inter_request_seconds, bool) or not isinstance(inter_request_seconds, int) or not 0 <= inter_request_seconds <= 600:
+    if (
+        isinstance(inter_request_seconds, bool)
+        or not isinstance(inter_request_seconds, int)
+        or not 0 <= inter_request_seconds <= 600
+    ):
         raise ValueError("inter_request_seconds must be an integer in 0..600")
     if not SHA256_RE.fullmatch(expected_catalog_sha):
         raise ValueError("Invalid expected catalog SHA-256")
@@ -585,12 +602,22 @@ def main() -> int:
             verify_snapshots(args.verify_snapshots)
             return 0
         if args.command == "preflight":
-            digest = preflight(select_models(args.models), args.experiment_id, args.output_dir or OUTPUT_ROOT / args.experiment_id)
+            output_dir = args.output_dir or OUTPUT_ROOT / args.experiment_id
+            digest = preflight(
+                select_models(args.models), args.experiment_id, output_dir
+            )
             print(json.dumps({"catalog_sha256": digest}, indent=2))
             return 0
         if args.command == "execute":
-            execute(select_models(args.models), args.experiment_id, args.catalog_snapshot,
-                    args.expected_catalog_sha, args.inter_request_seconds, args.output_dir or OUTPUT_ROOT / args.experiment_id)
+            output_dir = args.output_dir or OUTPUT_ROOT / args.experiment_id
+            execute(
+                select_models(args.models),
+                args.experiment_id,
+                args.catalog_snapshot,
+                args.expected_catalog_sha,
+                args.inter_request_seconds,
+                output_dir,
+            )
             return 0
         if args.command == "verify":
             manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
