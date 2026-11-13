@@ -80,9 +80,17 @@ def _fixtures(
     if not include_workflow_run:
         artifact.pop("workflow_run")
 
+    run_detail_calls = 0
+
     def api_get(path: str) -> dict[str, Any]:
+        nonlocal run_detail_calls
         if "/actions/workflows/" in path:
             return {"workflow_runs": [older, newest]}
+        if f"/actions/runs/{RUN_ID}" in path and "/jobs" not in path and "/artifacts" not in path:
+            run_detail_calls += 1
+            if status == "in_progress" and run_detail_calls == 1:
+                return {**newest, "status": "in_progress", "conclusion": None}
+            return {**newest, "status": "completed", "conclusion": "success"}
         if f"/actions/runs/{RUN_ID}/jobs" in path:
             return {
                 "jobs": [{
@@ -114,14 +122,20 @@ def test_newest_run_success_with_valid_artifact_passes() -> None:
 
 def test_newest_run_failed_does_not_fall_back_to_older_success() -> None:
     api_get, download = _fixtures(conclusion="failure")
-    with pytest.raises(VerificationError, match="newest_run_failed"):
+    with pytest.raises(VerificationError, match="newest_run_failure"):
         verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
 
 
-def test_newest_run_in_progress_does_not_fall_back_to_older_success() -> None:
+def test_newest_run_in_progress_is_polled_before_artifact_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     api_get, download = _fixtures(status="in_progress", conclusion=None)
-    with pytest.raises(VerificationError, match="newest_run_not_terminal"):
-        verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
+    monkeypatch.setattr(verifier.time, "sleep", lambda _seconds: None)
+    result = verify_lineage(
+        PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download
+    )
+    assert result["state"] == "VERIFIED"
+    assert result["research_loop_run_id"] == RUN_ID
 
 
 def test_artifact_missing_fails_closed() -> None:
@@ -360,3 +374,96 @@ def test_failure_evidence_written_on_verify_error(
         "verified_at_run_id": "789012",
     }
     assert "G1_FAIL: newest_run_failed" in capsys.readouterr().err
+
+
+def test_wait_terminal_success_immediate() -> None:
+    calls: list[str] = []
+    def api_get(path: str) -> dict[str, Any]:
+        calls.append(path)
+        return {"status": "completed", "conclusion": "success", "id": RUN_ID}
+
+    original_sleep = verifier.time.sleep
+    verifier.time.sleep = lambda _seconds: pytest.fail("sleep must not be called")
+    try:
+        run = verifier.wait_for_terminal(RUN_ID, api_get=api_get)
+    finally:
+        verifier.time.sleep = original_sleep
+
+    assert run["conclusion"] == "success"
+    assert len(calls) == 1
+
+
+def test_wait_terminal_polls_until_complete(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = iter([
+        {"status": "in_progress", "conclusion": None, "id": RUN_ID},
+        {"status": "in_progress", "conclusion": None, "id": RUN_ID},
+        {"status": "completed", "conclusion": "success", "id": RUN_ID},
+    ])
+    calls: list[str] = []
+    sleeps: list[float] = []
+
+    def api_get(path: str) -> dict[str, Any]:
+        calls.append(path)
+        return next(responses)
+
+    monkeypatch.setattr(verifier.time, "sleep", sleeps.append)
+    run = verifier.wait_for_terminal(RUN_ID, api_get=api_get)
+
+    assert run["conclusion"] == "success"
+    assert len(calls) == 3
+    assert sleeps == [10, 10]
+
+
+def test_wait_terminal_failure_immediate(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        verifier.time,
+        "sleep",
+        lambda _seconds: pytest.fail("failure must not wait"),
+    )
+    with pytest.raises(VerificationError, match="newest_run_failure"):
+        verifier.wait_for_terminal(
+            RUN_ID,
+            api_get=lambda _path: {
+                "status": "completed", "conclusion": "failure", "id": RUN_ID
+            },
+        )
+
+
+def test_wait_terminal_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        verifier.time,
+        "sleep",
+        lambda _seconds: pytest.fail("cancelled run must not wait"),
+    )
+    with pytest.raises(VerificationError, match="newest_run_cancelled"):
+        verifier.wait_for_terminal(
+            RUN_ID,
+            api_get=lambda _path: {
+                "status": "completed", "conclusion": "cancelled", "id": RUN_ID
+            },
+        )
+
+
+def test_wait_terminal_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = [0.0]
+    calls: list[str] = []
+
+    def monotonic() -> float:
+        return clock[0]
+
+    def sleep(seconds: float) -> None:
+        clock[0] += seconds
+
+    def api_get(path: str) -> dict[str, Any]:
+        calls.append(path)
+        return {"status": "in_progress", "conclusion": None, "id": RUN_ID}
+
+    monkeypatch.setattr(verifier.time, "monotonic", monotonic)
+    monkeypatch.setattr(verifier.time, "sleep", sleep)
+    with pytest.raises(VerificationError, match="newest_run_timeout"):
+        verifier.wait_for_terminal(
+            RUN_ID, api_get=api_get, timeout_seconds=30, poll_interval=10
+        )
+
+    assert clock[0] == 30
+    assert len(calls) == 3
