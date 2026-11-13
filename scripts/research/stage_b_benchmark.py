@@ -243,7 +243,7 @@ def run(balance_before: int, budget_cap: float) -> int:
         return 0
 
     manifest["status"] = "RUNNING"
-    prompts = [TASKS[0]["prompt"], task2, TASKS[2]["prompt"]]
+    prompts = benchmark_prompts
     stop_reason = None
     for model_index, model_id in enumerate(MODELS):
         for task_index, task in enumerate(TASKS):
@@ -347,7 +347,11 @@ def main() -> int:
     parser.add_argument("--balance-before-units", type=int, required=True)
     parser.add_argument("--budget-cap-units", type=float, required=True)
     args = parser.parse_args()
-    if args.balance_before_units <= 0 or not math.isfinite(args.budget_cap_units) or args.budget_cap_units <= 0:
+    if (
+        args.balance_before_units <= 0
+        or not math.isfinite(args.budget_cap_units)
+        or args.budget_cap_units <= 0
+    ):
         parser.error("balance and budget cap must be positive finite values")
     return run(args.balance_before_units, args.budget_cap_units)
 
