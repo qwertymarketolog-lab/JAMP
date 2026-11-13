@@ -1,0 +1,66 @@
+name: AnyModel DeepSeek Coefficient Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      balance_before_units:
+        description: "Dashboard balance in integer balance units, recorded immediately before dispatch"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anymodel-deepseek-coefficient-probe
+  cancel-in-progress: false
+
+jobs:
+  coefficient-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Frozen Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD:src/jamp/run.py)"
+          echo "FROZEN_CORE_BLOB=$actual"
+          test "$actual" = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
+
+      - name: Validate pre-request balance input
+        env:
+          BALANCE_BEFORE: ${{ inputs.balance_before_units }}
+        shell: bash
+        run: |
+          case "$BALANCE_BEFORE" in
+            ''|*[!0-9]*) echo "::error::balance_before_units must be a non-negative integer"; exit 1 ;;
+          esac
+
+      - name: Run one DeepSeek coefficient probe
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          ANYMODEL_BALANCE_BEFORE_UNITS: ${{ inputs.balance_before_units }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: python scripts/research/anymodel_deepseek_coefficient_probe.py
+
+      - name: Upload immutable probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-deepseek-coefficient-probe-${{ github.run_id }}
+          path: artifacts/research/deepseek_coefficient_probe/
+          if-no-files-found: error
+          retention-days: 30
