@@ -215,9 +215,21 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
     import json
 
     responses = [
-        ("nemotron_task1.json", "am/nemotron-3-ultra-550b-a55b", "Answer", "stop", "RESPONSE_COMPLETE"),
+        (
+            "nemotron_task1.json",
+            "am/nemotron-3-ultra-550b-a55b",
+            "Answer",
+            "stop",
+            "RESPONSE_COMPLETE",
+        ),
         ("nemotron_task2.json", "am/nemotron-3-ultra-550b-a55b", None, "length", "RESPONSE_EMPTY"),
-        ("nemotron_task5.json", "am/nemotron-3-ultra-550b-a55b", "Partial", "length", "RESPONSE_TRUNCATED"),
+        (
+            "nemotron_task5.json",
+            "am/nemotron-3-ultra-550b-a55b",
+            "Partial",
+            "length",
+            "RESPONSE_TRUNCATED",
+        ),
         ("deepseek_task1.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
         ("deepseek_task2.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
         ("deepseek_task5.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
