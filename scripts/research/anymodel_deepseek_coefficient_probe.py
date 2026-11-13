@@ -13,6 +13,7 @@ import contextlib
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import pathlib
 import subprocess
@@ -27,12 +28,6 @@ CHAT_URL = os.environ.get("ANYMODEL_CHAT_URL", "https://anymodel.org/v1/chat/com
 MODEL_ID = "ds/deepseek-v4-pro"
 FROZEN_BLOB = "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a"
 PROMPT = "Reply with the word OK."
-COEFFICIENT_KEYS = {
-    "coefficient", "balance_coefficient", "balance_token_coefficient",
-    "billing_coefficient", "token_coefficient", "balance_multiplier",
-}
-
-
 def now() -> str:
     return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
@@ -97,27 +92,27 @@ def request_once(
         return None, b"", {}, round(time.monotonic() - started, 6), f"{type(exc).__name__}: {exc}"
 
 
-def find_coefficient(row: dict[str, Any]) -> tuple[float | None, list[str]]:
-    found: list[tuple[str, float]] = []
+def parse_coefficient(billing: dict[str, Any]) -> tuple[float, float] | None:
+    """Normalize scalar or per-direction billing coefficients; reject ambiguity."""
+    coefficient = billing.get("coefficient")
 
-    def walk(value: Any, path: str) -> None:
-        if isinstance(value, dict):
-            for key, child in value.items():
-                child_path = f"{path}.{key}" if path else key
-                is_coefficient = key.lower() in COEFFICIENT_KEYS
-                is_number = isinstance(child, (int, float)) and not isinstance(child, bool)
-                if is_coefficient and is_number:
-                    found.append((child_path, float(child)))
-                walk(child, child_path)
-        elif isinstance(value, list):
-            for index, child in enumerate(value):
-                walk(child, f"{path}[{index}]")
+    def valid_number(value: Any) -> bool:
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            and value >= 0
+        )
 
-    walk(row, "")
-    unique = {value for _, value in found}
-    if len(unique) != 1:
-        return None, [f"{path}={value}" for path, value in found]
-    return unique.pop(), [f"{path}={value}" for path, value in found]
+    if valid_number(coefficient):
+        value = float(coefficient)
+        return value, value
+    if isinstance(coefficient, dict):
+        input_value = coefficient.get("input")
+        output_value = coefficient.get("output")
+        if valid_number(input_value) and valid_number(output_value):
+            return float(input_value), float(output_value)
+    return None
 
 
 def finalize(manifest: dict[str, Any], events: list[dict[str, Any]]) -> int:
@@ -300,16 +295,25 @@ def run_probe(balance_before: str | None) -> int:
         )
         event("CATALOG_MATCH", exact_match_count=len(candidates))
         return finalize(manifest, events)
-    coefficient, coefficient_evidence = find_coefficient(candidates[0])
+    billing = candidates[0].get("billing")
+    coefficients = parse_coefficient(billing) if isinstance(billing, dict) else None
+    coefficient_evidence = (
+        {"billing.coefficient.input": coefficients[0],
+         "billing.coefficient.output": coefficients[1]}
+        if coefficients is not None else {}
+    )
     manifest["catalog"]["coefficient_evidence"] = coefficient_evidence
-    manifest["catalog"]["coefficient"] = coefficient
+    manifest["catalog"]["coefficient"] = (
+        {"input": coefficients[0], "output": coefficients[1]}
+        if coefficients is not None else None
+    )
     event(
         "CATALOG_MATCH",
         model_id=MODEL_ID,
-        coefficient=coefficient,
+        coefficient=manifest["catalog"]["coefficient"],
         coefficient_evidence=coefficient_evidence,
     )
-    if coefficient is None or coefficient < 0:
+    if coefficients is None:
         manifest.update(
             status="BLOCKED",
             outcome="INCONCLUSIVE",
@@ -342,9 +346,16 @@ def run_probe(balance_before: str | None) -> int:
     prompt_tokens = usage.get("prompt_tokens")
     completion_tokens = usage.get("completion_tokens")
     total_tokens = usage.get("total_tokens")
-    if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+    if (
+        isinstance(prompt_tokens, int) and not isinstance(prompt_tokens, bool)
+        and isinstance(completion_tokens, int) and not isinstance(completion_tokens, bool)
+        and coefficients is not None
+    ):
         computed_total = prompt_tokens + completion_tokens
-        expected = computed_total * coefficient
+        expected = (
+            prompt_tokens * coefficients[0]
+            + completion_tokens * coefficients[1]
+        )
     else:
         computed_total = None
         expected = None
@@ -462,21 +473,22 @@ def run_self_tests() -> int:
     from unittest.mock import patch
 
     class ProbeTests(unittest.TestCase):
-        def test_nested_catalog_coefficient(self) -> None:
-            coefficient, evidence = find_coefficient({
-                "id": MODEL_ID,
-                "billing": {"balance_coefficient": 0.5},
-            })
-            self.assertEqual(coefficient, 0.5)
-            self.assertEqual(len(evidence), 1)
+        def test_coefficient_as_number(self) -> None:
+            self.assertEqual(parse_coefficient({"coefficient": 4}), (4.0, 4.0))
 
-        def test_conflicting_coefficients_fail_closed(self) -> None:
-            coefficient, _ = find_coefficient({
-                "id": MODEL_ID,
-                "coefficient": 0.5,
-                "billing": {"balance_multiplier": 4},
-            })
-            self.assertIsNone(coefficient)
+        def test_coefficient_as_object(self) -> None:
+            self.assertEqual(
+                parse_coefficient({"coefficient": {"input": 0.5, "output": 0.5}}),
+                (0.5, 0.5),
+            )
+
+        def test_coefficient_missing_input_fails_closed(self) -> None:
+            self.assertIsNone(
+                parse_coefficient({"coefficient": {"output": 0.5}})
+            )
+
+        def test_coefficient_malformed_fails_closed(self) -> None:
+            self.assertIsNone(parse_coefficient({"coefficient": "0.5"}))
 
         def test_redirect_is_not_followed_and_request_is_single(self) -> None:
             class FakeOpener:
