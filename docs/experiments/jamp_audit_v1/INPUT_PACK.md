@@ -69,19 +69,19 @@ Evidence: Run `41453863758`, Job `125305496915`, Artifact `13146565793`.
 
 ### RB-007 (G1 race condition)
 - PR #580, merge SHA `1cc27daea7390ebdde249d9f0572dacbbc46fcdd`.
-- Post-merge CI на main:
-  - Research Loop v0 Gate (job label): Run `43473333744`, Job `132050652019`, Conclusion SUCCESS, Artifact `14061932293`.
-  - G1 Trusted Lineage (job label): Run `43473333551`, Job `132050659480`, Conclusion SUCCESS, Artifact `14061213138`.
-  - Pytest (job label): Run `43473333482`, Job `132050651058`, Conclusion SUCCESS, Artifact `14062002527`.
+- Post-merge CI на main, SHA `1cc27daea7390ebdde249d9f0572dacbbc46fcdd`:
+  - Workflow name: UNKNOWN (в полученном API-ответе доступен job name, не workflow name); Job label `Research Loop v0 Gate (main) /`: Run `43473333744`, Job `132050652019`, Conclusion SUCCESS, Artifact `14061932293`.
+  - Workflow name: UNKNOWN; Job label `G1 Trusted Lineage (main)`: Run `43473333551`, Job `132050659480`, Conclusion SUCCESS, Artifact `14061213138`.
+  - Workflow name: UNKNOWN; Job label `test`: Run `43473333482`, Job `132050651058`, Conclusion SUCCESS, Artifact `14062002527`.
 - Fix в коде: `wait_for_terminal()` с таймаутом, fail-closed при failure, poll интервал.
 - Доказательство работоспособности фикса на реальной гонке двух workflow (canary PR #581, G1 Run ID / Job ID / Artifact не подтверждены) — UNKNOWN.
 
 ### RB-008 (PostgreSQL warnings)
 - PR #582, merge SHA `cb8f1d4ded8d60bf8e4446cacf017d03ef89c9c9`.
-- Post-merge CI на main:
-  - Research Loop v0 Gate (job label): Run `43478560528`, Job `132068761964`, Conclusion SUCCESS, Artifact `14062769879`.
-  - G1 Trusted Lineage (job label): Run `43478560639`, Job `132068762368`, Conclusion SUCCESS, Artifact `14064227496`.
-  - Pytest (job label): Run `43478560621`, Job `132068762478`, Conclusion SUCCESS, Artifact `14062819917`.
+- Post-merge CI на main, SHA `cb8f1d4ded8d60bf8e4446cacf017d03ef89c9c9`:
+  - Workflow name: UNKNOWN (в полученном API-ответе доступен job name, не workflow name); Job label `Research Loop v0 Gate (main) /`: Run `43478560528`, Job `132068761964`, Conclusion SUCCESS, Artifact `14062769879`.
+  - Workflow name: UNKNOWN; Job label `G1 Trusted Lineage (main)`: Run `43478560639`, Job `132068762368`, Conclusion SUCCESS, Artifact `14064227496`.
+  - Workflow name: UNKNOWN; Job label `test`: Run `43478560621`, Job `132068762478`, Conclusion SUCCESS, Artifact `14062819917`.
 - Fix: healthcheck `pg_isready -U jamp -d jamp_test`.
 - В проверенном post-merge Pytest логе warning `role "root" does not exist` не обнаружен.
 - Ожидаемое FK-нарушение от `ON DELETE RESTRICT` присутствует.
