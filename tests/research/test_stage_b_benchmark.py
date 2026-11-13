@@ -215,14 +215,14 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
     import json
 
     responses = [
-        ("nemotron_task1.json", "Nemotron", "Answer", "stop", "RESPONSE_COMPLETE"),
-        ("nemotron_task2.json", "Nemotron", None, "length", "RESPONSE_EMPTY"),
-        ("nemotron_task5.json", "Nemotron", "Partial", "length", "RESPONSE_TRUNCATED"),
-        ("deepseek_task1.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
-        ("deepseek_task2.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
-        ("deepseek_task5.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
-        ("astra_task1.json", "Astra", "Answer", "stop", "RESPONSE_COMPLETE"),
-        ("astra_task5.json", "Astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("nemotron_task1.json", "am/nemotron-3-ultra-550b-a55b", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("nemotron_task2.json", "am/nemotron-3-ultra-550b-a55b", None, "length", "RESPONSE_EMPTY"),
+        ("nemotron_task5.json", "am/nemotron-3-ultra-550b-a55b", "Partial", "length", "RESPONSE_TRUNCATED"),
+        ("deepseek_task1.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task2.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task5.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("astra_task1.json", "cx/gpt-6-astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("astra_task5.json", "cx/gpt-6-astra", "Answer", "stop", "RESPONSE_COMPLETE"),
     ]
     rows = []
     for index, (filename, model, content, finish, _) in enumerate(responses):
@@ -241,7 +241,7 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
         })
     rows.append({
         "sequence": 9,
-        "model_id": "Astra",
+        "model_id": "cx/gpt-6-astra",
         "task_id": "task2",
         "status": "INCOMPLETE_READ",
         "raw_response_file": None,
@@ -265,7 +265,7 @@ def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) 
     assert manifest["astra_task2_charged_units"] is None
     task2 = next(
         row for row in manifest["results"]
-        if row["model_id"] == "Astra" and row["task_id"] == "task2"
+        if row["model_id"] == "cx/gpt-6-astra" and row["task_id"] == "task2"
     )
     assert task2["billing_status"] == "AMBIGUOUS"
     assert task2["estimated_charged_units"] == 624
