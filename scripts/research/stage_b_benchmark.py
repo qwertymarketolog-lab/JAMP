@@ -211,6 +211,98 @@ def worst_case_budget(
     )
 
 
+def prompt_sha256(prompt: str) -> str:
+    """Hash the exact UTF-8 prompt bytes passed to the provider."""
+    return digest(prompt.encode("utf-8"))
+
+
+def classify_response_body(body: dict[str, Any]) -> str:
+    """Classify user-facing response content separately from HTTP/usage success."""
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return "RESPONSE_EMPTY"
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        return "RESPONSE_EMPTY"
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        return "RESPONSE_EMPTY"
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return "RESPONSE_EMPTY"
+    finish_reason = choice.get("finish_reason")
+    if finish_reason == "length":
+        return "RESPONSE_TRUNCATED"
+    if finish_reason == "stop":
+        return "RESPONSE_COMPLETE"
+    return "RESPONSE_INCOMPLETE"
+
+
+def classify_existing_artifact(
+    source_dir: pathlib.Path, output_path: pathlib.Path
+) -> dict[str, Any]:
+    """Write a derived classification manifest without modifying source evidence."""
+    manifest_path = source_dir / "run_manifest.json"
+    if output_path.resolve().is_relative_to(source_dir.resolve()):
+        raise ValueError("Classification output must be outside immutable source evidence")
+    if not manifest_path.is_file():
+        raise ValueError("Source run_manifest.json missing")
+    manifest_raw = manifest_path.read_bytes()
+    manifest = json.loads(manifest_raw.decode("utf-8"))
+    counts: dict[str, int] = {}
+    for row in manifest.get("results", []):
+        if not isinstance(row, dict):
+            raise ValueError("Malformed result record")
+        previous_status = row.get("status")
+        if previous_status == "INCOMPLETE_READ":
+            row["legacy_status"] = previous_status
+            row["response_status"] = "INCOMPLETE_READ"
+            row["status"] = "INCOMPLETE_READ"
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_UNKNOWN"
+            )
+        elif previous_status == "SUCCESS":
+            filename = row.get("raw_response_file")
+            expected_hash = row.get("raw_response_sha256")
+            if not isinstance(filename, str) or pathlib.Path(filename).name != filename:
+                raise ValueError("Unsafe raw response filename")
+            raw_path = source_dir / filename
+            if not raw_path.is_file() or digest(raw_path.read_bytes()) != expected_hash:
+                raise ValueError(f"INTEGRITY_MISMATCH: {filename}")
+            body = json.loads(raw_path.read_text(encoding="utf-8"))
+            row["legacy_status"] = previous_status
+            row["response_status"] = classify_response_body(body)
+            row["status"] = row["response_status"]
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            )
+        else:
+            row["response_status"] = previous_status or "UNKNOWN"
+            row["http_status_class"] = (
+                "HTTP_SUCCESS" if row.get("http_status") == 200 else "HTTP_FAILURE"
+            )
+        if (
+            row.get("model_id") == "cx/gpt-6-astra"
+            and row.get("task_id") == "task2"
+        ):
+            row["billing_status"] = "AMBIGUOUS"
+            row["estimated_charged_units"] = 624
+            row["charged_units"] = None
+        status = row["response_status"]
+        counts[status] = counts.get(status, 0) + 1
+    manifest["classification"] = {
+        "version": "1.0",
+        "source_manifest_sha256": digest(manifest_raw),
+        "source_artifact_is_immutable": True,
+        "counts": counts,
+    }
+    manifest["astra_task2_billing_status"] = "AMBIGUOUS"
+    manifest["astra_task2_estimated_charged_units"] = 624
+    manifest["astra_task2_charged_units"] = None
+    save_json(output_path, manifest)
+    return manifest
+
+
 def save_json(path: pathlib.Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8")
@@ -318,7 +410,23 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
     task2_prompt = load_task2_prompt()
     prompt_by_id = {"task1": TASKS[0]["prompt"], "task2": task2_prompt, "task5": TASKS[2]["prompt"]}
     coefficients = preflight(catalog_models(catalog_raw))
-    results = [dict(row) for row in prior_successes]
+    results = []
+    for source_row in prior_successes:
+        row = dict(source_row)
+        raw_response = (resume_from / row["raw_response_file"]).read_bytes()
+        body = json.loads(raw_response.decode("utf-8"))
+        response_status = classify_response_body(body)
+        prompt = prompt_by_id[row["task_id"]]
+        row.update(
+            legacy_status="SUCCESS",
+            status=response_status,
+            response_status=response_status,
+            http_status_class="HTTP_SUCCESS",
+            prompt_sha256=prompt_sha256(prompt),
+            prompt_utf8_bytes=len(prompt.encode("utf-8")),
+            prompt_hash_provenance="RECONSTRUCTED_FROM_PINNED_SOURCE",
+        )
+        results.append(row)
     incomplete = {
         "sequence": 8,
         "model_id": "cx/gpt-6-astra",
@@ -329,8 +437,12 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "raw_response_file": None,
         "raw_response_sha256": None,
         "partial_data_bytes": 291,
-        "billing_status": "UNKNOWN",
-        "billing_charged": None,
+        "prompt_sha256": prompt_sha256(prompt_by_id["task2"]),
+        "prompt_utf8_bytes": len(prompt_by_id["task2"].encode("utf-8")),
+        "prompt_hash_provenance": "RECONSTRUCTED_FROM_PINNED_SOURCE",
+        "billing_status": "AMBIGUOUS",
+        "estimated_charged_units": 624,
+        "charged_units": None,
         "source_run_id": RESUME_SOURCE_RUN_ID,
         "automatic_retry": False,
     }
@@ -369,8 +481,9 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "balance_before_usd": balance_before_usd,
         "balance_before_tokens": balance_before,
         "balance_after_tokens": None,
-        "astra_task2_billing_status": "UNKNOWN",
-        "astra_task2_charged": None,
+        "astra_task2_billing_status": "AMBIGUOUS",
+        "astra_task2_estimated_charged_units": 624,
+        "astra_task2_charged_units": None,
         "budget_cap_units": budget_cap,
         "models": list(MODELS),
         "tasks": [task["id"] for task in TASKS],
@@ -382,7 +495,8 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
         "worst_case_budget_units": worst_case,
         "results": results,
         "status_note": (
-            "Astra task2 original attempt remains INCOMPLETE_READ/UNKNOWN; "
+            "Astra task2 remains INCOMPLETE_READ; billing is AMBIGUOUS, "
+            "estimated charged units=624, actual charged units=null. "
             f"retry explicitly authorized={retry_astra_task2}."
         ),
         "model_qualification": "NOT_STARTED",
@@ -412,14 +526,22 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             "headers": response["headers"],
             "latency_ms": response["latency_ms"],
             "transport_error": response["transport_error"],
+            "http_status_class": (
+                "HTTP_SUCCESS" if response["http_status"] == 200 else "HTTP_FAILURE"
+            ),
             "raw_response_file": response_name,
             "raw_response_sha256": digest(raw),
             "status": "FAILED",
         }
         manifest["attempted_requests_this_run"] += 1
         if response.get("transport_status") == "INCOMPLETE_READ":
-            record.update(status="INCOMPLETE_READ", billing_status="UNKNOWN",
-                          billing_charged=None, partial_data_bytes=len(raw))
+            record.update(
+                status="INCOMPLETE_READ",
+                response_status="INCOMPLETE_READ",
+                billing_status="UNKNOWN",
+                billing_charged=None,
+                partial_data_bytes=len(raw),
+            )
             stop_reason = "IncompleteRead; billing unknown; fail closed"
         elif response["transport_error"] or response["http_status"] != 200:
             record.update(billing_status="UNKNOWN", billing_charged=None,
@@ -429,8 +551,13 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
             try:
                 body = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
-                record.update(billing_status="UNKNOWN", billing_charged=None,
-                              failure="Invalid JSON response")
+                record.update(
+                    status="RESPONSE_INVALID",
+                    response_status="RESPONSE_INVALID",
+                    billing_status="UNKNOWN",
+                    billing_charged=None,
+                    failure="Invalid JSON response",
+                )
                 stop_reason = record["failure"]
             else:
                 usage = body.get("usage") if isinstance(body, dict) else None
@@ -458,10 +585,22 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
                         if isinstance(choices, list) and choices
                         else {}
                     )
+                    response_status = classify_response_body(body)
+                    prompt = prompt_by_id[task_id]
                     record.update(
-                        status="SUCCESS",
+                        status=response_status,
+                        response_status=response_status,
+                        http_status_class="HTTP_SUCCESS",
+                        prompt_sha256=prompt_sha256(prompt),
+                        prompt_utf8_bytes=len(prompt.encode("utf-8")),
                         response_id=body.get("id"),
                         response_model=body.get("model"),
+                        finish_reason=(
+                            choices[0].get("finish_reason")
+                            if isinstance(choices, list) and choices
+                            and isinstance(choices[0], dict)
+                            else None
+                        ),
                         usage={
                             "prompt_tokens": prompt_tokens,
                             "completion_tokens": completion_tokens,
@@ -508,12 +647,27 @@ def run(balance_before: int, budget_cap: float, resume_from: pathlib.Path,
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--balance-before-units", type=int, required=True)
-    parser.add_argument("--budget-cap-units", type=float, required=True)
+    parser.add_argument("--classify-existing", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "--classification-output",
+        type=pathlib.Path,
+        default=pathlib.Path("stage_b_reclassified_manifest.json"),
+    )
+    parser.add_argument("--balance-before-units", type=int, default=None)
+    parser.add_argument("--budget-cap-units", type=float, default=None)
     parser.add_argument("--balance-before-usd", type=float, default=None)
-    parser.add_argument("--resume-from", type=pathlib.Path, required=True)
+    parser.add_argument("--resume-from", type=pathlib.Path, default=None)
     parser.add_argument("--retry-astra-task2", action="store_true", default=False)
     args = parser.parse_args()
+    if args.classify_existing is not None:
+        classify_existing_artifact(args.classify_existing, args.classification_output)
+        return 0
+    if (
+        args.balance_before_units is None
+        or args.budget_cap_units is None
+        or args.resume_from is None
+    ):
+        parser.error("benchmark mode requires balance, budget cap, and --resume-from")
     if (
         args.balance_before_units <= 0
         or not math.isfinite(args.budget_cap_units)

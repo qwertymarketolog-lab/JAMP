@@ -171,3 +171,115 @@ def test_default_resume_plan_only_schedules_unfinished_astra_task5() -> None:
         ("cx/gpt-6-astra", "task2"),
         ("cx/gpt-6-astra", "task5"),
     ]
+
+
+def _response(content: str | None, finish_reason: str) -> dict:
+    return {
+        "choices": [
+            {
+                "finish_reason": finish_reason,
+                "message": {"content": content},
+            }
+        ]
+    }
+
+
+def test_classification_of_empty_and_truncated_responses() -> None:
+    deepseek = _response("", "length")
+    nemotron = _response("Partial answer", "length")
+
+    assert stage_b.classify_response_body(deepseek) == "RESPONSE_EMPTY"
+    assert stage_b.classify_response_body(nemotron) == "RESPONSE_TRUNCATED"
+
+
+def test_complete_response_requires_stop_and_nonempty_content() -> None:
+    assert (
+        stage_b.classify_response_body(_response("Answer", "stop"))
+        == "RESPONSE_COMPLETE"
+    )
+    assert stage_b.classify_response_body(_response(None, "stop")) == "RESPONSE_EMPTY"
+    assert (
+        stage_b.classify_response_body(_response("Partial", "content_filter"))
+        == "RESPONSE_INCOMPLETE"
+    )
+
+
+def test_prompt_hash_records_exact_utf8_bytes() -> None:
+    prompt = "Проверка JAMP"
+    assert stage_b.prompt_sha256(prompt) == hashlib.sha256(
+        prompt.encode("utf-8")
+    ).hexdigest()
+
+
+def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) -> None:
+    import json
+
+    responses = [
+        (
+            "nemotron_task1.json",
+            "am/nemotron-3-ultra-550b-a55b",
+            "Answer",
+            "stop",
+            "RESPONSE_COMPLETE",
+        ),
+        ("nemotron_task2.json", "am/nemotron-3-ultra-550b-a55b", None, "length", "RESPONSE_EMPTY"),
+        (
+            "nemotron_task5.json",
+            "am/nemotron-3-ultra-550b-a55b",
+            "Partial",
+            "length",
+            "RESPONSE_TRUNCATED",
+        ),
+        ("deepseek_task1.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task2.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task5.json", "ds/deepseek-v4-pro", "", "length", "RESPONSE_EMPTY"),
+        ("astra_task1.json", "cx/gpt-6-astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("astra_task5.json", "cx/gpt-6-astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+    ]
+    rows = []
+    for index, (filename, model, content, finish, _) in enumerate(responses):
+        raw = json.dumps(
+            {"choices": [{"finish_reason": finish, "message": {"content": content}}]}
+        ).encode()
+        (tmp_path / filename).write_bytes(raw)
+        rows.append({
+            "sequence": index + 1,
+            "model_id": model,
+            "task_id": filename,
+            "status": "SUCCESS",
+            "http_status": 200,
+            "raw_response_file": filename,
+            "raw_response_sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    rows.append({
+        "sequence": 9,
+        "model_id": "cx/gpt-6-astra",
+        "task_id": "task2",
+        "status": "INCOMPLETE_READ",
+        "raw_response_file": None,
+        "raw_response_sha256": None,
+    })
+    (tmp_path / "run_manifest.json").write_text(
+        json.dumps({"results": rows}), encoding="utf-8"
+    )
+
+    output = tmp_path.parent / f"{tmp_path.name}_derived_manifest.json"
+    manifest = stage_b.classify_existing_artifact(tmp_path, output)
+
+    assert manifest["classification"]["counts"] == {
+        "RESPONSE_COMPLETE": 3,
+        "RESPONSE_EMPTY": 4,
+        "RESPONSE_TRUNCATED": 1,
+        "INCOMPLETE_READ": 1,
+    }
+    assert manifest["astra_task2_billing_status"] == "AMBIGUOUS"
+    assert manifest["astra_task2_estimated_charged_units"] == 624
+    assert manifest["astra_task2_charged_units"] is None
+    task2 = next(
+        row for row in manifest["results"]
+        if row["model_id"] == "cx/gpt-6-astra" and row["task_id"] == "task2"
+    )
+    assert task2["billing_status"] == "AMBIGUOUS"
+    assert task2["estimated_charged_units"] == 624
+    assert task2["charged_units"] is None
+    assert output.is_file()
