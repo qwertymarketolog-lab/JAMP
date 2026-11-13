@@ -267,8 +267,15 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
                 return True
             valid += 1
         return valid == 0 or valid > MAX_MODELS_FIRST_RUN
-    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+    except (OSError, ValueError, KeyError, TypeError):
         return True
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, new_url: str
+    ) -> None:
+        return None
 
 
 def http_get_catalog(api_key: str) -> bytes:
@@ -277,7 +284,8 @@ def http_get_catalog(api_key: str) -> bytes:
         "User-Agent": "JAMP-Audit-v1",
     })
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        opener = urllib.request.build_opener(NoRedirect)
+        with opener.open(request, timeout=60) as response:
             if response.status != 200:
                 raise RuntimeError(f"Catalog HTTP {response.status}")
             raw = response.read()
@@ -533,7 +541,8 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
             request = urllib.request.Request(CHAT_URL, data=json.dumps(payload).encode("utf-8"),
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
                          "Accept": "application/json", "User-Agent": "JAMP-Audit-v1"})
-            with urllib.request.urlopen(request, timeout=240) as response:
+            opener = urllib.request.build_opener(NoRedirect)
+            with opener.open(request, timeout=240) as response:
                 http_status = response.status
                 response_raw = response.read()
             body = json.loads(response_raw.decode("utf-8"))
