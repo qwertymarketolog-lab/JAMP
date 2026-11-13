@@ -165,7 +165,7 @@ def classify_response(http_status: int, body: Any) -> FinalStatus:
     if content is not None and not isinstance(content, str):
         return FinalStatus.INVALID_RESPONSE
     if finish == "length":
-        if isinstance(content, str) and bool(content):
+        if isinstance(content, str) and content:
             return FinalStatus.TRUNCATED
         return FinalStatus.EMPTY
     if content is None or content == "":
@@ -433,10 +433,11 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         raise ValueError("Unexpected or missing metadata files")
     if {p.name for p in output_dir.glob("*.md")} != expected_response_names:
         raise ValueError("Unexpected or missing response files")
-    if manifest.get("status") not in {"COMPLETED", "PARTIAL"}:
+    manifest_status = manifest.get("status")
+    if not isinstance(manifest_status, str) or manifest_status not in {"COMPLETED", "PARTIAL"}:
         raise ValueError("Manifest is not terminal")
     expected_status = "COMPLETED" if not failed and not skipped else "PARTIAL"
-    if manifest.get("status") != expected_status:
+    if manifest_status != expected_status:
         raise ValueError("Manifest terminal status is inconsistent")
     for key in executed:
         metadata_name = metadata_files[key]
@@ -444,6 +445,8 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             raise ValueError("Invalid metadata filename")
         metadata_path = output_dir / metadata_name
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not isinstance(metadata, dict):
+            raise ValueError("Metadata document must be an object")
         status = metadata.get("status")
         if not isinstance(status, str):
             raise ValueError("Metadata status must be a string")
@@ -562,7 +565,7 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 response_raw = response.read()
             body = json.loads(response_raw.decode("utf-8"))
             status = classify_response(http_status, body)
-            if isinstance(body.get("usage"), dict):
+            if isinstance(body, dict) and isinstance(body.get("usage"), dict):
                 usage = body["usage"]
             if status == FinalStatus.COMPLETED:
                 content_raw = body["choices"][0]["message"]["content"].encode("utf-8")
@@ -570,7 +573,9 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 reason = f"Response classified as {status.value}"
         except urllib.error.HTTPError as exc:
             status, reason = FinalStatus.API_ERROR, f"HTTP {exc.code}"
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        except (UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            status, reason = FinalStatus.INVALID_RESPONSE, f"{type(exc).__name__}: {exc}"
+        except OSError as exc:
             status, reason = FinalStatus.EXCEPTION, f"{type(exc).__name__}: {exc}"
         manifest["executed_models"].append(key)
         metadata_name = f"{key}.metadata.json"
