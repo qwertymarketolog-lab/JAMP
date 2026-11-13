@@ -90,7 +90,12 @@ def _fixtures(
             run_detail_calls += 1
             if status == "in_progress" and run_detail_calls == 1:
                 return {**newest, "status": "in_progress", "conclusion": None}
-            return {**newest, "status": "completed", "conclusion": "success"}
+            terminal_conclusion = conclusion if status != "in_progress" else "success"
+            return {
+                **newest,
+                "status": "completed",
+                "conclusion": terminal_conclusion,
+            }
         if f"/actions/runs/{RUN_ID}/jobs" in path:
             return {
                 "jobs": [{
