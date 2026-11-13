@@ -1,0 +1,166 @@
+name: AnyModel API Probe (read-only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Initialize evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          printf 'UTC: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee probe/timestamp.txt
+
+      - name: GET /openapi.json (unauthenticated)
+        shell: bash
+        run: |
+          set -u
+          set +e
+          curl -sS --connect-timeout 15 --max-time 60 \
+            -D probe/openapi-headers.txt \
+            -o probe/openapi.json \
+            -w 'HTTP_STATUS:%{http_code}\n' \
+            'https://anymodel.org/openapi.json' > probe/openapi-status.txt
+          rc=$?
+          set -e
+          printf 'CURL_EXIT:%s\n' "$rc" >> probe/openapi-status.txt
+          printf '\nBODY_PREFIX (first 500 bytes):\n' >> probe/openapi-status.txt
+          head -c 500 probe/openapi.json >> probe/openapi-status.txt 2>/dev/null || true
+
+      - name: GET /v1/models (no authorization)
+        shell: bash
+        run: |
+          set -u
+          set +e
+          curl -sS --connect-timeout 15 --max-time 60 \
+            -D probe/models-noauth-headers.txt \
+            -o probe/models-noauth.json \
+            -w 'HTTP_STATUS:%{http_code}\n' \
+            'https://anymodel.org/v1/models' > probe/models-noauth-status.txt
+          rc=$?
+          set -e
+          printf 'CURL_EXIT:%s\n' "$rc" >> probe/models-noauth-status.txt
+
+      - name: GET /v1/models (authenticated, read-only)
+        shell: bash
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          set -u
+          if [ -n "${ANYMODEL_API_KEY:-}" ]; then
+            printf 'SECRET_PRESENT:true\n' > probe/secret-presence.txt
+          else
+            printf 'SECRET_PRESENT:false\n' > probe/secret-presence.txt
+          fi
+
+          set +e
+          curl -sS --connect-timeout 15 --max-time 60 \
+            -D probe/models-headers.txt \
+            -H "Authorization: Bearer ${ANYMODEL_API_KEY:-}" \
+            -H 'User-Agent: JAMP-Probe/1.0' \
+            -o probe/models.json \
+            -w 'HTTP_STATUS:%{http_code}\n' \
+            'https://anymodel.org/v1/models' > probe/models-status.txt
+          rc=$?
+          set -e
+          printf 'CURL_EXIT:%s\n' "$rc" >> probe/models-status.txt
+          sha256sum probe/models.json > probe/catalog-sha256.txt
+
+      - name: Analyze OpenAPI and catalog (no model requests)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          out = []
+          openapi_path = Path("probe/openapi.json")
+          try:
+              spec = json.loads(openapi_path.read_bytes())
+          except (OSError, json.JSONDecodeError) as exc:
+              out.append(f"openapi_json: INVALID_OR_UNAVAILABLE ({type(exc).__name__}: {exc})")
+          else:
+              out.append(f"openapi_json: VALID")
+              out.append(f"openapi_version: {spec.get('openapi', 'UNKNOWN')}")
+              paths = spec.get("paths", {})
+              out.append(f"openapi_paths: {sorted(paths) if isinstance(paths, dict) else 'INVALID_PATHS'}")
+
+              matches = []
+              def walk(value, path="$"):
+                  if isinstance(value, dict):
+                      for key, child in value.items():
+                          child_path = f"{path}.{key}"
+                          if key.lower() in {
+                              "finish_reason", "usage", "prompt_tokens",
+                              "completion_tokens", "total_tokens"
+                          }:
+                              matches.append((child_path, child))
+                          walk(child, child_path)
+                  elif isinstance(value, list):
+                      for index, child in enumerate(value):
+                          walk(child, f"{path}[{index}]")
+              walk(spec)
+              out.append("openapi_relevant_schema_fields:")
+              if matches:
+                  for path, value in matches:
+                      rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+                      out.append(f"  {path}: {rendered[:2000]}")
+              else:
+                  out.append("  NONE_FOUND")
+
+          target_ids = {
+              "ag/claude-sonnet-4-6",
+              "ag/gemini-3.7-flash-high",
+              "am/kimi-k3",
+          }
+          catalog_path = Path("probe/models.json")
+          try:
+              catalog = json.loads(catalog_path.read_bytes())
+          except (OSError, json.JSONDecodeError) as exc:
+              out.append(f"catalog_json: INVALID_OR_UNAVAILABLE ({type(exc).__name__}: {exc})")
+          else:
+              items = catalog.get("data") if isinstance(catalog, dict) else None
+              if not isinstance(items, list):
+                  out.append("catalog_json: VALID_BUT_UNEXPECTED_SHAPE (expected object.data list)")
+              else:
+                  out.append(f"catalog_json: VALID")
+                  out.append(f"catalog_total_models: {len(items)}")
+                  found = {}
+                  all_fields = set()
+                  for item in items:
+                      if isinstance(item, dict):
+                          all_fields.update(item.keys())
+                          model_id = item.get("id")
+                          if model_id in target_ids:
+                              found[model_id] = item
+                  out.append(f"catalog_all_model_fields: {sorted(all_fields)}")
+                  for model_id in sorted(target_ids):
+                      item = found.get(model_id)
+                      if item is None:
+                          out.append(f"MISSING: {model_id}")
+                      else:
+                          out.append(f"FOUND: {model_id}")
+                          out.append(f"  billing: {json.dumps(item.get('billing'), ensure_ascii=False, sort_keys=True)}")
+                          out.append(f"  context_length: {item.get('context_length')}")
+                          out.append(f"  provider: {item.get('provider')}")
+                          out.append(f"  all_keys: {sorted(item.keys())}")
+
+          Path("probe/analysis.txt").write_text("\n".join(out) + "\n", encoding="utf-8")
+          print("\n".join(out))
+          PY
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anymodel-api-probe-${{ github.run_id }}
+          path: probe/
+          if-no-files-found: error
+          retention-days: 14
