@@ -209,3 +209,58 @@ def test_prompt_hash_records_exact_utf8_bytes() -> None:
     assert stage_b.prompt_sha256(prompt) == hashlib.sha256(
         prompt.encode("utf-8")
     ).hexdigest()
+
+
+def test_existing_artifact_reclassification_preserves_truthful_counts(tmp_path) -> None:
+    import json
+
+    responses = [
+        ("nemotron_task1.json", "Nemotron", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("nemotron_task2.json", "Nemotron", None, "length", "RESPONSE_EMPTY"),
+        ("nemotron_task5.json", "Nemotron", "Partial", "length", "RESPONSE_TRUNCATED"),
+        ("deepseek_task1.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task2.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
+        ("deepseek_task5.json", "DeepSeek", "", "length", "RESPONSE_EMPTY"),
+        ("astra_task1.json", "Astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+        ("astra_task5.json", "Astra", "Answer", "stop", "RESPONSE_COMPLETE"),
+    ]
+    rows = []
+    for index, (filename, model, content, finish, _) in enumerate(responses):
+        raw = json.dumps(
+            {"choices": [{"finish_reason": finish, "message": {"content": content}}]}
+        ).encode()
+        (tmp_path / filename).write_bytes(raw)
+        rows.append({
+            "sequence": index + 1,
+            "model_id": model,
+            "task_id": filename,
+            "status": "SUCCESS",
+            "http_status": 200,
+            "raw_response_file": filename,
+            "raw_response_sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    rows.append({
+        "sequence": 9,
+        "model_id": "Astra",
+        "task_id": "task2",
+        "status": "INCOMPLETE_READ",
+        "raw_response_file": None,
+        "raw_response_sha256": None,
+    })
+    (tmp_path / "run_manifest.json").write_text(
+        json.dumps({"results": rows}), encoding="utf-8"
+    )
+
+    output = tmp_path / "derived_manifest.json"
+    manifest = stage_b.classify_existing_artifact(tmp_path, output)
+
+    assert manifest["classification"]["counts"] == {
+        "RESPONSE_COMPLETE": 3,
+        "RESPONSE_EMPTY": 4,
+        "RESPONSE_TRUNCATED": 1,
+        "INCOMPLETE_READ": 1,
+    }
+    assert manifest["astra_task2_billing_status"] == "AMBIGUOUS"
+    assert manifest["astra_task2_estimated_charged_units"] == 624
+    assert manifest["astra_task2_charged_units"] is None
+    assert output.is_file()
