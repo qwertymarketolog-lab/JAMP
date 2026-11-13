@@ -10,10 +10,14 @@ from unittest.mock import patch
 import pytest
 
 from scripts.research.stage_b_benchmark import (
+    FROZEN_BLOB,
     MODELS,
     NoRedirect,
     RESUME_EXPECTED_SUCCESS,
+    RESUME_SOURCE_RUN_ID,
+    RESUME_SOURCE_SHA,
     catalog_models,
+    load_resume_evidence,
     plan_pending_tasks,
     preflight,
     request_once,
@@ -140,11 +144,6 @@ def test_request_once_records_incomplete_read_without_retry() -> None:
 
 
 def test_resume_loader_verifies_all_success_payload_hashes(tmp_path) -> None:
-    from scripts.research.stage_b_benchmark import (
-        FROZEN_BLOB, RESUME_EXPECTED_SUCCESS, RESUME_SOURCE_RUN_ID,
-        RESUME_SOURCE_SHA, load_resume_evidence,
-    )
-
     rows = []
     for index, (model, task_id) in enumerate(sorted(RESUME_EXPECTED_SUCCESS)):
         name = f"response_{index}.json"
