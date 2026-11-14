@@ -503,7 +503,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     selected = select_models(",".join(models))
     if len(selected) > MAX_MODELS_FIRST_RUN and is_first_run():
         raise ValueError("First run limit exceeded")
-    if snapshot_path.name != "catalog_snapshot.json" or snapshot_path.parent.resolve() != output_dir.resolve():
+    if (
+        snapshot_path.name != "catalog_snapshot.json"
+        or snapshot_path.parent.resolve() != output_dir.resolve()
+    ):
         raise ValueError("Catalog snapshot must belong to this experiment output directory")
     preflight_path = output_dir / "preflight.json"
     preflight_record = json.loads(preflight_path.read_text(encoding="utf-8"))
