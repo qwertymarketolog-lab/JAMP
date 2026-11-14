@@ -505,10 +505,12 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         if metadata.get("repository_commit_sha") != commit:
             raise ValueError("Metadata repository commit mismatch")
         metadata_usage = metadata.get("usage")
-        if metadata_usage is None:
-            if key in usage_records:
-                raise ValueError("Manifest/metadata usage mismatch")
-        elif not isinstance(metadata_usage, dict) or usage_records.get(key) != metadata_usage:
+        if metadata_usage is None and key in usage_records:
+            raise ValueError("Manifest/metadata usage mismatch")
+        if metadata_usage is not None and (
+            not isinstance(metadata_usage, dict)
+            or usage_records.get(key) != metadata_usage
+        ):
             raise ValueError("Manifest/metadata usage mismatch")
         if (key in completed) != (enum_status == FinalStatus.COMPLETED):
             raise ValueError("Metadata status/completed set mismatch")
