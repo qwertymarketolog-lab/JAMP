@@ -30,8 +30,10 @@ starts with `### model: <exact provider model id>` and contains these fields:
 Do not add a heading or placeholder block until the corresponding evidence exists.
 
 The terminal manifest must map `metadata.model_key` to the exact
-`metadata_file` path. Metadata must repeat the exact model ID, source Run ID,
-source Artifact ID, and token counts. Booleans are not integers for this contract.
+`metadata_file` path and contain the same provider-reported token usage under
+`usage[model_key]`. Metadata must repeat the exact model ID, source Run ID,
+source Artifact ID, and token counts. The runner checks the manifest → usage →
+metadata chain in both directions; absent or conflicting usage keeps the gate closed. Booleans are not integers for this contract.
 A block that cannot be followed to its raw source evidence is invalid.
 
 ## Recorded evidence
