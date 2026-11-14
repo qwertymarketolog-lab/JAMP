@@ -112,6 +112,8 @@ def _valid_manifest(tmp_path: Path) -> dict:
     (tmp_path / "model_001.md").write_bytes(response)
     metadata = {
         "model_key": "model_001",
+        "provider": audit.MODEL_REGISTRY["model_001"]["provider"],
+        "model_id": audit.MODEL_REGISTRY["model_001"]["model_id"],
         "experiment_id": experiment_id,
         "repository_commit_sha": audit.git_commit_sha(),
         **hashes,
@@ -231,6 +233,7 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
         "model_id": model_id,
         "experiment_id": str(uuid.uuid4()),
         "status": "COMPLETED",
+        "repository_commit_sha": "d" * 40,
         "source_run_id": "123",
         "source_artifact_id": "456",
         "usage": usage,
@@ -239,6 +242,7 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
     manifest = {
         "status": "COMPLETED",
         "experiment_id": metadata["experiment_id"],
+        "repository_commit_sha": "d" * 40,
         "completed_models": [model_key],
         "executed_models": [model_key],
         "metadata_files": {model_key: "model.metadata.json"},
