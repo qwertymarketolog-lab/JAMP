@@ -12,6 +12,7 @@ import json
 import math
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -31,6 +32,10 @@ CATALOG_URL = f"{BASE_URL}/v1/models"
 CHAT_URL = f"{BASE_URL}/v1/chat/completions"
 MAX_MODELS = 100
 MAX_MODELS_FIRST_RUN = 3
+MAX_PAID_REQUESTS = 3
+MAX_TOKENS_TOTAL = 12_288
+MAX_WALL_CLOCK_SECONDS = 2_700
+HTTP_REQUEST_TIMEOUT_SECONDS = 240
 MODEL_KEY_RE = re.compile(r"^[a-z0-9_]{3,32}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -79,8 +84,76 @@ class FinalStatus(StrEnum):
     API_ERROR = "API_ERROR"
     INVALID_RESPONSE = "INVALID_RESPONSE"
     EXCEPTION = "EXCEPTION"
+    PRE_SEND_NETWORK_ERROR = "PRE_SEND_NETWORK_ERROR"
+    POST_SEND_AMBIGUOUS = "POST_SEND_AMBIGUOUS"
 
 COMPARABLE_STATUSES = {FinalStatus.COMPLETED}
+
+
+def should_refuse(pricing_unknown: bool, accept_unknown_pricing: bool) -> bool:
+    """Refuse unknown pricing unless the operator explicitly accepts it."""
+    if (
+        not isinstance(pricing_unknown, bool)
+        or not isinstance(accept_unknown_pricing, bool)
+    ):
+        raise ValueError("pricing and acceptance flags must be booleans")
+    return pricing_unknown and not accept_unknown_pricing
+
+
+def check_budget(requests: int, tokens: int, wall_clock: float) -> None:
+    """Reject workload proxies before transport; wall_clock is elapsed runner seconds."""
+    if (
+        isinstance(requests, bool) or not isinstance(requests, int)
+        or isinstance(tokens, bool) or not isinstance(tokens, int)
+        or isinstance(wall_clock, bool) or not isinstance(wall_clock, (int, float))
+    ):
+        raise ValueError("budget values have invalid types")
+    if (
+        not math.isfinite(wall_clock)
+        or requests < 0 or tokens < 0 or wall_clock < 0
+    ):
+        raise ValueError("budget values must be finite and non-negative")
+    if requests > MAX_PAID_REQUESTS:
+        raise ValueError("Paid request budget exceeded before transport")
+    if tokens > MAX_TOKENS_TOTAL:
+        raise ValueError("Output-token budget exceeded before transport")
+    if wall_clock > MAX_WALL_CLOCK_SECONDS:
+        raise ValueError("Wall-clock budget exceeded before transport")
+
+
+def classify_exception(phase: str) -> FinalStatus:
+    """Post-send transport failures are ambiguous and are never retried."""
+    if phase == "pre_send":
+        return FinalStatus.PRE_SEND_NETWORK_ERROR
+    if phase == "post_send":
+        return FinalStatus.POST_SEND_AMBIGUOUS
+    raise ValueError("phase must be 'pre_send' or 'post_send'")
+
+
+class PaidTransportError(Exception):
+    def __init__(self, status: FinalStatus, original: Exception):
+        super().__init__(f"{status.value}: {type(original).__name__}: {original}")
+        self.status = status
+        self.original = original
+
+
+def run_paid(
+    transport: Any, request: Any, timeout: int, *,
+    requests: int, tokens: int, wall_clock: float,
+) -> tuple[int, bytes]:
+    """Check all proxies, then invoke injected transport exactly once; never retry."""
+    check_budget(requests, tokens, wall_clock)
+    try:
+        return transport(request, timeout)
+    except urllib.error.HTTPError:
+        raise
+    except (urllib.error.URLError, OSError) as exc:
+        reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+        pre_send = isinstance(reason, (socket.gaierror, ConnectionRefusedError))
+        phase = "pre_send" if pre_send else "post_send"
+        raise PaidTransportError(classify_exception(phase), exc) from exc
+
+
 
 
 def sha256(raw: bytes) -> str:
@@ -368,6 +441,24 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+def write_guardrail_preflight(output_dir: Path, accept_unknown_pricing: bool) -> str:
+    """Write the no-network PR-CI preflight artifact without executing requests."""
+    outcome = "refused" if should_refuse(True, accept_unknown_pricing) else "success"
+    record = {
+        "schema_version": "1.0",
+        "execution_requested": False,
+        "catalog_preflight": "NOT_RUN",
+        "pricing_status": "UNKNOWN",
+        "billing_coefficient_status": "UNKNOWN",
+        "token_contract_status": "UNKNOWN",
+        "cost_status": "UNKNOWN_PRICING",
+        "refuse_check": outcome,
+        "paid_requests_sent": 0,
+    }
+    atomic_json(output_dir / "preflight.json", record)
+    return outcome
+
+
 def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
     if not canonical_uuid(experiment_id):
         raise ValueError("experiment_id must be canonical lowercase UUIDv4")
@@ -409,6 +500,16 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
         "skipped_models": skipped,
         "models_resolved": models_resolved,
         "estimated": compute_estimate_tokens(),
+        "cost_status": "UNKNOWN_PRICING",
+        "budget_limits": {
+            "max_paid_requests": MAX_PAID_REQUESTS,
+            "max_tokens_total": MAX_TOKENS_TOTAL,
+            "max_wall_clock_seconds": MAX_WALL_CLOCK_SECONDS,
+            "token_limit_semantics": (
+                "sum of configured max_tokens output ceilings; "
+                "not provider-reported total usage"
+            ),
+        },
         "repository_commit_sha": git_commit_sha(),
     }
     atomic_json(output_dir / "preflight.json", result)
@@ -467,10 +568,15 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
     executed = set(string_list("executed_models"))
     completed = set(string_list("completed_models"))
     still_running = string_list("still_running")
+    not_started = string_list("not_started_models") if "not_started_models" in manifest else []
     if not available <= enabled or skipped != enabled - available:
         raise ValueError("available/skipped invariant violated")
     if not executed <= available or not completed <= executed:
         raise ValueError("executed/completed invariant violated")
+    if set(not_started) & executed or not set(not_started) <= available:
+        raise ValueError("not_started_models invariant violated")
+    if executed | set(not_started) != available:
+        raise ValueError("available models must be executed or explicitly not started")
     if failed != executed - completed or still_running:
         raise ValueError("terminal batch invariant violated")
     expected_hashes = {
@@ -506,7 +612,9 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
     manifest_status = manifest.get("status")
     if not isinstance(manifest_status, str) or manifest_status not in {"COMPLETED", "PARTIAL"}:
         raise ValueError("Manifest is not terminal")
-    expected_status = "COMPLETED" if not failed and not skipped else "PARTIAL"
+    expected_status = (
+        "COMPLETED" if not failed and not skipped and not not_started else "PARTIAL"
+    )
     if manifest_status != expected_status:
         raise ValueError("Manifest terminal status is inconsistent")
     usage_records = manifest.get("usage")
@@ -572,7 +680,11 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
 
 
 def execute(models: list[str], experiment_id: str, snapshot_path: Path,
-            expected_catalog_sha: str, inter_request_seconds: int, output_dir: Path) -> None:
+            expected_catalog_sha: str, inter_request_seconds: int, output_dir: Path,
+            accept_unknown_pricing: bool = False) -> None:
+    started_at = time.monotonic()
+    if not isinstance(accept_unknown_pricing, bool):
+        raise ValueError("accept_unknown_pricing must be a boolean")
     if not canonical_uuid(experiment_id):
         raise ValueError("experiment_id must be canonical lowercase UUIDv4")
     if (
@@ -613,6 +725,20 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         or preflight_record.get("repository_commit_sha") != commit
     ):
         raise ValueError("Preflight record does not match this execution request")
+    if preflight_record.get("cost_status") != "UNKNOWN_PRICING":
+        raise ValueError("Preflight pricing state is missing or unsupported")
+    if not accept_unknown_pricing:
+        raise ValueError(
+            "REFUSE: pricing is UNKNOWN; pass --accept-unknown-pricing "
+            "only after explicit operator review"
+        )
+    available = list(expected_available)
+    requested_output_tokens = sum(
+        MODEL_REGISTRY[key]["request_params"]["max_tokens"] for key in available
+    )
+    check_budget(
+        len(available), requested_output_tokens, time.monotonic() - started_at
+    )
     api_key = os.getenv("ANYMODEL_API_KEY")
     if not api_key:
         raise RuntimeError("ANYMODEL_API_KEY is required")
@@ -627,7 +753,6 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     input_hash = sha256(INPUT_PACK_PATH.read_bytes())
     prompt_hash = sha256(prompt.encode("utf-8"))
     enabled = list(selected)
-    available = [k for k in selected if MODEL_REGISTRY[k]["model_id"] in available_ids]
     skipped = [{"key": k, "reason": "MODEL_NOT_IN_CATALOG"} for k in selected if k not in available]
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {
@@ -637,10 +762,23 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         "enabled_models": enabled, "available_models": available,
         "skipped_models": skipped, "executed_models": [],
         "completed_models": [], "failed_models": [], "still_running": [],
+        "not_started_models": [], "paid_request_attempts": 0,
+        "cost_status": "UNKNOWN_PRICING", "execution_outcome": "TERMINAL",
         "metadata_files": {}, "response_files": {}, "usage": {},
     }
     atomic_json(output_dir / "manifest.json", manifest)
+    ambiguous_outcome = False
+    wall_clock_exhausted = False
     for index, key in enumerate(available):
+        remaining_seconds = MAX_WALL_CLOCK_SECONDS - (time.monotonic() - started_at)
+        if remaining_seconds < HTTP_REQUEST_TIMEOUT_SECONDS:
+            manifest["not_started_models"].extend(available[index:])
+            wall_clock_exhausted = True
+            break
+        if manifest["paid_request_attempts"] >= MAX_PAID_REQUESTS:
+            manifest["not_started_models"].extend(available[index:])
+            wall_clock_exhausted = True
+            break
         item = MODEL_REGISTRY[key]
         payload = {"model": item["model_id"],
                    "messages": [{"role": "user", "content": prompt}],
@@ -654,9 +792,23 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
                          "Accept": "application/json", "User-Agent": "JAMP-Audit-v1"})
             opener = urllib.request.build_opener(NoRedirect)
-            with opener.open(request, timeout=240) as response:
-                http_status = response.status
-                response_raw = response.read()
+
+            def transport(
+                req: Any, timeout: int, _opener: Any = opener
+            ) -> tuple[int, bytes]:
+                with _opener.open(req, timeout=timeout) as response:
+                    return response.status, response.read()
+
+            manifest["paid_request_attempts"] += 1
+            atomic_json(output_dir / "manifest.json", manifest)
+            http_status, response_raw = run_paid(
+                transport,
+                request,
+                min(HTTP_REQUEST_TIMEOUT_SECONDS, int(remaining_seconds)),
+                requests=manifest["paid_request_attempts"],
+                tokens=requested_output_tokens,
+                wall_clock=time.monotonic() - started_at,
+            )
             body = json.loads(response_raw.decode("utf-8"))
             status = classify_response(http_status, body)
             if isinstance(body, dict) and isinstance(body.get("usage"), dict):
@@ -667,10 +819,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 reason = f"Response classified as {status.value}"
         except urllib.error.HTTPError as exc:
             status, reason = FinalStatus.API_ERROR, f"HTTP {exc.code}"
+        except PaidTransportError as exc:
+            status, reason = exc.status, str(exc)
         except (UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
             status, reason = FinalStatus.INVALID_RESPONSE, f"{type(exc).__name__}: {exc}"
-        except OSError as exc:
-            status, reason = FinalStatus.EXCEPTION, f"{type(exc).__name__}: {exc}"
         manifest["executed_models"].append(key)
         if usage is not None:
             manifest["usage"][key] = usage
@@ -693,11 +845,31 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         atomic_json(output_dir / metadata_name, metadata)
         manifest["metadata_files"][key] = metadata_name
         atomic_json(output_dir / "manifest.json", manifest)
+        if status == FinalStatus.POST_SEND_AMBIGUOUS:
+            manifest["not_started_models"].extend(available[index + 1:])
+            ambiguous_outcome = True
+            break
         if index + 1 < len(available) and inter_request_seconds:
-            time.sleep(inter_request_seconds)
-    manifest["status"] = "COMPLETED" if not manifest["failed_models"] and not skipped else "PARTIAL"
+            remaining_seconds = MAX_WALL_CLOCK_SECONDS - (time.monotonic() - started_at)
+            time.sleep(min(inter_request_seconds, max(0, remaining_seconds)))
+    manifest["status"] = (
+        "COMPLETED"
+        if not manifest["failed_models"] and not skipped and not manifest["not_started_models"]
+        else "PARTIAL"
+    )
+    if ambiguous_outcome or wall_clock_exhausted:
+        manifest["execution_outcome"] = "UNKNOWN"
     atomic_json(output_dir / "manifest.json", manifest)
     validate_manifest(manifest, output_dir)
+    if ambiguous_outcome:
+        raise RuntimeError(
+            "POST_SEND_AMBIGUOUS: provider may have processed the request; "
+            "no automatic retry; outcome UNKNOWN"
+        )
+    if wall_clock_exhausted:
+        raise TimeoutError(
+            "MAX_WALL_CLOCK reached: remaining models were not started; outcome UNKNOWN"
+        )
 
 
 def main() -> int:
@@ -715,9 +887,14 @@ def main() -> int:
     run.add_argument("--catalog-snapshot", type=Path, required=True)
     run.add_argument("--expected-catalog-sha", required=True)
     run.add_argument("--inter-request-seconds", type=int, default=0)
+    run.add_argument("--accept-unknown-pricing", action="store_true")
     run.add_argument("--output-dir", type=Path)
     check = sub.add_parser("verify")
     check.add_argument("--manifest", type=Path, required=True)
+    guardrail = sub.add_parser("guardrail-check")
+    guardrail.add_argument("--accept-unknown-pricing", action="store_true")
+    guardrail.add_argument("--output-dir", type=Path, required=True)
+    guardrail.add_argument("--github-output", type=Path)
     args = parser.parse_args()
     try:
         if args.emit_snapshots:
@@ -725,6 +902,15 @@ def main() -> int:
             return 0
         if args.verify_snapshots:
             verify_snapshots(args.verify_snapshots)
+            return 0
+        if args.command == "guardrail-check":
+            outcome = write_guardrail_preflight(
+                args.output_dir, args.accept_unknown_pricing
+            )
+            if args.github_output:
+                with args.github_output.open("a", encoding="utf-8") as output:
+                    output.write(f"refuse_check={outcome}\n")
+            print(f"refuse_check={outcome}")
             return 0
         if args.command == "preflight":
             output_dir = args.output_dir or OUTPUT_ROOT / args.experiment_id
@@ -758,6 +944,7 @@ def main() -> int:
                 args.expected_catalog_sha,
                 args.inter_request_seconds,
                 output_dir,
+                accept_unknown_pricing=args.accept_unknown_pricing,
             )
             return 0
         if args.command == "verify":
