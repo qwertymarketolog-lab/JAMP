@@ -323,7 +323,14 @@ def catalog_ids(raw: bytes) -> set[str]:
     rows = data.get("data") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         raise ValueError("Catalog schema missing data list")
-    return {row["id"] for row in rows if isinstance(row, dict) and isinstance(row.get("id"), str)}
+    ids: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"]:
+            raise ValueError("Catalog contains a malformed model entry")
+        ids.append(row["id"])
+    if len(ids) != len(set(ids)):
+        raise ValueError("Catalog contains duplicate model IDs")
+    return set(ids)
 
 
 def git_commit_sha() -> str:
@@ -356,10 +363,10 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
     if snapshot.exists():
         raise FileExistsError(f"Refusing to overwrite catalog snapshot: {snapshot}")
     snapshot.write_bytes(raw)
-    available = sorted(set(models) & {
-        key for key in models
-        if MODEL_REGISTRY[key]["model_id"] in catalog_ids(raw)
-    })
+    ids = catalog_ids(raw)
+    available = sorted(
+        key for key in models if MODEL_REGISTRY[key]["model_id"] in ids
+    )
     result = {"experiment_id": experiment_id, "catalog_sha256": digest,
               "catalog_bytes": len(raw), "selected_model_keys": models,
               "available_model_keys": available,
