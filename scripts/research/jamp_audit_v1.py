@@ -793,8 +793,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                          "Accept": "application/json", "User-Agent": "JAMP-Audit-v1"})
             opener = urllib.request.build_opener(NoRedirect)
 
-            def transport(req: Any, timeout: int) -> tuple[int, bytes]:
-                with opener.open(req, timeout=timeout) as response:
+            def transport(
+                req: Any, timeout: int, _opener: Any = opener
+            ) -> tuple[int, bytes]:
+                with _opener.open(req, timeout=timeout) as response:
                     return response.status, response.read()
 
             manifest["paid_request_attempts"] += 1
