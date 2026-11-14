@@ -333,7 +333,7 @@ def test_compute_estimate_tokens_uses_full_composite_utf8_payload(tmp_path, monk
     monkeypatch.setattr(audit, "AUDIT_PROMPT", "AUDIT")
     monkeypatch.setattr(audit, "INPUT_PACK_PATH", pack)
 
-    expected = "AUDIT\n\n### INPUT PACK\nПакет".encode("utf-8")
+    expected = "AUDIT\n\n### INPUT PACK\nПакет".encode()
     estimate = audit.compute_estimate_tokens()
 
     assert estimate == {
