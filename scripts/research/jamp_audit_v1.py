@@ -250,8 +250,11 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
             metadata = json.loads((ROOT / metadata_file).read_text(encoding="utf-8"))
             model_key = metadata.get("model_key")
             metadata_files = manifest.get("metadata_files")
+            manifest_usage = manifest.get("usage")
             usage = metadata.get("usage")
-            if (not isinstance(metadata_files, dict)
+            if (not isinstance(manifest_usage, dict)
+                    or manifest_usage.get(model_key) != usage
+                    or not isinstance(metadata_files, dict)
                     or metadata_files.get(model_key) != metadata_file
                     or manifest.get("status") != "COMPLETED"
                     or model_key not in manifest.get("completed_models", [])
@@ -473,6 +476,11 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
                 raise ValueError(f"Metadata {field} mismatch")
         if metadata.get("repository_commit_sha") != commit:
             raise ValueError("Metadata repository commit mismatch")
+        usage_records = manifest.get("usage")
+        if not isinstance(usage_records, dict) or set(usage_records) - executed:
+            raise ValueError("Manifest usage records must map executed models only")
+        if key in usage_records and usage_records[key] != metadata.get("usage"):
+            raise ValueError("Manifest/metadata usage mismatch")
         if (key in completed) != (enum_status == FinalStatus.COMPLETED):
             raise ValueError("Metadata status/completed set mismatch")
         if key in failed:
@@ -555,7 +563,7 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         "enabled_models": enabled, "available_models": available,
         "skipped_models": skipped, "executed_models": [],
         "completed_models": [], "failed_models": [], "still_running": [],
-        "metadata_files": {}, "response_files": {},
+        "metadata_files": {}, "response_files": {}, "usage": {},
     }
     atomic_json(output_dir / "manifest.json", manifest)
     for index, key in enumerate(available):
@@ -590,6 +598,8 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         except OSError as exc:
             status, reason = FinalStatus.EXCEPTION, f"{type(exc).__name__}: {exc}"
         manifest["executed_models"].append(key)
+        if usage is not None:
+            manifest["usage"][key] = usage
         metadata_name = f"{key}.metadata.json"
         metadata = {"model_key": key, "provider": item["provider"], "model_id": item["model_id"],
                     "experiment_id": experiment_id, "repository_commit_sha": commit,
