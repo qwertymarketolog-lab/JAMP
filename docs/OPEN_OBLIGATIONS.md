@@ -168,3 +168,14 @@ C6.2 относится к merge PR #553. Это историческое eviden
 ## Deferred follow-up (not created)
 
 - `[Tech Debt] PR inventory cleanup — 133 open PRs`: deferred as instructed; no issue has been created. The count of 133 was observed before PR #559 merged and must be refreshed when this task starts. Future scope: classify each open PR as active / stale / superseded / draft, identify duplicate work, and make no bulk-close changes without individual evidence and review.
+
+
+## AnyModel pricing conflicts — v0.1 / v0.1a
+
+| ID | Status | Evidence observed | Blocking | Required next action |
+|---|---|---|---|---|
+| PRICING-CONFLICT-ANYMODEL-NEMOTRON | DOCUMENTED_RESOLVED_NOT_EMPIRICALLY_CONFIRMED | Catalog snapshot reports coefficient 0/0; operator reports pricing page $0.00 × 0 and FAQ formula. The exact FAQ/pricing file hashes supplied in chat are not both valid 64-character SHA-256 values. | Blocks execution until evidence snapshot integrity is repaired; does not block documentation preparation. | Recompute and verify source-file SHA-256 values; after controlled calls, compare account balance and record actual debit. |
+| PRICING-CONFLICT-ANYMODEL-DEEPSEEK | OPEN | Catalog ID `ds/deepseek-v4-pro` reported with coefficients 0.5/0.5; pricing page ID `am/deepseek-v4-pro` reported as $0.00 × 0. IDs differ. | Yes — blocks DeepSeek in v0.1. | Obtain written provider confirmation of canonical ID and applicable price; preserve both observations. |
+| PRICING-CONFLICT-ANYMODEL-GPT6 | OPEN | Catalog ID `cx/gpt-6-astra` reported with coefficients 4/4; older indexed price and current pricing-page availability conflict. | Yes — blocks GPT-6 in v0.1. | Obtain written provider confirmation or dated changelog establishing current ID and price. |
+
+**Evidence boundary:** these entries record operator-reported observations and the previously captured catalog snapshot. They do not assert independently re-fetched live pricing, actual zero billing, or model qualification. Hashes with invalid length/format are not accepted as integrity evidence. Nemotron remains documented-only until a controlled request and post-request balance observation exist.
