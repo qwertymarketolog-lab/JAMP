@@ -257,37 +257,37 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
             executed_models = manifest.get("executed_models")
             completed_models = manifest.get("completed_models")
             if (
-                    not isinstance(enabled_models, list)
-                    or len(enabled_models) > MAX_MODELS_FIRST_RUN
-                    or len(enabled_models) != len(set(enabled_models))
-                    or available_models != enabled_models
-                    or executed_models != available_models
-                    or completed_models != executed_models
-                    or manifest.get("skipped_models") != []
-                    or manifest.get("failed_models") != []
-                    or manifest.get("still_running") != []
-                    or not isinstance(manifest_usage, dict)
-                    or manifest_usage.get(model_key) != usage
-                    or not isinstance(metadata_files, dict)
-                    or metadata_files.get(model_key) != metadata_file
-                    or manifest.get("status") != "COMPLETED"
-                    or model_key not in manifest.get("completed_models", [])
-                    or model_key not in manifest.get("executed_models", [])
-                    or metadata.get("status") != FinalStatus.COMPLETED.value
-                    or metadata.get("experiment_id") != manifest.get("experiment_id")
-                    or metadata.get("model_id") != model_id
-                    or not isinstance(manifest.get("repository_commit_sha"), str)
-                    or not GIT_SHA_RE.fullmatch(manifest["repository_commit_sha"])
-                    or metadata.get("repository_commit_sha") != manifest["repository_commit_sha"]
-                    or metadata.get("source_run_id") != run_id
-                    or metadata.get("source_artifact_id") != artifact_id
-                    or not isinstance(usage, dict)
-                    or isinstance(usage.get("prompt_tokens"), bool)
-                    or not isinstance(usage.get("prompt_tokens"), int)
-                    or isinstance(usage.get("completion_tokens"), bool)
-                    or not isinstance(usage.get("completion_tokens"), int)
-                    or usage.get("prompt_tokens") != prompt_tokens
-                    or usage.get("completion_tokens") != completion_tokens):
+                not isinstance(enabled_models, list)
+                or len(enabled_models) > MAX_MODELS_FIRST_RUN
+                or len(enabled_models) != len(set(enabled_models))
+                or available_models != enabled_models
+                or executed_models != available_models
+                or completed_models != executed_models
+                or manifest.get("skipped_models") != []
+                or manifest.get("failed_models") != []
+                or manifest.get("still_running") != []
+                or not isinstance(manifest_usage, dict)
+                or manifest_usage.get(model_key) != usage
+                or not isinstance(metadata_files, dict)
+                or metadata_files.get(model_key) != metadata_file
+                or manifest.get("status") != "COMPLETED"
+                or model_key not in manifest.get("completed_models", [])
+                or model_key not in manifest.get("executed_models", [])
+                or metadata.get("status") != FinalStatus.COMPLETED.value
+                or metadata.get("experiment_id") != manifest.get("experiment_id")
+                or metadata.get("model_id") != model_id
+                or not isinstance(manifest.get("repository_commit_sha"), str)
+                or not GIT_SHA_RE.fullmatch(manifest["repository_commit_sha"])
+                or metadata.get("repository_commit_sha") != manifest["repository_commit_sha"]
+                or metadata.get("source_run_id") != run_id
+                or metadata.get("source_artifact_id") != artifact_id
+                or not isinstance(usage, dict)
+                or isinstance(usage.get("prompt_tokens"), bool)
+                or not isinstance(usage.get("prompt_tokens"), int)
+                or isinstance(usage.get("completion_tokens"), bool)
+                or not isinstance(usage.get("completion_tokens"), int)
+                or usage.get("prompt_tokens") != prompt_tokens
+                or usage.get("completion_tokens") != completion_tokens):
                 return True
             valid += 1
         return valid == 0 or valid > MAX_MODELS_FIRST_RUN
