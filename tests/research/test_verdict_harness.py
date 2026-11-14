@@ -85,7 +85,7 @@ def test_hash_stability_across_clean_clone_with_autocrlf(tmp_path):
 
 
 def test_response_body_and_text_hashes_are_explicit():
-    raw = '{"answer":"ok"}'.encode()
+    raw = b'{"answer":"ok"}'
     result = harness.hash_response_body(raw)
     assert result["response_body_bytes_sha256"] == hashlib.sha256(raw).hexdigest()
     assert result["response_text_sha256"] == hashlib.sha256(raw).hexdigest()
