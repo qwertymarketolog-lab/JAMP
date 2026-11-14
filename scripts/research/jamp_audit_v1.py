@@ -645,10 +645,8 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         raise ValueError("Preflight pricing state is missing or unsupported")
     if not accept_unknown_pricing:
         raise ValueError(
-            (
-                "REFUSE: pricing is UNKNOWN; pass --accept-unknown-pricing "
-                "only after explicit operator review"
-            )
+            "REFUSE: pricing is UNKNOWN; pass --accept-unknown-pricing "
+            "only after explicit operator review"
         )
     available = list(expected_available)
     requested_output_tokens = sum(
@@ -781,10 +779,8 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     validate_manifest(manifest, output_dir)
     if ambiguous_outcome:
         raise RuntimeError(
-            (
-                "POST_SEND_AMBIGUOUS: provider may have processed the request; "
-                "no automatic retry; outcome UNKNOWN"
-            )
+            "POST_SEND_AMBIGUOUS: provider may have processed the request; "
+            "no automatic retry; outcome UNKNOWN"
         )
     if wall_clock_exhausted:
         raise TimeoutError(
