@@ -221,11 +221,15 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
         text = cost_path.read_text(encoding="utf-8")
         blocks = re.split(r"(?m)^### model: ", text)[1:]
         valid = 0
+        seen_model_ids: set[str] = set()
         for block in blocks:
             lines = block.splitlines()
             if not lines:
                 return True
             model_id = lines[0].strip()
+            if not model_id or model_id in seen_model_ids:
+                return True
+            seen_model_ids.add(model_id)
             fields: dict[str, str] = {}
             for line in lines[1:]:
                 if ":" in line:
@@ -255,6 +259,9 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
                     or metadata.get("status") != FinalStatus.COMPLETED.value
                     or metadata.get("experiment_id") != manifest.get("experiment_id")
                     or metadata.get("model_id") != model_id
+                    or not isinstance(manifest.get("repository_commit_sha"), str)
+                    or not GIT_SHA_RE.fullmatch(manifest["repository_commit_sha"])
+                    or metadata.get("repository_commit_sha") != manifest["repository_commit_sha"]
                     or metadata.get("source_run_id") != run_id
                     or metadata.get("source_artifact_id") != artifact_id
                     or not isinstance(usage, dict)
@@ -456,6 +463,8 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
             raise ValueError("Unknown metadata status") from exc
         if (
             metadata.get("model_key") != key
+            or metadata.get("provider") != MODEL_REGISTRY[key]["provider"]
+            or metadata.get("model_id") != MODEL_REGISTRY[key]["model_id"]
             or metadata.get("experiment_id") != manifest["experiment_id"]
         ):
             raise ValueError("Metadata identity mismatch")
