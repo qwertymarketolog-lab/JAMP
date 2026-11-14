@@ -469,6 +469,13 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
     expected_status = "COMPLETED" if not failed and not skipped else "PARTIAL"
     if manifest_status != expected_status:
         raise ValueError("Manifest terminal status is inconsistent")
+    usage_records = manifest.get("usage")
+    if (
+        not isinstance(usage_records, dict)
+        or set(usage_records) - executed
+        or any(not isinstance(value, dict) for value in usage_records.values())
+    ):
+        raise ValueError("Manifest usage records must map executed models only")
     for key in executed:
         metadata_name = metadata_files[key]
         if not isinstance(metadata_name, str) or metadata_name != f"{key}.metadata.json":
@@ -496,14 +503,7 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
                 raise ValueError(f"Metadata {field} mismatch")
         if metadata.get("repository_commit_sha") != commit:
             raise ValueError("Metadata repository commit mismatch")
-        usage_records = manifest.get("usage")
         metadata_usage = metadata.get("usage")
-        if (
-            not isinstance(usage_records, dict)
-            or set(usage_records) - executed
-            or any(not isinstance(value, dict) for value in usage_records.values())
-        ):
-            raise ValueError("Manifest usage records must map executed models only")
         if metadata_usage is None:
             if key in usage_records:
                 raise ValueError("Manifest/metadata usage mismatch")
