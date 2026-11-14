@@ -4,8 +4,18 @@ on:
   pull_request:
     paths:
       - ".github/workflows/jamp-audit-v1.yml"
+      - ".gitattributes"
       - "scripts/research/jamp_audit_v1.py"
+      - "scripts/research/verdict_harness.py"
       - "docs/experiments/jamp_audit_v1/COST_BASELINE.md"
+      - "docs/experiments/jamp_audit_v1/AUDIT_PROMPT.md"
+      - "docs/experiments/jamp_audit_v1/INPUT_PACK.md"
+      - "docs/experiments/jamp_audit_v1/hash_scheme.md"
+      - "docs/experiments/jamp_audit_v1/claim.schema.json"
+      - "docs/experiments/jamp_audit_v1/evidence.schema.json"
+      - "docs/experiments/jamp_audit_v1/resolution.schema.json"
+      - "docs/experiments/jamp_audit_v1/AMBIGUOUS_PROTOCOL.md"
+      - "tests/research/test_verdict_harness.py"
       - "tests/research/**"
   workflow_dispatch:
     inputs:
@@ -53,7 +63,7 @@ jobs:
       - name: Run focused tests
         id: tests
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.execute == true)
-        run: python -m pytest -q tests/research/test_jamp_audit_v1.py tests/research/test_jamp_audit_v1_guardrails.py
+        run: python -m pytest -q tests/research/test_jamp_audit_v1.py tests/research/test_jamp_audit_v1_guardrails.py tests/research/test_verdict_harness.py
 
       - name: Verify committed snapshots
         id: snapshots
