@@ -250,6 +250,7 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
         "completed_models": [model_key],
         "skipped_models": [],
         "failed_models": [],
+        "still_running": [],
         "usage": {model_key: usage},
         "metadata_files": {model_key: "model.metadata.json"},
     }
