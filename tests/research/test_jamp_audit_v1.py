@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from pathlib import Path
 
@@ -301,7 +302,8 @@ def test_execute_requires_matching_preflight_record_before_api_key(
         "experiment_id": str(uuid.uuid4()),
         "catalog_sha256": audit.sha256(raw),
         "selected_model_keys": ["model_001"],
-        "available_model_keys": ["model_001"],
+        "available_models": ["model_001"],
+        "skipped_models": [],
         "repository_commit_sha": audit.git_commit_sha(),
     }
     (tmp_path / "preflight.json").write_text(json.dumps(preflight), encoding="utf-8")
@@ -323,3 +325,109 @@ def test_manifest_rejects_usage_disagreement(tmp_path):
     manifest["usage"] = {"model_001": {"prompt_tokens": 1}}
     with pytest.raises(ValueError, match="usage mismatch"):
         audit.validate_manifest(manifest, tmp_path)
+
+
+def test_compute_estimate_tokens_uses_full_composite_utf8_payload(tmp_path, monkeypatch):
+    pack = tmp_path / "INPUT_PACK.md"
+    pack.write_text("Пакет", encoding="utf-8")
+    monkeypatch.setattr(audit, "AUDIT_PROMPT", "AUDIT")
+    monkeypatch.setattr(audit, "INPUT_PACK_PATH", pack)
+
+    expected = "AUDIT\n\n### INPUT PACK\nПакет".encode()
+    estimate = audit.compute_estimate_tokens()
+
+    assert estimate == {
+        "composite_bytes": len(expected),
+        "estimated_prompt_tokens_heuristic": (len(expected) + 1) // 2,
+        "max_output_tokens_per_model": 4096,
+        "note": (
+            "Heuristic: ~1 token per 2 UTF-8 bytes of composite prompt. "
+            "Not a forecast."
+        ),
+    }
+
+
+def test_preflight_writes_revision6_model_and_estimate_contract(
+    tmp_path, monkeypatch
+):
+    catalog = {
+        "data": [
+            {"id": audit.MODEL_REGISTRY["model_001"]["model_id"]},
+            {"id": audit.MODEL_REGISTRY["model_002"]["model_id"]},
+        ]
+    }
+    raw = json.dumps(catalog).encode("utf-8")
+    monkeypatch.setenv("ANYMODEL_API_KEY", "test-key")
+    monkeypatch.setattr(audit, "http_get_catalog", lambda _key: raw)
+    monkeypatch.setattr(audit, "git_commit_sha", lambda: "a" * 40)
+    monkeypatch.setattr(
+        audit,
+        "compute_estimate_tokens",
+        lambda: {
+            "composite_bytes": 7000,
+            "estimated_prompt_tokens_heuristic": 3500,
+            "max_output_tokens_per_model": 4096,
+            "note": "test heuristic",
+        },
+    )
+    experiment_id = str(uuid.uuid4())
+    output_dir = tmp_path / experiment_id
+
+    digest = audit.preflight(audit.select_models("all"), experiment_id, output_dir)
+    record = json.loads((output_dir / "preflight.json").read_text(encoding="utf-8"))
+
+    assert (output_dir / "catalog_snapshot.json").read_bytes() == raw
+    assert digest == audit.sha256(raw) == record["catalog_sha256"]
+    assert record["available_models"] == ["model_001", "model_002"]
+    assert record["skipped_models"] == [
+        {"key": "model_003", "reason": "MODEL_NOT_IN_CATALOG"}
+    ]
+    assert record["estimated"]["composite_bytes"] == 7000
+    assert record["estimated"]["estimated_prompt_tokens_heuristic"] == 3500
+    assert record["estimated"]["max_output_tokens_per_model"] == 4096
+
+
+def test_preflight_cli_emits_dry_run_marker_only_after_evidence_is_written(
+    tmp_path, monkeypatch, capsys
+):
+    catalog = {
+        "data": [
+            {"id": item["model_id"]}
+            for item in audit.MODEL_REGISTRY.values()
+        ]
+    }
+    raw = json.dumps(catalog).encode("utf-8")
+    monkeypatch.setenv("ANYMODEL_API_KEY", "test-key")
+    monkeypatch.setattr(audit, "http_get_catalog", lambda _key: raw)
+    monkeypatch.setattr(audit, "git_commit_sha", lambda: "b" * 40)
+    monkeypatch.setattr(audit, "OUTPUT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        audit,
+        "compute_estimate_tokens",
+        lambda: {
+            "composite_bytes": 7000,
+            "estimated_prompt_tokens_heuristic": 3500,
+            "max_output_tokens_per_model": 4096,
+            "note": "test heuristic",
+        },
+    )
+    monkeypatch.setattr(
+        audit, "execute",
+        lambda *args, **kwargs: pytest.fail("preflight must never execute paid requests"),
+    )
+    experiment_id = str(uuid.uuid4())
+    monkeypatch.setattr(
+        sys, "argv",
+        ["jamp_audit_v1.py", "preflight", "--models", "all",
+         "--experiment-id", experiment_id],
+    )
+
+    assert audit.main() == 0
+    output = capsys.readouterr().out
+    evidence_dir = tmp_path / experiment_id
+    assert (evidence_dir / "preflight.json").is_file()
+    assert (evidence_dir / "catalog_snapshot.json").is_file()
+    assert "DRY-RUN: preflight OK" in output
+    assert "estimated_prompt_tokens_heuristic: 3500" in output
+    assert "available_models: 3" in output
+    assert "skipped_models: 0" in output

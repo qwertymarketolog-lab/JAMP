@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -182,6 +183,24 @@ def read_input_pack() -> str:
 
 def composite_prompt() -> str:
     return AUDIT_PROMPT + "\n\n### INPUT PACK\n" + read_input_pack()
+
+
+def compute_estimate_tokens() -> dict[str, Any]:
+    composite = composite_prompt()
+    composite_bytes = composite.encode("utf-8")
+    output_limits = {
+        item["request_params"]["max_tokens"]
+        for item in MODEL_REGISTRY.values()
+        if item["enabled"]
+    }
+    if len(output_limits) != 1:
+        raise ValueError("Enabled models must share one max output token limit")
+    return {
+        "composite_bytes": len(composite_bytes),
+        "estimated_prompt_tokens_heuristic": math.ceil(len(composite_bytes) / 2),
+        "max_output_tokens_per_model": next(iter(output_limits)),
+        "note": "Heuristic: ~1 token per 2 UTF-8 bytes of composite prompt. Not a forecast.",
+    }
 
 
 def emit_snapshots(directory: Path) -> None:
@@ -368,11 +387,20 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
     available = sorted(
         key for key in models if MODEL_REGISTRY[key]["model_id"] in ids
     )
-    result = {"experiment_id": experiment_id, "catalog_sha256": digest,
-              "catalog_bytes": len(raw), "selected_model_keys": models,
-              "available_model_keys": available,
-              "unavailable_model_keys": sorted(set(models) - set(available)),
-              "repository_commit_sha": git_commit_sha()}
+    skipped = [
+        {"key": model_key, "reason": "MODEL_NOT_IN_CATALOG"}
+        for model_key in models if model_key not in available
+    ]
+    result = {
+        "experiment_id": experiment_id,
+        "catalog_sha256": digest,
+        "catalog_bytes": len(raw),
+        "selected_model_keys": models,
+        "available_models": available,
+        "skipped_models": skipped,
+        "estimated": compute_estimate_tokens(),
+        "repository_commit_sha": git_commit_sha(),
+    }
     atomic_json(output_dir / "preflight.json", result)
     return digest
 
@@ -567,7 +595,11 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         preflight_record.get("experiment_id") != experiment_id
         or preflight_record.get("catalog_sha256") != expected_catalog_sha
         or preflight_record.get("selected_model_keys") != selected
-        or preflight_record.get("available_model_keys") != expected_available
+        or preflight_record.get("available_models") != expected_available
+        or preflight_record.get("skipped_models") != [
+            {"key": key, "reason": "MODEL_NOT_IN_CATALOG"}
+            for key in selected if key not in expected_available
+        ]
         or preflight_record.get("repository_commit_sha") != commit
     ):
         raise ValueError("Preflight record does not match this execution request")
@@ -689,8 +721,24 @@ def main() -> int:
             digest = preflight(
                 select_models(args.models), args.experiment_id, output_dir
             )
+            record = json.loads(
+                (output_dir / "preflight.json").read_text(encoding="utf-8")
+            )
+            estimate = record["estimated"]
+            available_models = record["available_models"]
+            skipped_models = record["skipped_models"]
             print(json.dumps({"catalog_sha256": digest}, indent=2))
-            return 0
+            if skipped_models:
+                print("DRY-RUN: preflight INCONCLUSIVE")
+            else:
+                print("DRY-RUN: preflight OK")
+            print(
+                "estimated_prompt_tokens_heuristic: "
+                f"{estimate['estimated_prompt_tokens_heuristic']}"
+            )
+            print(f"available_models: {len(available_models)}")
+            print(f"skipped_models: {len(skipped_models)}")
+            return 0 if not skipped_models else 2
         if args.command == "execute":
             output_dir = args.output_dir or OUTPUT_ROOT / args.experiment_id
             execute(
