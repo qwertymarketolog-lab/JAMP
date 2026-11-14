@@ -244,8 +244,12 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
         "status": "COMPLETED",
         "experiment_id": metadata["experiment_id"],
         "repository_commit_sha": "d" * 40,
-        "completed_models": [model_key],
+        "enabled_models": [model_key],
+        "available_models": [model_key],
         "executed_models": [model_key],
+        "completed_models": [model_key],
+        "skipped_models": [],
+        "failed_models": [],
         "usage": {model_key: usage},
         "metadata_files": {model_key: "model.metadata.json"},
     }
