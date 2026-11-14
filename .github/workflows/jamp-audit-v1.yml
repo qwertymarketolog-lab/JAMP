@@ -122,7 +122,7 @@ jobs:
                   'terminal_manifest_verification': os.environ.get('VERIFY_OUTCOME'),
               },
           }
-          output.write_text(json.dumps(record, indent=2) + '\\n', encoding='utf-8')
+          output.write_text(json.dumps(record, indent=2) + chr(10), encoding='utf-8')
           PY
 
       - name: Upload evidence
