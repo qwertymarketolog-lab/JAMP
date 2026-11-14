@@ -90,6 +90,72 @@ class FinalStatus(StrEnum):
 COMPARABLE_STATUSES = {FinalStatus.COMPLETED}
 
 
+def should_refuse(pricing_unknown: bool, accept_unknown_pricing: bool) -> bool:
+    """Refuse unknown pricing unless the operator explicitly accepts it."""
+    if (
+        not isinstance(pricing_unknown, bool)
+        or not isinstance(accept_unknown_pricing, bool)
+    ):
+        raise ValueError("pricing and acceptance flags must be booleans")
+    return pricing_unknown and not accept_unknown_pricing
+
+
+def check_budget(requests: int, tokens: int, wall_clock: float) -> None:
+    """Reject workload proxies before transport; wall_clock is elapsed runner seconds."""
+    if (
+        isinstance(requests, bool) or not isinstance(requests, int)
+        or isinstance(tokens, bool) or not isinstance(tokens, int)
+        or isinstance(wall_clock, bool) or not isinstance(wall_clock, (int, float))
+    ):
+        raise ValueError("budget values have invalid types")
+    if (
+        not math.isfinite(wall_clock)
+        or requests < 0 or tokens < 0 or wall_clock < 0
+    ):
+        raise ValueError("budget values must be finite and non-negative")
+    if requests > MAX_PAID_REQUESTS:
+        raise ValueError("Paid request budget exceeded before transport")
+    if tokens > MAX_TOKENS_TOTAL:
+        raise ValueError("Output-token budget exceeded before transport")
+    if wall_clock > MAX_WALL_CLOCK_SECONDS:
+        raise ValueError("Wall-clock budget exceeded before transport")
+
+
+def classify_exception(phase: str) -> FinalStatus:
+    """Post-send transport failures are ambiguous and are never retried."""
+    if phase == "pre_send":
+        return FinalStatus.PRE_SEND_NETWORK_ERROR
+    if phase == "post_send":
+        return FinalStatus.POST_SEND_AMBIGUOUS
+    raise ValueError("phase must be 'pre_send' or 'post_send'")
+
+
+class PaidTransportError(Exception):
+    def __init__(self, status: FinalStatus, original: Exception):
+        super().__init__(f"{status.value}: {type(original).__name__}: {original}")
+        self.status = status
+        self.original = original
+
+
+def run_paid(
+    transport: Any, request: Any, timeout: int, *,
+    requests: int, tokens: int, wall_clock: float,
+) -> tuple[int, bytes]:
+    """Check all proxies, then invoke injected transport exactly once; never retry."""
+    check_budget(requests, tokens, wall_clock)
+    try:
+        return transport(request, timeout)
+    except urllib.error.HTTPError:
+        raise
+    except (urllib.error.URLError, OSError) as exc:
+        reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+        pre_send = isinstance(reason, (socket.gaierror, ConnectionRefusedError))
+        phase = "pre_send" if pre_send else "post_send"
+        raise PaidTransportError(classify_exception(phase), exc) from exc
+
+
+
+
 def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
@@ -375,6 +441,24 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+def write_guardrail_preflight(output_dir: Path, accept_unknown_pricing: bool) -> str:
+    """Write the no-network PR-CI preflight artifact without executing requests."""
+    outcome = "refused" if should_refuse(True, accept_unknown_pricing) else "success"
+    record = {
+        "schema_version": "1.0",
+        "execution_requested": False,
+        "catalog_preflight": "NOT_RUN",
+        "pricing_status": "UNKNOWN",
+        "billing_coefficient_status": "UNKNOWN",
+        "token_contract_status": "UNKNOWN",
+        "cost_status": "UNKNOWN_PRICING",
+        "refuse_check": outcome,
+        "paid_requests_sent": 0,
+    }
+    atomic_json(output_dir / "preflight.json", record)
+    return outcome
+
+
 def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
     if not canonical_uuid(experiment_id):
         raise ValueError("experiment_id must be canonical lowercase UUIDv4")
@@ -652,10 +736,9 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     requested_output_tokens = sum(
         MODEL_REGISTRY[key]["request_params"]["max_tokens"] for key in available
     )
-    if len(available) > MAX_PAID_REQUESTS:
-        raise ValueError("Paid request budget exceeded before execution")
-    if requested_output_tokens > MAX_TOKENS_TOTAL:
-        raise ValueError("Requested output-token budget exceeded before execution")
+    check_budget(
+        len(available), requested_output_tokens, time.monotonic() - started_at
+    )
     api_key = os.getenv("ANYMODEL_API_KEY")
     if not api_key:
         raise RuntimeError("ANYMODEL_API_KEY is required")
@@ -709,14 +792,21 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
                          "Accept": "application/json", "User-Agent": "JAMP-Audit-v1"})
             opener = urllib.request.build_opener(NoRedirect)
+
+            def transport(req: Any, timeout: int) -> tuple[int, bytes]:
+                with opener.open(req, timeout=timeout) as response:
+                    return response.status, response.read()
+
             manifest["paid_request_attempts"] += 1
             atomic_json(output_dir / "manifest.json", manifest)
-            with opener.open(
+            http_status, response_raw = run_paid(
+                transport,
                 request,
-                timeout=min(HTTP_REQUEST_TIMEOUT_SECONDS, int(remaining_seconds)),
-            ) as response:
-                http_status = response.status
-                response_raw = response.read()
+                min(HTTP_REQUEST_TIMEOUT_SECONDS, int(remaining_seconds)),
+                requests=manifest["paid_request_attempts"],
+                tokens=requested_output_tokens,
+                wall_clock=time.monotonic() - started_at,
+            )
             body = json.loads(response_raw.decode("utf-8"))
             status = classify_response(http_status, body)
             if isinstance(body, dict) and isinstance(body.get("usage"), dict):
@@ -727,18 +817,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
                 reason = f"Response classified as {status.value}"
         except urllib.error.HTTPError as exc:
             status, reason = FinalStatus.API_ERROR, f"HTTP {exc.code}"
-        except urllib.error.URLError as exc:
-            if isinstance(exc.reason, (socket.gaierror, ConnectionRefusedError)):
-                status = FinalStatus.PRE_SEND_NETWORK_ERROR
-            else:
-                status = FinalStatus.POST_SEND_AMBIGUOUS
-            reason = f"{type(exc.reason).__name__}: {exc.reason}"
-        except (socket.gaierror, ConnectionRefusedError) as exc:
-            status, reason = FinalStatus.PRE_SEND_NETWORK_ERROR, f"{type(exc).__name__}: {exc}"
+        except PaidTransportError as exc:
+            status, reason = exc.status, str(exc)
         except (UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
             status, reason = FinalStatus.INVALID_RESPONSE, f"{type(exc).__name__}: {exc}"
-        except OSError as exc:
-            status, reason = FinalStatus.POST_SEND_AMBIGUOUS, f"{type(exc).__name__}: {exc}"
         manifest["executed_models"].append(key)
         if usage is not None:
             manifest["usage"][key] = usage
@@ -807,6 +889,10 @@ def main() -> int:
     run.add_argument("--output-dir", type=Path)
     check = sub.add_parser("verify")
     check.add_argument("--manifest", type=Path, required=True)
+    guardrail = sub.add_parser("guardrail-check")
+    guardrail.add_argument("--accept-unknown-pricing", action="store_true")
+    guardrail.add_argument("--output-dir", type=Path, required=True)
+    guardrail.add_argument("--github-output", type=Path)
     args = parser.parse_args()
     try:
         if args.emit_snapshots:
@@ -814,6 +900,15 @@ def main() -> int:
             return 0
         if args.verify_snapshots:
             verify_snapshots(args.verify_snapshots)
+            return 0
+        if args.command == "guardrail-check":
+            outcome = write_guardrail_preflight(
+                args.output_dir, args.accept_unknown_pricing
+            )
+            if args.github_output:
+                with args.github_output.open("a", encoding="utf-8") as output:
+                    output.write(f"refuse_check={outcome}\n")
+            print(f"refuse_check={outcome}")
             return 0
         if args.command == "preflight":
             output_dir = args.output_dir or OUTPUT_ROOT / args.experiment_id

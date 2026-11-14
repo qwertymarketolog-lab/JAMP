@@ -6,7 +6,7 @@ on:
       - ".github/workflows/jamp-audit-v1.yml"
       - "scripts/research/jamp_audit_v1.py"
       - "docs/experiments/jamp_audit_v1/COST_BASELINE.md"
-      - "tests/research/test_jamp_audit_v1.py"
+      - "tests/research/**"
   workflow_dispatch:
     inputs:
       models:
@@ -53,7 +53,7 @@ jobs:
       - name: Run focused tests
         id: tests
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.execute == true)
-        run: python -m pytest -q tests/research/test_jamp_audit_v1.py
+        run: python -m pytest -q tests/research/test_jamp_audit_v1.py tests/research/test_jamp_audit_v1_guardrails.py
 
       - name: Verify committed snapshots
         id: snapshots
@@ -77,9 +77,24 @@ jobs:
           echo "REFUSE: focused tests did not complete successfully; paid execution is blocked."
           exit 1
 
+      - name: Refuse unknown pricing unless explicitly accepted
+        id: refuse
+        if: always()
+        env:
+          ACCEPT_UNKNOWN_PRICING: ${{ github.event_name == 'workflow_dispatch' && inputs.accept_unknown_pricing || false }}
+        run: |
+          ACCEPT_ARGS=()
+          if [[ "$ACCEPT_UNKNOWN_PRICING" == "true" ]]; then
+            ACCEPT_ARGS+=(--accept-unknown-pricing)
+          fi
+          python scripts/research/jamp_audit_v1.py guardrail-check \
+            --output-dir artifacts/research/jamp_audit_v1/ci-guardrails \
+            --github-output "$GITHUB_OUTPUT" \
+            "${ACCEPT_ARGS[@]}"
+
       - name: Execute selected models (paid; explicit dispatch input only)
         id: execute
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.execute == true && steps.tests.outcome == 'success' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.execute == true && inputs.accept_unknown_pricing == true && steps.tests.outcome == 'success' && steps.refuse.outputs.refuse_check == 'success' }}
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           MODELS_INPUT: ${{ inputs.models }}
@@ -99,7 +114,7 @@ jobs:
 
       - name: Verify terminal batch
         id: verify
-        if: github.event_name == 'workflow_dispatch' && inputs.execute == true
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.execute == true && steps.execute.outcome == 'success' }}
         env:
           EXPERIMENT_ID: ${{ inputs.experiment_id }}
         run: python scripts/research/jamp_audit_v1.py verify --manifest artifacts/research/jamp_audit_v1/$EXPERIMENT_ID/manifest.json
@@ -112,6 +127,7 @@ jobs:
           PREFLIGHT_OUTCOME: ${{ steps.catalog.outcome }}
           EXECUTE_OUTCOME: ${{ steps.execute.outcome }}
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          REFUSE_CHECK_OUTCOME: ${{ steps.refuse.outputs.refuse_check }}
           JOB_STATUS: ${{ job.status }}
         run: |
           python - <<'PY'
@@ -127,12 +143,14 @@ jobs:
               'run_id': os.environ.get('GITHUB_RUN_ID'),
               'checkout_sha': os.environ.get('GITHUB_SHA'),
               'job_status_at_record_time': os.environ.get('JOB_STATUS'),
+              'refuse_check': os.environ.get('REFUSE_CHECK_OUTCOME'),
               'step_outcomes': {
                   'focused_tests': os.environ.get('TEST_OUTCOME'),
                   'snapshot_verification': os.environ.get('SNAPSHOT_OUTCOME'),
                   'catalog_preflight': os.environ.get('PREFLIGHT_OUTCOME'),
                   'paid_execution': os.environ.get('EXECUTE_OUTCOME'),
                   'terminal_manifest_verification': os.environ.get('VERIFY_OUTCOME'),
+                  'pricing_refusal_check': os.environ.get('REFUSE_CHECK_OUTCOME'),
               },
           }
           output.write_text(json.dumps(record, indent=2) + chr(10), encoding='utf-8')

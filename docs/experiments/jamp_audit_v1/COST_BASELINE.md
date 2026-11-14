@@ -6,10 +6,10 @@
 - Monetary pricing formula: **UNKNOWN**.
 - AnyModel `billing.coefficient` semantics and completeness across the 109 observed
   catalog entries: **UNKNOWN**.
-- Token usage contract for chat/completions: **UNVERIFIED**.
+- Token usage contract for chat/completions: **UNKNOWN**.
 - USD cap: **NOT ENFORCEABLE** while provider pricing and billing semantics remain
   unknown. No synthetic USD ceiling is declared or implied.
-- Every preflight and execution artifact records `cost_status: UNKNOWN_PRICING`.
+- Every preflight and execution artifact records `cost_status: UNKNOWN_PRICING`. The PR-CI guardrail artifact writes this value with `execution_requested: false` and `catalog_preflight: NOT_RUN`; it performs no network request.
 
 ## Enforceable execution proxies
 
@@ -24,13 +24,15 @@ These are technical workload limits, not monetary limits:
 The existing prompt-token estimate is a byte-based heuristic only. It is not used
 as an enforceable token ceiling and is not a price estimate. Provider-reported
 usage is recorded when returned, but its billing interpretation remains
-**UNVERIFIED**.
+**UNKNOWN**.
 
 ## Pricing consent gate
 
-The workflow input `accept_unknown_pricing` defaults to `false`. If pricing is
-unknown and the operator has not explicitly set it to `true`, the runner refuses
-before sending any paid request. Setting it to `true` records consent to proceed
+The workflow input `accept_unknown_pricing` defaults to `false`. A standalone
+REFUSE check runs before the paid-execution step, including on pull requests where
+`execute` is false. If pricing is unknown and the operator has not explicitly
+set it to `true`, the check records `refuse_check: refused` and the paid step
+remains blocked before any paid request. Setting it to `true` records consent to proceed
 under unknown pricing; it does not establish a USD cap, pricing validity, or
 qualification. The independent `execute=true` dispatch input is still required.
 
