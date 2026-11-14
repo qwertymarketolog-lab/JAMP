@@ -389,6 +389,7 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
     available = set(string_list("available_models"))
     if not enabled <= set(MODEL_REGISTRY):
         raise ValueError("Manifest contains unknown enabled model keys")
+
     def record_keys(name: str, require_status: bool) -> dict[str, dict[str, str]]:
         records = manifest.get(name)
         if not isinstance(records, list):
