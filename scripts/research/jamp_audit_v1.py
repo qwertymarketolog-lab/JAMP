@@ -265,6 +265,7 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
                     or completed_models != executed_models
                     or manifest.get("skipped_models") != []
                     or manifest.get("failed_models") != []
+                    or manifest.get("still_running") != []
                     or not isinstance(manifest_usage, dict)
                     or manifest_usage.get(model_key) != usage
                     or not isinstance(metadata_files, dict)
