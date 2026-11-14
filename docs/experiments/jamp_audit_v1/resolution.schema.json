@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JAMP Audit v1 Human Resolution",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "resolution_id",
+    "claim_id",
+    "decision",
+    "evidence_ids",
+    "reviewer",
+    "rationale",
+    "resolved_at"
+  ],
+  "properties": {
+    "resolution_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "OBSERVED",
+        "INFERRED",
+        "UNKNOWN",
+        "VERIFIED",
+        "AMBIGUOUS"
+      ]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resolved_at": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

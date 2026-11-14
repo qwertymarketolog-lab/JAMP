@@ -1,3 +1,19 @@
+> CURRENT BASELINE ADDENDUM — 2026-11-14
+>
+> This addendum is the current repository baseline. The pre-existing sections below are retained as a historical evidence inventory; their older run IDs, commits, and state statements are not silently upgraded to current evidence.
+>
+> - Current refs/heads/main: 7063c464b77999dbf45fa088f8d0012d160f689a.
+> - PR #586: CLOSED / MERGED at 2026-11-14T01:08:55Z; merge commit b4b6f195aca89f5b979f2a12e3eb64b70740fb52.
+> - PR #587: CLOSED / MERGED at 2026-11-14T05:12:59Z; expected head 611d0c72daf0bde69d68bfb30f8ecf165b2bea61; squash merge/current main 7063c464b77999dbf45fa088f8d0012d160f689a.
+> - Frozen Core src/jamp/run.py blob: 0fee0e1c5c1a1548361965ac51eacdeba62bfe8a; delta=0 on current main.
+> - Ten named post-merge push workflows on 7063c464 completed SUCCESS. Key evidence: Run Pytest Run 43560447314, Job 132342706765, Artifact 14099634650; Research Loop v0 Gate Run 43560447463, Job 132342707351, Artifact 14099039264; G1 Trusted Lineage Run 43560447371, Job 132342707285, Artifact 14100275684; SBOM Run 43560447359, Job 132342707080, Artifact 14099734033; P36.2 G4 MinIO Runtime Run 43560447364, Job 132342707099, Artifact 14099513352.
+> - Developer Quality Run 43560447351: quality Job 132342706930 SUCCESS; docker-smoke Job 132342708225 SKIPPED.
+> - Other successful push workflows: EXP-19 Run 43560447358; P20.5 Run 43560447389; P20.11 Run 43560447488; P23.0-B Run 43560447345.
+> - Separate Audit v1 workflow_dispatch Run 43568248815: Job 132366738840 SUCCESS, Artifact 14103003931, execution_requested=false, paid_requests_sent=0, cost_status=UNKNOWN_PRICING. It is a catalog-only check, not a paid model experiment.
+> - Pricing, billing coefficient, token contract, and USD cap enforceability remain UNKNOWN / NOT ENFORCEABLE.
+>
+> Read the historical inventory below with its original date and commit boundary. If a historical statement conflicts with this addendum, preserve the conflict and use the explicit commit/run scope rather than blending them.
+
 # JAMP — Input Pack для независимого аудита
 
 ## Оговорка об аудите (обязательно прочитать до всего остального)
@@ -6,8 +22,8 @@
 
 Если аудитор считает ссылку недостаточной — он пишет NEED INFO, а не делает вывод о факте.
 
-Дата фиксации: 2026-11-14  
-Main SHA: `de8b03b8c25f230ecbc58ec6670b57d834919fc0`  
+Дата исходного снимка: 2026-11-14  
+Historical source main SHA: `de8b03b8c25f230ecbc58ec6670b57d834919fc0`  
 Frozen Core blob: `0fee0e1c5c1a1548361965ac51eacdeba62bfe8a` (совпадает с LOCKED)
 
 ---
