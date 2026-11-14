@@ -391,6 +391,15 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
         {"key": model_key, "reason": "MODEL_NOT_IN_CATALOG"}
         for model_key in models if model_key not in available
     ]
+    available_keys = set(available)
+    models_resolved = [
+        {
+            "key": model_key,
+            "model_id": MODEL_REGISTRY[model_key]["model_id"],
+            "in_catalog": model_key in available_keys,
+        }
+        for model_key in models
+    ]
     result = {
         "experiment_id": experiment_id,
         "catalog_sha256": digest,
@@ -398,6 +407,7 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
         "selected_model_keys": models,
         "available_models": available,
         "skipped_models": skipped,
+        "models_resolved": models_resolved,
         "estimated": compute_estimate_tokens(),
         "repository_commit_sha": git_commit_sha(),
     }

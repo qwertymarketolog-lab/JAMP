@@ -431,3 +431,65 @@ def test_preflight_cli_emits_dry_run_marker_only_after_evidence_is_written(
     assert "estimated_prompt_tokens_heuristic: 3500" in output
     assert "available_models: 3" in output
     assert "skipped_models: 0" in output
+
+def test_preflight_models_resolved_contract(tmp_path, monkeypatch):
+    """models_resolved maps every enabled key to its model_id and catalog status."""
+    enabled = audit.select_models("all")
+    catalog = {
+        "data": [
+            {"id": audit.MODEL_REGISTRY[key]["model_id"]}
+            for key in enabled
+        ]
+    }
+    raw = json.dumps(catalog).encode("utf-8")
+    monkeypatch.setenv("ANYMODEL_API_KEY", "test-key")
+    monkeypatch.setattr(audit, "http_get_catalog", lambda _key: raw)
+    monkeypatch.setattr(audit, "git_commit_sha", lambda: "c" * 40)
+    monkeypatch.setattr(audit, "compute_estimate_tokens", lambda: {})
+    experiment_id = str(uuid.uuid4())
+    output_dir = tmp_path / experiment_id
+
+    audit.preflight(enabled, experiment_id, output_dir)
+    data = json.loads((output_dir / "preflight.json").read_text(encoding="utf-8"))
+
+    assert "models_resolved" in data, "models_resolved missing from preflight.json"
+    resolved = data["models_resolved"]
+    assert len(resolved) == len(enabled)
+    by_key = {item["key"]: item for item in resolved}
+    assert set(by_key) == set(enabled)
+    for key in enabled:
+        assert by_key[key]["model_id"] == audit.MODEL_REGISTRY[key]["model_id"]
+        assert by_key[key]["in_catalog"] is True
+
+
+def test_preflight_models_resolved_marks_skipped_as_not_in_catalog(
+    tmp_path, monkeypatch
+):
+    """A missing catalog model is marked false and retained in skipped_models."""
+    enabled = audit.select_models("all")
+    missing_key = enabled[-1]
+    catalog = {
+        "data": [
+            {"id": audit.MODEL_REGISTRY[key]["model_id"]}
+            for key in enabled if key != missing_key
+        ]
+    }
+    raw = json.dumps(catalog).encode("utf-8")
+    monkeypatch.setenv("ANYMODEL_API_KEY", "test-key")
+    monkeypatch.setattr(audit, "http_get_catalog", lambda _key: raw)
+    monkeypatch.setattr(audit, "git_commit_sha", lambda: "d" * 40)
+    monkeypatch.setattr(audit, "compute_estimate_tokens", lambda: {})
+    experiment_id = str(uuid.uuid4())
+    output_dir = tmp_path / experiment_id
+
+    audit.preflight(enabled, experiment_id, output_dir)
+    data = json.loads((output_dir / "preflight.json").read_text(encoding="utf-8"))
+    resolved = {item["key"]: item for item in data["models_resolved"]}
+    skipped = {item["key"]: item for item in data["skipped_models"]}
+
+    assert set(resolved) == set(enabled)
+    assert set(skipped) == {missing_key}
+    assert skipped[missing_key]["reason"] == "MODEL_NOT_IN_CATALOG"
+    for key, item in resolved.items():
+        assert item["in_catalog"] is (key not in skipped)
+        assert item["model_id"] == audit.MODEL_REGISTRY[key]["model_id"]
