@@ -421,7 +421,10 @@ def preflight(models: list[str], experiment_id: str, output_dir: Path) -> str:
             "max_paid_requests": MAX_PAID_REQUESTS,
             "max_tokens_total": MAX_TOKENS_TOTAL,
             "max_wall_clock_seconds": MAX_WALL_CLOCK_SECONDS,
-            "token_limit_semantics": "sum of configured max_tokens output ceilings; not provider-reported total usage",
+            "token_limit_semantics": (
+                "sum of configured max_tokens output ceilings; "
+                "not provider-reported total usage"
+            ),
         },
         "repository_commit_sha": git_commit_sha(),
     }
@@ -642,7 +645,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
         raise ValueError("Preflight pricing state is missing or unsupported")
     if not accept_unknown_pricing:
         raise ValueError(
-            "REFUSE: pricing is UNKNOWN; pass --accept-unknown-pricing only after explicit operator review"
+            (
+                "REFUSE: pricing is UNKNOWN; pass --accept-unknown-pricing "
+                "only after explicit operator review"
+            )
         )
     available = list(expected_available)
     requested_output_tokens = sum(
@@ -775,7 +781,10 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
     validate_manifest(manifest, output_dir)
     if ambiguous_outcome:
         raise RuntimeError(
-            "POST_SEND_AMBIGUOUS: provider may have processed the request; no automatic retry; outcome UNKNOWN"
+            (
+                "POST_SEND_AMBIGUOUS: provider may have processed the request; "
+                "no automatic retry; outcome UNKNOWN"
+            )
         )
     if wall_clock_exhausted:
         raise TimeoutError(
