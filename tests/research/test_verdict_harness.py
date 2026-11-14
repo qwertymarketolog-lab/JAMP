@@ -11,9 +11,11 @@ import pytest
 from scripts.research import verdict_harness as harness
 
 ROOT = Path(__file__).resolve().parents[2]
+PROMPT_PATH = "docs/experiments/jamp_audit_v1/AUDIT_PROMPT.md"
+INPUT_PACK_PATH = "docs/experiments/jamp_audit_v1/INPUT_PACK.md"
 EXPECTED_INPUT_HASHES = {
-    "docs/experiments/jamp_audit_v1/AUDIT_PROMPT.md": "4e02860ea088d7f6c5aa4d311b35abfad18c515bd78a2b64999ea5260e405b0e",
-    "docs/experiments/jamp_audit_v1/INPUT_PACK.md": "4c5aaae052429709ae06536599e22eaec039cff702b9a74cc4d14f770a5cba18",
+    PROMPT_PATH: "4e02860ea088d7f6c5aa4d311b35abfad18c515bd78a2b64999ea5260e405b0e",
+    INPUT_PACK_PATH: "4c5aaae052429709ae06536599e22eaec039cff702b9a74cc4d14f770a5cba18",
 }
 
 
@@ -67,7 +69,10 @@ def test_hash_changes_when_one_byte_changes(tmp_path):
 def test_hash_stability_across_clean_clone_with_autocrlf(tmp_path):
     clone = tmp_path / "clean-clone"
     subprocess.run(
-        ["git", "-c", "core.autocrlf=true", "clone", "--quiet", "--no-hardlinks", str(ROOT), str(clone)],
+        [
+            "git", "-c", "core.autocrlf=true", "clone", "--quiet",
+            "--no-hardlinks", str(ROOT), str(clone),
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -80,7 +85,7 @@ def test_hash_stability_across_clean_clone_with_autocrlf(tmp_path):
 
 
 def test_response_body_and_text_hashes_are_explicit():
-    raw = '{"answer":"ok"}'.encode("utf-8")
+    raw = '{"answer":"ok"}'.encode()
     result = harness.hash_response_body(raw)
     assert result["response_body_bytes_sha256"] == hashlib.sha256(raw).hexdigest()
     assert result["response_text_sha256"] == hashlib.sha256(raw).hexdigest()
@@ -105,7 +110,7 @@ def test_raw_json_response_is_observed():
         },
         "claims": [_claim()],
     }
-    result = harness.parse_model_response(json.dumps(payload).encode("utf-8"))
+    result = harness.parse_model_response(json.dumps(payload).encode())
     assert result["status"] == "OBSERVED"
     assert result["reason"] is None
     assert result["payload"]["model_id"] == "model-a"
@@ -205,6 +210,10 @@ def test_claim_vs_evidence_conflict_is_ambiguous_unresolved():
 
 
 def test_harness_path_is_offline(monkeypatch):
-    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: pytest.fail("network used"))
+    monkeypatch.setattr(
+        socket,
+        "create_connection",
+        lambda *args, **kwargs: pytest.fail("network used"),
+    )
     assert harness.validate_claim(_claim(), [])["status"] == "OBSERVED"
     assert harness.hash_input_files(ROOT) == EXPECTED_INPUT_HASHES

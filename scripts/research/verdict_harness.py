@@ -140,7 +140,8 @@ def parse_model_response(
         ):
             raise ValueError("Invalid top-level response shape")
         task_answers = payload["task_answers"]
-        if not {"work_assessment", "improvement_opportunities", "six_month_plan"} <= set(task_answers):
+        required_answers = {"work_assessment", "improvement_opportunities", "six_month_plan"}
+        if not required_answers <= set(task_answers):
             raise ValueError("Missing task answer")
         plan = task_answers["six_month_plan"]
         if not isinstance(plan, dict) or not {"NOW", "NEXT", "LATER"} <= set(plan):
