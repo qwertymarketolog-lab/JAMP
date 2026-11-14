@@ -50,10 +50,12 @@ jobs:
         run: python -m pip install pytest
 
       - name: Run focused tests
+        id: tests
         if: github.event_name == 'pull_request'
         run: python -m pytest -q tests/research/test_jamp_audit_v1.py
 
       - name: Verify committed snapshots
+        id: snapshots
         run: python scripts/research/jamp_audit_v1.py --verify-snapshots tests/research/snapshots/
 
       - name: Catalog preflight (GET only)
@@ -69,6 +71,7 @@ jobs:
           python -c 'import json, os, pathlib; path=pathlib.Path("artifacts/research/jamp_audit_v1") / os.environ["EXPERIMENT_ID"] / "preflight.json"; data=json.loads(path.read_text()); print("catalog_sha=" + data["catalog_sha256"], file=open(os.environ["GITHUB_OUTPUT"], "a"))'
 
       - name: Execute selected models (paid; explicit dispatch input only)
+        id: execute
         if: github.event_name == 'workflow_dispatch' && inputs.execute == true
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
@@ -82,10 +85,45 @@ jobs:
             --expected-catalog-sha "$EXPECTED_CATALOG_SHA"
 
       - name: Verify terminal batch
+        id: verify
         if: github.event_name == 'workflow_dispatch' && inputs.execute == true
         env:
           EXPERIMENT_ID: ${{ inputs.experiment_id }}
         run: python scripts/research/jamp_audit_v1.py verify --manifest artifacts/research/jamp_audit_v1/$EXPERIMENT_ID/manifest.json
+
+      - name: Record CI verification envelope
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          SNAPSHOT_OUTCOME: ${{ steps.snapshots.outcome }}
+          PREFLIGHT_OUTCOME: ${{ steps.catalog.outcome }}
+          EXECUTE_OUTCOME: ${{ steps.execute.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path('artifacts/research/jamp_audit_v1/ci_verification.json')
+          output.parent.mkdir(parents=True, exist_ok=True)
+          record = {
+              'workflow': os.environ.get('GITHUB_WORKFLOW'),
+              'event_name': os.environ.get('GITHUB_EVENT_NAME'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'checkout_sha': os.environ.get('GITHUB_SHA'),
+              'job_status_at_record_time': os.environ.get('JOB_STATUS'),
+              'step_outcomes': {
+                  'focused_tests': os.environ.get('TEST_OUTCOME'),
+                  'snapshot_verification': os.environ.get('SNAPSHOT_OUTCOME'),
+                  'catalog_preflight': os.environ.get('PREFLIGHT_OUTCOME'),
+                  'paid_execution': os.environ.get('EXECUTE_OUTCOME'),
+                  'terminal_manifest_verification': os.environ.get('VERIFY_OUTCOME'),
+              },
+          }
+          output.write_text(json.dumps(record, indent=2) + '\\n', encoding='utf-8')
+          PY
 
       - name: Upload evidence
         if: always()
