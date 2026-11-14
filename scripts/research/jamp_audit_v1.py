@@ -252,7 +252,20 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
             metadata_files = manifest.get("metadata_files")
             manifest_usage = manifest.get("usage")
             usage = metadata.get("usage")
-            if (not isinstance(manifest_usage, dict)
+            enabled_models = manifest.get("enabled_models")
+            available_models = manifest.get("available_models")
+            executed_models = manifest.get("executed_models")
+            completed_models = manifest.get("completed_models")
+            if (
+                    not isinstance(enabled_models, list)
+                    or len(enabled_models) > MAX_MODELS_FIRST_RUN
+                    or len(enabled_models) != len(set(enabled_models))
+                    or available_models != enabled_models
+                    or executed_models != available_models
+                    or completed_models != executed_models
+                    or manifest.get("skipped_models") != []
+                    or manifest.get("failed_models") != []
+                    or not isinstance(manifest_usage, dict)
                     or manifest_usage.get(model_key) != usage
                     or not isinstance(metadata_files, dict)
                     or metadata_files.get(model_key) != metadata_file
@@ -277,7 +290,7 @@ def is_first_run(cost_path: Path = COST_BASELINE_PATH) -> bool:
                 return True
             valid += 1
         return valid == 0 or valid > MAX_MODELS_FIRST_RUN
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return True
 
 
@@ -595,7 +608,7 @@ def execute(models: list[str], experiment_id: str, snapshot_path: Path,
             status = classify_response(http_status, body)
             if isinstance(body, dict) and isinstance(body.get("usage"), dict):
                 usage = body["usage"]
-            if status == FinalStatus.COMPLETED:
+            if status in COMPARABLE_STATUSES:
                 content_raw = body["choices"][0]["message"]["content"].encode("utf-8")
             else:
                 reason = f"Response classified as {status.value}"
