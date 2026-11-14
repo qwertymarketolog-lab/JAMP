@@ -4,6 +4,7 @@ import json
 import socket
 import urllib.error
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -147,3 +148,16 @@ def test_accept_unknown_pricing_records_success_without_paid_execution(tmp_path)
     assert record["cost_status"] == "UNKNOWN_PRICING"
     assert record["execution_requested"] is False
     assert record["paid_requests_sent"] == 0
+
+def test_guardrails_file_is_collected_and_reports_case_count(request, capsys):
+    """Expose the exact collected test-file count in the quiet full-suite CI log."""
+    this_file = Path(__file__).resolve()
+    collected = [
+        item for item in request.session.items
+        if Path(str(item.path)).resolve() == this_file
+    ]
+    with capsys.disabled():
+        print(
+            f"GUARDRAILS_FILE_EXECUTED: {this_file.name}; collected={len(collected)}"
+        )
+    assert collected
