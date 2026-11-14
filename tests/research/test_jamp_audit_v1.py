@@ -134,6 +134,7 @@ def _valid_manifest(tmp_path: Path) -> dict:
         "completed_models": ["model_001"],
         "failed_models": [],
         "still_running": [],
+        "usage": {},
         "metadata_files": {"model_001": "model_001.metadata.json"},
         "response_files": {"model_001": "model_001.md"},
         "status": "COMPLETED",
@@ -245,6 +246,7 @@ def test_is_first_run_accepts_one_complete_evidence_chain(tmp_path, monkeypatch)
         "repository_commit_sha": "d" * 40,
         "completed_models": [model_key],
         "executed_models": [model_key],
+        "usage": {model_key: usage},
         "metadata_files": {model_key: "model.metadata.json"},
     }
     (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
@@ -308,3 +310,11 @@ def test_execute_requires_matching_preflight_record_before_api_key(
             0,
             tmp_path,
         )
+
+
+
+def test_manifest_rejects_usage_disagreement(tmp_path):
+    manifest = _valid_manifest(tmp_path)
+    manifest["usage"] = {"model_001": {"prompt_tokens": 1}}
+    with pytest.raises(ValueError, match="usage mismatch"):
+        audit.validate_manifest(manifest, tmp_path)
