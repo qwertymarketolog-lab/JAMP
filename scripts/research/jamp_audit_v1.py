@@ -477,9 +477,17 @@ def validate_manifest(manifest: dict[str, Any], output_dir: Path) -> None:
         if metadata.get("repository_commit_sha") != commit:
             raise ValueError("Metadata repository commit mismatch")
         usage_records = manifest.get("usage")
-        if not isinstance(usage_records, dict) or set(usage_records) - executed:
+        metadata_usage = metadata.get("usage")
+        if (
+            not isinstance(usage_records, dict)
+            or set(usage_records) - executed
+            or any(not isinstance(value, dict) for value in usage_records.values())
+        ):
             raise ValueError("Manifest usage records must map executed models only")
-        if key in usage_records and usage_records[key] != metadata.get("usage"):
+        if metadata_usage is None:
+            if key in usage_records:
+                raise ValueError("Manifest/metadata usage mismatch")
+        elif not isinstance(metadata_usage, dict) or usage_records.get(key) != metadata_usage:
             raise ValueError("Manifest/metadata usage mismatch")
         if (key in completed) != (enum_status == FinalStatus.COMPLETED):
             raise ValueError("Metadata status/completed set mismatch")
