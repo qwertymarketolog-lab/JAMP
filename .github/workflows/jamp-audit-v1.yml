@@ -1,29 +1,20 @@
 name: JAMP Audit v1
 
 on:
-  pull_request:
-    paths:
-      - "scripts/research/jamp_audit_v1.py"
-      - "tests/research/test_jamp_audit_v1.py"
-      - "tests/research/snapshots/**"
-      - "docs/experiments/jamp_audit_v1/**"
-      - ".github/workflows/jamp-audit-v1.yml"
   workflow_dispatch:
     inputs:
       models:
-        description: "Registry keys or all"
-        required: true
+        type: string
         default: "all"
-        type: string
+        description: "'all' or comma-separated model keys"
       experiment_id:
-        description: "Canonical lowercase UUIDv4"
-        required: true
         type: string
-      execute:
-        description: "false = GET-only preflight; true = paid model requests"
         required: true
-        default: false
+        description: "UUIDv4 lowercase"
+      execute:
         type: boolean
+        default: false
+        description: "Send paid requests (requires experiment_id)"
 
 permissions:
   contents: read
@@ -72,7 +63,7 @@ jobs:
 
       - name: Execute selected models (paid; explicit dispatch input only)
         id: execute
-        if: github.event_name == 'workflow_dispatch' && inputs.execute == true
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.execute == true }}
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           MODELS_INPUT: ${{ inputs.models }}
