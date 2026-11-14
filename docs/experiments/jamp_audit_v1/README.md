@@ -84,6 +84,8 @@ A terminal manifest records enabled, available, skipped, executed, completed,
 failed, and still-running models. Skips and failures retain explicit reason
 records. Every executed model has metadata; every completed model additionally
 has a non-empty Markdown response whose exact bytes match `response_sha256`.
+Provider-reported token usage is preserved in both the terminal manifest and
+per-model metadata; the COST_BASELINE expansion gate checks that cross-reference.
 The verifier rejects missing/extra files, duplicates, inconsistent statuses,
 malformed hashes, identity drift, and non-terminal batches.
 
