@@ -124,10 +124,10 @@ def parse_model_response(
         payload = json.loads(response_text)
     except (LookupError, UnicodeDecodeError, json.JSONDecodeError):
         return {
+            **hashes,
             "status": "UNKNOWN",
             "reason": "MALFORMED_RESPONSE",
             "payload": None,
-            **hashes,
         }
     try:
         if (
@@ -150,10 +150,10 @@ def parse_model_response(
             validate_schema_instance(claim, claim_schema, "$response.claims")
     except (ValueError, TypeError, KeyError, json.JSONDecodeError):
         return {
+            **hashes,
             "status": "UNKNOWN",
             "reason": "MALFORMED_RESPONSE",
             "payload": None,
-            **hashes,
         }
     return {"status": "OBSERVED", "reason": None, "payload": payload, **hashes}
 
