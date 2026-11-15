@@ -29,38 +29,38 @@ class Claim:
     citation_url: str | None
 
 
-_URL_RE = re.compile(r"https?://[^\\s<>\\\"']+", re.IGNORECASE)
-_TICKER_RE = re.compile(r"\\b[A-Z]{3,5}\\b")
-_COMPANY_RE = re.compile(r"\\b[A-Z][a-z]+[A-Z][A-Za-z]*\\b")
+_URL_RE = re.compile(r"https?://[^\s<>\\"']+", re.IGNORECASE)
+_TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
+_COMPANY_RE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
 _NUMBER_RE = re.compile(
-    r"(?<![\\w/])(?P<value>\\d{1,3}(?:[ \\u00a0]\\d{3})*(?:[.,]\\d+)?|"
-    r"\\d+(?:[.,]\\d+)?)(?![\\w/])"
+    r"(?<![\w/])(?P<value>\d{1,3}(?:[ \u00a0]\d{3})*(?:[.,]\d+)?|"
+    r"\d+(?:[.,]\d+)?)(?![\w/])"
 )
 _CURRENCY_RE = re.compile(
-    r"₽|\\bруб(?:\\.|ля|лей|ль)?\\b|\\bRUB\\b|\\$|\\bUSD\\b|\\bдоллар(?:а|ов)?\\b",
+    r"₽|\bруб(?:\.|ля|лей|ль)?|\bRUB\b|\$|\bUSD\b|\bдоллар(?:а|ов)?\b",
     re.IGNORECASE,
 )
 _PRICE_WORD_RE = re.compile(
-    r"\\b(?:цен[ауы]|сто(?:ит|имость)|торгуется|достиг(?:ла|ло)?|"
-    r"составляет|равен|равна)\\b|=",
+    r"\b(?:цен[ауы]|сто(?:ит|имость)|торгуется|достиг(?:ла|ло)?|"
+    r"составляет|равен|равна)\b|=",
     re.IGNORECASE,
 )
-_YEAR_SUFFIX_RE = re.compile(r"^\\s*(?:году|года|год|г\\.)\\b", re.IGNORECASE)
+_YEAR_SUFFIX_RE = re.compile(r"^\s*(?:году|года|год|г\.)\b", re.IGNORECASE)
 _PERCENT_SUFFIX_RE = re.compile(
-    r"^\\s*(?:%|процент(?:а|ов)?\\b)", re.IGNORECASE
+    r"^\s*(?:%|процент(?:а|ов)?\b)", re.IGNORECASE
 )
 _PREDICTION_MARKER_RE = re.compile(
-    r"\\b(?:будет|будут|вырастет|вырастут|снизится|упад[её]т|"
-    r"прогноз(?:ирует|ируется)?|к\\s+20\\d{2})\\b",
+    r"\b(?:будет|будут|вырастет|вырастут|снизится|упад[её]т|"
+    r"прогноз(?:ирует|ируется)?|к\s+20\d{2})\b",
     re.IGNORECASE,
 )
 _CAUSAL_MARKER_RE = re.compile(
-    r"\\b(?:из-за|потому что|в связи с|благодаря|вследствие)\\b",
+    r"\b(?:из-за|потому что|в связи с|благодаря|вследствие)\b",
     re.IGNORECASE,
 )
 _EXISTENCE_MARKER_RE = re.compile(
-    r"\\b(?:объявил[аио]?|объявляет|запустил[аио]?|основан[ао]?|"
-    r"существует|объявила IPO|вышла на IPO|провела IPO)\\b",
+    r"\b(?:объявил[аио]?|объявляет|запустил[аио]?|основан[ао]?|"
+    r"существует|объявила IPO|вышла на IPO|провела IPO)\b",
     re.IGNORECASE,
 )
 _NON_TICKERS = {
@@ -73,7 +73,7 @@ _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 
 def _split_claim_text(text: str) -> list[str]:
     """Split on sentence punctuation without splitting decimal values."""
-    parts = re.split(r"(?<=[.!?])\\s+(?=[A-ZА-ЯЁ0-9«\\\"'])", text.strip())
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«\\"'])", text.strip())
     return [part.strip() for part in parts if part.strip()]
 
 
@@ -159,7 +159,7 @@ def _extract_value_and_currency(
         _, selected = min(after_markers, key=lambda item: item[0])
         currency = None
 
-    raw_value = selected.group("value").replace(" ", "").replace("\\u00a0", "")
+    raw_value = selected.group("value").replace(" ", "").replace("\u00a0", "")
     raw_value = raw_value.replace(",", ".")
     try:
         return float(raw_value), currency
