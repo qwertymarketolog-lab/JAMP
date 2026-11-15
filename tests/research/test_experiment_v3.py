@@ -4,6 +4,9 @@ import base64
 import hashlib
 import json
 import os
+import pathlib
+import runpy
+import sys
 import urllib.request
 from types import SimpleNamespace
 
@@ -155,3 +158,28 @@ def test_old_provider_calls_remain_compatible_without_raw_capture(monkeypatch):
     status, details = verify_claim_with_moex("SBER", "price", 299.26, price_tolerance=0.01)
     assert status == "E4_VERIFIED"
     assert "raw_evidence" not in details
+
+
+def test_mock_cli_runner_executes_all_cases_offline(tmp_path, monkeypatch):
+    script = pathlib.Path(__file__).resolve().parents[2] / "scripts/research/run_experiment_v3.py"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [str(script), "--mock", "--output-dir", str(tmp_path)],
+    )
+    try:
+        runpy.run_path(str(script), run_name="__main__")
+    except SystemExit as exc:
+        assert exc.code == 0
+    else:
+        raise AssertionError("CLI runner must terminate through SystemExit(0)")
+
+    result = json.loads((tmp_path / "experiment_v3_result.json").read_text(encoding="utf-8"))
+    assert result["mode"] == "MOCK"
+    assert result["status"] == "OBSERVED"
+    assert result["e2_invoked"] is False
+    assert [case["verdict"] for case in result["cases"]] == [
+        "VERIFIED",
+        "CONTRADICTED",
+        "INCONCLUSIVE",
+    ]
