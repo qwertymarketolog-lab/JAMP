@@ -180,8 +180,6 @@ jobs:
           else
             echo "No Python files changed."
           fi
-      - name: Baseline integrity
-        run: python tools/check_baseline.py --baseline "$(head -n 1 .jamp-baseline)"
       - name: Upload Vertical Experiment v1 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -189,3 +187,8 @@ jobs:
           name: vertical-experiment-v1-evidence
           path: artifacts/vertical-experiment/
           if-no-files-found: warn
+      - name: Cleanup generated Vertical Experiment files
+        if: always()
+        run: rm -rf artifacts/vertical-experiment
+      - name: Baseline integrity
+        run: python tools/check_baseline.py --baseline "$(head -n 1 .jamp-baseline)"
