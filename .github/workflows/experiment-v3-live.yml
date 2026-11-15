@@ -1,0 +1,60 @@
+name: Experiment v3 Live Claim Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_live_requests:
+        description: "Authorize the bounded live MOEX requests for the three Experiment v3 claims"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: experiment-v3-live-claims
+  cancel-in-progress: false
+
+jobs:
+  live-claims:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Refuse unless live requests are explicitly confirmed
+        if: ${{ inputs.confirm_live_requests != true }}
+        run: |
+          echo "REFUSE: confirm_live_requests must be true; no network request was made."
+          exit 1
+
+      - name: Checkout
+        if: ${{ inputs.confirm_live_requests == true }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: ${{ inputs.confirm_live_requests == true }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JAMP
+        if: ${{ inputs.confirm_live_requests == true }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run bounded live Experiment v3
+        if: ${{ inputs.confirm_live_requests == true }}
+        run: |
+          python scripts/research/run_experiment_v3.py \
+            --live --confirm-live \
+            --output-dir artifacts/research/experiment_v3/live_${{ github.run_id }}
+
+      - name: Upload RAW and derived evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-v3-live-evidence-${{ github.run_id }}
+          path: artifacts/research/experiment_v3/live_${{ github.run_id }}/
+          if-no-files-found: warn
+          retention-days: 90
