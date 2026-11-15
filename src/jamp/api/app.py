@@ -666,6 +666,8 @@ def create_app(
         trace_id = f"trace_{uuid4().hex[:8]}"
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
             output_text = output.get("content", "") if isinstance(output, dict) else ""
+            if not isinstance(output_text, str):
+                output_text = ""
             searchable_text = " ".join(
                 text for text in (payload.get("prompt", ""), output_text)
                 if isinstance(text, str)
@@ -683,7 +685,7 @@ def create_app(
                 if (
                     unit == "UNKNOWN"
                     or unit not in {None, "RUB", "USD"}
-                    or claim_type in {"entity_existence", "existence"}
+                    or claim_type == "entity_existence"
                 ):
                     claims.append(
                         {
@@ -694,7 +696,7 @@ def create_app(
                             "evidence": None,
                             "reason": (
                                 "CLAIM_TYPE_OUTSIDE_E4_SCOPE"
-                                if claim_type in {"entity_existence", "existence"}
+                                if claim_type == "entity_existence"
                                 else "CURRENCY_UNKNOWN_OR_UNSUPPORTED"
                             ),
                             "critical": bool(structured_claim.get("critical", False)),
