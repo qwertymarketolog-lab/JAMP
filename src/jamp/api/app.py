@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import base64
-import hmac
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -237,7 +237,7 @@ def create_app(
         if (
             isinstance(tolerance_pct, bool)
             or not isinstance(tolerance_pct, (int, float))
-            or not 0 <= float(tolerance_pct) < 100
+            or not 0 <= tolerance_pct < 100
         ):
             return JSONResponse(status_code=422, content={"detail": "tolerance_pct must be in [0, 100)"})
 
@@ -321,7 +321,7 @@ def create_app(
                     and item.get("status_code") == 200
                     and hashlib.sha256(body).hexdigest() == item.get("sha256_body")
                 )
-            except (KeyError, TypeError, Base64Error):
+            except (KeyError, TypeError, ValueError, Base64Error):
                 raw_valid = False
         if raw_status in {E4_VERIFIED, E4_CONTRADICTED} and not raw_valid:
             verdict, reason = "INCONCLUSIVE", "RAW_EVIDENCE_MISSING_OR_INVALID"

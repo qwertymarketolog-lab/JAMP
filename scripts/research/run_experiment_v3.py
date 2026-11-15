@@ -6,9 +6,9 @@ import argparse
 import base64
 import hashlib
 import json
+from contextlib import nullcontext
 import pathlib
 import sys
-from contextlib import nullcontext
 from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
