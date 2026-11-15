@@ -218,7 +218,6 @@ def create_app(
     @app.on_event("startup")
     def _startup_auth_check() -> None:
         verify_auth_config()
-
     @app.post("/v1/verify_claim", response_model=None)
     def verify_claim_direct(
         payload: dict[str, Any],
@@ -346,6 +345,43 @@ def create_app(
             "verification_mode": "DIRECT_E4_NO_E2",
         })
 
+    @app.post("/v1/audit_response", response_model=None)
+    def audit_response(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Research-only AnyModel E2 -> deterministic extractor -> E4 cycle."""
+        from scripts.research.run_experiment_v4 import run_live_cycle
+
+        if set(payload) - {"prompt", "model_id", "confirm_price"}:
+            return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
+        prompt = payload.get("prompt")
+        model_id = payload.get("model_id")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
+        if model_id != "ag/claude-sonnet-4-6":
+            return JSONResponse(status_code=422, content={"detail": "model_id is not enabled for Experiment v4"})
+        if payload.get("confirm_price") is not True:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
+                "http_request_made": False,
+            })
+        price_source = os.environ.get("JAMP_ANYMODEL_PRICE_SOURCE")
+        try:
+            confirmed_price = float(os.environ.get("JAMP_ANYMODEL_CONFIRMED_PRICE_USD", ""))
+        except ValueError:
+            confirmed_price = None
+        if os.environ.get("JAMP_ANYMODEL_PRICE_CONFIRMED") != "true":
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
+                "http_request_made": False,
+            })
+        result = run_live_cycle(
+            prompt, model_id, price_confirmed=True, price_source=price_source,
+            confirmed_price_usd=confirmed_price, full_cycle=True,
+        )
+        return JSONResponse(status_code=200, content=result)
+
     @app.post("/v1/verify", response_model=None)
     def verify(
         payload: dict[str, Any],
@@ -437,8 +473,7 @@ def create_app(
                 content={"detail": "verification could not be completed"},
             )
 
-        return JSONResponse(
-            status_code=201 if created else 200,
+        return JSONResponse(            status_code=201 if created else 200,
             content=stored,
         )
 
@@ -657,8 +692,7 @@ def create_app(
                 required,
                 "REFUSE",
                 reason,
-                len(eligible),
-                request_id=request_id,
+                len(eligible),                request_id=request_id,
                 refusal_reason=reason,
             )
             persistence.write_trace(trace, organization_id=organization.org_id)
@@ -877,8 +911,7 @@ def create_app(
                             raw_status = E4_VERIFIED if predicate_satisfied else E4_CONTRADICTED
                             details = {
                                 **details,
-                                "comparison": "greater_than",
-                                "threshold_usd": claimed_value,
+                                "comparison": "greater_than",                                "threshold_usd": claimed_value,
                                 "predicate_satisfied": predicate_satisfied,
                             }
                         source = "E4_COINGECKO"
@@ -1097,8 +1130,7 @@ def create_app(
                 },
                 refusal_reason=reason,
                 failure_diagnostics={
-                    "aggregate_status": aggregate_status,
-                    "claims": claims,
+                    "aggregate_status": aggregate_status,                    "claims": claims,
                     "critical_unverified": critical_unverified,
                     "model_verification": evidence_status,
                 },
@@ -1317,8 +1349,7 @@ def create_app(
             return {"status": "HINT_SENT"}
 
         # The executable-command guard above is fail-closed. Keep this
-        # defensive branch in case command parsing is extended independently.
-        return JSONResponse(
+        # defensive branch in case command parsing is extended independently.        return JSONResponse(
             status_code=503,
             content={
                 "status": "REFUSE",
@@ -1537,8 +1568,7 @@ def create_app(
         return response_body
 
     @app.get("/v1/universal-verdict/{trace_id}")
-    def get_universal_verdict(
-        trace_id: str,
+    def get_universal_verdict(        trace_id: str,
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
     ):
         """Return the last persisted UniversalVerdict envelope for trace_id.
