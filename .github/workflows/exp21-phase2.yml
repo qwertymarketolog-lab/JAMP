@@ -1,0 +1,62 @@
+name: EXP-21 Phase 2 Scheduling Experiment
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/exp21/**"
+      - ".github/workflows/exp21-phase2.yml"
+permissions:
+  contents: read
+jobs:
+  exp21-phase2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact PR HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify target SHA
+        env:
+          EXP21_TARGET_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$EXP21_TARGET_COMMIT"
+          test "$(git rev-parse HEAD)" = "$EXP21_TARGET_COMMIT"
+      - name: Install SciPy
+        run: python -m pip install scipy
+      - name: Execute EXP-21 Phase 2
+        env:
+          PYTHONPATH: src
+          EXP21_TARGET_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: python -m research.exp21.phase2_runner --output artifacts/research/exp21_phase2_results.json
+      - name: Validate evidence artifact
+        if: always()
+        env:
+          PYTHONPATH: src
+          EXP21_TARGET_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from research.exp21.phase2_contract import validate_artifact
+          p = Path("artifacts/research/exp21_phase2_results.json")
+          if not p.is_file(): raise SystemExit("artifact_missing")
+          a = json.loads(p.read_text(encoding="utf-8"))
+          ok, errors = validate_artifact(a, expected_target_commit=os.environ["EXP21_TARGET_COMMIT"])
+          print(json.dumps({"valid": ok, "errors": errors}, sort_keys=True))
+          if not ok: raise SystemExit(1)
+          PY
+      - name: Upload single Phase 2 evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp21-phase2-evidence
+          path: artifacts/research/exp21_phase2_results.json
+          if-no-files-found: error
+          retention-days: 30
