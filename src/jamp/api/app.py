@@ -799,7 +799,7 @@ def create_app(
                             reason="CLAIM_TYPE_OUTSIDE_E4_PRICE_SCOPE",
                         )
                     elif re.search(
-                        r"\\b(?:19|20)\\d{2}\\b|историческ\\w*|в прошлом году",
+                        r"\b(?:19|20)\d{2}\b|историческ\w*|в прошлом году",
                         extracted.text,
                         re.IGNORECASE,
                     ):
