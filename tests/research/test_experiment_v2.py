@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import importlib.util
+import io
 import json
 import sys
 import urllib.error
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -16,7 +15,7 @@ SCRIPT_DIR = ROOT / "scripts" / "research"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from evidence_http import capture_http  # noqa: E402
-from run_experiment_v2 import derive_result, parse_value  # noqa: E402
+from run_experiment_v2 import derive_result, parse_value, run_replay  # noqa: E402
 
 
 MOEX_TEST_BYTES = json.dumps(
@@ -95,26 +94,18 @@ def test_capture_records_http_error_body(tmp_path, monkeypatch):
     import evidence_http
 
     body = b'{"error":"rate limited"}'
-
-    def raise_http_error(_request, _timeout):
-        raise urllib.error.HTTPError(
-            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
-            429,
-            "Too Many Requests",
-            {"Retry-After": "60", "Content-Type": "application/json"},
-            None,
-        )
-
     error = urllib.error.HTTPError(
         "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
         429,
         "Too Many Requests",
         {"Retry-After": "60", "Content-Type": "application/json"},
-        None,
+        io.BytesIO(body),
     )
-    error.read = lambda _size=-1: body
-    error.close = lambda: None
-    monkeypatch.setattr(evidence_http, "_open_request", lambda *_args: (_ for _ in ()).throw(error))
+    monkeypatch.setattr(
+        evidence_http,
+        "_open_request",
+        lambda *_args: (_ for _ in ()).throw(error),
+    )
 
     record = capture_http(
         source="CoinGecko",
@@ -125,6 +116,26 @@ def test_capture_records_http_error_body(tmp_path, monkeypatch):
     assert record["error_type"] == "HTTPError"
     assert record["response_headers"]["retry-after"] == "60"
     assert (tmp_path / "coingecko.body").read_bytes() == body
+
+
+def test_transport_failure_is_saved_as_raw_evidence(tmp_path, monkeypatch):
+    import evidence_http
+
+    monkeypatch.setattr(
+        evidence_http,
+        "_open_request",
+        lambda *_args: (_ for _ in ()).throw(TimeoutError("private detail")),
+    )
+    record = capture_http(
+        source="MOEX",
+        url="https://iss.moex.com/iss/engines/stock/markets/shares/securities/SBER.json?iss.meta=off",
+        output_dir=tmp_path,
+    )
+    assert record["status_code"] is None
+    assert record["error_type"] == "TimeoutError"
+    assert record["error_message"] == "request failed before a complete HTTP response was received"
+    assert record["sha256_body"] == hashlib.sha256(b"").hexdigest()
+    assert (tmp_path / "moex.body").read_bytes() == b""
 
 
 def test_derived_result_never_qualifies_without_claim_context():
@@ -152,6 +163,27 @@ def test_derived_result_refuses_hash_mismatch():
     assert result["reason"] == "RAW_BODY_HASH_MISMATCH"
 
 
+def test_replay_reads_and_verifies_saved_raw_records(tmp_path):
+    for source, body in (("MOEX", MOEX_TEST_BYTES), ("CoinGecko", COINGECKO_TEST_BYTES)):
+        (tmp_path / f"{source.lower()}.body").write_bytes(body)
+        record = {
+            "schema": "jamp.raw-http-evidence.v1",
+            "source": source,
+            "status_code": 200,
+            "body_complete": True,
+            "sha256_body": hashlib.sha256(body).hexdigest(),
+            "raw_body_base64": base64.b64encode(body).decode("ascii"),
+        }
+        (tmp_path / f"{source.lower()}.raw.json").write_text(
+            json.dumps(record), encoding="utf-8"
+        )
+    output = tmp_path / "derived"
+    result = run_replay(tmp_path, output)
+    assert result["status"] == "OBSERVED"
+    assert all(item["jamp_verdict"] == "INCONCLUSIVE" for item in result["source_results"])
+    assert (output / "experiment_v2_result.json").is_file()
+
+
 def test_capture_refuses_unlisted_hosts_before_network(tmp_path, monkeypatch):
     import evidence_http
 
@@ -166,3 +198,10 @@ def test_capture_refuses_unlisted_hosts_before_network(tmp_path, monkeypatch):
             url="https://example.com/api",
             output_dir=tmp_path,
         )
+
+
+def test_live_runner_requires_explicit_confirmation(tmp_path):
+    from run_experiment_v2 import run_live
+
+    with pytest.raises(SystemExit, match="confirm-live"):
+        run_live(tmp_path, confirm_live=False)

@@ -13,10 +13,15 @@ from typing import Any
 from urllib.parse import urlsplit
 
 MAX_BODY_BYTES = 1024 * 1024
-ALLOWED_ENDPOINTS = {
-    ("iss.moex.com", "/iss/engines/stock/markets/shares/securities/SBER.json"),
-    ("api.coingecko.com", "/api/v3/simple/price"),
-}
+MOEX_URL = (
+    "https://iss.moex.com/iss/engines/stock/markets/shares/securities/"
+    "SBER.json?iss.meta=off"
+)
+COINGECKO_URL = (
+    "https://api.coingecko.com/api/v3/simple/price?"
+    "ids=bitcoin&vs_currencies=usd"
+)
+ALLOWED_URLS = {MOEX_URL, COINGECKO_URL}
 SAFE_RESPONSE_HEADERS = {
     "content-type",
     "date",
@@ -75,7 +80,14 @@ def capture_http(
     if source not in {"MOEX", "CoinGecko"}:
         raise ValueError("unsupported evidence source")
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or (parsed.hostname, parsed.path) not in ALLOWED_ENDPOINTS:
+    if (
+        parsed.scheme != "https"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or parsed.port not in (None, 443)
+        or url not in ALLOWED_URLS
+    ):
         raise ValueError("URL is outside the experiment endpoint allowlist")
     if timeout <= 0 or max_bytes <= 0:
         raise ValueError("timeout and max_bytes must be positive")

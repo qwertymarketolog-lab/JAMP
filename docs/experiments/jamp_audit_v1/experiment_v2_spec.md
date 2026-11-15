@@ -18,7 +18,7 @@ This experiment proves only that JAMP can acquire, preserve, hash, and parse the
 - The explicit boolean input `confirm_live_requests` defaults to false. Without it, the runner refuses to make requests.
 - Exactly one sequential GET per source; no retries, no polling, no parallel requests, no API keys, no paid endpoints.
 - Timeout: 5 seconds per request. Maximum captured body: 1 MiB per source.
-- HTTPS and exact source host/path allowlist only. Redirects are not followed.
+- HTTPS and exact source URL allowlist only. Redirects are not followed.
 - Network errors and HTTP errors are recorded as evidence. They are not silently converted into success.
 - The workflow uploads its artifact with `if: always()`, including when a request fails.
 - Pull-request CI makes no network requests. Unit tests use explicitly labelled test-only byte fixtures.
@@ -56,7 +56,7 @@ RAW records and body files contain acquisition facts only. They MUST NOT contain
 
 A separate `experiment_v2_result.json` contains, per source:
 
-- `raw_record_sha256`: SHA-256 of the serialized raw-record file;
+- `raw_record_sha256`: SHA-256 of the canonical JSON encoding of the raw record (sorted keys);
 - `body_sha256_verified`: whether the saved body matches `sha256_body`;
 - `parsed_value`: a positive finite numeric MOEX `marketdata.LAST` or CoinGecko `bitcoin.usd`, otherwise null;
 - `parse_status`: `PARSED` or `INCONCLUSIVE`;
