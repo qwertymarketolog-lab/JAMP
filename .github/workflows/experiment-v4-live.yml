@@ -1,0 +1,128 @@
+name: Experiment v4 Live AnyModel Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_budget_usd:
+        description: "Hard request budget in USD"
+        required: true
+        type: number
+        default: 0.01
+      max_tokens:
+        description: "Maximum generated output tokens"
+        required: true
+        type: number
+        default: 256
+      confirm_live_requests:
+        description: "Authorize one AnyModel request"
+        required: true
+        type: boolean
+        default: false
+      confirm_price:
+        description: "Manually confirm model price using supplied source and amount"
+        required: true
+        type: boolean
+        default: false
+      price_source:
+        description: "Pricing source URL or exact reference"
+        required: false
+        type: string
+        default: ""
+      confirmed_price_usd:
+        description: "Operator-confirmed positive USD amount for this bounded request"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: experiment-v4-live-anymodel
+  cancel-in-progress: false
+
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Refuse unless live request and price are explicitly confirmed
+        env:
+          CONFIRM_LIVE: ${{ inputs.confirm_live_requests }}
+          CONFIRM_PRICE: ${{ inputs.confirm_price }}
+          PRICE_SOURCE: ${{ inputs.price_source }}
+          CONFIRMED_PRICE_USD: ${{ inputs.confirmed_price_usd }}
+          MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ inputs.max_tokens }}
+        run: |
+          if [ "$CONFIRM_LIVE" != "true" ]; then
+            echo "REFUSE: confirm_live_requests must be true; no request made."
+            exit 1
+          fi
+          if [ "$CONFIRM_PRICE" != "true" ] || [ -z "$PRICE_SOURCE" ]; then
+            echo "REFUSE: explicit price confirmation and source required; no request made."
+            exit 1
+          fi
+          python - "$CONFIRMED_PRICE_USD" "$MAX_BUDGET_USD" "$MAX_TOKENS" <<'PY'
+          import math
+          import sys
+          try:
+              confirmed_price = float(sys.argv[1])
+              max_budget = float(sys.argv[2])
+              max_tokens_value = int(sys.argv[3])
+          except (ValueError, IndexError):
+              raise SystemExit("REFUSE: invalid price, max_budget_usd, or max_tokens")
+          if not math.isfinite(confirmed_price) or confirmed_price <= 0:
+              raise SystemExit("REFUSE: confirmed_price_usd must be finite and positive")
+          if not math.isfinite(max_budget) or max_budget <= 0:
+              raise SystemExit("REFUSE: max_budget_usd must be finite and positive")
+          if max_tokens_value <= 0:
+              raise SystemExit("REFUSE: max_tokens must be a positive integer")
+          max_input_tokens = 8192
+          estimated_cost = (max_input_tokens + max_tokens_value) * 0.12 / 1_000_000
+          print(f"estimated_cost_usd={estimated_cost:.8f}")
+          if estimated_cost > max_budget:
+              raise SystemExit(
+                  f"REFUSE: estimated_cost_usd={estimated_cost:.8f} "
+                  f"> max_budget_usd={max_budget:.8f}; no request made."
+              )
+          PY
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install JAMP
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run one guarded AnyModel probe (no E4)
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          PRICE_SOURCE: ${{ inputs.price_source }}
+          CONFIRMED_PRICE_USD: ${{ inputs.confirmed_price_usd }}
+          MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ inputs.max_tokens }}
+        run: |
+          python scripts/research/run_experiment_v4.py \
+            --live --confirm-live --price-confirmed \
+            --price-source "$PRICE_SOURCE" \
+            --confirmed-price-usd "$CONFIRMED_PRICE_USD" \
+            --max-budget-usd "$MAX_BUDGET_USD" \
+            --max-tokens "$MAX_TOKENS" \
+            --model ag/claude-sonnet-4-6 \
+            --output-dir "artifacts/research/experiment_v4/live_${GITHUB_RUN_ID}"
+
+      - name: Upload RAW and derived evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-v4-live-evidence-${{ github.run_id }}
+          path: artifacts/research/experiment_v4/live_${{ github.run_id }}/
+          if-no-files-found: warn
+          retention-days: 90

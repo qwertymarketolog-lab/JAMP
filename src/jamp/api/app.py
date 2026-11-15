@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import time
@@ -24,7 +25,7 @@ from jamp.db.verdicts import (
     list_verdicts_for_organization,
     persist_or_get_verdict,
 )
-from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.anymodel import AnyModelBudgetError, AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
@@ -344,6 +345,193 @@ def create_app(
             "raw_evidence": raw_evidence,
             "tolerance_pct": float(tolerance_pct),
             "verification_mode": "DIRECT_E4_NO_E2",
+        })
+
+    @app.post("/v1/audit_response", response_model=None)
+    def audit_response(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Research-only AnyModel E2 -> deterministic extractor -> E4 cycle."""
+        if set(payload) - {"prompt", "model_id", "confirm_price", "max_tokens", "max_budget_usd"}:
+            return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
+        prompt = payload.get("prompt")
+        model_id = payload.get("model_id")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
+        max_tokens = payload.get("max_tokens")
+        max_budget_usd = payload.get("max_budget_usd")
+        if (
+            isinstance(max_tokens, bool)
+            or not isinstance(max_tokens, int)
+            or max_tokens <= 0
+        ):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "max_tokens must be a positive integer"},
+            )
+        if (
+            isinstance(max_budget_usd, bool)
+            or not isinstance(max_budget_usd, (int, float))
+            or not math.isfinite(max_budget_usd)
+            or max_budget_usd <= 0
+        ):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "max_budget_usd must be finite and positive"},
+            )
+        if model_id != "ag/claude-sonnet-4-6":
+            return JSONResponse(status_code=422, content={
+                "detail": "model_id is not enabled for Experiment v4"
+            })
+        if payload.get("confirm_price") is not True:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
+                "http_request_made": False,
+            })
+        price_source = os.environ.get("JAMP_ANYMODEL_PRICE_SOURCE")
+        try:
+            confirmed_price = float(
+                os.environ.get("JAMP_ANYMODEL_CONFIRMED_PRICE_USD", "")
+            )
+        except ValueError:
+            confirmed_price = None
+        if (
+            os.environ.get("JAMP_ANYMODEL_PRICE_CONFIRMED") != "true"
+            or not price_source
+            or confirmed_price is None
+            or confirmed_price <= 0
+        ):
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
+                "http_request_made": False,
+            })
+        api_key = os.environ.get("ANYMODEL_API_KEY")
+        if not api_key:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PROVIDER_NOT_CONFIGURED",
+                "http_request_made": False,
+            })
+
+        capture: dict[str, Any] = {}
+
+        class CapturedResponse:
+            def __init__(self, response: Any) -> None:
+                self.response = response
+
+            def __enter__(self):
+                self.response.__enter__()
+                return self
+
+            def __exit__(self, exc_type: Any, exc: Any, tb: Any):
+                return self.response.__exit__(exc_type, exc, tb)
+
+            def read(self, *args: Any, **kwargs: Any) -> bytes:
+                body = self.response.read(*args, **kwargs)
+                capture["body"] = body
+                return body
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self.response, name)
+
+        def capture_opener(request: Any, timeout: float):
+            response = urlopen(request, timeout=timeout)
+            capture.update(
+                status_code=int(getattr(response, "status", 200)),
+                reason=str(getattr(response, "reason", "")),
+                headers=list(response.headers.items()),
+            )
+            return CapturedResponse(response)
+
+        try:
+            provider_result = AnyModelChatExecutor(
+                api_key, opener=capture_opener
+            ).execute(
+                model_id, {"prompt": prompt}, max_tokens=max_tokens,
+                max_budget_usd=max_budget_usd,
+            )
+            body = capture.get("body")
+            if not isinstance(body, bytes):
+                raise AnyModelError("AnyModel response body was not captured")
+            status_line = (
+                f"HTTP/1.1 {capture['status_code']} {capture.get('reason', '')}\r\n"
+            )
+            header_block = "".join(
+                f"{key}: {value}\r\n" for key, value in capture.get("headers", [])
+            )
+            raw_http = (status_line + header_block + "\r\n").encode("iso-8859-1") + body
+            raw_anymodel = {
+                "status_code": capture["status_code"],
+                "headers": capture.get("headers", []),
+                "body_base64": base64.b64encode(body).decode("ascii"),
+                "body_sha256": hashlib.sha256(body).hexdigest(),
+                "http_representation_base64": base64.b64encode(raw_http).decode("ascii"),
+                "http_representation_sha256": hashlib.sha256(raw_http).hexdigest(),
+                "capture_note": "Response API representation, not packet-level wire capture.",
+            }
+        except AnyModelBudgetError as exc:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": str(exc),
+                "http_request_made": False,
+            })
+        except Exception as exc:
+            return JSONResponse(status_code=200, content={
+                "status": "INCONCLUSIVE",
+                "reason": f"ANYMODEL_REQUEST_FAILED:{type(exc).__name__}",
+                "http_request_made": True,
+            })
+
+        actual_model = (
+            provider_result.get("provider_model_id")
+        )
+        response_id = provider_result.get("provider_response_id")
+        content = provider_result.get("content")
+        if (
+            isinstance(response_id, str) and response_id.strip().lower() == "chatcmpl-abc123"
+        ) or (
+            isinstance(actual_model, str)
+            and actual_model.strip().lower() in {"openai/gpt-5", "gpt-5"}
+        ) or (
+            isinstance(content, str) and "i'm an ai assistant" in content.lower()
+        ):
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "MOCK_DETECTED",
+                "requested_model": model_id, "response_model": actual_model,
+                "response_id": response_id, "raw_anymodel": raw_anymodel,
+                "http_request_made": True,
+            })
+        if actual_model != model_id:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "MODEL_MISMATCH",
+                "requested_model": model_id, "response_model": actual_model,
+                "response_id": response_id, "raw_anymodel": raw_anymodel,
+                "http_request_made": True,
+            })
+        if not isinstance(content, str) or not content.strip():
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "EMPTY_MODEL_CONTENT",
+                "raw_anymodel": raw_anymodel, "http_request_made": True,
+            })
+
+        e4_response = verify_claim_direct({"text": content}, organization)
+        e4_result = json.loads(e4_response.body.decode("utf-8"))
+        e4_result["verification_mode"] = "E2_TO_E4_V4"
+        return JSONResponse(status_code=200, content={
+            "status": "OBSERVED",
+            "reason": "PREFLIGHT_OK",
+            "requested_model": model_id,
+            "response_model": actual_model,
+            "response_id": response_id,
+            "content": content,
+            "raw_anymodel": raw_anymodel,
+            "price_attestation": {
+                "manual_confirmation": True,
+                "price_source": price_source,
+                "confirmed_price_usd": confirmed_price,
+            },
+            "http_request_made": True,
+            "e2_preflight": "PREFLIGHT_OK",
+            "e4": e4_result,
         })
 
     @app.post("/v1/verify", response_model=None)
