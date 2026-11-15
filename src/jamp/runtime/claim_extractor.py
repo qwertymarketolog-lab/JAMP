@@ -87,7 +87,7 @@ _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 
 def _split_claim_text(text: str) -> list[str]:
     """Split on sentence punctuation without splitting decimal values."""
-    parts = re.split(r'''(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''', text.strip())
+    parts = re.split(r'''(?<![гГ]\.)(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''', text.strip())
     return [part.strip() for part in parts if part.strip()]
 
 
