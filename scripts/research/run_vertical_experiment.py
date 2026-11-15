@@ -15,6 +15,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from jamp.api.auth import OrganizationContext
+
 from jamp.provider.coingecko_verify import E4_CONTRADICTED as CG_CONTRADICTED
 from jamp.provider.coingecko_verify import E4_OUT_OF_SCOPE as CG_OUT_OF_SCOPE
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_OUT_OF_SCOPE, E4_VERIFIED
@@ -123,6 +125,9 @@ def run_vertical_experiment(
             executor=executor,
             audit_storage_path=output_file.parent / "audit.jsonl",
             telegram_update_db_path=output_file.parent / "telegram-updates.sqlite",
+        )
+        app.dependency_overrides[app_module.require_api_key] = lambda: OrganizationContext(
+            org_id="vertical-experiment", org_name="Vertical Experiment"
         )
         client = TestClient(app)
         try:
