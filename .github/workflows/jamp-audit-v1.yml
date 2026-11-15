@@ -16,6 +16,8 @@ on:
       - "docs/experiments/jamp_audit_v1/AMBIGUOUS_PROTOCOL.md"
       - "tests/research/test_verdict_harness.py"
       - "tests/research/**"
+      - "scripts/research/run_vertical_experiment.py"
+      - "docs/experiments/jamp_audit_v1/vertical_experiment_v1.json"
   workflow_dispatch:
     inputs:
       models:
@@ -63,6 +65,11 @@ jobs:
         id: tests
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.execute == true)
         run: python -m pytest -q tests/research/test_jamp_audit_v1.py tests/research/test_jamp_audit_v1_guardrails.py tests/research/test_verdict_harness.py
+
+      - name: Run offline E4 vertical experiment
+        id: vertical
+        if: github.event_name == 'pull_request'
+        run: python scripts/research/run_vertical_experiment.py
 
       - name: Verify committed snapshots
         id: snapshots
@@ -164,6 +171,15 @@ jobs:
           }
           output.write_text(json.dumps(record, indent=2) + chr(10), encoding='utf-8')
           PY
+
+      - name: Upload E4 vertical experiment evidence
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamp-e4-vertical-${{ github.run_id }}
+          path: artifacts/research/jamp_audit_v1/vertical_experiment/
+          if-no-files-found: warn
+          retention-days: 90
 
       - name: Upload evidence
         if: always()
