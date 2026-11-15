@@ -43,7 +43,7 @@ _PRICE_WORD_RE = re.compile(
     r"составляет|равен|равна)\b|=",
     re.IGNORECASE,
 )
-_YEAR_SUFFIX_RE = re.compile(r"^\s*(?:году|года|год|г\.)\b", re.IGNORECASE)
+_YEAR_SUFFIX_RE = re.compile(r"^\s*(?:году|года|год\b|г\.)", re.IGNORECASE)
 _PERCENT_SUFFIX_RE = re.compile(
     r"^\s*(?:%|процент(?:а|ов)?\b)", re.IGNORECASE
 )
