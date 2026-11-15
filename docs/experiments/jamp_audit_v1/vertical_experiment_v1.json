@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "JAMP-E4-VERTICAL-10",
+  "title": "E4 Vertical Experiment v1 — deterministic MOEX/CoinGecko mocks",
+  "mode": "offline_mock_only",
+  "network_policy": "No provider network access. Every E4 provider call is monkeypatched to deterministic fixture data.",
+  "fixture_policy": {
+    "moex": {
+      "securities": {
+        "SBER": {
+          "last": 300,
+          "currency": "RUB"
+        },
+        "GAZP": {
+          "last": 150,
+          "currency": "RUB"
+        }
+      },
+      "comparison": "exact",
+      "note": "The experiment deliberately uses exact comparison; this does not alter production MOEX tolerance."
+    },
+    "coingecko": {
+      "bitcoin": {
+        "usd": 65000
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "C1",
+      "text": "Цена SBER составляет 300 RUB",
+      "expected_e4": "VERIFIED",
+      "provider": "MOEX",
+      "ticker": "SBER",
+      "claimed_value": 300,
+      "reason": "Exact mock fixture match."
+    },
+    {
+      "id": "C2",
+      "text": "Цена SBER составляет 5000 RUB",
+      "expected_e4": "CONTRADICTED",
+      "provider": "MOEX",
+      "ticker": "SBER",
+      "claimed_value": 5000,
+      "reason": "Claim differs from SBER mock price 300 RUB."
+    },
+    {
+      "id": "C3",
+      "text": "Цена BTC составляет 65000 USD",
+      "expected_e4": "VERIFIED",
+      "provider": "CoinGecko",
+      "ticker": "BTC",
+      "claimed_value": 65000,
+      "reason": "Exact mock fixture match."
+    },
+    {
+      "id": "C4",
+      "text": "Цена SBER составляет 300",
+      "expected_e4": "INCONCLUSIVE",
+      "provider": null,
+      "ticker": "SBER",
+      "claimed_value": 300,
+      "reason": "Currency is not established."
+    },
+    {
+      "id": "C5",
+      "text": "Компания FakeTech объявила IPO",
+      "expected_e4": "INCONCLUSIVE",
+      "provider": null,
+      "ticker": null,
+      "claimed_value": null,
+      "reason": "Entity existence / IPO event is outside E4 price-verification scope."
+    },
+    {
+      "id": "C6",
+      "text": "В 2025 году SBER стоил 300 RUB",
+      "expected_e4": "INCONCLUSIVE",
+      "provider": null,
+      "ticker": "SBER",
+      "claimed_value": 300,
+      "reason": "Current MOEX quote cannot establish a historical 2025 price."
+    },
+    {
+      "id": "C7",
+      "text": "SBER вырос на 5% до 290 RUB",
+      "expected_e4": "CONTRADICTED",
+      "provider": "MOEX",
+      "ticker": "SBER",
+      "claimed_value": 290,
+      "reason": "Extracted numeric price 290 differs from exact SBER mock price 300; percentage is not used to override price comparison."
+    },
+    {
+      "id": "C8",
+      "text": "Завтра SBER будет стоить 1000 RUB",
+      "expected_e4": "INCONCLUSIVE",
+      "provider": null,
+      "ticker": "SBER",
+      "claimed_value": 1000,
+      "reason": "Prediction is outside E4 factual price-verification scope."
+    },
+    {
+      "id": "C9",
+      "text": "SBER упал из-за отчета на 5% до 290 RUB",
+      "expected_e4": "INCONCLUSIVE",
+      "provider": null,
+      "ticker": "SBER",
+      "claimed_value": 290,
+      "reason": "Causal claim is outside E4 price-verification scope."
+    },
+    {
+      "id": "C10",
+      "text": "Цена GAZP составляет 150 RUB",
+      "expected_e4": "VERIFIED",
+      "provider": "MOEX",
+      "ticker": "GAZP",
+      "claimed_value": 150,
+      "reason": "Exact mock fixture match for second MOEX security."
+    }
+  ]
+}
