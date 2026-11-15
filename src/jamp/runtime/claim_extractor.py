@@ -111,7 +111,8 @@ def _extract_currency(
     currencies: set[Currency] = set()
     for match in _CURRENCY_RE.finditer(nearby):
         token = match.group(0).lower()
-        currencies.add("RUB" if token in {"₽", "руб", "руб.", "рубля", "рублей", "рубль", "rub"} else "USD")
+        currency_code = "RUB" if token in {"₽", "руб", "руб.", "рубля", "рублей", "рубль", "rub"} else "USD"
+        currencies.add(currency_code)
     if len(currencies) == 1:
         return currencies.pop()
     return None
