@@ -4,8 +4,8 @@ import base64
 import hashlib
 import json
 import os
-from types import SimpleNamespace
 import urllib.request
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
