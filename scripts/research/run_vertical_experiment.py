@@ -19,6 +19,7 @@ from jamp.api.auth import OrganizationContext
 
 from jamp.provider.coingecko_verify import E4_CONTRADICTED as CG_CONTRADICTED
 from jamp.provider.coingecko_verify import E4_OUT_OF_SCOPE as CG_OUT_OF_SCOPE
+from jamp.provider.coingecko_verify import E4_VERIFIED as CG_VERIFIED
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_OUT_OF_SCOPE, E4_VERIFIED
 from jamp.runtime.claim_extractor import extract_claims
 
