@@ -77,6 +77,7 @@ def main() -> int:
     os.environ.setdefault("JAMP_API_KEY_HASH_SECRET", "experiment-v3-auth-secret")
 
     from fastapi.testclient import TestClient
+
     from jamp.api import create_app
     from jamp.api.auth import require_api_key
 
