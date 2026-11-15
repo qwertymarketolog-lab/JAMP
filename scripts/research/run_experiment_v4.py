@@ -11,6 +11,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import (
@@ -92,6 +93,47 @@ def _finalize_raw(capture: dict[str, Any]) -> dict[str, Any]:
             "Complete headers/body exposed by urllib; HTTP representation is reconstructed "
             "from the response API, not a packet-level wire capture."
         ),
+    }
+
+
+_PROVIDER_SECRET_RE = re.compile(r"sk-[A-Za-z0-9_-]{8,}")
+
+
+def _redact_diagnostic(value: Any, api_key: str | None) -> str:
+    text = str(value)
+    if api_key:
+        text = text.replace(api_key, "[REDACTED]")
+    return _PROVIDER_SECRET_RE.sub("[REDACTED]", text)
+
+
+def _safe_error_headers(headers: Any, api_key: str | None) -> list[list[str]]:
+    if headers is None:
+        return []
+    try:
+        items = headers.items()
+    except AttributeError:
+        return []
+    return [
+        [_redact_diagnostic(name, api_key), _redact_diagnostic(value, api_key)]
+        for name, value in items
+    ]
+
+
+def _http_error_evidence(exc: HTTPError, api_key: str | None) -> dict[str, Any]:
+    try:
+        body = exc.read()
+    except OSError as read_error:
+        body = f"[ERROR_BODY_READ_FAILED:{type(read_error).__name__}]".encode()
+    error_body = body.decode("utf-8", errors="replace") if isinstance(body, bytes) else str(body)
+    return {
+        "status": "INCONCLUSIVE",
+        "reason": f"ANYMODEL_HTTP_ERROR:{exc.code}",
+        "http_request_made": True,
+        "error_type": "HTTPError",
+        "http_status": int(exc.code),
+        "http_reason": _redact_diagnostic(exc.reason, api_key),
+        "error_body": _redact_diagnostic(error_body, api_key),
+        "error_headers": _safe_error_headers(exc.headers, api_key),
     }
 
 
@@ -262,11 +304,38 @@ def run_live_cycle(
             "estimated_cost_usd": estimated_cost, "max_budget_usd": max_budget_usd,
             "http_request_made": False, "price_attestation": attestation,
         }
-    except Exception as exc:
+    except HTTPError as exc:
+        failure = _http_error_evidence(exc, key)
+        failure["price_attestation"] = attestation
+        return failure
+    except TimeoutError as exc:
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "ANYMODEL_REQUEST_TIMEOUT",
+            "http_request_made": True,
+            "error_type": "socket.timeout",
+            "error_reason": _redact_diagnostic(exc, key),
+            "raw_anymodel": _safe_raw(capture),
+            "price_attestation": attestation,
+        }
+    except URLError as exc:
+        error_type = "socket.timeout" if isinstance(exc.reason, TimeoutError) else "URLError"
+        return {
+            "status": "INCONCLUSIVE",
+            "reason": "ANYMODEL_TRANSPORT_ERROR",
+            "http_request_made": True,
+            "error_type": error_type,
+            "error_reason": _redact_diagnostic(exc.reason, key),
+            "raw_anymodel": _safe_raw(capture),
+            "price_attestation": attestation,
+        }
+    except AnyModelError as exc:
         return {
             "status": "INCONCLUSIVE",
             "reason": f"ANYMODEL_REQUEST_FAILED:{type(exc).__name__}",
             "http_request_made": True,
+            "error_type": type(exc).__name__,
+            "error_reason": _redact_diagnostic(exc, key),
             "raw_anymodel": _safe_raw(capture),
             "price_attestation": attestation,
         }

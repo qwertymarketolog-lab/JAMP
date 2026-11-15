@@ -306,3 +306,68 @@ def test_legacy_anymodel_call_logs_512_token_compatibility(caplog) -> None:
     executor(experiment_v4.DEFAULT_MODEL, {"prompt": "Hi"})
     assert observed["body"]["max_tokens"] == 512
     assert "Legacy AnyModelChatExecutor.__call__" in caplog.text
+
+
+
+def test_live_cycle_preserves_redacted_http_error_diagnostics(monkeypatch) -> None:
+    from email.message import Message
+    from io import BytesIO
+    from urllib.error import HTTPError
+
+    api_key = "sk-test-secret-1234567890"
+    headers = Message()
+    headers["Content-Type"] = "application/json"
+    headers["X-RateLimit-Remaining"] = "0"
+    headers["X-Diagnostic"] = api_key
+    body = b'{"error":"Rate limit exceeded","credential":"sk-provider-secret-1234567890"}'
+
+    class FailingExecutor:
+        def __init__(self, api_key, *, opener):
+            self.api_key = api_key
+
+        def execute(self, *args, **kwargs):
+            raise HTTPError(
+                "https://anymodel.invalid/v1/chat/completions", 429,
+                "Too Many Requests", headers, BytesIO(body),
+            )
+
+    monkeypatch.setattr(experiment_v4, "AnyModelChatExecutor", FailingExecutor)
+    result = experiment_v4.run_live_cycle(
+        "Say exactly: OK", experiment_v4.DEFAULT_MODEL,
+        price_confirmed=True, price_source="test pricing source",
+        confirmed_price_usd=0.01, api_key=api_key,
+        max_tokens=256, max_budget_usd=0.01,
+    )
+
+    serialized = json.dumps(result)
+    assert result["status"] == "INCONCLUSIVE"
+    assert result["http_request_made"] is True
+    assert result["error_type"] == "HTTPError"
+    assert result["http_status"] == 429
+    assert result["http_reason"] == "Too Many Requests"
+    assert "Rate limit exceeded" in result["error_body"]
+    assert ["X-RateLimit-Remaining", "0"] in result["error_headers"]
+    assert api_key not in serialized
+    assert "sk-provider-secret-1234567890" not in serialized
+    assert "[REDACTED]" in serialized
+
+
+def test_anymodel_executor_does_not_swallow_http_error() -> None:
+    from io import BytesIO
+    from urllib.error import HTTPError
+
+    failure = HTTPError(
+        "https://anymodel.invalid/v1/chat/completions", 401,
+        "Unauthorized", {}, BytesIO(b'{"error":"invalid key"}'),
+    )
+
+    def failing_opener(request, timeout):
+        raise failure
+
+    executor = AnyModelChatExecutor("test-key", opener=failing_opener)
+    with pytest.raises(HTTPError) as captured:
+        executor.execute(
+            experiment_v4.DEFAULT_MODEL, {"prompt": "Say exactly: OK"},
+            max_tokens=256, max_budget_usd=0.01, max_input_tokens=8192,
+        )
+    assert captured.value.code == 401
