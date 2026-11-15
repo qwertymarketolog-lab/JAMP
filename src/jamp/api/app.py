@@ -361,15 +361,25 @@ def create_app(
             return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
         max_tokens = payload.get("max_tokens")
         max_budget_usd = payload.get("max_budget_usd")
-        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
-            return JSONResponse(status_code=422, content={"detail": "max_tokens must be a positive integer"})
+        if (
+            isinstance(max_tokens, bool)
+            or not isinstance(max_tokens, int)
+            or max_tokens <= 0
+        ):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "max_tokens must be a positive integer"},
+            )
         if (
             isinstance(max_budget_usd, bool)
             or not isinstance(max_budget_usd, (int, float))
             or not math.isfinite(max_budget_usd)
             or max_budget_usd <= 0
         ):
-            return JSONResponse(status_code=422, content={"detail": "max_budget_usd must be finite and positive"})
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "max_budget_usd must be finite and positive"},
+            )
         if model_id != "ag/claude-sonnet-4-6":
             return JSONResponse(status_code=422, content={
                 "detail": "model_id is not enabled for Experiment v4"
