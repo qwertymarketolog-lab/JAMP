@@ -172,3 +172,12 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
     assert result["status"] == "REFUSE"
     assert result["reason"] == "MOCK_DETECTED"
     assert e4_called is False
+
+
+
+def test_missing_provider_reported_model_is_refused() -> None:
+    status, reason = preflight_response(
+        DEFAULT_MODEL,
+        {"model": DEFAULT_MODEL, "provider_response_id": "cmpl-real-2", "content": "OK"},
+    )
+    assert (status, reason) == ("REFUSE", "MODEL_ID_MISSING")

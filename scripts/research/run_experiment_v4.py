@@ -91,7 +91,7 @@ def preflight_response(
     requested_model: str, provider_result: dict[str, Any]
 ) -> tuple[str, str | None]:
     """Reject known mock signatures and model substitution before extraction."""
-    actual_model = provider_result.get("provider_model_id") or provider_result.get("model")
+    actual_model = provider_result.get("provider_model_id")
     response_id = provider_result.get("provider_response_id") or provider_result.get("id")
     content = provider_result.get("content")
     if not isinstance(actual_model, str) or not actual_model.strip():

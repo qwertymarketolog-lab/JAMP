@@ -452,13 +452,13 @@ def create_app(
             })
 
         actual_model = (
-            provider_result.get("provider_model_id") or provider_result.get("model")
+            provider_result.get("provider_model_id")
         )
         response_id = provider_result.get("provider_response_id")
         content = provider_result.get("content")
         if (
-            isinstance(response_id, str) and response_id.strip() == "chatcmpl-abc123"
-        ) or actual_model in {"openai/gpt-5", "gpt-5"} or (
+            isinstance(response_id, str) and response_id.strip().lower() == "chatcmpl-abc123"
+        ) or (isinstance(actual_model, str) and actual_model.strip().lower() in {"openai/gpt-5", "gpt-5"}) or (
             isinstance(content, str) and "i'm an ai assistant" in content.lower()
         ):
             return JSONResponse(status_code=200, content={
@@ -482,6 +482,7 @@ def create_app(
 
         e4_response = verify_claim_direct({"text": content}, organization)
         e4_result = json.loads(e4_response.body.decode("utf-8"))
+        e4_result["verification_mode"] = "E2_TO_E4_V4"
         return JSONResponse(status_code=200, content={
             "status": "OBSERVED",
             "reason": "PREFLIGHT_OK",
