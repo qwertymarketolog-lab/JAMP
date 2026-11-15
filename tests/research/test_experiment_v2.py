@@ -4,9 +4,9 @@ import base64
 import hashlib
 import io
 import json
+from pathlib import Path
 import sys
 import urllib.error
-from pathlib import Path
 
 import pytest
 

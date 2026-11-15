@@ -67,7 +67,9 @@ def parse_value(source: str, body: bytes) -> tuple[float | None, str]:
                 and row[secid_index] == "SBER"
             ):
                 value = _positive_number(row[last_index])
-                return (value, "PARSED") if value is not None else (None, "SBER_LAST_MISSING_OR_INVALID")
+                if value is not None:
+                    return value, "PARSED"
+                return None, "SBER_LAST_MISSING_OR_INVALID"
         return None, "SBER_MARKETDATA_ROW_MISSING"
 
     return None, "UNSUPPORTED_SOURCE"
