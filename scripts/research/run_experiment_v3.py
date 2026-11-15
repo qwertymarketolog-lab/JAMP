@@ -6,6 +6,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import pathlib
 import sys
 import urllib.request
@@ -71,7 +72,6 @@ def main() -> int:
     if args.mode == "live" and not args.confirm_live:
         parser.error("--live requires --confirm-live")
 
-    import os
     os.environ.setdefault("JAMP_ENV", "test")
     os.environ.setdefault("JAMP_SIGNING_KEY", "experiment-v3-offline-key")
     os.environ.setdefault("JAMP_API_KEY_HASH_SECRET", "experiment-v3-auth-secret")
