@@ -29,7 +29,7 @@ class Claim:
     citation_url: str | None
 
 
-_URL_RE = re.compile(r"https?://[^\s<>\\"']+", re.IGNORECASE)
+_URL_RE = re.compile(r'''https?://[^\s<>"']+''', re.IGNORECASE)
 _TICKER_RE = re.compile(r"\b[A-Z]{3,5}\b")
 _COMPANY_RE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
 _NUMBER_RE = re.compile(
@@ -73,7 +73,7 @@ _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 
 def _split_claim_text(text: str) -> list[str]:
     """Split on sentence punctuation without splitting decimal values."""
-    parts = re.split(r"(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«\\"'])", text.strip())
+    parts = re.split(r'''(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''', text.strip())
     return [part.strip() for part in parts if part.strip()]
 
 
