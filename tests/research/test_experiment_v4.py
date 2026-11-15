@@ -127,7 +127,7 @@ def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
         lambda capture: {"http_representation_sha256": "a" * 64},
     )
     monkeypatch.setattr(experiment_v4, "_e4_verify", fake_e4)
-    result = experiment_v4.experiment_v4.run_live_cycle(
+    result = experiment_v4.run_live_cycle(
         "The price of BTC is $65000.", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
@@ -162,7 +162,7 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
         lambda capture: {"http_representation_sha256": "b" * 64},
     )
     monkeypatch.setattr(experiment_v4, "_e4_verify", forbidden_e4)
-    result = experiment_v4.experiment_v4.run_live_cycle(
+    result = experiment_v4.run_live_cycle(
         "Say exactly: OK", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
