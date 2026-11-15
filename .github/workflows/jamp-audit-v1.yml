@@ -59,7 +59,7 @@ jobs:
 
       - name: Install test dependencies
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.execute == true)
-        run: python -m pip install pytest fastapi httpx2 psycopg2-binary
+        run: python -m pip install pytest fastapi httpx2 psycopg2-binary jinja2
 
       - name: Run focused tests
         id: tests
