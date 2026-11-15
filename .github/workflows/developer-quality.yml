@@ -116,7 +116,6 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -v tests/research/exp18/test_audit_export.py
-
       - name: Run Ruff with baseline
         run: make lint
 
@@ -126,7 +125,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
-          if (("${#files[@]}")); then
+          if ((${#files[@]})); then
             root_files=()
             src_files=()
             template_files=()
@@ -152,15 +151,15 @@ jobs:
               esac
             done
 
-            if (("${#root_files[@]}")); then
+            if ((${#root_files[@]})); then
               MYPYPATH=src mypy --config-file=/dev/null --strict --follow-imports=skip --python-version 3.11 "${root_files[@]}"
             fi
 
-            if (("${#src_files[@]}")); then
+            if ((${#src_files[@]})); then
               MYPYPATH=src mypy --config-file=pyproject.toml "${src_files[@]}"
             fi
 
-            if (("${#template_files[@]}")); then
+            if ((${#template_files[@]})); then
               (
                 cd templates/jamp-plugin
                 MYPYPATH=src mypy src/jamp_plugin
