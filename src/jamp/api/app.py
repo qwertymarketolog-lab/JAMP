@@ -794,7 +794,7 @@ def create_app(
                     verdict_claim["text"] = extracted.text
                     historical_context = bool(
                         re.search(
-                            r"\\b(?:19|20)\\d{2}\\s*(?:году|года|год)\\b",
+                            r"\b(?:19|20)\d{2}\s*(?:году|года|год)\b",
                             extracted.text,
                             re.IGNORECASE,
                         )

@@ -17,7 +17,6 @@ from fastapi.testclient import TestClient
 
 from jamp.provider.coingecko_verify import E4_CONTRADICTED as CG_CONTRADICTED
 from jamp.provider.coingecko_verify import E4_OUT_OF_SCOPE as CG_OUT_OF_SCOPE
-from jamp.provider.coingecko_verify import E4_VERIFIED as CG_VERIFIED
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_OUT_OF_SCOPE, E4_VERIFIED
 from jamp.runtime.claim_extractor import extract_claims
 
@@ -94,6 +93,7 @@ def run_vertical_experiment(
     if not isinstance(cases, list) or len(cases) != 10:
         raise ValueError("Vertical Experiment v1 requires exactly 10 cases")
 
+    output_file.parent.mkdir(parents=True, exist_ok=True)
     app_module = importlib.import_module("jamp.api.app")
     calls: list[dict[str, Any]] = []
 
