@@ -458,7 +458,10 @@ def create_app(
         content = provider_result.get("content")
         if (
             isinstance(response_id, str) and response_id.strip().lower() == "chatcmpl-abc123"
-        ) or (isinstance(actual_model, str) and actual_model.strip().lower() in {"openai/gpt-5", "gpt-5"}) or (
+        ) or (
+            isinstance(actual_model, str)
+            and actual_model.strip().lower() in {"openai/gpt-5", "gpt-5"}
+        ) or (
             isinstance(content, str) and "i'm an ai assistant" in content.lower()
         ):
             return JSONResponse(status_code=200, content={

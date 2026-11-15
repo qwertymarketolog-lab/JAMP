@@ -1,5 +1,6 @@
 """Guarded AnyModel E2 -> Extractor -> E4 experiment v4."""
 from __future__ import annotations
+
 import argparse
 import base64
 import hashlib
@@ -34,7 +35,7 @@ class _CapturedResponse:
         self._response = response
         self._capture = capture
 
-    def __enter__(self) -> "_CapturedResponse":
+    def __enter__(self) -> _CapturedResponse:
         self._response.__enter__()
         return self
 
