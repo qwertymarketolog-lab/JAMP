@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -26,9 +27,16 @@ def main() -> int:
         raise SystemExit("REFUSE: dataset contract must contain exactly ten offline mock cases")
 
     command = [sys.executable, "-m", "pytest", "-q", TEST_TARGET]
+    env = os.environ.copy()
+    source_root = str(ROOT / "src")
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = os.pathsep.join(
+        value for value in (source_root, existing_pythonpath) if value
+    )
     completed = subprocess.run(
         command,
         cwd=ROOT,
+        env=env,
         capture_output=True,
         text=True,
         check=False,
