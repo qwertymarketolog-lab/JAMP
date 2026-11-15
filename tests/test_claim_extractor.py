@@ -16,6 +16,13 @@ def test_extracts_price_after_year_and_ruble_marker() -> None:
     assert claim.claim_type == "price"
 
 
+def test_ignores_abbreviated_year_suffix() -> None:
+    claim = extract_claims("В 2025 г. SBER достиг 5000₽")[0]
+
+    assert claim.cited_value == 5000.0
+    assert claim.currency == "RUB"
+
+
 def test_extracts_price_not_percentage() -> None:
     claim = extract_claims("SBER вырос на 10% и цена достигла 5000₽")[0]
 
