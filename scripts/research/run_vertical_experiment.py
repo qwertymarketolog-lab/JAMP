@@ -9,6 +9,7 @@ import argparse
 import importlib
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -121,11 +122,12 @@ def run_vertical_experiment(
         patch.object(app_module, "verify_generation", generation_verifier),
         patch.object(app_module, "verify_claim_with_moex", _mock_moex(calls)),
         patch.object(app_module, "verify_claim_with_coingecko", _mock_coingecko(calls)),
+        tempfile.TemporaryDirectory(prefix="jamp-vertical-experiment-") as runtime_dir,
     ):
         app = app_module.create_app(
             executor=executor,
-            audit_storage_path=output_file.parent / "audit.jsonl",
-            telegram_update_db_path=output_file.parent / "telegram-updates.sqlite",
+            audit_storage_path=Path(runtime_dir) / "audit.jsonl",
+            telegram_update_db_path=Path(runtime_dir) / "telegram-updates.sqlite",
         )
         app.dependency_overrides[app_module.require_api_key] = lambda: OrganizationContext(
             org_id="vertical-experiment", org_name="Vertical Experiment"

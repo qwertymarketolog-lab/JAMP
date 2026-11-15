@@ -21,6 +21,7 @@ def test_vertical_experiment_v1_runs_all_cases_through_e4(tmp_path):
     assert result["extraction_failures"] == []
     assert result["verdict_failures"] == []
     assert output.is_file()
+    assert {path.name for path in tmp_path.iterdir()} == {output.name}
 
     persisted = json.loads(output.read_text(encoding="utf-8"))
     assert persisted == result
