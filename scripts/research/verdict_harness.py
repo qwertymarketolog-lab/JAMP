@@ -16,7 +16,6 @@ CLAIM_STATUSES = frozenset({
     "OBSERVED", "INFERRED", "UNKNOWN", "VERIFICATION_CANDIDATE", "VERIFIED", "AMBIGUOUS",
 })
 INPUT_PATHS = (
-    "docs/experiments/jamp_audit_v1/AUDIT_PROMPT.md",
     "docs/experiments/jamp_audit_v1/INPUT_PACK.md",
 )
 

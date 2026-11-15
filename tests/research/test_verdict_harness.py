@@ -11,11 +11,9 @@ import pytest
 from scripts.research import verdict_harness as harness
 
 ROOT = Path(__file__).resolve().parents[2]
-PROMPT_PATH = "docs/experiments/jamp_audit_v1/AUDIT_PROMPT.md"
 INPUT_PACK_PATH = "docs/experiments/jamp_audit_v1/INPUT_PACK.md"
 EXPECTED_INPUT_HASHES = {
-    PROMPT_PATH: "4e02860ea088d7f6c5aa4d311b35abfad18c515bd78a2b64999ea5260e405b0e",
-    INPUT_PACK_PATH: "4c5aaae052429709ae06536599e22eaec039cff702b9a74cc4d14f770a5cba18",
+    INPUT_PACK_PATH: "d061a22e1ca2d3ff3c2e640f1903d475436527a1e87754f89a122424db5db423",
 }
 
 
