@@ -1,0 +1,55 @@
+name: Experiment v2 Live API Record
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_live_requests:
+        description: "Explicitly authorize exactly one bounded GET to MOEX and one to CoinGecko"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: experiment-v2-live-record
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Refuse unless live requests are explicitly confirmed
+        if: ${{ inputs.confirm_live_requests != true }}
+        run: |
+          echo "REFUSE: confirm_live_requests must be true; no network request was made."
+          exit 1
+
+      - name: Checkout
+        if: ${{ inputs.confirm_live_requests == true }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: ${{ inputs.confirm_live_requests == true }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Record exactly one response per source
+        if: ${{ inputs.confirm_live_requests == true }}
+        run: |
+          python scripts/research/run_experiment_v2.py \
+            --mode live \
+            --confirm-live \
+            --output-dir artifacts/research/experiment_v2/live
+
+      - name: Upload raw and derived evidence even after request failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-v2-live-evidence-${{ github.run_id }}
+          path: artifacts/research/experiment_v2/live/
+          if-no-files-found: warn
+          retention-days: 90
