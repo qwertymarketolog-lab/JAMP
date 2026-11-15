@@ -6,6 +6,8 @@ Historical price movements and predictions are outside its evidence scope.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import math
 import threading
@@ -30,15 +32,21 @@ _REQUEST_TIMES: deque[float] = deque()
 _LOCK = threading.Lock()
 
 
-def _get_json(url: str, timeout: float) -> dict[str, Any]:
-    """Fetch a JSON object using the unauthenticated public API."""
+def _get_json(
+    url: str,
+    timeout: float,
+    raw_evidence: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Fetch JSON; capture mode bypasses cache so bytes bind to this verdict."""
     now = time.monotonic()
+    if raw_evidence is None:
+        with _LOCK:
+            cached = _CACHE.get(url)
+            if cached is not None and now - cached[0] < CACHE_TTL_SECONDS:
+                return cached[1]
+            if cached is not None:
+                del _CACHE[url]
     with _LOCK:
-        cached = _CACHE.get(url)
-        if cached is not None and now - cached[0] < CACHE_TTL_SECONDS:
-            return cached[1]
-        if cached is not None:
-            del _CACHE[url]
         while _REQUEST_TIMES and now - _REQUEST_TIMES[0] >= 60.0:
             _REQUEST_TIMES.popleft()
         if len(_REQUEST_TIMES) >= FREE_TIER_REQUESTS_PER_MINUTE:
@@ -49,12 +57,37 @@ def _get_json(url: str, timeout: float) -> dict[str, Any]:
         url,
         headers={"Accept": "application/json", "User-Agent": "JAMP-Trust-Layer/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read()
+            status_code = getattr(response, "status", 200)
+    except urllib.error.HTTPError as exc:
+        body = exc.read()
+        if raw_evidence is not None:
+            raw_evidence.append({
+                "source": "coingecko",
+                "url": url,
+                "status_code": exc.code,
+                "body_complete": True,
+                "raw_body_base64": base64.b64encode(body).decode("ascii"),
+                "sha256_body": hashlib.sha256(body).hexdigest(),
+            })
+        raise
+    if raw_evidence is not None:
+        raw_evidence.append({
+            "source": "coingecko",
+            "url": url,
+            "status_code": status_code,
+            "body_complete": True,
+            "raw_body_base64": base64.b64encode(body).decode("ascii"),
+            "sha256_body": hashlib.sha256(body).hexdigest(),
+        })
+    payload = json.loads(body.decode("utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("CoinGecko response must be a JSON object")
-    with _LOCK:
-        _CACHE[url] = (time.monotonic(), payload)
+    if raw_evidence is None:
+        with _LOCK:
+            _CACHE[url] = (time.monotonic(), payload)
     return payload
 
 
@@ -62,13 +95,14 @@ def _coin_url(coin_id: str) -> str:
     return f"{COINGECKO_BASE}/coins/{urllib.parse.quote(coin_id, safe='')}"
 
 
-def verify_claim_with_coingecko(
+def _verify_claim_with_coingecko(
     coin_id: str,
     claim_type: str,
     claimed_value: float | int | None,
     threshold_pct: float | None = None,
     *,
     timeout: float = REQUEST_TIMEOUT_SECONDS,
+    raw_evidence: list[dict[str, Any]] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Verify an explicit CoinGecko claim and return bounded source evidence.
 
@@ -137,7 +171,7 @@ def verify_claim_with_coingecko(
         url = _coin_url(normalized_id)
 
     try:
-        payload = _get_json(url, timeout)
+        payload = _get_json(url, timeout, raw_evidence)
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             status = E4_CONTRADICTED if claim_type == "existence" else E4_OUT_OF_SCOPE
@@ -226,3 +260,27 @@ def verify_claim_with_coingecko(
     if relative_delta_pct > float(threshold):
         return E4_CONTRADICTED, {**details, "result": "CONTRADICTED"}
     return E4_VERIFIED, {**details, "result": "VERIFIED"}
+
+
+def verify_claim_with_coingecko(
+    coin_id: str,
+    claim_type: str,
+    claimed_value: float | int | None,
+    threshold_pct: float | None = None,
+    *,
+    timeout: float = REQUEST_TIMEOUT_SECONDS,
+    capture_raw: bool = False,
+) -> tuple[str, dict[str, Any]]:
+    """Backward-compatible public verifier with opt-in exact HTTP evidence."""
+    raw_evidence: list[dict[str, Any]] = []
+    status, details = _verify_claim_with_coingecko(
+        coin_id,
+        claim_type,
+        claimed_value,
+        threshold_pct,
+        timeout=timeout,
+        raw_evidence=raw_evidence if capture_raw else None,
+    )
+    if capture_raw:
+        details = {**details, "raw_evidence": raw_evidence}
+    return status, details
