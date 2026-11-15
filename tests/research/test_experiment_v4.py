@@ -5,13 +5,10 @@ import hashlib
 import json
 
 from scripts.research import run_experiment_v4 as experiment_v4
-from scripts.research.run_experiment_v4 import (
-    DEFAULT_MODEL, _price_attestation, preflight_response, run_live_cycle, run_mock,
-)
 
 
 def test_mock_probe_scenarios_are_network_free() -> None:
-    result = run_mock()
+    result = experiment_v4.run_mock()
     assert result["network"] == "DISABLED"
     assert [item["reason"] for item in result["results"]] == [
         "MOCK_DETECTED", "MOCK_DETECTED", "MOCK_DETECTED", None
@@ -19,17 +16,17 @@ def test_mock_probe_scenarios_are_network_free() -> None:
 
 
 def test_mock_response_id_is_refused() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
-        {"provider_model_id": DEFAULT_MODEL, "provider_response_id": "chatcmpl-abc123",
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
+        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "chatcmpl-abc123",
          "content": "OK"},
     )
     assert (status, reason) == ("REFUSE", "MOCK_DETECTED")
 
 
 def test_mock_response_model_is_refused() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
         {"provider_model_id": "openai/gpt-5", "provider_response_id": "chatcmpl-real-1",
          "content": "OK"},
     )
@@ -37,17 +34,17 @@ def test_mock_response_model_is_refused() -> None:
 
 
 def test_mock_response_text_is_refused() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
-        {"provider_model_id": DEFAULT_MODEL, "provider_response_id": "chatcmpl-real-1",
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
+        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "chatcmpl-real-1",
          "content": "Hi! I'm an AI assistant"},
     )
     assert (status, reason) == ("REFUSE", "MOCK_DETECTED")
 
 
 def test_model_mismatch_is_refused() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
         {"provider_model_id": "ag/other-model", "provider_response_id": "cmpl-real-1",
          "content": "OK"},
     )
@@ -55,9 +52,9 @@ def test_model_mismatch_is_refused() -> None:
 
 
 def test_matching_non_mock_response_passes_preflight() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
-        {"provider_model_id": DEFAULT_MODEL, "provider_response_id": "cmpl-live-shaped-1",
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
+        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "cmpl-live-shaped-1",
          "content": "The price of BTC is $65000."},
     )
     assert (status, reason) == ("PREFLIGHT_OK", None)
@@ -72,8 +69,8 @@ def test_price_gate_refuses_before_any_request(monkeypatch) -> None:
         raise AssertionError("network/provider must not be called")
 
     monkeypatch.setattr("scripts.research.run_experiment_v4.AnyModelChatExecutor", forbidden)
-    result = run_live_cycle(
-        "Say exactly: OK", DEFAULT_MODEL, price_confirmed=False,
+    result = experiment_v4.run_live_cycle(
+        "Say exactly: OK", experiment_v4.DEFAULT_MODEL, price_confirmed=False,
         price_source=None, confirmed_price_usd=None, api_key="test-key",
     )
     assert result == {
@@ -83,9 +80,9 @@ def test_price_gate_refuses_before_any_request(monkeypatch) -> None:
 
 
 def test_manual_price_attestation_requires_source_and_positive_price() -> None:
-    assert _price_attestation(True, "", 0.01) is None
-    assert _price_attestation(True, "pricing page", 0) is None
-    assert _price_attestation(True, "pricing page", 0.01) == {
+    assert experiment_v4._price_attestation(True, "", 0.01) is None
+    assert experiment_v4._price_attestation(True, "pricing page", 0) is None
+    assert experiment_v4._price_attestation(True, "pricing page", 0.01) == {
         "manual_confirmation": True, "price_source": "pricing page",
         "confirmed_price_usd": 0.01,
     }
@@ -101,7 +98,7 @@ def test_raw_hash_calculation_is_stable() -> None:
 
 
 def test_mock_output_is_json_serializable() -> None:
-    assert json.loads(json.dumps(run_mock()))["mode"] == "MOCK"
+    assert json.loads(json.dumps(experiment_v4.run_mock()))["mode"] == "MOCK"
 
 
 def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
@@ -112,10 +109,10 @@ def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
             self.opener = opener
 
         def __call__(self, selected_model, payload):
-            assert selected_model == DEFAULT_MODEL
+            assert selected_model == experiment_v4.DEFAULT_MODEL
             assert payload == {"prompt": "The price of BTC is $65000."}
             return {
-                "provider_model_id": DEFAULT_MODEL,
+                "provider_model_id": experiment_v4.DEFAULT_MODEL,
                 "provider_response_id": "cmpl-test-real-shaped",
                 "content": "The price of BTC is $65000.",
             }
@@ -130,8 +127,8 @@ def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
         lambda capture: {"http_representation_sha256": "a" * 64},
     )
     monkeypatch.setattr(experiment_v4, "_e4_verify", fake_e4)
-    result = experiment_v4.run_live_cycle(
-        "The price of BTC is $65000.", DEFAULT_MODEL,
+    result = experiment_v4.experiment_v4.run_live_cycle(
+        "The price of BTC is $65000.", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
     )
@@ -165,8 +162,8 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
         lambda capture: {"http_representation_sha256": "b" * 64},
     )
     monkeypatch.setattr(experiment_v4, "_e4_verify", forbidden_e4)
-    result = experiment_v4.run_live_cycle(
-        "Say exactly: OK", DEFAULT_MODEL,
+    result = experiment_v4.experiment_v4.run_live_cycle(
+        "Say exactly: OK", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
     )
@@ -177,8 +174,8 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
 
 
 def test_missing_provider_reported_model_is_refused() -> None:
-    status, reason = preflight_response(
-        DEFAULT_MODEL,
-        {"model": DEFAULT_MODEL, "provider_response_id": "cmpl-real-2", "content": "OK"},
+    status, reason = experiment_v4.preflight_response(
+        experiment_v4.DEFAULT_MODEL,
+        {"model": experiment_v4.DEFAULT_MODEL, "provider_response_id": "cmpl-real-2", "content": "OK"},
     )
     assert (status, reason) == ("REFUSE", "MODEL_ID_MISSING")
