@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
-from contextlib import nullcontext
+import contextlib
 import hashlib
 import json
 import pathlib
@@ -92,7 +92,7 @@ def main() -> int:
     network_patch = (
         patch("urllib.request.urlopen", side_effect=fixture_open)
         if args.mode == "mock"
-        else nullcontext()
+        else contextlib.nullcontext()
     )
     results = []
     with network_patch:
