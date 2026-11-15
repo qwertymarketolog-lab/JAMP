@@ -37,7 +37,7 @@ _NUMBER_RE = re.compile(
     r"\\d+(?:[.,]\\d+)?)(?![\\w/])"
 )
 _CURRENCY_RE = re.compile(
-    r"₽|\\bруб(?:\\.|ля|лей|ль)?\\b|\\$|\\bUSD\\b|\\bдоллар(?:а|ов)?\\b",
+    r"₽|\\bруб(?:\\.|ля|лей|ль)?\\b|\\bRUB\\b|\\$|\\bUSD\\b|\\bдоллар(?:а|ов)?\\b",
     re.IGNORECASE,
 )
 _PRICE_WORD_RE = re.compile(
@@ -111,7 +111,7 @@ def _extract_currency(
     currencies: set[Currency] = set()
     for match in _CURRENCY_RE.finditer(nearby):
         token = match.group(0).lower()
-        currencies.add("RUB" if token in {"₽", "руб", "руб.", "рубля", "рублей", "рубль"} else "USD")
+        currencies.add("RUB" if token in {"₽", "руб", "руб.", "рубля", "рублей", "рубль", "rub"} else "USD")
     if len(currencies) == 1:
         return currencies.pop()
     return None
