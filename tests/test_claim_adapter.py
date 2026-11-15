@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from jamp.runtime import claim_adapter
+import jamp.runtime.claim_adapter as claim_adapter
 from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
 
