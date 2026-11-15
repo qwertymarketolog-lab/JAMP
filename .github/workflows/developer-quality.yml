@@ -125,6 +125,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m pytest -v tests/research/exp18/test_audit_export.py
+      - name: Diagnose runner import sorting
+        run: ruff check scripts/research/run_vertical_experiment.py --select I --diff || true
       - name: Run Ruff with baseline
         run: make lint
 
