@@ -10,9 +10,7 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import uuid4
 
-ClaimType = Literal[
-    "price", "entity_existence", "prediction", "causal", "other"
-]
+ClaimType = Literal["price", "entity_existence", "prediction", "causal", "other"]
 Currency = Literal["RUB", "USD"]
 
 
@@ -64,10 +62,26 @@ _EXISTENCE_MARKER_RE = re.compile(
     re.IGNORECASE,
 )
 _NON_TICKERS = {
-    "IPO", "USD", "EUR", "RUB", "HTTP", "HTTPS", "JSON", "TRUE",
-    "FALSE", "NULL", "THE", "AND", "FOR", "WITH", "FROM", "THIS",
-    "THAT", "WILL",
+    "IPO",
+    "USD",
+    "EUR",
+    "RUB",
+    "HTTP",
+    "HTTPS",
+    "JSON",
+    "TRUE",
+    "FALSE",
+    "NULL",
+    "THE",
+    "AND",
+    "FOR",
+    "WITH",
+    "FROM",
+    "THIS",
+    "THAT",
+    "WILL",
 }
+_RUB_CURRENCY_TOKENS = {"₽", "руб", "руб.", "рубля", "рублей", "рубль", "rub"}
 _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 
 
@@ -104,15 +118,12 @@ def _valid_number_matches(text: str) -> list[re.Match[str]]:
     return matches
 
 
-def _extract_currency(
-    text: str, number_match: re.Match[str]
-) -> Currency | None:
+def _extract_currency(text: str, number_match: re.Match[str]) -> Currency | None:
     nearby = text[max(0, number_match.start() - 8):number_match.end() + 8]
     currencies: set[Currency] = set()
     for match in _CURRENCY_RE.finditer(nearby):
         token = match.group(0).lower()
-        rub_tokens = {"₽", "руб", "руб.", "рубля", "рублей", "рубль", "rub"}
-        currency_code = "RUB" if token in rub_tokens else "USD"
+        currency_code = "RUB" if token in _RUB_CURRENCY_TOKENS else "USD"
         currencies.add(currency_code)
     if len(currencies) == 1:
         return currencies.pop()
