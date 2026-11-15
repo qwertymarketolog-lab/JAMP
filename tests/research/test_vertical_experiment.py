@@ -114,6 +114,10 @@ def test_vertical_experiment_case_matrix(case_id, cases, monkeypatch):
         f"{case_id}: expected {case['expected_e4']}, got {target['status']}; "
         f"claims={body['claims']}"
     )
+    if case_id == "C6":
+        assert target["reason"] == "HISTORICAL_PRICE_NOT_VERIFIABLE_BY_CURRENT_MOEX"
+    elif case_id in {"C5", "C8", "C9"}:
+        assert target["reason"] == "CLAIM_TYPE_OUTSIDE_E4_PRICE_SCOPE"
 
     if case_id in {"C4", "C5", "C6", "C8", "C9"}:
         assert calls == {"moex": [], "coingecko": []}, (
