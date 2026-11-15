@@ -309,7 +309,7 @@ def run_live_cycle(
         failure = _http_error_evidence(exc, key)
         failure["price_attestation"] = attestation
         return failure
-    except socket.timeout as exc:
+    except TimeoutError as exc:
         return {
             "status": "INCONCLUSIVE",
             "reason": "ANYMODEL_REQUEST_TIMEOUT",
@@ -320,10 +320,7 @@ def run_live_cycle(
             "price_attestation": attestation,
         }
     except URLError as exc:
-        if isinstance(exc.reason, socket.timeout):
-            error_type = "socket.timeout"
-        else:
-            error_type = "URLError"
+        error_type = "socket.timeout" if isinstance(exc.reason, TimeoutError) else "URLError"
         return {
             "status": "INCONCLUSIVE",
             "reason": "ANYMODEL_TRANSPORT_ERROR",
