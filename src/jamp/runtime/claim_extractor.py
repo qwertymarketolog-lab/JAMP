@@ -123,7 +123,7 @@ def _extract_currency(text: str, number_match: re.Match[str]) -> Currency | None
     currencies: set[Currency] = set()
     for match in _CURRENCY_RE.finditer(nearby):
         token = match.group(0).lower()
-        currency_code = "RUB" if token in _RUB_CURRENCY_TOKENS else "USD"
+        currency_code: Currency = "RUB" if token in _RUB_CURRENCY_TOKENS else "USD"
         currencies.add(currency_code)
     if len(currencies) == 1:
         return currencies.pop()
