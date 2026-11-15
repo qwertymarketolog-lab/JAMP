@@ -352,13 +352,13 @@ def create_app(
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
     ) -> Any:
         """Research-only AnyModel E2 -> deterministic extractor -> E4 cycle."""
-        if set(payload) - {"prompt", "model_id", "confirm_price"}:
+        if set(payload) - {"prompt", "model_id", "confirm_price", "max_tokens", "max_budget_usd"}:
             return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
         prompt = payload.get("prompt")
         model_id = payload.get("model_id")
         if not isinstance(prompt, str) or not prompt.strip():
             return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
-        if model_id != "ag/claude-sonnet-4-6":
+        max_tokens = payload.get("max_tokens")\n        max_budget_usd = payload.get("max_budget_usd")\n        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:\n            return JSONResponse(status_code=422, content={"detail": "max_tokens must be a positive integer"})\n        if (\n            isinstance(max_budget_usd, bool)\n            or not isinstance(max_budget_usd, (int, float))\n            or max_budget_usd <= 0\n        ):\n            return JSONResponse(status_code=422, content={"detail": "max_budget_usd must be positive"})\n        if model_id != "ag/claude-sonnet-4-6":
             return JSONResponse(status_code=422, content={
                 "detail": "model_id is not enabled for Experiment v4"
             })

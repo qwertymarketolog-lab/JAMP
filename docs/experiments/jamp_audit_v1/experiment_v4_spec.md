@@ -16,8 +16,8 @@ This experiment does not qualify a model, prove general provider reliability, or
 
 ## Stages and fail-closed contract
 
-1. **Price attestation.** No AnyModel request is made unless an operator explicitly confirms price and supplies a non-empty pricing source plus a positive confirmed USD amount. This is manual attestation, not an independently verified tariff.
-2. **E2 / AnyModel.** Exactly one request to the requested model. No provider fallback or silent model substitution.
+1. **Price and budget gates.** No AnyModel request is made unless price is manually confirmed with a source and positive amount, `max_tokens` is explicitly supplied, and `estimated_cost = (8192 + max_tokens) × $0.12 / 1,000,000` does not exceed `max_budget_usd`. The serialized input representation is also byte-bounded by 8192 bytes before transport. Manual price attestation is not an independently verified tariff.
+2. **E2 / AnyModel.** Exactly one request to the requested model, with provider-side `max_tokens` in the JSON body. No provider fallback or silent model substitution. Legacy `__call__` callers retain a logged 512-token compatibility limit; new experiment code must use the explicit budgeted `execute()` method.
 3. **RAW capture.** Preserve all response headers exposed by urllib, the complete response body, body SHA-256, and a reconstructed HTTP representation (headers + body) with SHA-256. This is not a packet-level wire capture. Request Authorization headers are not stored.
 4. **Preflight.** Refuse known mock signatures (`chatcmpl-abc123`, response model `openai/gpt-5` / `gpt-5`, or `Hi! I'm an AI assistant`). Refuse `MODEL_MISMATCH` unless provider-reported model exactly equals requested model. Missing model or content also refuses.
 5. **Extractor.** Only after preflight succeeds, call `extract_claims`. Ambiguous, multiple, or unsupported claims remain `INCONCLUSIVE`.
@@ -26,7 +26,7 @@ This experiment does not qualify a model, prove general provider reliability, or
 ## Modes
 
 - `--mock`: deterministic, network-free mock scenarios; used by PR CI.
-- `--live --confirm-live`: one live AnyModel request, only after manual price attestation. Default is probe-only and does not call E4.
+- `--live --confirm-live`: one live AnyModel request, only after manual price attestation and a technical budget check. `--max-tokens` and `--max-budget-usd` are mandatory; workflow defaults are 256 and $0.01. Default is probe-only and does not call E4.
 - `--live --confirm-live --full-cycle`: after successful preflight, run extractor and E4.
 - Dedicated GitHub workflow is `workflow_dispatch` only. Both `confirm_live_requests` and `confirm_price` must be true, with source and amount supplied, before the live request.
 

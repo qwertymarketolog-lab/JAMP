@@ -51,14 +51,29 @@ jobs:
             echo "REFUSE: explicit price confirmation and source required; no request made."
             exit 1
           fi
-          python - "$CONFIRMED_PRICE_USD" <<'PY'
+          python - "$CONFIRMED_PRICE_USD" "$MAX_BUDGET_USD" "$MAX_TOKENS" <<'PY'
+          import math
           import sys
           try:
-              amount = float(sys.argv[1])
+              confirmed_price = float(sys.argv[1])
+              max_budget = float(sys.argv[2])
+              max_tokens_value = int(sys.argv[3])
           except (ValueError, IndexError):
-              raise SystemExit("REFUSE: confirmed_price_usd must be a positive number")
-          if amount <= 0:
-              raise SystemExit("REFUSE: confirmed_price_usd must be positive")
+              raise SystemExit("REFUSE: invalid price, max_budget_usd, or max_tokens")
+          if not math.isfinite(confirmed_price) or confirmed_price <= 0:
+              raise SystemExit("REFUSE: confirmed_price_usd must be finite and positive")
+          if not math.isfinite(max_budget) or max_budget <= 0:
+              raise SystemExit("REFUSE: max_budget_usd must be finite and positive")
+          if max_tokens_value <= 0:
+              raise SystemExit("REFUSE: max_tokens must be a positive integer")
+          max_input_tokens = 8192
+          estimated_cost = (max_input_tokens + max_tokens_value) * 0.12 / 1_000_000
+          print(f"estimated_cost_usd={estimated_cost:.8f}")
+          if estimated_cost > max_budget:
+              raise SystemExit(
+                  f"REFUSE: estimated_cost_usd={estimated_cost:.8f} "
+                  f"> max_budget_usd={max_budget:.8f}; no request made."
+              )
           PY
 
       - name: Checkout

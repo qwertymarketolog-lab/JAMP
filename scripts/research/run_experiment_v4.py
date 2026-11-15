@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.anymodel import (\n    DEFAULT_MAX_INPUT_TOKENS,\n    AnyModelBudgetError,\n    AnyModelChatExecutor,\n    AnyModelError,\n)
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_VERIFIED, verify_claim_with_moex
 from jamp.runtime.claim_adapter import to_verdict_claim
@@ -213,6 +213,25 @@ def run_live_cycle(
         return {"status": "REFUSE", "reason": "PROMPT_EMPTY", "http_request_made": False}
     if not isinstance(model, str) or not model.strip():
         return {"status": "REFUSE", "reason": "MODEL_ID_EMPTY", "http_request_made": False}
+    if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+        return {"status": "REFUSE", "reason": "MAX_TOKENS_REQUIRED",
+                "http_request_made": False}
+    if (
+        isinstance(max_budget_usd, bool)
+        or not isinstance(max_budget_usd, (int, float))
+        or max_budget_usd <= 0
+    ):
+        return {"status": "REFUSE", "reason": "MAX_BUDGET_REQUIRED",
+                "http_request_made": False}
+    estimated_cost = AnyModelChatExecutor.estimate_cost_usd(
+        DEFAULT_MAX_INPUT_TOKENS, max_tokens
+    )
+    if estimated_cost > max_budget_usd:
+        return {
+            "status": "REFUSE", "reason": "BUDGET_EXCEEDED",
+            "estimated_cost_usd": estimated_cost, "max_budget_usd": max_budget_usd,
+            "http_request_made": False,
+        }
     key = api_key if api_key is not None else os.environ.get("ANYMODEL_API_KEY")
     if not key:
         return {"status": "REFUSE", "reason": "PROVIDER_NOT_CONFIGURED",
@@ -220,8 +239,18 @@ def run_live_cycle(
     capture: dict[str, Any] = {}
     executor = AnyModelChatExecutor(key, opener=_capturing_opener(capture))
     try:
-        result = executor(model, {"prompt": prompt})
+        result = executor.execute(
+            model, {"prompt": prompt}, max_tokens=max_tokens,
+            max_budget_usd=max_budget_usd,
+            max_input_tokens=DEFAULT_MAX_INPUT_TOKENS,
+        )
         raw = _finalize_raw(capture)
+    except AnyModelBudgetError as exc:
+        return {
+            "status": "REFUSE", "reason": str(exc),
+            "estimated_cost_usd": estimated_cost, "max_budget_usd": max_budget_usd,
+            "http_request_made": False, "price_attestation": attestation,
+        }
     except Exception as exc:
         return {
             "status": "INCONCLUSIVE",

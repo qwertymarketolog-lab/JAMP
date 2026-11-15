@@ -4,7 +4,7 @@ import base64
 import hashlib
 import json
 
-from scripts.research import run_experiment_v4 as experiment_v4
+import pytest\n\nfrom jamp.provider.anymodel import AnyModelChatExecutor, AnyModelBudgetError\nfrom scripts.research import run_experiment_v4 as experiment_v4
 
 
 def test_mock_probe_scenarios_are_network_free() -> None:
@@ -192,3 +192,81 @@ def test_missing_provider_reported_model_is_refused() -> None:
         },
     )
     assert (status, reason) == ("REFUSE", "MODEL_ID_MISSING")
+
+
+
+def test_anymodel_execute_requires_explicit_max_tokens() -> None:
+    executor = AnyModelChatExecutor("test-key", opener=lambda request, timeout: None)
+    with pytest.raises(ValueError, match="max_tokens"):
+        executor.execute(
+            experiment_v4.DEFAULT_MODEL, {"prompt": "SBER costs 299 RUB"},
+            max_budget_usd=0.01,
+        )
+
+
+def test_anymodel_execute_sends_max_tokens_256_to_mock() -> None:
+    observed = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return (
+                b'{"id":"cmpl-mock-success","model":"ag/claude-sonnet-4-6",'
+                b'"choices":[{"message":{"content":"SBER costs 299 RUB"}}]}'
+            )
+
+    def fake_opener(request, timeout):
+        observed["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    executor = AnyModelChatExecutor("test-key", opener=fake_opener)
+    result = executor.execute(
+        experiment_v4.DEFAULT_MODEL,
+        {"prompt": "SBER costs 299 RUB"},
+        max_tokens=256,
+        max_budget_usd=0.01,
+        max_input_tokens=8192,
+    )
+    assert observed["body"]["max_tokens"] == 256
+    assert result["content"] == "SBER costs 299 RUB"
+
+
+def test_anymodel_execute_refuses_budget_before_network() -> None:
+    called = False
+
+    def forbidden(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("provider must not be called over budget")
+
+    executor = AnyModelChatExecutor("test-key", opener=forbidden)
+    with pytest.raises(AnyModelBudgetError, match="BUDGET_EXCEEDED"):
+        executor.execute(
+            experiment_v4.DEFAULT_MODEL,
+            {"prompt": "SBER costs 299 RUB"},
+            max_tokens=100000,
+            max_budget_usd=0.01,
+            max_input_tokens=8192,
+        )
+    assert called is False
+
+
+def test_live_cycle_refuses_over_budget_without_http(monkeypatch) -> None:
+    def forbidden(*args, **kwargs):
+        raise AssertionError("provider must not be constructed for an over-budget call")
+
+    monkeypatch.setattr(experiment_v4, "AnyModelChatExecutor", forbidden)
+    result = experiment_v4.run_live_cycle(
+        "SBER costs 299 RUB", experiment_v4.DEFAULT_MODEL,
+        price_confirmed=True, price_source="test price source",
+        confirmed_price_usd=0.01, api_key="test-key",
+        max_tokens=100000, max_budget_usd=0.01,
+    )
+    assert result["status"] == "REFUSE"
+    assert result["reason"] == "BUDGET_EXCEEDED"
+    assert result["http_request_made"] is False
