@@ -14,6 +14,7 @@ from typing import Any
 from urllib.request import urlopen
 
 from jamp.provider.anymodel import (
+    COST_PER_MILLION_TOKENS_USD,
     DEFAULT_MAX_INPUT_TOKENS,
     AnyModelBudgetError,
     AnyModelChatExecutor,
@@ -231,8 +232,10 @@ def run_live_cycle(
     ):
         return {"status": "REFUSE", "reason": "MAX_BUDGET_REQUIRED",
                 "http_request_made": False}
-    estimated_cost = AnyModelChatExecutor.estimate_cost_usd(
-        DEFAULT_MAX_INPUT_TOKENS, max_tokens
+    estimated_cost = (
+        (DEFAULT_MAX_INPUT_TOKENS + max_tokens)
+        * COST_PER_MILLION_TOKENS_USD
+        / 1_000_000
     )
     if estimated_cost > max_budget_usd:
         return {

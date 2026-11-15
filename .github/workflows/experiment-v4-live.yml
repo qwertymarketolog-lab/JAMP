@@ -106,6 +106,8 @@ jobs:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           PRICE_SOURCE: ${{ inputs.price_source }}
           CONFIRMED_PRICE_USD: ${{ inputs.confirmed_price_usd }}
+          MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ inputs.max_tokens }}
         run: |
           python scripts/research/run_experiment_v4.py \
             --live --confirm-live --price-confirmed \
