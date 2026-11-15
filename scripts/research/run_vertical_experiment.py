@@ -17,7 +17,6 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from jamp.api.auth import OrganizationContext
-
 from jamp.provider.coingecko_verify import (
     E4_CONTRADICTED as CG_CONTRADICTED,
     E4_OUT_OF_SCOPE as CG_OUT_OF_SCOPE,
