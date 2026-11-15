@@ -351,8 +351,6 @@ def create_app(
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
     ) -> Any:
         """Research-only AnyModel E2 -> deterministic extractor -> E4 cycle."""
-        from scripts.research.run_experiment_v4 import run_live_cycle
-
         if set(payload) - {"prompt", "model_id", "confirm_price"}:
             return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
         prompt = payload.get("prompt")
@@ -360,7 +358,9 @@ def create_app(
         if not isinstance(prompt, str) or not prompt.strip():
             return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
         if model_id != "ag/claude-sonnet-4-6":
-            return JSONResponse(status_code=422, content={"detail": "model_id is not enabled for Experiment v4"})
+            return JSONResponse(status_code=422, content={
+                "detail": "model_id is not enabled for Experiment v4"
+            })
         if payload.get("confirm_price") is not True:
             return JSONResponse(status_code=200, content={
                 "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
@@ -368,19 +368,136 @@ def create_app(
             })
         price_source = os.environ.get("JAMP_ANYMODEL_PRICE_SOURCE")
         try:
-            confirmed_price = float(os.environ.get("JAMP_ANYMODEL_CONFIRMED_PRICE_USD", ""))
+            confirmed_price = float(
+                os.environ.get("JAMP_ANYMODEL_CONFIRMED_PRICE_USD", "")
+            )
         except ValueError:
             confirmed_price = None
-        if os.environ.get("JAMP_ANYMODEL_PRICE_CONFIRMED") != "true":
+        if (
+            os.environ.get("JAMP_ANYMODEL_PRICE_CONFIRMED") != "true"
+            or not price_source
+            or confirmed_price is None
+            or confirmed_price <= 0
+        ):
             return JSONResponse(status_code=200, content={
                 "status": "REFUSE", "reason": "PRICE_NOT_CONFIRMED",
                 "http_request_made": False,
             })
-        result = run_live_cycle(
-            prompt, model_id, price_confirmed=True, price_source=price_source,
-            confirmed_price_usd=confirmed_price, full_cycle=True,
+        api_key = os.environ.get("ANYMODEL_API_KEY")
+        if not api_key:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "PROVIDER_NOT_CONFIGURED",
+                "http_request_made": False,
+            })
+
+        capture: dict[str, Any] = {}
+
+        class CapturedResponse:
+            def __init__(self, response: Any) -> None:
+                self.response = response
+
+            def __enter__(self):
+                self.response.__enter__()
+                return self
+
+            def __exit__(self, exc_type: Any, exc: Any, tb: Any):
+                return self.response.__exit__(exc_type, exc, tb)
+
+            def read(self, *args: Any, **kwargs: Any) -> bytes:
+                body = self.response.read(*args, **kwargs)
+                capture["body"] = body
+                return body
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self.response, name)
+
+        def capture_opener(request: Any, timeout: float):
+            response = urlopen(request, timeout=timeout)
+            capture.update(
+                status_code=int(getattr(response, "status", 200)),
+                reason=str(getattr(response, "reason", "")),
+                headers=list(response.headers.items()),
+            )
+            return CapturedResponse(response)
+
+        try:
+            provider_result = AnyModelChatExecutor(
+                api_key, opener=capture_opener
+            )(model_id, {"prompt": prompt})
+            body = capture.get("body")
+            if not isinstance(body, bytes):
+                raise AnyModelError("AnyModel response body was not captured")
+            status_line = (
+                f"HTTP/1.1 {capture['status_code']} {capture.get('reason', '')}\r\n"
+            )
+            header_block = "".join(
+                f"{key}: {value}\r\n" for key, value in capture.get("headers", [])
+            )
+            raw_http = (status_line + header_block + "\r\n").encode("iso-8859-1") + body
+            raw_anymodel = {
+                "status_code": capture["status_code"],
+                "headers": capture.get("headers", []),
+                "body_base64": base64.b64encode(body).decode("ascii"),
+                "body_sha256": hashlib.sha256(body).hexdigest(),
+                "http_representation_base64": base64.b64encode(raw_http).decode("ascii"),
+                "http_representation_sha256": hashlib.sha256(raw_http).hexdigest(),
+                "capture_note": "Response API representation, not packet-level wire capture.",
+            }
+        except Exception as exc:
+            return JSONResponse(status_code=200, content={
+                "status": "INCONCLUSIVE",
+                "reason": f"ANYMODEL_REQUEST_FAILED:{type(exc).__name__}",
+                "http_request_made": True,
+            })
+
+        actual_model = (
+            provider_result.get("provider_model_id") or provider_result.get("model")
         )
-        return JSONResponse(status_code=200, content=result)
+        response_id = provider_result.get("provider_response_id")
+        content = provider_result.get("content")
+        if (
+            isinstance(response_id, str) and response_id.strip() == "chatcmpl-abc123"
+        ) or actual_model in {"openai/gpt-5", "gpt-5"} or (
+            isinstance(content, str) and "i'm an ai assistant" in content.lower()
+        ):
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "MOCK_DETECTED",
+                "requested_model": model_id, "response_model": actual_model,
+                "response_id": response_id, "raw_anymodel": raw_anymodel,
+                "http_request_made": True,
+            })
+        if actual_model != model_id:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "MODEL_MISMATCH",
+                "requested_model": model_id, "response_model": actual_model,
+                "response_id": response_id, "raw_anymodel": raw_anymodel,
+                "http_request_made": True,
+            })
+        if not isinstance(content, str) or not content.strip():
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": "EMPTY_MODEL_CONTENT",
+                "raw_anymodel": raw_anymodel, "http_request_made": True,
+            })
+
+        e4_response = verify_claim_direct({"text": content}, organization)
+        e4_result = json.loads(e4_response.body.decode("utf-8"))
+        return JSONResponse(status_code=200, content={
+            "status": "OBSERVED",
+            "reason": "PREFLIGHT_OK",
+            "requested_model": model_id,
+            "response_model": actual_model,
+            "response_id": response_id,
+            "content": content,
+            "raw_anymodel": raw_anymodel,
+            "price_attestation": {
+                "manual_confirmation": True,
+                "price_source": price_source,
+                "confirmed_price_usd": confirmed_price,
+            },
+            "http_request_made": True,
+            "e2_preflight": "PREFLIGHT_OK",
+            "e4": e4_result,
+        })
 
     @app.post("/v1/verify", response_model=None)
     def verify(
