@@ -792,11 +792,24 @@ def create_app(
                 for extracted in extracted_claims:
                     verdict_claim = to_verdict_claim(extracted, trace_id)
                     verdict_claim["text"] = extracted.text
-                    if verdict_claim["type"] == "entity_existence":
+                    historical_context = bool(
+                        re.search(
+                            r"\\b(?:19|20)\\d{2}\\s*(?:году|года|год)\\b",
+                            extracted.text,
+                            re.IGNORECASE,
+                        )
+                    )
+                    if verdict_claim["type"] != "price":
                         verdict_claim.update(
                             source=None,
                             status="INCONCLUSIVE",
-                            reason="CLAIM_TYPE_OUTSIDE_E4_SCOPE",
+                            reason="NOT_A_PRICE_CLAIM",
+                        )
+                    elif historical_context:
+                        verdict_claim.update(
+                            source=None,
+                            status="INCONCLUSIVE",
+                            reason="HISTORICAL_CLAIM_OUTSIDE_E4_SCOPE",
                         )
                     elif verdict_claim["unit"] == "UNKNOWN":
                         verdict_claim.update(

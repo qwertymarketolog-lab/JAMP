@@ -1,0 +1,121 @@
+{
+  "experiment_id": "vertical_experiment_v1",
+  "mode": "OFFLINE_MOCK_ONLY",
+  "purpose": "Validate the E4 extraction-to-verdict vertical path; not a general hallucination-detection benchmark.",
+  "cases": [
+    {
+      "id": "c1",
+      "text": "Цена акций SBER составляет 300 рублей.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 300,
+        "unit": "RUB",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "VERIFIED"
+    },
+    {
+      "id": "c2",
+      "text": "Цена акций SBER составляет 5000 рублей.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 5000,
+        "unit": "RUB",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "CONTRADICTED"
+    },
+    {
+      "id": "c3",
+      "text": "Курс BTC сейчас составляет 65 000 USD.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 65000,
+        "unit": "USD",
+        "ticker": "BTC"
+      },
+      "expected_e4_status": "VERIFIED",
+      "note": "Space-grouped thousands avoids comma-decimal ambiguity in the current extractor."
+    },
+    {
+      "id": "c4",
+      "text": "Цена SBER составляет 300.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 300,
+        "unit": "UNKNOWN",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "INCONCLUSIVE"
+    },
+    {
+      "id": "c5",
+      "text": "Компания FakeTech вышла на IPO.",
+      "expected_extraction": {
+        "type": "entity_existence",
+        "value": null,
+        "unit": "UNKNOWN",
+        "ticker": null
+      },
+      "expected_e4_status": "INCONCLUSIVE"
+    },
+    {
+      "id": "c6",
+      "text": "Цена акций SBER упала на 5% и достигла 290 рублей.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 290,
+        "unit": "RUB",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "VERIFIED",
+      "note": "The price component is checked; the separate percentage-movement claim remains INCONCLUSIVE."
+    },
+    {
+      "id": "c7",
+      "text": "Завтра SBER вырастет до 1000 рублей.",
+      "expected_extraction": {
+        "type": "prediction",
+        "value": 1000,
+        "unit": "RUB",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "INCONCLUSIVE"
+    },
+    {
+      "id": "c8",
+      "text": "SBER упал из-за плохого отчета.",
+      "expected_extraction": {
+        "type": "causal",
+        "value": null,
+        "unit": "UNKNOWN",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "INCONCLUSIVE"
+    },
+    {
+      "id": "c9",
+      "text": "Цена акций GAZP составляет 150 рублей.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 150,
+        "unit": "RUB",
+        "ticker": "GAZP"
+      },
+      "expected_e4_status": "OUT_OF_SCOPE",
+      "note": "OUT_OF_SCOPE means absent from this bounded mock catalog, not absent from MOEX."
+    },
+    {
+      "id": "c10",
+      "text": "В 2025 году SBER стоил 300 рублей.",
+      "expected_extraction": {
+        "type": "price",
+        "value": 300,
+        "unit": "RUB",
+        "ticker": "SBER"
+      },
+      "expected_e4_status": "INCONCLUSIVE",
+      "known_gap": "Historical context is guarded at the API boundary; the extractor itself does not annotate temporal scope."
+    }
+  ]
+}

@@ -96,6 +96,15 @@ jobs:
           cache: "pip"
       - name: Install isolated developer environment
         run: python -m pip install ".[dev]"
+      - name: Run Vertical Experiment v1 (offline mocks)
+        env:
+          PYTHONPATH: src
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/vertical-experiment
+          cp docs/experiments/jamp_audit_v1/vertical_experiment_v1.json artifacts/vertical-experiment/
+          python scripts/research/run_vertical_experiment.py \
+            --output artifacts/vertical-experiment/vertical_experiment_results.json
       - name: Run architectural isolation tests
         env:
           PYTHONPATH: src
@@ -173,3 +182,10 @@ jobs:
           fi
       - name: Baseline integrity
         run: python tools/check_baseline.py --baseline "$(head -n 1 .jamp-baseline)"
+      - name: Upload Vertical Experiment v1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertical-experiment-v1-evidence
+          path: artifacts/vertical-experiment/
+          if-no-files-found: warn
