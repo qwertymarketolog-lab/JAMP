@@ -3,6 +3,16 @@ name: Experiment v4 Live AnyModel Probe
 on:
   workflow_dispatch:
     inputs:
+      max_budget_usd:
+        description: "Hard request budget in USD"
+        required: true
+        type: number
+        default: 0.01
+      max_tokens:
+        description: "Maximum generated output tokens"
+        required: true
+        type: number
+        default: 256
       confirm_live_requests:
         description: "Authorize one AnyModel request"
         required: true
@@ -42,6 +52,8 @@ jobs:
           CONFIRM_PRICE: ${{ inputs.confirm_price }}
           PRICE_SOURCE: ${{ inputs.price_source }}
           CONFIRMED_PRICE_USD: ${{ inputs.confirmed_price_usd }}
+          MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ inputs.max_tokens }}
         run: |
           if [ "$CONFIRM_LIVE" != "true" ]; then
             echo "REFUSE: confirm_live_requests must be true; no request made."
@@ -99,6 +111,8 @@ jobs:
             --live --confirm-live --price-confirmed \
             --price-source "$PRICE_SOURCE" \
             --confirmed-price-usd "$CONFIRMED_PRICE_USD" \
+            --max-budget-usd "$MAX_BUDGET_USD" \
+            --max-tokens "$MAX_TOKENS" \
             --model ag/claude-sonnet-4-6 \
             --output-dir "artifacts/research/experiment_v4/live_${GITHUB_RUN_ID}"
 

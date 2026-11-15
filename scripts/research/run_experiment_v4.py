@@ -5,6 +5,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -12,7 +13,12 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-from jamp.provider.anymodel import (\n    DEFAULT_MAX_INPUT_TOKENS,\n    AnyModelBudgetError,\n    AnyModelChatExecutor,\n    AnyModelError,\n)
+from jamp.provider.anymodel import (
+    DEFAULT_MAX_INPUT_TOKENS,
+    AnyModelBudgetError,
+    AnyModelChatExecutor,
+    AnyModelError,
+)
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_VERIFIED, verify_claim_with_moex
 from jamp.runtime.claim_adapter import to_verdict_claim
@@ -202,7 +208,8 @@ def _safe_raw(capture: dict[str, Any]) -> dict[str, Any] | None:
 def run_live_cycle(
     prompt: str, model: str, *, price_confirmed: bool, price_source: str | None,
     confirmed_price_usd: float | None, full_cycle: bool = False,
-    api_key: str | None = None,
+    api_key: str | None = None, max_tokens: int | None = None,
+    max_budget_usd: float | None = None,
 ) -> dict[str, Any]:
     """Run one manually priced AnyModel request; E4 is downstream of preflight."""
     attestation = _price_attestation(price_confirmed, price_source, confirmed_price_usd)
@@ -219,6 +226,7 @@ def run_live_cycle(
     if (
         isinstance(max_budget_usd, bool)
         or not isinstance(max_budget_usd, (int, float))
+        or not math.isfinite(max_budget_usd)
         or max_budget_usd <= 0
     ):
         return {"status": "REFUSE", "reason": "MAX_BUDGET_REQUIRED",
@@ -314,6 +322,8 @@ def main() -> int:
     parser.add_argument("--price-confirmed", action="store_true")
     parser.add_argument("--price-source")
     parser.add_argument("--confirmed-price-usd", type=float)
+    parser.add_argument("--max-budget-usd", type=float)
+    parser.add_argument("--max-tokens", type=int)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--prompt", default="Say exactly: OK")
     parser.add_argument("--full-cycle", action="store_true")
@@ -328,7 +338,8 @@ def main() -> int:
         result = run_live_cycle(
             args.prompt, args.model, price_confirmed=args.price_confirmed,
             price_source=args.price_source, confirmed_price_usd=args.confirmed_price_usd,
-            full_cycle=args.full_cycle,
+            full_cycle=args.full_cycle, max_tokens=args.max_tokens,
+            max_budget_usd=args.max_budget_usd,
         )
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)

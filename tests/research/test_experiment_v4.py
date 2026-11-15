@@ -4,7 +4,10 @@ import base64
 import hashlib
 import json
 
-import pytest\n\nfrom jamp.provider.anymodel import AnyModelChatExecutor, AnyModelBudgetError\nfrom scripts.research import run_experiment_v4 as experiment_v4
+import pytest
+
+from jamp.provider.anymodel import AnyModelBudgetError, AnyModelChatExecutor
+from scripts.research import run_experiment_v4 as experiment_v4
 
 
 def test_mock_probe_scenarios_are_network_free() -> None:
@@ -117,9 +120,14 @@ def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
         def __init__(self, api_key, *, opener):
             self.opener = opener
 
-        def __call__(self, selected_model, payload):
+        def execute(
+            self, selected_model, payload, *, max_tokens, max_budget_usd, max_input_tokens
+        ):
             assert selected_model == experiment_v4.DEFAULT_MODEL
             assert payload == {"prompt": "The price of BTC is $65000."}
+            assert max_tokens == 256
+            assert max_budget_usd == 0.01
+            assert max_input_tokens == 8192
             return {
                 "provider_model_id": experiment_v4.DEFAULT_MODEL,
                 "provider_response_id": "cmpl-test-real-shaped",
@@ -140,6 +148,7 @@ def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
         "The price of BTC is $65000.", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
+        max_tokens=256, max_budget_usd=0.01,
     )
     assert result["e2_preflight"] == "PREFLIGHT_OK"
     assert result["e4"] == {"verdict": "INCONCLUSIVE", "reason": "MOCK_E4"}
@@ -153,7 +162,9 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
         def __init__(self, api_key, *, opener):
             self.opener = opener
 
-        def __call__(self, selected_model, payload):
+        def execute(
+            self, selected_model, payload, *, max_tokens, max_budget_usd, max_input_tokens
+        ):
             return {
                 "provider_model_id": "openai/gpt-5",
                 "provider_response_id": "cmpl-mock",
@@ -175,6 +186,7 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
         "Say exactly: OK", experiment_v4.DEFAULT_MODEL,
         price_confirmed=True, price_source="test-only price attestation",
         confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
+        max_tokens=256, max_budget_usd=0.01,
     )
     assert result["status"] == "REFUSE"
     assert result["reason"] == "MOCK_DETECTED"
@@ -270,3 +282,27 @@ def test_live_cycle_refuses_over_budget_without_http(monkeypatch) -> None:
     assert result["status"] == "REFUSE"
     assert result["reason"] == "BUDGET_EXCEEDED"
     assert result["http_request_made"] is False
+
+
+
+def test_legacy_anymodel_call_logs_512_token_compatibility(caplog) -> None:
+    observed = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"ok"}}]}'
+
+    def fake_opener(request, timeout):
+        observed["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    executor = AnyModelChatExecutor("test-key", opener=fake_opener)
+    executor(experiment_v4.DEFAULT_MODEL, {"prompt": "Hi"})
+    assert observed["body"]["max_tokens"] == 512
+    assert "Legacy AnyModelChatExecutor.__call__" in caplog.text

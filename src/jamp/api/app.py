@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import time
@@ -24,7 +25,7 @@ from jamp.db.verdicts import (
     list_verdicts_for_organization,
     persist_or_get_verdict,
 )
-from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
+from jamp.provider.anymodel import AnyModelBudgetError, AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
@@ -358,7 +359,18 @@ def create_app(
         model_id = payload.get("model_id")
         if not isinstance(prompt, str) or not prompt.strip():
             return JSONResponse(status_code=422, content={"detail": "prompt must be non-empty"})
-        max_tokens = payload.get("max_tokens")\n        max_budget_usd = payload.get("max_budget_usd")\n        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:\n            return JSONResponse(status_code=422, content={"detail": "max_tokens must be a positive integer"})\n        if (\n            isinstance(max_budget_usd, bool)\n            or not isinstance(max_budget_usd, (int, float))\n            or max_budget_usd <= 0\n        ):\n            return JSONResponse(status_code=422, content={"detail": "max_budget_usd must be positive"})\n        if model_id != "ag/claude-sonnet-4-6":
+        max_tokens = payload.get("max_tokens")
+        max_budget_usd = payload.get("max_budget_usd")
+        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+            return JSONResponse(status_code=422, content={"detail": "max_tokens must be a positive integer"})
+        if (
+            isinstance(max_budget_usd, bool)
+            or not isinstance(max_budget_usd, (int, float))
+            or not math.isfinite(max_budget_usd)
+            or max_budget_usd <= 0
+        ):
+            return JSONResponse(status_code=422, content={"detail": "max_budget_usd must be finite and positive"})
+        if model_id != "ag/claude-sonnet-4-6":
             return JSONResponse(status_code=422, content={
                 "detail": "model_id is not enabled for Experiment v4"
             })
@@ -424,7 +436,10 @@ def create_app(
         try:
             provider_result = AnyModelChatExecutor(
                 api_key, opener=capture_opener
-            )(model_id, {"prompt": prompt})
+            ).execute(
+                model_id, {"prompt": prompt}, max_tokens=max_tokens,
+                max_budget_usd=max_budget_usd,
+            )
             body = capture.get("body")
             if not isinstance(body, bytes):
                 raise AnyModelError("AnyModel response body was not captured")
@@ -444,6 +459,11 @@ def create_app(
                 "http_representation_sha256": hashlib.sha256(raw_http).hexdigest(),
                 "capture_note": "Response API representation, not packet-level wire capture.",
             }
+        except AnyModelBudgetError as exc:
+            return JSONResponse(status_code=200, content={
+                "status": "REFUSE", "reason": str(exc),
+                "http_request_made": False,
+            })
         except Exception as exc:
             return JSONResponse(status_code=200, content={
                 "status": "INCONCLUSIVE",
