@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
 from jamp.db.verdicts import (
@@ -42,6 +42,8 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
+from jamp.runtime.claim_adapter import to_verdict_claim
+from jamp.runtime.claim_extractor import extract_claims
 from jamp.runtime.independent_verifier import report_to_dict, verify_chain
 from jamp.runtime.persistence import AuditPersistence, ChainIntegrityError
 from jamp.runtime.qualification import evaluate_model_qualification
@@ -658,31 +660,60 @@ def create_app(
                     },
                 )
 
-        # E2 verifies model provenance; E4 verifies only bounded MOEX claims.
+        # E2 verifies model provenance; E4 verifies bounded claims from structured
+        # model output first, then deterministic extraction as a fallback.
         claims: list[Claim | dict[str, Any]] = []
+        trace_id = f"trace_{uuid4().hex[:8]}"
         if task_profile == "search_and_extraction" and evidence_status == "VERIFIED":
-            prompt_text = payload.get("prompt", "")
             output_text = output.get("content", "") if isinstance(output, dict) else ""
+            if not isinstance(output_text, str):
+                output_text = ""
             searchable_text = " ".join(
-                text for text in (prompt_text, output_text) if isinstance(text, str)
+                text for text in (payload.get("prompt", ""), output_text)
+                if isinstance(text, str)
             )
 
             structured_claim = payload.get("e4_claim")
             if not isinstance(structured_claim, dict) and isinstance(output, dict):
                 structured_claim = output.get("e4_claim")
+
             if isinstance(structured_claim, dict):
                 ticker = structured_claim.get("ticker")
-                claim_type = structured_claim.get("claim_type")
-                claimed_value = structured_claim.get("claimed_value")
-                if isinstance(ticker, str) and isinstance(claim_type, str):
+                claim_type = structured_claim.get("claim_type", structured_claim.get("type"))
+                claimed_value = structured_claim.get("claimed_value", structured_claim.get("value"))
+                unit = structured_claim.get("unit")
+                if (
+                    unit == "UNKNOWN"
+                    or unit not in {None, "RUB", "USD"}
+                    or claim_type == "entity_existence"
+                ):
+                    claims.append(
+                        {
+                            "text": str(structured_claim.get("text") or "Structured claim"),
+                            "type": str(claim_type or "unknown"),
+                            "source": None,
+                            "status": "INCONCLUSIVE",
+                            "evidence": None,
+                            "reason": (
+                                "CLAIM_TYPE_OUTSIDE_E4_SCOPE"
+                                if claim_type == "entity_existence"
+                                else "CURRENCY_UNKNOWN_OR_UNSUPPORTED"
+                            ),
+                            "critical": bool(structured_claim.get("critical", False)),
+                        }
+                    )
+                elif isinstance(ticker, str) and isinstance(claim_type, str):
                     normalized_ticker = ticker.upper().lstrip("$")
                     explicit_coin_id = structured_claim.get("coin_id")
                     mapped_coin_id = COINGECKO_TICKER_MAP.get(normalized_ticker)
-                    is_crypto_claim = (
-                        structured_claim.get("asset_class") == "crypto"
-                        or isinstance(explicit_coin_id, str)
-                        or mapped_coin_id is not None
+                    is_crypto_claim = unit == "USD" or (
+                        unit is None and (
+                            structured_claim.get("asset_class") == "crypto"
+                            or isinstance(explicit_coin_id, str)
+                            or mapped_coin_id is not None
+                        )
                     )
+                    details: dict[str, Any]
                     if is_crypto_claim:
                         coin_id = (
                             explicit_coin_id
@@ -692,7 +723,6 @@ def create_app(
                         crypto_claim_type = (
                             "existence" if claim_type in {"exists", "existence"} else claim_type
                         )
-                        details: dict[str, Any]
                         if not coin_id:
                             raw_status, details = (
                                 E4_INCONCLUSIVE,
@@ -751,42 +781,81 @@ def create_app(
                         {
                             "text": "Malformed structured E4 claim",
                             "type": "unknown",
-                            "source": "E4_MOEX",
+                            "source": None,
                             "status": "INCONCLUSIVE",
                             "reason": "STRUCTURED_E4_CLAIM_INVALID",
                             "critical": False,
                         }
                     )
             else:
-                # This bounded extractor records explicit input assumptions and known
-                # claim shapes; it is not a general-purpose claim extraction model.
-                ticker_values = list(
-                    dict.fromkeys(
-                        match.group(1).upper()
-                        for match in re.finditer(
-                            r"\(([A-Za-z][A-Za-z0-9.-]{1,9})\)", searchable_text
+                extracted_claims = extract_claims(output_text)
+                for extracted in extracted_claims:
+                    verdict_claim = to_verdict_claim(extracted, trace_id)
+                    verdict_claim["text"] = extracted.text
+                    if verdict_claim["type"] == "entity_existence":
+                        verdict_claim.update(
+                            source=None,
+                            status="INCONCLUSIVE",
+                            reason="CLAIM_TYPE_OUTSIDE_E4_SCOPE",
                         )
-                    )
-                )
-                for ticker in ticker_values:
-                    raw_status, details = verify_claim_with_moex(ticker, "exists", None)
-                    normalized = {
-                        E4_VERIFIED: "VERIFIED",
-                        E4_CONTRADICTED: "CONTRADICTED",
-                        E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
-                        E4_INCONCLUSIVE: "INCONCLUSIVE",
-                    }.get(raw_status, "INCONCLUSIVE")
-                    claims.append(
-                        {
-                            "text": f"{ticker} is listed on MOEX",
-                            "type": "existence",
-                            "source": "E4_MOEX",
-                            "status": normalized,
-                            "evidence": details,
-                            "reason": details.get("reason") if isinstance(details, dict) else None,
-                            "critical": False,
-                        }
-                    )
+                    elif verdict_claim["unit"] == "UNKNOWN":
+                        verdict_claim.update(
+                            source=None,
+                            status="INCONCLUSIVE",
+                            reason="CURRENCY_UNKNOWN",
+                        )
+                    elif not extracted.ticker:
+                        verdict_claim.update(
+                            source=None,
+                            status="INCONCLUSIVE",
+                            reason="TICKER_NOT_IDENTIFIED",
+                        )
+                    elif verdict_claim["unit"] == "RUB":
+                        raw_status, details = verify_claim_with_moex(
+                            extracted.ticker, "price", verdict_claim["value"]
+                        )
+                        verdict_claim.update(
+                            source="E4_MOEX",
+                            status={
+                                E4_VERIFIED: "VERIFIED",
+                                E4_CONTRADICTED: "CONTRADICTED",
+                                E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
+                                E4_INCONCLUSIVE: "INCONCLUSIVE",
+                            }.get(raw_status, "INCONCLUSIVE"),
+                            evidence=details,
+                            reason=details.get("reason"),
+                        )
+                    elif verdict_claim["unit"] == "USD":
+                        coin_id = COINGECKO_TICKER_MAP.get(extracted.ticker.upper())
+                        if coin_id is None:
+                            verdict_claim.update(
+                                source=None,
+                                status="INCONCLUSIVE",
+                                reason="CRYPTO_TICKER_NOT_MAPPED",
+                            )
+                        else:
+                            raw_status, details = verify_claim_with_coingecko(
+                                coin_id, "price", verdict_claim["value"]
+                            )
+                            verdict_claim.update(
+                                source="E4_COINGECKO",
+                                status={
+                                    E4_VERIFIED: "VERIFIED",
+                                    E4_CONTRADICTED: "CONTRADICTED",
+                                    E4_OUT_OF_SCOPE: "OUT_OF_SCOPE",
+                                    E4_INCONCLUSIVE: "INCONCLUSIVE",
+                                }.get(raw_status, "INCONCLUSIVE"),
+                                evidence=details,
+                                reason=details.get("reason"),
+                            )
+                    else:
+                        verdict_claim.update(
+                            source=None,
+                            status="INCONCLUSIVE",
+                            reason="CURRENCY_UNKNOWN_OR_UNSUPPORTED",
+                        )
+                    verdict_claim.setdefault("critical", False)
+                    claims.append(verdict_claim)
 
                 movement_pattern = (
                     r"(?:упал\w*|подешевел\w*|снизил\w*|fell|dropped|down)"
@@ -896,6 +965,7 @@ def create_app(
                     "model_verification": evidence_status,
                 },
             )
+            trace["trace_id"] = trace_id
             persistence.write_trace(trace, organization_id=organization.org_id)
             refusal_content = {
                 "status": "REFUSE",
@@ -962,6 +1032,7 @@ def create_app(
         )
         if isinstance(trace.get("execution_details"), dict):
             trace["execution_details"]["qualification"] = qualification
+        trace["trace_id"] = trace_id
         persistence.write_trace(trace, organization_id=organization.org_id)
         response = {
             "status": "EXECUTE",
