@@ -218,6 +218,7 @@ def create_app(
     @app.on_event("startup")
     def _startup_auth_check() -> None:
         verify_auth_config()
+
     @app.post("/v1/verify_claim", response_model=None)
     def verify_claim_direct(
         payload: dict[str, Any],
@@ -590,7 +591,8 @@ def create_app(
                 content={"detail": "verification could not be completed"},
             )
 
-        return JSONResponse(            status_code=201 if created else 200,
+        return JSONResponse(
+            status_code=201 if created else 200,
             content=stored,
         )
 
@@ -809,7 +811,8 @@ def create_app(
                 required,
                 "REFUSE",
                 reason,
-                len(eligible),                request_id=request_id,
+                len(eligible),
+                request_id=request_id,
                 refusal_reason=reason,
             )
             persistence.write_trace(trace, organization_id=organization.org_id)
@@ -1028,7 +1031,8 @@ def create_app(
                             raw_status = E4_VERIFIED if predicate_satisfied else E4_CONTRADICTED
                             details = {
                                 **details,
-                                "comparison": "greater_than",                                "threshold_usd": claimed_value,
+                                "comparison": "greater_than",
+                                "threshold_usd": claimed_value,
                                 "predicate_satisfied": predicate_satisfied,
                             }
                         source = "E4_COINGECKO"
@@ -1247,7 +1251,8 @@ def create_app(
                 },
                 refusal_reason=reason,
                 failure_diagnostics={
-                    "aggregate_status": aggregate_status,                    "claims": claims,
+                    "aggregate_status": aggregate_status,
+                    "claims": claims,
                     "critical_unverified": critical_unverified,
                     "model_verification": evidence_status,
                 },
@@ -1466,7 +1471,8 @@ def create_app(
             return {"status": "HINT_SENT"}
 
         # The executable-command guard above is fail-closed. Keep this
-        # defensive branch in case command parsing is extended independently.        return JSONResponse(
+        # defensive branch in case command parsing is extended independently.
+        return JSONResponse(
             status_code=503,
             content={
                 "status": "REFUSE",
@@ -1685,7 +1691,8 @@ def create_app(
         return response_body
 
     @app.get("/v1/universal-verdict/{trace_id}")
-    def get_universal_verdict(        trace_id: str,
+    def get_universal_verdict(
+        trace_id: str,
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
     ):
         """Return the last persisted UniversalVerdict envelope for trace_id.
