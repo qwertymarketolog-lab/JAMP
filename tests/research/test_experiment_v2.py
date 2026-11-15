@@ -131,7 +131,10 @@ def test_transport_failure_is_saved_as_raw_evidence(tmp_path, monkeypatch, resea
     )
     record = evidence_http.capture_http(
         source="MOEX",
-        url="https://iss.moex.com/iss/engines/stock/markets/shares/securities/SBER.json?iss.meta=off",
+        url=(
+            "https://iss.moex.com/iss/engines/stock/markets/shares/securities/"
+            "SBER.json?iss.meta=off"
+        ),
         output_dir=tmp_path,
     )
     assert record["status_code"] is None
