@@ -17,8 +17,11 @@ SCRIPT_DIR = ROOT / "scripts" / "research"
 MOEX_TEST_BYTES = json.dumps(
     {
         "marketdata": {
-            "columns": ["SECID", "LAST", "BOARDID"],
-            "data": [["SBER", 301.25, "TQBR"]],
+            "columns": ["SECID", "BOARDID", "LAST"],
+            "data": [
+                ["SBER", "SPEQ", None],
+                ["SBER", "TQBR", 299.26],
+            ],
         }
     },
     separators=(",", ":"),
@@ -53,8 +56,25 @@ class _FakeResponse:
 
 def test_parse_test_only_moex_and_coingecko_bytes(research_modules):
     _, runner = research_modules
-    assert runner.parse_value("MOEX", MOEX_TEST_BYTES) == (301.25, "PARSED")
+    assert runner.parse_value("MOEX", MOEX_TEST_BYTES) == (299.26, "PARSED")
     assert runner.parse_value("CoinGecko", COINGECKO_TEST_BYTES) == (98765.43, "PARSED")
+
+
+def test_moex_speq_null_skips_to_tqbr_and_keeps_source_in_derived_result(research_modules):
+    _, runner = research_modules
+    record = {
+        "sha256_body": hashlib.sha256(MOEX_TEST_BYTES).hexdigest(),
+        "body_complete": True,
+        "status_code": 200,
+    }
+
+    result = runner.derive_result("MOEX", record, MOEX_TEST_BYTES)
+
+    assert result["source"] == "MOEX"
+    assert result["parsed_value"] == 299.26
+    assert result["parse_status"] == "PARSED"
+    assert result["jamp_verdict"] == "INCONCLUSIVE"
+    assert result["reason"] == "NO_CLAIM_CONTEXT"
 
 
 @pytest.mark.parametrize(
