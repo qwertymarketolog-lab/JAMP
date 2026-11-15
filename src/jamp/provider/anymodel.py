@@ -12,7 +12,6 @@ import math
 import os
 from collections.abc import Callable
 from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 COST_PER_MILLION_TOKENS_USD = 0.12
@@ -149,10 +148,7 @@ class AnyModelChatExecutor:
             with self._opener(request, timeout=self._timeout) as response:
                 raw = response.read()
             decoded = json.loads(raw.decode("utf-8"))
-        except HTTPError as exc:
-            raise AnyModelError(f"AnyModel returned HTTP {exc.code}") from None
-        except (URLError, TimeoutError, OSError):
-            raise AnyModelError("AnyModel transport failed") from None
+        # Preserve urllib transport exceptions for caller-side safe diagnostics.
         except (UnicodeDecodeError, json.JSONDecodeError):
             raise AnyModelError("AnyModel returned invalid JSON") from None
 
