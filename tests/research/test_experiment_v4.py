@@ -2,6 +2,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+
+from scripts.research import run_experiment_v4 as experiment_v4
 from scripts.research.run_experiment_v4 import (
     DEFAULT_MODEL, _price_attestation, preflight_response, run_live_cycle, run_mock,
 )
@@ -99,3 +101,74 @@ def test_raw_hash_calculation_is_stable() -> None:
 
 def test_mock_output_is_json_serializable() -> None:
     assert json.loads(json.dumps(run_mock()))["mode"] == "MOCK"
+
+
+def test_preflight_success_reaches_mocked_e4(monkeypatch) -> None:
+    e4_calls = []
+
+    class FakeExecutor:
+        def __init__(self, api_key, *, opener):
+            self.opener = opener
+
+        def __call__(self, selected_model, payload):
+            assert selected_model == DEFAULT_MODEL
+            assert payload == {"prompt": "The price of BTC is $65000."}
+            return {
+                "provider_model_id": DEFAULT_MODEL,
+                "provider_response_id": "cmpl-test-real-shaped",
+                "content": "The price of BTC is $65000.",
+            }
+
+    def fake_e4(content, trace_id):
+        e4_calls.append((content, trace_id))
+        return {"verdict": "INCONCLUSIVE", "reason": "MOCK_E4"}
+
+    monkeypatch.setattr(experiment_v4, "AnyModelChatExecutor", FakeExecutor)
+    monkeypatch.setattr(
+        experiment_v4, "_finalize_raw",
+        lambda capture: {"http_representation_sha256": "a" * 64},
+    )
+    monkeypatch.setattr(experiment_v4, "_e4_verify", fake_e4)
+    result = experiment_v4.run_live_cycle(
+        "The price of BTC is $65000.", DEFAULT_MODEL,
+        price_confirmed=True, price_source="test-only price attestation",
+        confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
+    )
+    assert result["e2_preflight"] == "PREFLIGHT_OK"
+    assert result["e4"] == {"verdict": "INCONCLUSIVE", "reason": "MOCK_E4"}
+    assert len(e4_calls) == 1
+
+
+def test_mock_response_never_reaches_e4(monkeypatch) -> None:
+    e4_called = False
+
+    class FakeExecutor:
+        def __init__(self, api_key, *, opener):
+            self.opener = opener
+
+        def __call__(self, selected_model, payload):
+            return {
+                "provider_model_id": "openai/gpt-5",
+                "provider_response_id": "cmpl-mock",
+                "content": "The price of BTC is $65000.",
+            }
+
+    def forbidden_e4(content, trace_id):
+        nonlocal e4_called
+        e4_called = True
+        raise AssertionError("E4 must not receive a mock response")
+
+    monkeypatch.setattr(experiment_v4, "AnyModelChatExecutor", FakeExecutor)
+    monkeypatch.setattr(
+        experiment_v4, "_finalize_raw",
+        lambda capture: {"http_representation_sha256": "b" * 64},
+    )
+    monkeypatch.setattr(experiment_v4, "_e4_verify", forbidden_e4)
+    result = experiment_v4.run_live_cycle(
+        "Say exactly: OK", DEFAULT_MODEL,
+        price_confirmed=True, price_source="test-only price attestation",
+        confirmed_price_usd=0.01, full_cycle=True, api_key="test-key",
+    )
+    assert result["status"] == "REFUSE"
+    assert result["reason"] == "MOCK_DETECTED"
+    assert e4_called is False

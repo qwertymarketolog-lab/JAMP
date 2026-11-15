@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
+
 from jamp.provider.anymodel import AnyModelChatExecutor, AnyModelError
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.moex_verify import E4_CONTRADICTED, E4_VERIFIED, verify_claim_with_moex
@@ -86,7 +87,9 @@ def _finalize_raw(capture: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def preflight_response(requested_model: str, provider_result: dict[str, Any]) -> tuple[str, str | None]:
+def preflight_response(
+    requested_model: str, provider_result: dict[str, Any]
+) -> tuple[str, str | None]:
     """Reject known mock signatures and model substitution before extraction."""
     actual_model = provider_result.get("provider_model_id") or provider_result.get("model")
     response_id = provider_result.get("provider_response_id") or provider_result.get("id")
