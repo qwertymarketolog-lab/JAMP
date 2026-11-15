@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import base64
-import hmac
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -239,7 +239,10 @@ def create_app(
             or not isinstance(tolerance_pct, (int, float))
             or not 0 <= float(tolerance_pct) < 100
         ):
-            return JSONResponse(status_code=422, content={"detail": "tolerance_pct must be in [0, 100)"})
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "tolerance_pct must be in [0, 100)"},
+            )
 
         trace_id = f"v3_{uuid4().hex}"
         try:

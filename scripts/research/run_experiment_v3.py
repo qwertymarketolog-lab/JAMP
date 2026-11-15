@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import nullcontext
 import hashlib
 import json
 import pathlib
 import sys
-from contextlib import nullcontext
 from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -128,7 +128,12 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     target = args.output_dir / "experiment_v3_result.json"
     target.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"mode": output["mode"], "status": output["status"], "output": str(target)}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"mode": output["mode"], "status": output["status"], "output": str(target)},
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
