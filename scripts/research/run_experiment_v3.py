@@ -9,7 +9,7 @@ import hashlib
 import json
 import pathlib
 import sys
-from unittest.mock import patch
+import unittest.mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
@@ -90,7 +90,7 @@ def main() -> int:
         {"id": "missing_currency", "text": "Цена SBER 299.26", "expected_mock": "INCONCLUSIVE"},
     ]
     network_patch = (
-        patch("urllib.request.urlopen", side_effect=fixture_open)
+        unittest.mock.patch("urllib.request.urlopen", side_effect=fixture_open)
         if args.mode == "mock"
         else contextlib.nullcontext()
     )
