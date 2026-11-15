@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import argparse
 import base64
-import contextlib
 import hashlib
 import json
 import pathlib
 import sys
-import unittest.mock
+import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
@@ -89,13 +88,11 @@ def main() -> int:
         {"id": "strong_divergence", "text": "Цена SBER 5000 RUB", "expected_mock": "CONTRADICTED"},
         {"id": "missing_currency", "text": "Цена SBER 299.26", "expected_mock": "INCONCLUSIVE"},
     ]
-    network_patch = (
-        unittest.mock.patch("urllib.request.urlopen", side_effect=fixture_open)
-        if args.mode == "mock"
-        else contextlib.nullcontext()
-    )
+    original_urlopen = urllib.request.urlopen
+    if args.mode == "mock":
+        urllib.request.urlopen = fixture_open
     results = []
-    with network_patch:
+    try:
         for case in cases:
             response = client.post(
                 "/v1/verify_claim",
@@ -116,6 +113,9 @@ def main() -> int:
                 if hashlib.sha256(raw).hexdigest() != evidence["sha256_body"]:
                     raise AssertionError("RAW evidence hash mismatch")
             results.append(item)
+    finally:
+        if args.mode == "mock":
+            urllib.request.urlopen = original_urlopen
 
     output = {
         "schema": "jamp.experiment-v3-result.v1",
