@@ -6,6 +6,8 @@ is OUT_OF_SCOPE, never proof that a company does not exist.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import math
 import urllib.error
@@ -21,13 +23,41 @@ E4_INCONCLUSIVE = "E4_INCONCLUSIVE"
 PRICE_FIELDS = ["LAST", "MARKETPRICE", "MARKETPRICE2"]
 
 
-def _get_json(url: str, timeout: float) -> dict[str, Any]:
+def _get_json(
+    url: str,
+    timeout: float,
+    raw_evidence: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     request = urllib.request.Request(
         url,
         headers={"Accept": "application/json", "User-Agent": "JAMP-Trust-Layer/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read()
+            status_code = getattr(response, "status", 200)
+    except urllib.error.HTTPError as exc:
+        body = exc.read()
+        if raw_evidence is not None:
+            raw_evidence.append({
+                "source": "moex.iss",
+                "url": url,
+                "status_code": exc.code,
+                "body_complete": True,
+                "raw_body_base64": base64.b64encode(body).decode("ascii"),
+                "sha256_body": hashlib.sha256(body).hexdigest(),
+            })
+        raise
+    if raw_evidence is not None:
+        raw_evidence.append({
+            "source": "moex.iss",
+            "url": url,
+            "status_code": status_code,
+            "body_complete": True,
+            "raw_body_base64": base64.b64encode(body).decode("ascii"),
+            "sha256_body": hashlib.sha256(body).hexdigest(),
+        })
+    payload = json.loads(body.decode("utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("MOEX ISS response must be a JSON object")
     return payload
@@ -80,13 +110,14 @@ def _failure_diagnostics(
     }
 
 
-def verify_claim_with_moex(
+def _verify_claim_with_moex(
     ticker: str,
     claim_type: str,
     claimed_value: float | int | None,
     *,
     timeout: float = 5.0,
     price_tolerance: float = 0.05,
+    raw_evidence: list[dict[str, Any]] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Verify an explicit MOEX ticker or last-price claim.
 
@@ -142,7 +173,7 @@ def verify_claim_with_moex(
     )
     securities_columns: list[str] | None = None
     try:
-        catalog = _get_json(f"{MOEX_ISS_BASE}/securities.json?{query}", timeout)
+        catalog = _get_json(f"{MOEX_ISS_BASE}/securities.json?{query}", timeout, raw_evidence)
         securities_table = catalog.get("securities")
         if isinstance(securities_table, dict) and isinstance(securities_table.get("columns"), list):
             securities_columns = [
@@ -207,7 +238,7 @@ def verify_claim_with_moex(
     marketdata_columns: list[str] | None = None
     marketdata_rows_count: int | None = None
     try:
-        market = _get_json(price_url, timeout)
+        market = _get_json(price_url, timeout, raw_evidence)
         marketdata_table = market.get("marketdata")
         if isinstance(marketdata_table, dict) and isinstance(marketdata_table.get("columns"), list):
             marketdata_columns = [
@@ -296,3 +327,27 @@ def verify_claim_with_moex(
     if relative_delta > price_tolerance:
         return E4_CONTRADICTED, {**details, "result": "CONTRADICTED"}
     return E4_VERIFIED, {**details, "result": "VERIFIED"}
+
+
+def verify_claim_with_moex(
+    ticker: str,
+    claim_type: str,
+    claimed_value: float | int | None,
+    *,
+    timeout: float = 5.0,
+    price_tolerance: float = 0.05,
+    capture_raw: bool = False,
+) -> tuple[str, dict[str, Any]]:
+    """Backward-compatible public verifier with opt-in exact HTTP evidence."""
+    raw_evidence: list[dict[str, Any]] = []
+    status, details = _verify_claim_with_moex(
+        ticker,
+        claim_type,
+        claimed_value,
+        timeout=timeout,
+        price_tolerance=price_tolerance,
+        raw_evidence=raw_evidence if capture_raw else None,
+    )
+    if capture_raw:
+        details = {**details, "raw_evidence": raw_evidence}
+    return status, details

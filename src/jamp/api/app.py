@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -217,6 +218,133 @@ def create_app(
     @app.on_event("startup")
     def _startup_auth_check() -> None:
         verify_auth_config()
+
+    @app.post("/v1/verify_claim", response_model=None)
+    def verify_claim_direct(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Research-only direct E4 verification; deliberately bypasses E2."""
+        from base64 import b64decode
+        from binascii import Error as Base64Error
+
+        text = payload.get("text")
+        tolerance_pct = payload.get("tolerance_pct", 1.0)
+        if set(payload) - {"text", "tolerance_pct"}:
+            return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
+        if not isinstance(text, str) or not text.strip():
+            return JSONResponse(status_code=422, content={"detail": "text must be non-empty"})
+        if (
+            isinstance(tolerance_pct, bool)
+            or not isinstance(tolerance_pct, (int, float))
+            or not 0 <= float(tolerance_pct) < 100
+        ):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "tolerance_pct must be in [0, 100)"},
+            )
+
+        trace_id = f"v3_{uuid4().hex}"
+        try:
+            candidates = extract_claims(text, trace_id=trace_id)
+        except (TypeError, ValueError):
+            return JSONResponse(status_code=200, content={
+                "verdict": "INCONCLUSIVE",
+                "reason": "CLAIM_EXTRACTION_FAILED",
+                "extracted_claim": None,
+                "raw_evidence": [],
+                "verification_mode": "DIRECT_E4_NO_E2",
+            })
+        if len(candidates) != 1:
+            return JSONResponse(status_code=200, content={
+                "verdict": "INCONCLUSIVE",
+                "reason": "EXPECTED_EXACTLY_ONE_CLAIM",
+                "extracted_claim": [to_verdict_claim(item, trace_id) for item in candidates],
+                "raw_evidence": [],
+                "verification_mode": "DIRECT_E4_NO_E2",
+            })
+
+        candidate = candidates[0]
+        extracted_claim = to_verdict_claim(candidate, trace_id)
+        if candidate.claim_type != "price":
+            return JSONResponse(status_code=200, content={
+                "verdict": "INCONCLUSIVE",
+                "reason": "CLAIM_TYPE_NOT_SUPPORTED",
+                "extracted_claim": extracted_claim,
+                "raw_evidence": [],
+                "verification_mode": "DIRECT_E4_NO_E2",
+            })
+        if not candidate.ticker or candidate.cited_value is None or candidate.currency is None:
+            return JSONResponse(status_code=200, content={
+                "verdict": "INCONCLUSIVE",
+                "reason": "MISSING_TICKER_VALUE_OR_CURRENCY",
+                "extracted_claim": extracted_claim,
+                "raw_evidence": [],
+                "verification_mode": "DIRECT_E4_NO_E2",
+            })
+
+        try:
+            if candidate.currency == "RUB":
+                raw_status, details = verify_claim_with_moex(
+                    candidate.ticker, "price", candidate.cited_value,
+                    price_tolerance=float(tolerance_pct) / 100.0, capture_raw=True,
+                )
+            elif candidate.currency == "USD":
+                coin_id = COINGECKO_TICKER_MAP.get(candidate.ticker.upper())
+                if coin_id is None:
+                    return JSONResponse(status_code=200, content={
+                        "verdict": "INCONCLUSIVE",
+                        "reason": "UNKNOWN_COINGECKO_TICKER",
+                        "extracted_claim": extracted_claim,
+                        "raw_evidence": [],
+                        "verification_mode": "DIRECT_E4_NO_E2",
+                    })
+                raw_status, details = verify_claim_with_coingecko(
+                    coin_id, "price", candidate.cited_value,
+                    threshold_pct=float(tolerance_pct), capture_raw=True,
+                )
+            else:
+                raw_status, details = E4_INCONCLUSIVE, {"reason": "UNSUPPORTED_CURRENCY"}
+        except Exception as exc:
+            return JSONResponse(status_code=200, content={
+                "verdict": "INCONCLUSIVE",
+                "reason": f"PROVIDER_ERROR:{type(exc).__name__}",
+                "extracted_claim": extracted_claim,
+                "raw_evidence": [],
+                "verification_mode": "DIRECT_E4_NO_E2",
+            })
+
+        raw_evidence = details.get("raw_evidence", []) if isinstance(details, dict) else []
+        raw_valid = bool(raw_evidence)
+        for item in raw_evidence:
+            try:
+                body = b64decode(item["raw_body_base64"], validate=True)
+                raw_valid = raw_valid and (
+                    item.get("body_complete") is True
+                    and item.get("status_code") == 200
+                    and hashlib.sha256(body).hexdigest() == item.get("sha256_body")
+                )
+            except (KeyError, TypeError, Base64Error):
+                raw_valid = False
+        if raw_status in {E4_VERIFIED, E4_CONTRADICTED} and not raw_valid:
+            verdict, reason = "INCONCLUSIVE", "RAW_EVIDENCE_MISSING_OR_INVALID"
+        elif raw_status == E4_VERIFIED:
+            verdict, reason = "VERIFIED", None
+        elif raw_status == E4_CONTRADICTED:
+            verdict, reason = "CONTRADICTED", None
+        else:
+            verdict = "INCONCLUSIVE"
+            reason = details.get("reason", raw_status) if isinstance(details, dict) else raw_status
+
+        return JSONResponse(status_code=200, content={
+            "verdict": verdict,
+            "reason": reason,
+            "extracted_claim": extracted_claim,
+            "details": details,
+            "raw_evidence": raw_evidence,
+            "tolerance_pct": float(tolerance_pct),
+            "verification_mode": "DIRECT_E4_NO_E2",
+        })
 
     @app.post("/v1/verify", response_model=None)
     def verify(
