@@ -18,8 +18,11 @@ def test_mock_probe_scenarios_are_network_free() -> None:
 def test_mock_response_id_is_refused() -> None:
     status, reason = experiment_v4.preflight_response(
         experiment_v4.DEFAULT_MODEL,
-        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "chatcmpl-abc123",
-         "content": "OK"},
+        {
+            "provider_model_id": experiment_v4.DEFAULT_MODEL,
+            "provider_response_id": "chatcmpl-abc123",
+            "content": "OK",
+        },
     )
     assert (status, reason) == ("REFUSE", "MOCK_DETECTED")
 
@@ -36,8 +39,11 @@ def test_mock_response_model_is_refused() -> None:
 def test_mock_response_text_is_refused() -> None:
     status, reason = experiment_v4.preflight_response(
         experiment_v4.DEFAULT_MODEL,
-        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "chatcmpl-real-1",
-         "content": "Hi! I'm an AI assistant"},
+        {
+            "provider_model_id": experiment_v4.DEFAULT_MODEL,
+            "provider_response_id": "chatcmpl-real-1",
+            "content": "Hi! I'm an AI assistant",
+        },
     )
     assert (status, reason) == ("REFUSE", "MOCK_DETECTED")
 
@@ -54,8 +60,11 @@ def test_model_mismatch_is_refused() -> None:
 def test_matching_non_mock_response_passes_preflight() -> None:
     status, reason = experiment_v4.preflight_response(
         experiment_v4.DEFAULT_MODEL,
-        {"provider_model_id": experiment_v4.DEFAULT_MODEL, "provider_response_id": "cmpl-live-shaped-1",
-         "content": "The price of BTC is $65000."},
+        {
+            "provider_model_id": experiment_v4.DEFAULT_MODEL,
+            "provider_response_id": "cmpl-live-shaped-1",
+            "content": "The price of BTC is $65000.",
+        },
     )
     assert (status, reason) == ("PREFLIGHT_OK", None)
 
@@ -176,6 +185,10 @@ def test_mock_response_never_reaches_e4(monkeypatch) -> None:
 def test_missing_provider_reported_model_is_refused() -> None:
     status, reason = experiment_v4.preflight_response(
         experiment_v4.DEFAULT_MODEL,
-        {"model": experiment_v4.DEFAULT_MODEL, "provider_response_id": "cmpl-real-2", "content": "OK"},
+        {
+            "model": experiment_v4.DEFAULT_MODEL,
+            "provider_response_id": "cmpl-real-2",
+            "content": "OK",
+        },
     )
     assert (status, reason) == ("REFUSE", "MODEL_ID_MISSING")
