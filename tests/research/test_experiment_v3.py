@@ -9,9 +9,6 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("JAMP_ENV", "test")
-os.environ.setdefault("JAMP_SIGNING_KEY", "experiment-v3-test-key")
-
 from jamp.api import create_app
 from jamp.api.auth import require_api_key
 
@@ -44,6 +41,9 @@ class FakeResponse:
 
 
 def _client():
+    os.environ.setdefault("JAMP_ENV", "test")
+    os.environ.setdefault("JAMP_SIGNING_KEY", "experiment-v3-test-key")
+    os.environ.setdefault("JAMP_API_KEY_HASH_SECRET", "experiment-v3-auth-secret")
     app = create_app()
     app.dependency_overrides[require_api_key] = lambda: SimpleNamespace(org_id="offline-test")
     return TestClient(app)

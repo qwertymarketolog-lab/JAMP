@@ -8,7 +8,6 @@ import hashlib
 import json
 import pathlib
 import sys
-import urllib.request
 from contextlib import nullcontext
 from unittest.mock import patch
 
@@ -59,7 +58,10 @@ def fixture_open(request, timeout=5):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("mock", "live"), default="mock")
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument("--mock", dest="mode", action="store_const", const="mock")
+    mode_group.add_argument("--live", dest="mode", action="store_const", const="live")
+    parser.set_defaults(mode="mock")
     parser.add_argument("--confirm-live", action="store_true")
     parser.add_argument(
         "--output-dir",
@@ -73,6 +75,7 @@ def main() -> int:
     import os
     os.environ.setdefault("JAMP_ENV", "test")
     os.environ.setdefault("JAMP_SIGNING_KEY", "experiment-v3-offline-key")
+    os.environ.setdefault("JAMP_API_KEY_HASH_SECRET", "experiment-v3-auth-secret")
 
     from fastapi.testclient import TestClient
     from jamp.api import create_app
