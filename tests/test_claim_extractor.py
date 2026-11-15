@@ -30,6 +30,13 @@ def test_extracts_usd_currency() -> None:
     assert claim.currency == "USD"
 
 
+def test_extracts_rub_currency_code() -> None:
+    claim = extract_claims("Цена SBER составляет 5000 RUB")[0]
+
+    assert claim.cited_value == 5000.0
+    assert claim.currency == "RUB"
+
+
 def test_price_without_currency_keeps_currency_unknown() -> None:
     claim = extract_claims("Цена SBER составляет 5000")[0]
 
@@ -88,7 +95,7 @@ def test_default_ids_are_uuid4_and_unique_across_calls() -> None:
 
 def test_empty_input_returns_no_claims() -> None:
     assert extract_claims("") == []
-    assert extract_claims("  \\n ") == []
+    assert extract_claims("  \n ") == []
 
 
 def test_non_string_input_is_rejected() -> None:
