@@ -8,7 +8,6 @@ import jamp.runtime.claim_adapter as claim_adapter
 from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
 
-
 EXPECTED_KEYS = {
     "claim_id",
     "type",
