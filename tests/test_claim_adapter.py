@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 
 import pytest
-
 import jamp.runtime.claim_adapter as claim_adapter
 from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
