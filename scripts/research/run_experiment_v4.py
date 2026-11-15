@@ -8,7 +8,6 @@ import json
 import math
 import os
 import re
-import socket
 import sys
 from pathlib import Path
 from typing import Any
