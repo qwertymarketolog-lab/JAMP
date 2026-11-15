@@ -58,19 +58,35 @@ def parse_value(source: str, body: bytes) -> tuple[float | None, str]:
         try:
             last_index = columns.index("LAST")
             secid_index = columns.index("SECID")
+            boardid_index = columns.index("BOARDID")
         except ValueError:
             return None, "MOEX_REQUIRED_COLUMN_MISSING"
+
+        valid_rows: list[tuple[str, float]] = []
         for row in rows:
             if (
-                isinstance(row, list)
-                and len(row) == len(columns)
-                and row[secid_index] == "SBER"
+                not isinstance(row, list)
+                or len(row) != len(columns)
+                or row[secid_index] != "SBER"
             ):
-                value = _positive_number(row[last_index])
-                if value is not None:
-                    return value, "PARSED"
-                return None, "SBER_LAST_MISSING_OR_INVALID"
-        return None, "SBER_MARKETDATA_ROW_MISSING"
+                continue
+            raw_last = row[last_index]
+            if raw_last is None or raw_last == "":
+                continue
+            value = _positive_number(raw_last)
+            if value is None:
+                continue
+            board_id = row[boardid_index]
+            valid_rows.append((board_id if isinstance(board_id, str) else "", value))
+
+        if not valid_rows:
+            return None, "SBER_MARKETDATA_LAST_MISSING_OR_INVALID"
+
+        for board_id, value in valid_rows:
+            if board_id == "TQBR":
+                return value, "PARSED"
+
+        return valid_rows[0][1], "PARSED"
 
     return None, "UNSUPPORTED_SOURCE"
 
