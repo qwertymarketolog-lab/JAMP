@@ -67,7 +67,9 @@ def _client(monkeypatch, content, calls):
 
     monkeypatch.setattr(app_module, "verify_claim_with_moex", moex)
     monkeypatch.setattr(app_module, "verify_claim_with_coingecko", coingecko)
-    executor = lambda model, payload: {**_executor(model, payload), "content": content}
+    def executor(model, payload):
+        return {**_executor(model, payload), "content": content}
+
     return TestClient(create_app(executor=executor))
 
 
