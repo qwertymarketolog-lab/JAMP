@@ -60,7 +60,7 @@ async def dashboard_login(request: Request) -> RedirectResponse:
         raise HTTPException(status_code=400, detail="API key required")
 
     organization = authenticate_api_key(api_key)
-    response = RedirectResponse(url="/", status_code=303)
+    response = RedirectResponse(url="/app", status_code=303)
     session_value = create_dashboard_session(organization.org_id)
     response.set_cookie(
         key=DASHBOARD_SESSION_COOKIE,
