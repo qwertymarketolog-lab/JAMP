@@ -17,6 +17,8 @@ on:
       - "tests/research/test_verdict_harness.py"
       - "tests/research/**"
       - "scripts/research/run_vertical_experiment.py"
+      - "scripts/research/run_benchmark.py"
+      - "benchmarks/claim_extraction_v1.json"
       - "docs/experiments/jamp_audit_v1/vertical_experiment_v1.json"
   workflow_dispatch:
     inputs:
@@ -60,6 +62,15 @@ jobs:
       - name: Install test dependencies
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.execute == true)
         run: python -m pip install pytest fastapi httpx2 psycopg2-binary jinja2
+
+      - name: Install JAMP package for claim benchmark
+        if: github.event_name == 'pull_request'
+        run: python -m pip install -e .
+
+      - name: Run claim extraction benchmark
+        id: claim_benchmark
+        if: github.event_name == 'pull_request'
+        run: python scripts/research/run_benchmark.py --output artifacts/claim_extraction/benchmark_results.json
 
       - name: Run focused tests
         id: tests
@@ -171,6 +182,15 @@ jobs:
           }
           output.write_text(json.dumps(record, indent=2) + chr(10), encoding='utf-8')
           PY
+
+      - name: Upload claim extraction benchmark
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-extraction-benchmark-${{ github.run_id }}
+          path: artifacts/claim_extraction/benchmark_results.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Upload E4 vertical experiment evidence
         if: always() && github.event_name == 'pull_request'
