@@ -31,6 +31,7 @@ from jamp.api.auth import (
 WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 STATIC_DIR = WEB_DIR / "static"
+FRONTEND_DIST = Path(os.environ.get("JAMP_FRONTEND_DIST", "/app/frontend-dist"))
 
 router = APIRouter()
 
@@ -95,6 +96,22 @@ def dashboard(
     )
 
 
+@router.get("/app", response_class=HTMLResponse)
+def react_dashboard(
+    _organization: Annotated[OrganizationContext, Depends(require_api_key)],
+) -> HTMLResponse:
+    """Serve the production React application to an authenticated organization."""
+    index_path = FRONTEND_DIST / "index.html"
+    try:
+        content = index_path.read_text(encoding="utf-8")
+    except OSError:
+        raise HTTPException(
+            status_code=503,
+            detail="React dashboard assets are not built into this image",
+        ) from None
+    return HTMLResponse(content=content)
+
+
 @router.post("/dashboard/logout")
 def dashboard_logout() -> RedirectResponse:
     """Clear the browser session cookie."""
@@ -124,6 +141,13 @@ def register_dashboard(app: FastAPI) -> None:
         StaticFiles(directory=str(STATIC_DIR)),
         name="dashboard-static",
     )
+    frontend_assets = FRONTEND_DIST / "assets"
+    if frontend_assets.is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(frontend_assets)),
+            name="frontend-assets",
+        )
 
 
 def register_ui_verify(
