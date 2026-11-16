@@ -426,7 +426,10 @@ def run_mock_e4() -> dict[str, Any]:
             return False
 
         def read(self, *args: Any, **kwargs: Any) -> bytes:
-            return b'{"id":"cmpl-mock-e2e","model":"ag/claude-sonnet-4-6"}'
+            return (
+                b'{"id":"cmpl-mock-e2e","model":"ag/claude-sonnet-4-6",'
+                b'"choices":[{"message":{"content":"The price of SBER is 300 RUB"}}]}'
+            )
 
     def fake_transport_opener(request: Any, timeout: float) -> FakeResponse:
         return FakeResponse()
