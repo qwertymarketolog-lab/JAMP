@@ -203,7 +203,7 @@ def create_app(
     app = FastAPI(title="JAMP API", version="v1")
     app.openapi_version = "3.0.3"
 
-    from jamp.server.web.routes import register_dashboard
+    from jamp.server.web.routes import register_dashboard, register_ui_verify
 
     register_dashboard(app)
 
@@ -582,6 +582,8 @@ def create_app(
             "trace_id": trace_id,
             "verification_mode": "DIRECT_E4_NO_E2",
         })
+
+    register_ui_verify(app, verify_text)
 
     @app.post("/v1/audit_response", response_model=None)
     def audit_response(

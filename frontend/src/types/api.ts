@@ -1,7 +1,6 @@
 /**
- * Type declarations for the currently implemented POST /v1/verify_text API.
- * These types document the observed backend contract; they do not validate
- * untrusted JSON at runtime and are not used to make requests in this PR.
+ * Type declarations for the authenticated BFF proxy to POST /v1/verify_text.
+ * These types document the observed backend contract; runtime JSON remains untrusted.
  */
 
 export type ClaimVerdict = "VERIFIED" | "CONTRADICTED" | "INCONCLUSIVE";
@@ -56,4 +55,8 @@ export interface VerifyTextResponse {
   provider_errors: VerifyTextProviderError[];
   trace_id: string;
   verification_mode?: "DIRECT_E4_NO_E2";
+}
+
+export interface VerifyTextApiError {
+  detail: string;
 }

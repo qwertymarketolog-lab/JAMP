@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { ClaimCard } from "./components/ClaimCard";
+import type { VerifyTextResponse } from "./types/api";
 
 type IconName = "grid" | "scan" | "store" | "telegram" | "network" | "archive" | "settings";
 
@@ -28,6 +30,54 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
 function App() {
   const [active, setActive] = useState("Обзор");
   const sections = [...new Set(navigation.map((item) => item.section))];
+  const [inputText, setInputText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<VerifyTextResponse | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const readCookie = (name: string): string | null => {
+    const prefix = `${name}=`;
+    const cookie = document.cookie.split("; ").find((entry) => entry.startsWith(prefix));
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+  };
+
+  const handleVerify = async () => {
+    if (!inputText.trim() || loading) return;
+    setLoading(true);
+    setResult(null);
+    setRequestError(null);
+    try {
+      const csrfToken = readCookie("jamp_dashboard_csrf");
+      if (!csrfToken) {
+        window.location.assign("/dashboard/login");
+        return;
+      }
+      const response = await fetch("/api/ui_verify", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ text: inputText }),
+      });
+      if (response.status === 401) {
+        window.location.assign("/dashboard/login");
+        return;
+      }
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`,
+        );
+      }
+      setResult(payload as VerifyTextResponse);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-jamp-base text-slate-100">
@@ -70,7 +120,7 @@ function App() {
         <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-jamp-line/60 bg-jamp-base/85 px-5 backdrop-blur-xl md:px-10">
           <div><div className="text-xs text-slate-500">JAMP / Workspace</div><h1 className="mt-1 text-lg font-semibold tracking-tight">{active}</h1></div>
           <div className="flex items-center gap-3">
-            <span className="hidden rounded-full border border-jamp-amber/20 bg-jamp-amber/5 px-3 py-1.5 text-[11px] text-jamp-amber sm:inline-flex">STATIC PREVIEW · NO LIVE DATA</span>
+            <span className="hidden rounded-full border border-jamp-amber/20 bg-jamp-amber/5 px-3 py-1.5 text-[11px] text-jamp-amber sm:inline-flex">BFF API · SERVER-SIDE AUTH</span>
             <button className="rounded-xl border border-jamp-line bg-jamp-panel px-3 py-2 text-xs text-slate-300">RU <span className="ml-1 text-slate-500">⌄</span></button>
           </div>
         </header>
@@ -78,16 +128,82 @@ function App() {
         <div className="mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10">
           <div className="mb-8 flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
             <div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-jamp-blue/20 bg-jamp-blue/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300"><span className="h-1.5 w-1.5 rounded-full bg-jamp-blue" /> Evidence Infrastructure</div><h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-white md:text-4xl">От утверждения —<br className="hidden sm:block" /> к проверяемому доказательству.</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Единое рабочее пространство для проверки фактов, происхождения данных и будущих продуктов экосистемы JAMP.</p></div>
-            <div className="rounded-xl border border-jamp-line bg-jamp-panel/70 px-4 py-3"><div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Состояние интерфейса</div><div className="mt-1 flex items-center gap-2 text-sm font-medium text-jamp-amber"><span className="h-2 w-2 rounded-full bg-jamp-amber" /> Каркас · интеграция впереди</div></div>
+            <div className="rounded-xl border border-jamp-line bg-jamp-panel/70 px-4 py-3"><div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Состояние интерфейса</div><div className="mt-1 flex items-center gap-2 text-sm font-medium text-jamp-amber"><span className="h-2 w-2 rounded-full bg-jamp-amber" /> BFF · API integration</div></div>
           </div>
 
           <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {[
-              { title: "Проверка утверждений", subtitle: "Claim verification", icon: "scan" as IconName, accent: "text-jamp-blue", note: "API существует · UI не подключён" },
+              { title: "Проверка утверждений", subtitle: "Claim verification", icon: "scan" as IconName, accent: "text-jamp-blue", note: "BFF endpoint · UI connected" },
               { title: "Evidence Vault", subtitle: "Источники и происхождение", icon: "archive" as IconName, accent: "text-jamp-green", note: "Экран запланирован" },
               { title: "Маркетплейс", subtitle: "Продукты и интеграции", icon: "store" as IconName, accent: "text-violet-300", note: "Продуктовый контур запланирован" },
               { title: "Telegram", subtitle: "Бот и каналы взаимодействия", icon: "telegram" as IconName, accent: "text-sky-300", note: "Интеграционный экран запланирован" },
             ].map((card) => <div key={card.title} className="panel-card group p-5"><div className="mb-5 flex items-start justify-between"><div className={`rounded-xl border border-white/5 bg-white/[0.04] p-3 ${card.accent}`}><Icon name={card.icon} className="h-5 w-5" /></div><span className="rounded-full border border-jamp-line px-2 py-1 text-[9px] uppercase tracking-wider text-slate-500">Planned</span></div><div className="text-sm font-semibold text-slate-100">{card.title}</div><div className="mt-1 text-xs text-slate-500">{card.subtitle}</div><div className="mt-5 border-t border-jamp-line/70 pt-3 text-[11px] text-slate-500">{card.note}</div></div>)}
+          </section>
+
+          <section className="panel-card mt-7 p-6 md:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-100">Проверка утверждений</div>
+                <div className="mt-1 text-xs text-slate-500">Текст отправляется через BFF; секреты остаются на сервере.</div>
+              </div>
+              <span className="rounded-lg border border-jamp-green/30 bg-jamp-green/5 px-2.5 py-1 text-[10px] text-emerald-300">SERVER-SIDE AUTH</span>
+            </div>
+            <textarea
+              value={inputText}
+              onChange={(event) => setInputText(event.target.value)}
+              placeholder="Вставьте текст для проверки утверждений…"
+              rows={6}
+              className="mt-5 w-full resize-y rounded-xl border border-jamp-line bg-[#080d18] p-4 text-sm leading-6 text-slate-200 outline-none transition placeholder:text-slate-600 focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleVerify}
+                disabled={loading || !inputText.trim()}
+                className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-400/10 px-5 py-3 text-sm font-semibold text-sky-200 shadow-[0_0_22px_rgba(56,189,248,0.12)] transition hover:bg-sky-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-sky-200/30 border-t-sky-200" />}
+                {loading ? "Проверяем…" : "Проверить"}
+              </button>
+              <span className="text-xs text-slate-500">Результат зависит от доступности источников и полноты извлечения.</span>
+            </div>
+            {requestError && (
+              <div role="alert" className="mt-4 rounded-xl border border-rose-400/30 bg-rose-400/5 p-4 text-sm text-rose-300">
+                Не удалось выполнить проверку: {requestError}
+              </div>
+            )}
+            {result && (
+              <div className="mt-6 space-y-4" aria-live="polite">
+                {result.status === "NO_CLAIMS" && (
+                  <div className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
+                    <div className="font-semibold">Утверждения не обнаружены</div>
+                    <div className="mt-1">Это не доказывает отсутствие фактических утверждений в тексте.</div>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                  <span>Статус: <strong className="text-slate-200">{result.status}</strong></span>
+                  <span>Trace: <code className="text-sky-300">{result.trace_id}</code></span>
+                </div>
+                {result.system_warnings.map((warning, index) => (
+                  <div key={index} className="rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-xs leading-5 text-amber-200/80">{warning}</div>
+                ))}
+                {result.claims.length > 0 ? (
+                  <div className="grid gap-3">
+                    {result.claims.map((claim) => <ClaimCard key={claim.claim_id} claim={claim} />)}
+                  </div>
+                ) : result.status !== "NO_CLAIMS" ? (
+                  <div className="rounded-xl border border-jamp-line p-4 text-sm text-slate-400">Ответ не содержит карточек утверждений.</div>
+                ) : null}
+                {result.provider_errors.length > 0 && (
+                  <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4">
+                    <div className="text-xs font-semibold text-rose-300">Ошибки провайдеров</div>
+                    {result.provider_errors.map((item, index) => (
+                      <div key={index} className="mt-2 text-xs text-slate-400">{item.provider}: {item.status} — {item.message}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="mt-7 grid gap-5 xl:grid-cols-[1.45fr_1fr]">
@@ -115,7 +231,7 @@ function App() {
             </div>
           </section>
 
-          <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-jamp-line/50 py-5 text-[10px] uppercase tracking-[0.13em] text-slate-600 sm:flex-row"><span>JAMP · Trust Layer</span><span>Frontend skeleton · No API calls · No live metrics</span></footer>
+          <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-jamp-line/50 py-5 text-[10px] uppercase tracking-[0.13em] text-slate-600 sm:flex-row"><span>JAMP · Trust Layer</span><span>BFF integration · API responses rendered from server evidence</span></footer>
         </div>
       </main>
     </div>
