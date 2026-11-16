@@ -47,7 +47,18 @@ GRAPH = {
 
 
 @pytest.fixture
-def dashboard_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def dashboard_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> TestClient:
+    from jamp.server.web import routes as web_routes
+
+    frontend_dist = tmp_path / "frontend-dist"
+    assets_dir = frontend_dist / "assets"
+    assets_dir.mkdir(parents=True)
+    (frontend_dist / "index.html").write_text(
+        '<!doctype html><html><div id="root"></div><script src="/assets/app.js"></script></html>',
+        encoding="utf-8",
+    )
+    (assets_dir / "app.js").write_text("window.JAMP_REACT_APP = true;", encoding="utf-8")
+    monkeypatch.setattr(web_routes, "FRONTEND_DIST", frontend_dist)
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "dashboard-web-test-secret")
     monkeypatch.setattr(
         auth_module,
@@ -110,6 +121,9 @@ def test_dashboard_requires_auth_and_exposes_login_page(
     assert protected.status_code == 303
     assert protected.headers["location"] == "/dashboard/login"
     assert dashboard_client.get("/dashboard/login").status_code == 200
+    react_protected = dashboard_client.get("/app", follow_redirects=False)
+    assert react_protected.status_code == 303
+    assert react_protected.headers["location"] == "/dashboard/login"
     assert dashboard_client.get("/v1/verdicts").status_code == 401
 
 
@@ -122,11 +136,19 @@ def test_login_issues_http_only_session_and_reads_tenant_data(
         follow_redirects=False,
     )
     assert login.status_code == 303
-    assert login.headers["location"] == "/"
+    assert login.headers["location"] == "/app"
     cookie_header = login.headers["set-cookie"].lower()
     assert "httponly" in cookie_header
     assert "samesite=strict" in cookie_header
     assert "jamp_dashboard_session=" in cookie_header
+
+    react_page = dashboard_client.get("/app")
+    assert react_page.status_code == 200
+    assert '<div id="root"></div>' in react_page.text
+    assert 'src="/assets/app.js"' in react_page.text
+    react_asset = dashboard_client.get("/assets/app.js")
+    assert react_asset.status_code == 200
+    assert "JAMP_REACT_APP" in react_asset.text
 
     page = dashboard_client.get("/dashboard")
     assert page.status_code == 200
