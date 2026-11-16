@@ -6,7 +6,11 @@ import json
 
 import pytest
 
-from jamp.provider.anymodel import AnyModelBudgetError, AnyModelChatExecutor
+from jamp.provider.anymodel import (
+    DEFAULT_USER_AGENT,
+    AnyModelBudgetError,
+    AnyModelChatExecutor,
+)
 from scripts.research import run_experiment_v4 as experiment_v4
 
 
@@ -234,6 +238,7 @@ def test_anymodel_execute_sends_max_tokens_256_to_mock() -> None:
 
     def fake_opener(request, timeout):
         observed["body"] = json.loads(request.data.decode("utf-8"))
+        observed["user_agent"] = request.get_header("User-agent")
         return FakeResponse()
 
     executor = AnyModelChatExecutor("test-key", opener=fake_opener)
@@ -245,6 +250,8 @@ def test_anymodel_execute_sends_max_tokens_256_to_mock() -> None:
         max_input_tokens=8192,
     )
     assert observed["body"]["max_tokens"] == 256
+    assert observed["user_agent"] == DEFAULT_USER_AGENT
+    assert DEFAULT_USER_AGENT == "JAMP-GPT-6-Astra-API-Probe/1.0"
     assert result["content"] == "SBER costs 299 RUB"
 
 

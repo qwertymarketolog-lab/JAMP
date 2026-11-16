@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 COST_PER_MILLION_TOKENS_USD = 0.12
 DEFAULT_MAX_INPUT_TOKENS = 8192
 LEGACY_MAX_TOKENS = 512
+DEFAULT_USER_AGENT = "JAMP-GPT-6-Astra-API-Probe/1.0"
 
 
 class AnyModelError(RuntimeError):
@@ -141,6 +142,7 @@ class AnyModelChatExecutor:
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                "User-Agent": DEFAULT_USER_AGENT,
             },
             method="POST",
         )
