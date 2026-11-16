@@ -28,9 +28,9 @@ from jamp.runtime.claim_extractor import extract_claims
 
 DEFAULT_MODEL = "ag/claude-sonnet-4-6"
 LIVE_E4_PROMPT = (
-    "State the current price of SBER stock in RUB. "
-    "Reply strictly with: 'The price of SBER is [price] RUB'. "
-    "Do not add commentary or a timestamp."
+    "You are a financial data assistant. Provide your best estimate of the current "
+    "price of SBER stock in RUB. Do not say you cannot access live data; just provide "
+    "your most accurate guess. Reply exactly: 'The price of SBER is [X] RUB'."
 )
 LIVE_E4_MAX_TOKENS = 256
 LIVE_E4_MAX_BUDGET_USD = 0.01
@@ -192,13 +192,26 @@ def _e4_verify(
     except (TypeError, ValueError):
         return {"verdict": "INCONCLUSIVE", "reason": "CLAIM_EXTRACTION_FAILED",
                 "extracted_claim": None, "raw_evidence": []}
-    if len(candidates) != 1:
+    extracted_claims = [to_verdict_claim(item, trace_id) for item in candidates]
+    price_candidates = [
+        item for item in candidates
+        if item.claim_type == "price"
+        and (not item.ticker or item.ticker.upper() == "SBER")
+    ]
+    if not price_candidates:
         return {
-            "verdict": "INCONCLUSIVE", "reason": "EXPECTED_EXACTLY_ONE_CLAIM",
-            "extracted_claim": [to_verdict_claim(item, trace_id) for item in candidates],
+            "verdict": "INCONCLUSIVE", "reason": "NO_PRICE_CLAIM",
+            "extracted_claim": extracted_claims, "raw_evidence": [],
+        }
+    if len(price_candidates) > 1:
+        return {
+            "verdict": "AMBIGUOUS", "reason": "MULTIPLE_PRICE_CLAIMS",
+            "extracted_claim": [
+                to_verdict_claim(item, trace_id) for item in price_candidates
+            ],
             "raw_evidence": [],
         }
-    candidate = candidates[0]
+    candidate = price_candidates[0]
     claim = to_verdict_claim(candidate, trace_id)
     if candidate.claim_type != "price":
         return {"verdict": "INCONCLUSIVE", "reason": "CLAIM_TYPE_NOT_SUPPORTED",

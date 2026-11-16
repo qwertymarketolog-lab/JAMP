@@ -423,22 +423,88 @@ def test_mock_e2_e4_runs_real_extractor_and_preserves_mock_raw(monkeypatch) -> N
     assert result["e4"]["raw_evidence"][0]["body_complete"] is True
 
 
-def test_e4_moex_verifier_can_return_contradicted_with_raw_evidence() -> None:
-    body = b'{"mock":true,"ticker":"SBER","last":301.0}'
+def _mock_moex_at_300(ticker, claim_type, claimed_value, **kwargs):
+    assert (ticker, claim_type) == ("SBER", "price")
+    assert kwargs == {"price_tolerance": 0.01, "capture_raw": True}
+    observed_price = 300.0
+    relative_delta = abs(claimed_value - observed_price) / observed_price
+    body = json.dumps({
+        "mock": True, "ticker": ticker, "last": observed_price,
+    }, sort_keys=True).encode("utf-8")
+    raw_status = (
+        experiment_v4.E4_VERIFIED
+        if relative_delta <= 0.01
+        else experiment_v4.E4_CONTRADICTED
+    )
+    return raw_status, {
+        "observed_last": observed_price,
+        "relative_delta": relative_delta,
+        "tolerance": 0.01,
+        "trade_date": "2026-11-16",
+        "raw_evidence": [{
+            "status_code": 200, "body_complete": True,
+            "raw_body_base64": base64.b64encode(body).decode("ascii"),
+            "sha256_body": hashlib.sha256(body).hexdigest(),
+        }],
+    }
 
-    def contradicted_moex(ticker, claim_type, claimed_value, **kwargs):
-        assert (ticker, claim_type, claimed_value) == ("SBER", "price", 300.0)
-        return experiment_v4.E4_CONTRADICTED, {
-            "result": "CONTRADICTED",
-            "raw_evidence": [{
-                "status_code": 200, "body_complete": True,
-                "raw_body_base64": base64.b64encode(body).decode("ascii"),
-                "sha256_body": hashlib.sha256(body).hexdigest(),
-            }],
-        }
 
+def test_e4_sber_price_150_vs_moex_300_is_contradicted() -> None:
     result = experiment_v4._e4_verify(
-        "The price of SBER is 300 RUB", "test-contradicted",
-        moex_verifier=contradicted_moex,
+        "The price of SBER is 150 RUB", "test-sber-150",
+        moex_verifier=_mock_moex_at_300,
     )
     assert result["verdict"] == "CONTRADICTED"
+    assert result["details"]["observed_last"] == 300.0
+    assert result["details"]["relative_delta"] == 0.5
+
+
+def test_e4_sber_price_299_26_vs_moex_300_is_verified() -> None:
+    result = experiment_v4._e4_verify(
+        "The price of SBER is 299.26 RUB", "test-sber-299-26",
+        moex_verifier=_mock_moex_at_300,
+    )
+    assert result["verdict"] == "VERIFIED"
+    assert result["details"]["observed_last"] == 300.0
+    assert result["details"]["relative_delta"] == pytest.approx(0.0024666667)
+
+
+
+# Literal replay of the provider response captured in live run 43805799030.
+SBER_REFUSAL_REPLAY = (
+    "I can't retrieve live stock prices. "
+    "To get the current SBER price, check a financial service like Moex, "
+    "Yahoo Finance, or your broker."
+)
+
+
+def test_e4_replay_without_price_claim_is_inconclusive() -> None:
+    result = experiment_v4._e4_verify(SBER_REFUSAL_REPLAY, "replay-43805799030")
+    assert result["verdict"] == "INCONCLUSIVE"
+    assert result["reason"] == "NO_PRICE_CLAIM"
+    assert len(result["extracted_claim"]) == 2
+    assert all(item["type"] == "other" for item in result["extracted_claim"])
+    assert result["raw_evidence"] == []
+
+
+def test_e4_multiple_sber_price_claims_are_ambiguous(monkeypatch) -> None:
+    first = experiment_v4.extract_claims(
+        "The price of SBER is 300 RUB", trace_id="multiple-sber-1"
+    )
+    second = experiment_v4.extract_claims(
+        "The price of SBER is 301 RUB", trace_id="multiple-sber-2"
+    )
+    monkeypatch.setattr(
+        experiment_v4, "extract_claims", lambda content, trace_id: first + second
+    )
+
+    def forbidden_moex(*args, **kwargs):
+        raise AssertionError("ambiguous claims must not reach MOEX")
+
+    result = experiment_v4._e4_verify(
+        "ignored replay input", "multiple-sber", moex_verifier=forbidden_moex
+    )
+    assert result["verdict"] == "AMBIGUOUS"
+    assert result["reason"] == "MULTIPLE_PRICE_CLAIMS"
+    assert len(result["extracted_claim"]) == 2
+    assert result["raw_evidence"] == []
