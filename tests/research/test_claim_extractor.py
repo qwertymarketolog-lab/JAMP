@@ -18,7 +18,7 @@ def test_splits_semicolon_and_conjunction_only_before_ticker_value_pair() -> Non
 
     assert [claim.text for claim in claims] == [
         "SBER 300",
-        "BTC 60000 и цена выросла.",
+        "BTC 60000 и цена выросла",
     ]
 
 
