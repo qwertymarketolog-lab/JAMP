@@ -39,7 +39,7 @@ def ui_verify(_payload: dict[str, object]) -> dict[str, object]:
                         "url": None,
                         "status_code": 200,
                         "body_complete": True,
-                        "raw_body_base64": "eyJmaXh0dXJlIjoiSkFNIFBsYXl3cmlnaHQgRTJFIiwic291cmNlIjoiTU9FWCBJU1MiLCJhY3R1YWxfdmFsdWUiOjI5OS4yNn0=",
+                        "raw_body_base64": "eyJmaXh0dXJlIjoiSkFNUCBQbGF5d3JpZ2h0IEUyRSIsInNvdXJjZSI6Ik1PRVggSVNTIiwiYWN0dWFsX3ZhbHVlIjoyOTkuMjZ9",
                         "actual_value": 299.26,
                         "timestamp_utc": "2026-11-16T00:00:00Z",
                         "timestamp_kind": "JAMP_CAPTURE_TIME",
