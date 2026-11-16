@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "benchmark_id": "claim-extraction-v1",
+  "matching": "one_to_one_exact_normalized_text_and_type",
+  "normalization": "Unicode NFC; trim; collapse whitespace; casefold",
+  "candidate_types": [
+    "price",
+    "entity_existence",
+    "prediction",
+    "causal"
+  ],
+  "documents": [
+    {
+      "id": "doc_001",
+      "text": "Цена SBER составляет 300 RUB.",
+      "gold_claims": [
+        {
+          "text": "Цена SBER составляет 300 RUB.",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "doc_002",
+      "text": "Цена BTC составляет 65000 USD.",
+      "gold_claims": [
+        {
+          "text": "Цена BTC составляет 65000 USD.",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "doc_003",
+      "text": "SBER вырастет до 400.",
+      "gold_claims": [
+        {
+          "text": "SBER вырастет до 400.",
+          "type": "prediction"
+        }
+      ]
+    },
+    {
+      "id": "doc_004",
+      "text": "SBER упал из-за отчета.",
+      "gold_claims": [
+        {
+          "text": "SBER упал из-за отчета.",
+          "type": "causal"
+        }
+      ]
+    },
+    {
+      "id": "doc_005",
+      "text": "Компания FakeTech вышла на IPO.",
+      "gold_claims": [
+        {
+          "text": "Компания FakeTech вышла на IPO.",
+          "type": "entity_existence"
+        }
+      ]
+    },
+    {
+      "id": "doc_006",
+      "text": "Сегодня солнечно, а вечером ожидается дождь.",
+      "gold_claims": []
+    },
+    {
+      "id": "doc_007",
+      "text": "Цена SBER составляет 500.",
+      "gold_claims": [
+        {
+          "text": "Цена SBER составляет 500.",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "doc_008",
+      "text": "SBER 300, а BTC 60000.",
+      "gold_claims": [
+        {
+          "text": "SBER 300",
+          "type": "price"
+        },
+        {
+          "text": "BTC 60000",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "doc_009",
+      "text": "XYZ 100 RUB.",
+      "gold_claims": [
+        {
+          "text": "XYZ 100 RUB.",
+          "type": "price"
+        }
+      ]
+    },
+    {
+      "id": "doc_010",
+      "text": "В 2025 году SBER стоил 300.",
+      "gold_claims": [
+        {
+          "text": "В 2025 году SBER стоил 300.",
+          "type": "price"
+        }
+      ]
+    }
+  ]
+}
