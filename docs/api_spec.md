@@ -1,11 +1,11 @@
 # JAMP Client API Specification
 
 **API version:** v1  
-**Endpoint:** `POST /v1/verify_claim`  
+**Endpoints:** `POST /v1/verify_claim` (single claim) and `POST /v1/verify_text` (multiple extracted claims)  
 **Authentication:** HTTP Bearer API key  
 **Content-Type:** `application/json`
 
-This document describes the implemented endpoint contract. It does not define a multi-claim batch API.
+This document describes both implemented endpoint contracts: single-claim verification and multi-claim text verification.
 
 ## 1. Authentication and organization context
 
@@ -48,9 +48,9 @@ The following user-proposed shape is **not** valid because `org_id` is not accep
 }
 ```
 
-## 3. Extraction and verification contract
+## 3. Single-claim extraction and verification contract (`POST /v1/verify_claim`)
 
-The endpoint deterministically extracts candidate claims from the supplied text.
+For `POST /v1/verify_claim`, the endpoint deterministically extracts candidate claims from the supplied text.
 
 - Exactly one candidate is required for provider verification.
 - Zero or multiple candidates produce HTTP 200 with `verdict: INCONCLUSIVE`, `reason: EXPECTED_EXACTLY_ONE_CLAIM`, and no provider evidence.
@@ -61,7 +61,7 @@ The endpoint deterministically extracts candidate claims from the supplied text.
 
 The extractor is rule-based. Do not treat it as a general-purpose parser for arbitrary AI reports.
 
-## 4. Response schema
+## 4. Single-claim response schema (`POST /v1/verify_claim`)
 
 The endpoint returns HTTP 200 for completed verification attempts, including semantic `INCONCLUSIVE` outcomes.
 
@@ -184,7 +184,7 @@ CoinGecko USD verification is for supported cryptocurrency tickers (for example 
 | 422 | Empty/missing text, invalid `tolerance_pct`, malformed request body, or unsupported extra request fields | Request rejected |
 | 503 | Database unavailable during API-key lookup | Service unavailable |
 
-The current handler does not define a stable endpoint-specific HTTP 400 or HTTP 500 response contract. Do not rely on either status as a documented business response. Unexpected provider exceptions caught by the handler are returned as HTTP 200 with `verdict: INCONCLUSIVE` and a `PROVIDER_ERROR:<ExceptionType>` reason. Infrastructure failures outside that handler may be surfaced by the serving stack.
+The current handler does not define a stable endpoint-specific HTTP 400 or HTTP 500 response contract. Do not rely on either status as a documented business response. For `POST /v1/verify_claim`, unexpected provider exceptions caught by the handler are returned as HTTP 200 with `verdict: INCONCLUSIVE` and a `PROVIDER_ERROR:<ExceptionType>` reason. For `POST /v1/verify_text`, provider failures are isolated per claim and recorded in `provider_errors`. Infrastructure failures outside that handler may be surfaced by the serving stack.
 
 ### Common INCONCLUSIVE reasons
 
@@ -198,12 +198,12 @@ The current handler does not define a stable endpoint-specific HTTP 400 or HTTP 
 
 ## 7. Scope and non-goals
 
-The current endpoint verifies a single, explicit price assertion:
+`POST /v1/verify_claim` verifies one explicit price assertion per request:
 
 - RUB: MOEX ISS instruments supported by the provider implementation.
 - USD: supported crypto assets mapped to CoinGecko.
 
-It does not verify forecasts, investment advice, causal explanations, historical percentage movements, market-share claims, or arbitrary factual statements. It does not establish that a price will persist after the source response was retrieved. It does not currently batch multiple claims from a long report.
+It does not verify forecasts, investment advice, causal explanations, historical percentage movements, market-share claims, or arbitrary factual statements. It does not establish that a price will persist after the source response was retrieved. Use `POST /v1/verify_text` to submit one text containing multiple candidate claims; that endpoint still verifies only the supported price-claim subset.
 
 ## 8. Operational notes
 
