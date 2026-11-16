@@ -39,8 +39,8 @@ _CURRENCY_RE = re.compile(
     re.IGNORECASE,
 )
 _PRICE_WORD_RE = re.compile(
-    r"\b(?:цен[ауы]|сто(?:ит|имость)|торгуется|достиг(?:ла|ло)?|"
-    r"составляет|равен|равна)\b|=",
+    r"\b(?:цен[ауы]|сто(?:ит|имость)|стоил(?:а|о|и)?|торгуется|"
+    r"достиг(?:ла|ло)?|составляет|равен|равна)\b|=",
     re.IGNORECASE,
 )
 _YEAR_SUFFIX_RE = re.compile(r"^\s*(?:году|года|год\b|г\.)", re.IGNORECASE)
@@ -86,9 +86,30 @@ _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 
 
 def _split_claim_text(text: str) -> list[str]:
-    """Split on sentence punctuation without splitting decimal values."""
-    parts = re.split(r'''(?<![гГ]\.)(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''', text.strip())
-    return [part.strip() for part in parts if part.strip()]
+    """Split sentences and independently stated ticker/value pairs."""
+    sentences = re.split(
+        r'''(?<![гГ]\.)(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''',
+        text.strip(),
+    )
+    pair_separator = re.compile(
+        r"(?:[,;]\s*(?:(?:а|и|но)\s+)?|\s+\b(?:а|и|но)\b\s+)"
+        r"(?=[A-Z]{3,5}\s+(?:=\s*)?\d)"
+    )
+    claims: list[str] = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        parts = pair_separator.split(sentence)
+        if len(parts) > 1:
+            claims.extend(
+                part.strip().rstrip(".!?").strip()
+                for part in parts
+                if part.strip()
+            )
+        else:
+            claims.append(sentence)
+    return [part for part in claims if part]
 
 
 def _extract_ticker(text: str, claim_type: ClaimType) -> str | None:
@@ -159,8 +180,14 @@ def _extract_value_and_currency(
     else:
         price_markers = list(_PRICE_WORD_RE.finditer(text))
         if not price_markers:
+            ticker_markers = [
+                match for match in _TICKER_RE.finditer(text)
+                if match.group(0) not in _NON_TICKERS
+            ]
+            price_markers = ticker_markers if _has_ticker_value_pair(text) else []
+        if not price_markers:
             return None, None
-        # A price value is expected after the closest price-language marker.
+        # Select the first valid value after the nearest explicit marker.
         after_markers = [
             (match.start() - marker.end(), match)
             for marker in price_markers
@@ -180,6 +207,19 @@ def _extract_value_and_currency(
         return None, None
 
 
+def _has_ticker_value_pair(text: str) -> bool:
+    tickers = [
+        match for match in _TICKER_RE.finditer(text)
+        if match.group(0) not in _NON_TICKERS
+    ]
+    for ticker in tickers:
+        for number in _valid_number_matches(text):
+            gap = text[ticker.end():number.start()]
+            if number.start() >= ticker.end() and re.fullmatch(r"[ :=]*", gap):
+                return True
+    return False
+
+
 def _classify(text: str) -> ClaimType:
     if _PREDICTION_MARKER_RE.search(text):
         return "prediction"
@@ -187,7 +227,11 @@ def _classify(text: str) -> ClaimType:
         return "causal"
     if _EXISTENCE_MARKER_RE.search(text):
         return "entity_existence"
-    if _PRICE_WORD_RE.search(text) or _CURRENCY_RE.search(text):
+    if (
+        _PRICE_WORD_RE.search(text)
+        or _CURRENCY_RE.search(text)
+        or _has_ticker_value_pair(text)
+    ):
         return "price"
     return "other"
 
