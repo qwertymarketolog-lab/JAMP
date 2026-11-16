@@ -391,7 +391,7 @@ def test_live_e4_prompt_extracts_sber_rub_price_claim(monkeypatch) -> None:
     assert claims[0].currency == "RUB"
 
 
-def test_live_e4_cli_mode_uses_fixed_prompt_and_limits(monkeypatch) -> None:
+def test_live_e4_cli_mode_uses_fixed_prompt_and_limits(monkeypatch, tmp_path) -> None:
     captured = {}
 
     def fake_cycle(prompt, model, **kwargs):
@@ -403,7 +403,7 @@ def test_live_e4_cli_mode_uses_fixed_prompt_and_limits(monkeypatch) -> None:
         "sys.argv",
         ["run_experiment_v4.py", "--live-e4", "--confirm-live",
          "--price-confirmed", "--price-source", "test",
-         "--confirmed-price-usd", "0.001", "--output-dir", "unused"],
+         "--confirmed-price-usd", "0.001", "--output-dir", str(tmp_path)],
     )
     assert experiment_v4.main() == 0
     assert captured["prompt"] == experiment_v4.LIVE_E4_PROMPT
