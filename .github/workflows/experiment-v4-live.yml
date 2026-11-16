@@ -63,8 +63,8 @@ jobs:
         env:
           CONFIRM_LIVE: ${{ github.event_name == 'push' && 'true' || inputs.confirm_live_requests }}
           CONFIRM_PRICE: ${{ github.event_name == 'push' && 'true' || inputs.confirm_price }}
-          PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Claude Sonnet 4.6: $0.12 / 1M tokens)' || inputs.price_source }}"
-          CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00101376' || inputs.confirmed_price_usd }}
+          PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Qwen3.7 Plus: $0.0125 / 1M tokens; https://anymodel.org/en/pricing)' || inputs.price_source }}"
+          CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00010560' || inputs.confirmed_price_usd }}
           MAX_BUDGET_USD: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '0.01' || inputs.max_budget_usd }}
           MAX_TOKENS: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '256' || inputs.max_tokens }}
         run: |
@@ -118,8 +118,8 @@ jobs:
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
           MODE: ${{ github.event_name == 'push' && 'live-e4' || inputs.mode }}
-          PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Claude Sonnet 4.6: $0.12 / 1M tokens)' || inputs.price_source }}"
-          CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00101376' || inputs.confirmed_price_usd }}
+          PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Qwen3.7 Plus: $0.0125 / 1M tokens; https://anymodel.org/en/pricing)' || inputs.price_source }}"
+          CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00010560' || inputs.confirmed_price_usd }}
           MAX_BUDGET_USD: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '0.01' || inputs.max_budget_usd }}
           MAX_TOKENS: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '256' || inputs.max_tokens }}
         run: |
@@ -134,7 +134,7 @@ jobs:
             --confirmed-price-usd "$CONFIRMED_PRICE_USD" \
             --max-budget-usd "$MAX_BUDGET_USD" \
             --max-tokens "$MAX_TOKENS" \
-            --model ag/claude-sonnet-4-6 \
+            --model qwen/qwen3.7-plus \
             --output-dir "artifacts/research/experiment_v4/live_${GITHUB_RUN_ID}"
 
       - name: Upload RAW and derived evidence
