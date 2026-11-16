@@ -423,25 +423,51 @@ def test_mock_e2_e4_runs_real_extractor_and_preserves_mock_raw(monkeypatch) -> N
     assert result["e4"]["raw_evidence"][0]["body_complete"] is True
 
 
-def test_e4_moex_verifier_can_return_contradicted_with_raw_evidence() -> None:
-    body = b'{"mock":true,"ticker":"SBER","last":301.0}'
+def _mock_moex_at_300(ticker, claim_type, claimed_value, **kwargs):
+    assert (ticker, claim_type) == ("SBER", "price")
+    assert kwargs == {"price_tolerance": 0.01, "capture_raw": True}
+    observed_price = 300.0
+    relative_delta = abs(claimed_value - observed_price) / observed_price
+    body = json.dumps({
+        "mock": True, "ticker": ticker, "last": observed_price,
+    }, sort_keys=True).encode("utf-8")
+    raw_status = (
+        experiment_v4.E4_VERIFIED
+        if relative_delta <= 0.01
+        else experiment_v4.E4_CONTRADICTED
+    )
+    return raw_status, {
+        "observed_last": observed_price,
+        "relative_delta": relative_delta,
+        "tolerance": 0.01,
+        "trade_date": "2026-11-16",
+        "raw_evidence": [{
+            "status_code": 200, "body_complete": True,
+            "raw_body_base64": base64.b64encode(body).decode("ascii"),
+            "sha256_body": hashlib.sha256(body).hexdigest(),
+        }],
+    }
 
-    def contradicted_moex(ticker, claim_type, claimed_value, **kwargs):
-        assert (ticker, claim_type, claimed_value) == ("SBER", "price", 300.0)
-        return experiment_v4.E4_CONTRADICTED, {
-            "result": "CONTRADICTED",
-            "raw_evidence": [{
-                "status_code": 200, "body_complete": True,
-                "raw_body_base64": base64.b64encode(body).decode("ascii"),
-                "sha256_body": hashlib.sha256(body).hexdigest(),
-            }],
-        }
 
+def test_e4_sber_price_150_vs_moex_300_is_contradicted() -> None:
     result = experiment_v4._e4_verify(
-        "The price of SBER is 300 RUB", "test-contradicted",
-        moex_verifier=contradicted_moex,
+        "The price of SBER is 150 RUB", "test-sber-150",
+        moex_verifier=_mock_moex_at_300,
     )
     assert result["verdict"] == "CONTRADICTED"
+    assert result["details"]["observed_last"] == 300.0
+    assert result["details"]["relative_delta"] == 0.5
+
+
+def test_e4_sber_price_299_26_vs_moex_300_is_verified() -> None:
+    result = experiment_v4._e4_verify(
+        "The price of SBER is 299.26 RUB", "test-sber-299-26",
+        moex_verifier=_mock_moex_at_300,
+    )
+    assert result["verdict"] == "VERIFIED"
+    assert result["details"]["observed_last"] == 300.0
+    assert result["details"]["relative_delta"] == pytest.approx(0.0024666667)
+
 
 
 # Literal replay of the provider response captured in live run 43805799030.
