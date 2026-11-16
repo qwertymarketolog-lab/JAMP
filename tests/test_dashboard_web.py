@@ -122,6 +122,7 @@ def test_login_issues_http_only_session_and_reads_tenant_data(
         follow_redirects=False,
     )
     assert login.status_code == 303
+    assert login.headers["location"] == "/"
     cookie_header = login.headers["set-cookie"].lower()
     assert "httponly" in cookie_header
     assert "samesite=strict" in cookie_header
