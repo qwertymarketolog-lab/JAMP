@@ -117,6 +117,91 @@ def _fixtures(
     return api_get, download
 
 
+def test_research_loop_discovery_retries_until_matching_run_appears(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture_api, _download = _fixtures()
+    calls = 0
+    sleeps: list[float] = []
+
+    def api_get(path: str) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return {"workflow_runs": []}
+        return fixture_api(path)
+
+    monkeypatch.setattr(verifier.time, "sleep", sleeps.append)
+    runs = verifier.wait_for_research_loop_run(
+        PR_NUMBER,
+        HEAD_SHA,
+        "qwertymarketolog-lab/JAMP",
+        api_get=api_get,
+        attempts=10,
+        poll_interval=30,
+    )
+
+    assert any(run["id"] == RUN_ID for run in runs)
+    assert calls == 3
+    assert sleeps == [30, 30]
+
+
+def test_research_loop_discovery_timeout_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def api_get(_path: str) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        return {"workflow_runs": []}
+
+    monkeypatch.setattr(verifier.time, "sleep", sleeps.append)
+    with pytest.raises(
+        VerificationError,
+        match="no_research_loop_runs_for_pr_head: attempts=10",
+    ):
+        verifier.wait_for_research_loop_run(
+            PR_NUMBER,
+            HEAD_SHA,
+            "qwertymarketolog-lab/JAMP",
+            api_get=api_get,
+            attempts=10,
+            poll_interval=30,
+        )
+
+    assert calls == 10
+    assert sleeps == [30] * 9
+
+
+def test_discovered_failed_research_loop_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture_api, download = _fixtures(conclusion="failure")
+    calls = 0
+
+    def api_get(path: str) -> dict[str, Any]:
+        nonlocal calls
+        if "/actions/workflows/" in path:
+            calls += 1
+            if calls == 1:
+                return {"workflow_runs": []}
+        return fixture_api(path)
+
+    monkeypatch.setattr(verifier.time, "sleep", lambda _seconds: None)
+    with pytest.raises(VerificationError, match="newest_run_failure"):
+        verify_lineage(
+            PR_NUMBER,
+            HEAD_SHA,
+            "qwertymarketolog-lab/JAMP",
+            api_get,
+            download,
+        )
+
+    assert calls == 2
+
+
 def test_newest_run_success_with_valid_artifact_passes() -> None:
     api_get, download = _fixtures()
     result = verify_lineage(PR_NUMBER, HEAD_SHA, "qwertymarketolog-lab/JAMP", api_get, download)
