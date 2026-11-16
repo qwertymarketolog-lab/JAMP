@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test("renders CONTRADICTED claim and expandable raw evidence", async ({ page }) => {
-  await page.goto("/");
+test("requires login and renders CONTRADICTED claim with expandable raw evidence", async ({ page }) => {
+  await page.goto("/dashboard/login");
+  await page.getByRole("textbox").fill("e2e-test-key");
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL("/");
 
   await page.getByRole("textbox").fill("Цена SBER составляет 5000 рублей.");
   await page.getByRole("button", { name: "Проверить" }).click();

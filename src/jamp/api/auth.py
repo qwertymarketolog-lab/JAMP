@@ -17,6 +17,7 @@ _HASH_PREFIX = "v1:"
 _ENV_SECRET = "JAMP_API_KEY_HASH_SECRET"
 _BEARER_PREFIX = "Bearer "
 DASHBOARD_SESSION_COOKIE = "jamp_dashboard_session"
+DASHBOARD_CSRF_COOKIE = "jamp_dashboard_csrf"
 DASHBOARD_SESSION_TTL_SECONDS = 3600
 
 
@@ -126,6 +127,15 @@ def create_dashboard_session(org_id: str) -> str:
     return f"{encoded}.{signature}"
 
 
+def dashboard_csrf_token(session_value: str) -> str:
+    """Create a CSRF token cryptographically bound to one dashboard session."""
+    return hmac.new(
+        _get_secret(),
+        b"jamp-dashboard-csrf:" + session_value.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 def _organization_from_dashboard_session(value: str) -> OrganizationContext:
     try:
         encoded, supplied_signature = value.split(".", maxsplit=1)
@@ -162,6 +172,11 @@ def _organization_from_dashboard_session(value: str) -> OrganizationContext:
     if disabled:
         raise HTTPException(status_code=403, detail="forbidden")
     return OrganizationContext(org_id=current_org_id, org_name=org_name)
+
+
+def authenticate_dashboard_session(value: str) -> OrganizationContext:
+    """Resolve a signed browser session to its current enabled organization."""
+    return _organization_from_dashboard_session(value)
 
 
 def dashboard_cookie_secure() -> bool:

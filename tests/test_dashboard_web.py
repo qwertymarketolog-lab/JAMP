@@ -185,15 +185,20 @@ def test_dashboard_static_asset_contains_no_model_or_engine_fiction(
     assert "PyPI Check" not in response.text
 
 
-def test_ui_verify_bff_uses_server_key_and_bypasses_read_only_session(
+def test_ui_verify_bff_requires_authenticated_session_and_csrf(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from jamp.api.auth import OrganizationContext
+    from jamp.api.auth import (
+        DASHBOARD_CSRF_COOKIE,
+        DASHBOARD_SESSION_COOKIE,
+        OrganizationContext,
+    )
     from jamp.server.web import routes as web_routes
 
+    monkeypatch.setenv("JAMP_UI_ALLOWED_ORIGINS", "http://localhost:5173")
+    monkeypatch.delenv("JAMP_API_KEY", raising=False)
     calls: list[tuple[dict, OrganizationContext]] = []
     organization = OrganizationContext(org_id="ui-org", org_name="UI Test")
-    original_register = web_routes.register_ui_verify
 
     def fake_verify(payload: dict, resolved_org: OrganizationContext) -> dict:
         calls.append((payload, resolved_org))
@@ -205,57 +210,98 @@ def test_ui_verify_bff_uses_server_key_and_bypasses_read_only_session(
             "trace_id": "vtext-test",
         }
 
+    original_register = web_routes.register_ui_verify
+
     def register_with_mock(app, _verify_func) -> None:
         original_register(app, fake_verify)
 
     monkeypatch.setattr(web_routes, "register_ui_verify", register_with_mock)
-    monkeypatch.setattr(
-        web_routes,
-        "authenticate_api_key",
-        lambda token: organization if token == VALID_API_KEY else pytest.fail("wrong server key"),
-    )
-    monkeypatch.setenv("JAMP_API_KEY", VALID_API_KEY)
-    monkeypatch.setenv("JAMP_UI_ALLOWED_ORIGINS", "http://localhost:5173")
-
     client = TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
-    response = client.post(
+
+    unauthenticated = client.post(
         "/api/ui_verify",
         json={"text": "A test statement"},
         headers={"Origin": "http://localhost:5173"},
-        cookies={"jamp_dashboard_session": "invalid-read-only-cookie"},
     )
+    assert unauthenticated.status_code == 401
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "NO_CLAIMS"
+    login = client.post(
+        "/dashboard/login",
+        data={"api_key": VALID_API_KEY},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    csrf_value = client.cookies.get(DASHBOARD_CSRF_COOKIE)
+    assert client.cookies.get(DASHBOARD_SESSION_COOKIE)
+    assert csrf_value
+    set_cookies = login.headers.get_list("set-cookie")
+    session_cookie = next(value for value in set_cookies if value.startswith(f"{DASHBOARD_SESSION_COOKIE}="))
+    csrf_cookie = next(value for value in set_cookies if value.startswith(f"{DASHBOARD_CSRF_COOKIE}="))
+    assert "httponly" in session_cookie.lower()
+    assert "httponly" not in csrf_cookie.lower()
+    assert "samesite=strict" in session_cookie.lower()
+    assert "samesite=strict" in csrf_cookie.lower()
+
+    missing_csrf = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert missing_csrf.status_code == 403
+
+    invalid_csrf = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "http://localhost:5173", "X-CSRF-Token": "attacker-controlled"},
+    )
+    assert invalid_csrf.status_code == 403
+
+    monkeypatch.setattr(
+        web_routes,
+        "authenticate_api_key",
+        lambda _token: pytest.fail("BFF must not use a global API key"),
+    )
+    accepted = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "http://localhost:5173", "X-CSRF-Token": csrf_value},
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "NO_CLAIMS"
     assert calls == [({"text": "A test statement"}, organization)]
-    assert VALID_API_KEY not in response.text
+    assert VALID_API_KEY not in accepted.text
 
 
-def test_ui_verify_bff_rejects_untrusted_origin_and_missing_server_key(
+def test_ui_verify_bff_rejects_untrusted_origin_and_tampered_csrf(
+    dashboard_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from jamp.server.web import routes as web_routes
+    from jamp.api.auth import DASHBOARD_CSRF_COOKIE
 
-    monkeypatch.setenv("JAMP_API_KEY", VALID_API_KEY)
     monkeypatch.setenv("JAMP_UI_ALLOWED_ORIGINS", "http://localhost:5173")
-    monkeypatch.setattr(
-        web_routes,
-        "authenticate_api_key",
-        lambda _token: pytest.fail("authentication must not run for a rejected origin"),
+    login = dashboard_client.post(
+        "/dashboard/login",
+        data={"api_key": VALID_API_KEY},
+        follow_redirects=False,
     )
-    client = TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
+    assert login.status_code == 303
+    csrf_value = dashboard_client.cookies.get(DASHBOARD_CSRF_COOKIE)
+    assert csrf_value
 
-    rejected = client.post(
+    rejected_origin = dashboard_client.post(
         "/api/ui_verify",
         json={"text": "A test statement"},
-        headers={"Origin": "https://attacker.example"},
+        headers={"Origin": "https://attacker.example", "X-CSRF-Token": csrf_value},
     )
-    assert rejected.status_code == 403
+    assert rejected_origin.status_code == 403
 
-    monkeypatch.delenv("JAMP_API_KEY")
-    missing_key = client.post(
+    tampered_cookie = dashboard_client.post(
         "/api/ui_verify",
         json={"text": "A test statement"},
-        headers={"Origin": "http://localhost:5173"},
+        headers={"Origin": "http://localhost:5173", "X-CSRF-Token": csrf_value},
+        cookies={
+            "jamp_dashboard_session": dashboard_client.cookies.get("jamp_dashboard_session", ""),
+            DASHBOARD_CSRF_COOKIE: "tampered",
+        },
     )
-    assert missing_key.status_code == 503
+    assert tampered_cookie.status_code == 403

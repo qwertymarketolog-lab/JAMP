@@ -35,17 +35,36 @@ function App() {
   const [result, setResult] = useState<VerifyTextResponse | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
 
+  const readCookie = (name: string): string | null => {
+    const prefix = `${name}=`;
+    const cookie = document.cookie.split("; ").find((entry) => entry.startsWith(prefix));
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+  };
+
   const handleVerify = async () => {
     if (!inputText.trim() || loading) return;
     setLoading(true);
     setResult(null);
     setRequestError(null);
     try {
+      const csrfToken = readCookie("jamp_dashboard_csrf");
+      if (!csrfToken) {
+        window.location.assign("/dashboard/login");
+        return;
+      }
       const response = await fetch("/api/ui_verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
         body: JSON.stringify({ text: inputText }),
       });
+      if (response.status === 401) {
+        window.location.assign("/dashboard/login");
+        return;
+      }
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(

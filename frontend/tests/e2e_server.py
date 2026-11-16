@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs
+
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 app = FastAPI(title="JAMP Playwright E2E fixture")
 
@@ -13,8 +16,32 @@ def health() -> dict[str, str]:
     return {"status": "ready"}
 
 
+@app.get("/dashboard/login", response_class=HTMLResponse)
+def login_page() -> str:
+    return """<!doctype html><html><body>
+    <form method="post" action="/dashboard/login">
+      <input name="api_key" type="password" required>
+      <button type="submit">Войти</button>
+    </form></body></html>"""
+
+
+@app.post("/dashboard/login")
+async def login(request: Request) -> RedirectResponse:
+    form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
+    if form.get("api_key", [""])[0] != "e2e-test-key":
+        raise HTTPException(status_code=401, detail="invalid test key")
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie("jamp_dashboard_session", "e2e-session", httponly=True, samesite="strict", path="/")
+    response.set_cookie("jamp_dashboard_csrf", "e2e-csrf", httponly=False, samesite="strict", path="/")
+    return response
+
+
 @app.post("/ui_verify")
-def ui_verify(_payload: dict[str, object]) -> dict[str, object]:
+def ui_verify(request: Request, _payload: dict[str, object]) -> dict[str, object]:
+    if request.cookies.get("jamp_dashboard_session") != "e2e-session":
+        raise HTTPException(status_code=401, detail="missing test session")
+    if request.cookies.get("jamp_dashboard_csrf") != "e2e-csrf" or request.headers.get("x-csrf-token") != "e2e-csrf":
+        raise HTTPException(status_code=403, detail="invalid test CSRF token")
     return {
         "status": "COMPLETE_VERIFICATION",
         "system_warnings": [

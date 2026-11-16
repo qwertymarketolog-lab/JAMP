@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -15,12 +16,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from jamp.api.auth import (
+    DASHBOARD_CSRF_COOKIE,
     DASHBOARD_SESSION_COOKIE,
     DASHBOARD_SESSION_TTL_SECONDS,
     OrganizationContext,
     authenticate_api_key,
+    authenticate_dashboard_session,
     create_dashboard_session,
     dashboard_cookie_secure,
+    dashboard_csrf_token,
     require_api_key,
 )
 
@@ -56,11 +60,21 @@ async def dashboard_login(request: Request) -> RedirectResponse:
 
     organization = authenticate_api_key(api_key)
     response = RedirectResponse(url="/dashboard", status_code=303)
+    session_value = create_dashboard_session(organization.org_id)
     response.set_cookie(
         key=DASHBOARD_SESSION_COOKIE,
-        value=create_dashboard_session(organization.org_id),
+        value=session_value,
         max_age=DASHBOARD_SESSION_TTL_SECONDS,
         httponly=True,
+        secure=dashboard_cookie_secure(),
+        samesite="strict",
+        path="/",
+    )
+    response.set_cookie(
+        key=DASHBOARD_CSRF_COOKIE,
+        value=dashboard_csrf_token(session_value),
+        max_age=DASHBOARD_SESSION_TTL_SECONDS,
+        httponly=False,
         secure=dashboard_cookie_secure(),
         samesite="strict",
         path="/",
@@ -92,6 +106,13 @@ def dashboard_logout() -> RedirectResponse:
         secure=dashboard_cookie_secure(),
         samesite="strict",
     )
+    response.delete_cookie(
+        key=DASHBOARD_CSRF_COOKIE,
+        path="/",
+        httponly=False,
+        secure=dashboard_cookie_secure(),
+        samesite="strict",
+    )
     return response
 
 
@@ -109,10 +130,11 @@ def register_ui_verify(
     app: FastAPI,
     verify_func: Callable[[dict[str, Any], OrganizationContext], Any],
 ) -> None:
-    """Register a same-origin BFF route using only the server-side API key.
+    """Register a same-origin BFF route authenticated by a tenant dashboard session.
 
     The Vite /api proxy strips the /api prefix in development, so both paths
-    are registered. Browser requests must carry an allowlisted Origin header.
+    are registered. Browser requests require an allowlisted Origin, a valid
+    signed session cookie, and a session-bound double-submit CSRF token.
     """
     configured_origins = os.environ.get("JAMP_UI_ALLOWED_ORIGINS")
     if configured_origins is None:
@@ -126,7 +148,7 @@ def register_ui_verify(
         allow_origins=list(allowed_origins),
         allow_credentials=False,
         allow_methods=["POST"],
-        allow_headers=["content-type"],
+        allow_headers=["content-type", "x-csrf-token"],
         max_age=600,
     )
 
@@ -136,11 +158,22 @@ def register_ui_verify(
         if request.headers.get("origin") not in allowed_origins:
             raise HTTPException(status_code=403, detail="origin not allowed")
 
-        api_key = os.environ.get("JAMP_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=503, detail="UI verification is not configured")
+        session_value = request.cookies.get(DASHBOARD_SESSION_COOKIE)
+        if not session_value:
+            raise HTTPException(status_code=401, detail="missing or invalid credentials")
 
-        organization = authenticate_api_key(api_key)
+        csrf_cookie = request.cookies.get(DASHBOARD_CSRF_COOKIE)
+        csrf_header = request.headers.get("x-csrf-token")
+        expected_csrf = dashboard_csrf_token(session_value)
+        if (
+            not csrf_cookie
+            or not csrf_header
+            or not hmac.compare_digest(csrf_cookie, expected_csrf)
+            or not hmac.compare_digest(csrf_header, expected_csrf)
+        ):
+            raise HTTPException(status_code=403, detail="missing or invalid CSRF token")
+
+        organization = authenticate_dashboard_session(session_value)
         return verify_func(payload, organization)
 
     # Vite's existing dev proxy rewrites /api/ui_verify to /ui_verify.

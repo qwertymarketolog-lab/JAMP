@@ -5,6 +5,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      "/dashboard": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/dashboard-static": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
       "/api": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
