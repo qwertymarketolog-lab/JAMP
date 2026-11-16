@@ -66,9 +66,9 @@ class _CapturedResponse:
         return getattr(self._response, name)
 
 
-def _capturing_opener(capture: dict[str, Any]):
+def _capturing_opener(capture: dict[str, Any], opener: Any = urlopen):
     def open_request(request: Any, timeout: float) -> _CapturedResponse:
-        response = urlopen(request, timeout=timeout)
+        response = opener(request, timeout=timeout)
         capture.update(
             status_code=int(getattr(response, "status", 200)),
             reason=str(getattr(response, "reason", "")),
@@ -264,6 +264,7 @@ def run_live_cycle(
     api_key: str | None = None, max_tokens: int | None = None,
     max_budget_usd: float | None = None,
     executor_factory: Any | None = None,
+    transport_opener: Any | None = None,
     moex_verifier: Any | None = None,
 ) -> dict[str, Any]:
     """Run one manually priced AnyModel request; E4 is downstream of preflight."""
@@ -303,7 +304,9 @@ def run_live_cycle(
                 "http_request_made": False}
     capture: dict[str, Any] = {}
     executor_class = executor_factory or AnyModelChatExecutor
-    executor = executor_class(key, opener=_capturing_opener(capture))
+    executor = executor_class(
+        key, opener=_capturing_opener(capture, transport_opener or urlopen)
+    )
     try:
         result = executor.execute(
             model, {"prompt": prompt}, max_tokens=max_tokens,
@@ -425,24 +428,8 @@ def run_mock_e4() -> dict[str, Any]:
         def read(self, *args: Any, **kwargs: Any) -> bytes:
             return b'{"id":"cmpl-mock-e2e","model":"ag/claude-sonnet-4-6"}'
 
-    class FakeExecutor:
-        def __init__(self, api_key: str, *, opener: Any):
-            self.opener = opener
-
-        def execute(self, selected_model: str, payload: dict[str, Any], *,
-                    max_tokens: int, max_budget_usd: float,
-                    max_input_tokens: int) -> dict[str, Any]:
-            assert selected_model == DEFAULT_MODEL
-            assert payload == {"prompt": LIVE_E4_PROMPT}
-            assert max_tokens == LIVE_E4_MAX_TOKENS
-            assert max_budget_usd == LIVE_E4_MAX_BUDGET_USD
-            with self.opener(Request("https://anymodel.invalid/mock", data=b"{}"), 5) as response:
-                response.read()
-            return {
-                "provider_model_id": DEFAULT_MODEL,
-                "provider_response_id": "cmpl-mock-e2e",
-                "content": "The price of SBER is 300 RUB",
-            }
+    def fake_transport_opener(request: Any, timeout: float) -> FakeResponse:
+        return FakeResponse()
 
     def mock_moex_verifier(ticker: str, claim_type: str, claimed_value: float,
                            **kwargs: Any) -> tuple[str, dict[str, Any]]:
@@ -466,8 +453,8 @@ def run_mock_e4() -> dict[str, Any]:
         LIVE_E4_PROMPT, DEFAULT_MODEL, price_confirmed=True,
         price_source="MOCK_ONLY", confirmed_price_usd=LIVE_E4_MAX_BUDGET_USD,
         full_cycle=True, api_key="mock-key", max_tokens=LIVE_E4_MAX_TOKENS,
-        max_budget_usd=LIVE_E4_MAX_BUDGET_USD, executor_factory=FakeExecutor,
-        moex_verifier=mock_moex_verifier,
+        max_budget_usd=LIVE_E4_MAX_BUDGET_USD,
+        transport_opener=fake_transport_opener, moex_verifier=mock_moex_verifier,
     )
     result["mode"] = "MOCK_E2_E4"
     result["network"] = "DISABLED"
