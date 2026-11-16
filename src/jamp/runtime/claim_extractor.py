@@ -39,8 +39,8 @@ _CURRENCY_RE = re.compile(
     re.IGNORECASE,
 )
 _PRICE_WORD_RE = re.compile(
-    r"\\b(?:цен[ауы]|сто(?:ит|имость)|стоил(?:а|о|и)?|торгуется|"
-    r"достиг(?:ла|ло)?|составляет|равен|равна)\\b|=",
+    r"\b(?:цен[ауы]|сто(?:ит|имость)|стоил(?:а|о|и)?|торгуется|"
+    r"достиг(?:ла|ло)?|составляет|равен|равна)\b|=",
     re.IGNORECASE,
 )
 _YEAR_SUFFIX_RE = re.compile(r"^\s*(?:году|года|год\b|г\.)", re.IGNORECASE)
@@ -88,12 +88,12 @@ _TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 def _split_claim_text(text: str) -> list[str]:
     """Split sentences and independently stated ticker/value pairs."""
     sentences = re.split(
-        r'''(?<![гГ]\\.)(?<=[.!?])\\s+(?=[A-ZА-ЯЁ0-9«"'])''',
+        r'''(?<![гГ]\.)(?<=[.!?])\s+(?=[A-ZА-ЯЁ0-9«"'])''',
         text.strip(),
     )
     pair_separator = re.compile(
-        r"(?:[,;]\\s*(?:(?:а|и|но)\\s+)?|\\s+\\b(?:а|и|но)\\b\\s+)"
-        r"(?=[A-Z]{3,5}\\s+(?:=\\s*)?\\d)"
+        r"(?:[,;]\s*(?:(?:а|и|но)\s+)?|\s+\b(?:а|и|но)\b\s+)"
+        r"(?=[A-Z]{3,5}\s+(?:=\s*)?\d)"
     )
     claims: list[str] = []
     for sentence in sentences:
