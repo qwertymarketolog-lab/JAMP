@@ -28,8 +28,9 @@ from jamp.runtime.claim_extractor import extract_claims
 
 DEFAULT_MODEL = "ag/claude-sonnet-4-6"
 LIVE_E4_PROMPT = (
-    "Based on your internal training data, state the price of SBER in RUB. "
-    "Reply exactly: 'The price of SBER is [X] RUB'."
+    "You are a financial data assistant. Provide your best estimate of the current "
+    "price of SBER stock in RUB. Do not say you cannot access live data; just provide "
+    "your most accurate guess. Reply exactly: 'The price of SBER is [X] RUB'."
 )
 LIVE_E4_MAX_TOKENS = 256
 LIVE_E4_MAX_BUDGET_USD = 0.01
