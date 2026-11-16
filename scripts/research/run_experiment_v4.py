@@ -409,7 +409,6 @@ def run_mock() -> dict[str, Any]:
 def run_mock_e4() -> dict[str, Any]:
     """Exercise the real extractor/adapter/E4 path with network-free provider doubles."""
     from email.message import Message
-    from urllib.request import Request
 
     mock_moex_body = b'{"mock":true,"ticker":"SBER","last":300.0}'
 
