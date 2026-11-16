@@ -25,3 +25,7 @@ button { font: inherit; }
 }
 .panel-card:hover { border-color: rgba(56, 189, 248, 0.28); transform: translateY(-1px); }
 ::selection { background: rgba(56, 189, 248, 0.28); color: #f8fafc; }
+
+.claim-card-verified { box-shadow: 0 0 24px rgba(52, 211, 153, 0.10); }
+.claim-card-contradicted { box-shadow: 0 0 24px rgba(251, 113, 133, 0.10); }
+.claim-card-inconclusive { box-shadow: 0 0 24px rgba(251, 191, 36, 0.08); }
