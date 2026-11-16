@@ -6,6 +6,14 @@ on:
       - "live-probe-run"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Execution mode"
+        required: true
+        type: choice
+        options:
+          - live-e4
+          - live
+        default: live-e4
       max_budget_usd:
         description: "Hard request budget in USD"
         required: true
@@ -57,8 +65,8 @@ jobs:
           CONFIRM_PRICE: ${{ github.event_name == 'push' && 'true' || inputs.confirm_price }}
           PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Claude Sonnet 4.6: $0.12 / 1M tokens)' || inputs.price_source }}"
           CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00101376' || inputs.confirmed_price_usd }}
-          MAX_BUDGET_USD: ${{ github.event_name == 'push' && '0.01' || inputs.max_budget_usd }}
-          MAX_TOKENS: ${{ github.event_name == 'push' && '256' || inputs.max_tokens }}
+          MAX_BUDGET_USD: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '0.01' || inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '256' || inputs.max_tokens }}
         run: |
           if [ "$CONFIRM_LIVE" != "true" ]; then
             echo "REFUSE: confirm_live_requests must be true; no request made."
@@ -106,16 +114,22 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
 
-      - name: Run one guarded AnyModel probe (no E4)
+      - name: Run one guarded AnyModel E2 to E4 request
         env:
           ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          MODE: ${{ github.event_name == 'push' && 'live-e4' || inputs.mode }}
           PRICE_SOURCE: "${{ github.event_name == 'push' && 'AnyModel Official Pricing (Claude Sonnet 4.6: $0.12 / 1M tokens)' || inputs.price_source }}"
           CONFIRMED_PRICE_USD: ${{ github.event_name == 'push' && '0.00101376' || inputs.confirmed_price_usd }}
-          MAX_BUDGET_USD: ${{ github.event_name == 'push' && '0.01' || inputs.max_budget_usd }}
-          MAX_TOKENS: ${{ github.event_name == 'push' && '256' || inputs.max_tokens }}
+          MAX_BUDGET_USD: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '0.01' || inputs.max_budget_usd }}
+          MAX_TOKENS: ${{ (github.event_name == 'push' || inputs.mode == 'live-e4') && '256' || inputs.max_tokens }}
         run: |
+          case "$MODE" in
+            live-e4) LIVE_FLAG="--live-e4" ;;
+            live) LIVE_FLAG="--live" ;;
+            *) echo "REFUSE: unsupported execution mode: $MODE"; exit 1 ;;
+          esac
           python scripts/research/run_experiment_v4.py \
-            --live --confirm-live --price-confirmed \
+            "$LIVE_FLAG" --confirm-live --price-confirmed \
             --price-source "$PRICE_SOURCE" \
             --confirmed-price-usd "$CONFIRMED_PRICE_USD" \
             --max-budget-usd "$MAX_BUDGET_USD" \
