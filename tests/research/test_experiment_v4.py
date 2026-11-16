@@ -378,3 +378,67 @@ def test_anymodel_executor_does_not_swallow_http_error() -> None:
             max_tokens=256, max_budget_usd=0.01, max_input_tokens=8192,
         )
     assert captured.value.code == 401
+
+
+def test_live_e4_prompt_extracts_sber_rub_price_claim(monkeypatch) -> None:
+    claims = experiment_v4.extract_claims(
+        "The price of SBER is 300 RUB", trace_id="test-sber"
+    )
+    assert len(claims) == 1
+    assert claims[0].claim_type == "price"
+    assert claims[0].ticker == "SBER"
+    assert claims[0].cited_value == 300.0
+    assert claims[0].currency == "RUB"
+
+
+def test_live_e4_cli_mode_uses_fixed_prompt_and_limits(monkeypatch) -> None:
+    captured = {}
+
+    def fake_cycle(prompt, model, **kwargs):
+        captured.update(prompt=prompt, model=model, **kwargs)
+        return {"status": "OBSERVED", "e4": {"verdict": "VERIFIED"}}
+
+    monkeypatch.setattr(experiment_v4, "run_live_cycle", fake_cycle)
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_experiment_v4.py", "--live-e4", "--confirm-live",
+         "--price-confirmed", "--price-source", "test",
+         "--confirmed-price-usd", "0.001", "--output-dir", "unused"],
+    )
+    assert experiment_v4.main() == 0
+    assert captured["prompt"] == experiment_v4.LIVE_E4_PROMPT
+    assert captured["full_cycle"] is True
+    assert captured["max_tokens"] == 256
+    assert captured["max_budget_usd"] == 0.01
+
+
+def test_mock_e2_e4_runs_real_extractor_and_preserves_mock_raw(monkeypatch) -> None:
+    result = experiment_v4.run_mock_e4()
+    assert result["mode"] == "MOCK_E2_E4"
+    assert result["network"] == "DISABLED"
+    assert result["e2_preflight"] == "PREFLIGHT_OK"
+    assert result["e4"]["verdict"] == "VERIFIED"
+    assert result["e4"]["extracted_claim"]["type"] == "price"
+    assert result["e4"]["extracted_claim"]["unit"] == "RUB"
+    assert result["e4"]["raw_evidence"][0]["body_complete"] is True
+
+
+def test_e4_moex_verifier_can_return_contradicted_with_raw_evidence() -> None:
+    body = b'{"mock":true,"ticker":"SBER","last":301.0}'
+
+    def contradicted_moex(ticker, claim_type, claimed_value, **kwargs):
+        assert (ticker, claim_type, claimed_value) == ("SBER", "price", 300.0)
+        return experiment_v4.E4_CONTRADICTED, {
+            "result": "CONTRADICTED",
+            "raw_evidence": [{
+                "status_code": 200, "body_complete": True,
+                "raw_body_base64": base64.b64encode(body).decode("ascii"),
+                "sha256_body": hashlib.sha256(body).hexdigest(),
+            }],
+        }
+
+    result = experiment_v4._e4_verify(
+        "The price of SBER is 300 RUB", "test-contradicted",
+        moex_verifier=contradicted_moex,
+    )
+    assert result["verdict"] == "CONTRADICTED"
