@@ -12,7 +12,7 @@ const verdictStyles = {
 
 export function ClaimCard({ claim }: { claim: VerifiedClaim }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const style = verdictStyles[claim.verdict];
+  const style = verdictStyles[claim.verdict] ?? verdictStyles.INCONCLUSIVE;
 
   return (
     <article className={`rounded-xl border bg-[#0b1220] p-4 ${style}`}>
