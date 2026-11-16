@@ -442,3 +442,43 @@ def test_e4_moex_verifier_can_return_contradicted_with_raw_evidence() -> None:
         moex_verifier=contradicted_moex,
     )
     assert result["verdict"] == "CONTRADICTED"
+
+
+# Literal replay of the provider response captured in live run 43805799030.
+SBER_REFUSAL_REPLAY = (
+    "I can't retrieve live stock prices. "
+    "To get the current SBER price, check a financial service like Moex, "
+    "Yahoo Finance, or your broker."
+)
+
+
+def test_e4_replay_without_price_claim_is_inconclusive() -> None:
+    result = experiment_v4._e4_verify(SBER_REFUSAL_REPLAY, "replay-43805799030")
+    assert result["verdict"] == "INCONCLUSIVE"
+    assert result["reason"] == "NO_PRICE_CLAIM"
+    assert len(result["extracted_claim"]) == 2
+    assert all(item["type"] == "other" for item in result["extracted_claim"])
+    assert result["raw_evidence"] == []
+
+
+def test_e4_multiple_sber_price_claims_are_ambiguous(monkeypatch) -> None:
+    first = experiment_v4.extract_claims(
+        "The price of SBER is 300 RUB", trace_id="multiple-sber-1"
+    )
+    second = experiment_v4.extract_claims(
+        "The price of SBER is 301 RUB", trace_id="multiple-sber-2"
+    )
+    monkeypatch.setattr(
+        experiment_v4, "extract_claims", lambda content, trace_id: first + second
+    )
+
+    def forbidden_moex(*args, **kwargs):
+        raise AssertionError("ambiguous claims must not reach MOEX")
+
+    result = experiment_v4._e4_verify(
+        "ignored replay input", "multiple-sber", moex_verifier=forbidden_moex
+    )
+    assert result["verdict"] == "AMBIGUOUS"
+    assert result["reason"] == "MULTIPLE_PRICE_CLAIMS"
+    assert len(result["extracted_claim"]) == 2
+    assert result["raw_evidence"] == []
