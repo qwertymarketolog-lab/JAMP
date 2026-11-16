@@ -7,8 +7,7 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
-from jamp.api import auth
-from jamp.api import create_app
+from jamp.api import auth, create_app
 
 VALID_TOKEN = "jamp_sk_verify_text_test"  # noqa: S105
 
