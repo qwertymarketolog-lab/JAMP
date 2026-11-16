@@ -1,12 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ClaimCard } from "./components/ClaimCard";
-import type { VerifyTextResponse } from "./types/api";
+import type { DashboardStats, PersistedVerdict, VerdictListResponse, VerifyTextResponse } from "./types/api";
 
 type IconName = "grid" | "scan" | "store" | "telegram" | "network" | "archive" | "settings";
 
 const navigation: { label: string; icon: IconName; section: string; active?: boolean; planned?: boolean }[] = [
   { label: "Обзор", icon: "grid", section: "Рабочее пространство", active: true },
   { label: "Проверка утверждений", icon: "scan", section: "Рабочее пространство" },
+  { label: "История", icon: "archive", section: "Рабочее пространство" },
   { label: "Маркетплейс", icon: "store", section: "Экосистема", planned: true },
   { label: "Telegram", icon: "telegram", section: "Экосистема", planned: true },
   { label: "Модели и провайдеры", icon: "network", section: "Инфраструктура", planned: true },
@@ -27,6 +28,19 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
+function PersistedVerdictRow({ item }: { item: PersistedVerdict }) {
+  const style = item.status === "HALLUCINATION_CAUGHT" || item.status === "INTEGRITY_VIOLATED"
+    ? "border-rose-400/30 text-rose-300"
+    : item.status === "INCONCLUSIVE" || item.status === "SUSPICIOUS"
+      ? "border-amber-400/30 text-amber-200"
+      : "border-emerald-400/30 text-emerald-300";
+  const label = item.status === "CLEAN" ? "CLEAN · не эквивалент VERIFIED" : item.status;
+  return <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-jamp-line bg-black/10 p-4">
+    <div className="min-w-0"><div className="text-sm font-medium text-slate-200">{item.package ?? "Package: UNKNOWN"}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-500">{item.verdict_id}</div><div className="mt-1 text-xs text-slate-500">{item.created_at}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-600">SHA-256 · {item.code_hash}</div></div>
+    <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${style}`}>{label}</span>
+  </article>;
+}
+
 function App() {
   const [active, setActive] = useState("Обзор");
   const sections = [...new Set(navigation.map((item) => item.section))];
@@ -34,6 +48,49 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyTextResponse | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [history, setHistory] = useState<VerdictListResponse | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setStatsLoading(true); setStatsError(null);
+      try {
+        const response = await fetch("/v1/stats", { credentials: "same-origin" });
+        if (response.status === 401) { window.location.assign("/dashboard/login"); return; }
+        const payload = await response.json();
+        if (!response.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`);
+        if (!cancelled) setStats(payload as DashboardStats);
+      } catch (error) {
+        if (!cancelled) setStatsError(error instanceof Error ? error.message : "Stats request failed");
+      } finally { if (!cancelled) setStatsLoading(false); }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (active !== "История") return;
+    let cancelled = false;
+    const load = async () => {
+      setHistoryLoading(true); setHistoryError(null);
+      try {
+        const response = await fetch("/v1/verdicts?limit=20&offset=0", { credentials: "same-origin" });
+        if (response.status === 401) { window.location.assign("/dashboard/login"); return; }
+        const payload = await response.json();
+        if (!response.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`);
+        if (!cancelled) setHistory(payload as VerdictListResponse);
+      } catch (error) {
+        if (!cancelled) setHistoryError(error instanceof Error ? error.message : "History request failed");
+      } finally { if (!cancelled) setHistoryLoading(false); }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [active]);
 
   const readCookie = (name: string): string | null => {
     const prefix = `${name}=`;
@@ -131,6 +188,23 @@ function App() {
             <div className="rounded-xl border border-jamp-line bg-jamp-panel/70 px-4 py-3"><div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Состояние интерфейса</div><div className="mt-1 flex items-center gap-2 text-sm font-medium text-jamp-amber"><span className="h-2 w-2 rounded-full bg-jamp-amber" /> BFF · API integration</div></div>
           </div>
 
+          <section aria-label="Статистика JAMP" className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {statsLoading ? <div className="panel-card p-5 text-sm text-slate-400" role="status">Загружаем статистику…</div>
+            : statsError ? <div className="panel-card p-5 text-sm text-rose-300" role="alert">Статистика недоступна: {statsError}</div>
+            : stats ? <>
+              <div className="panel-card p-5"><div className="text-xs text-slate-500">Всего сохранённых проверок</div><div className="mt-2 text-2xl font-semibold text-slate-100">{stats.total_checks}</div><div className="mt-1 text-[10px] text-slate-500">Persisted verdict rows · all time</div></div>
+              <div className="panel-card p-5"><div className="text-xs text-slate-500">HALLUCINATION_CAUGHT</div><div className="mt-2 text-2xl font-semibold text-rose-300">{stats.hallucinations_caught}</div></div>
+              <div className="panel-card p-5"><div className="text-xs text-slate-500">INCONCLUSIVE</div><div className="mt-2 text-2xl font-semibold text-amber-200">{stats.inconclusive}</div></div>
+              <div className="panel-card p-5"><div className="text-xs text-slate-500">CLEAN</div><div className="mt-2 text-2xl font-semibold text-emerald-300">{stats.status_counts.CLEAN}</div><div className="mt-1 text-[10px] text-slate-500">Не эквивалент VERIFIED</div></div>
+            </> : <div className="panel-card p-5 text-sm text-slate-400">Статистика: UNKNOWN</div>}
+          </section>
+          {active === "История" && <section className="panel-card mb-7 p-6" aria-label="История вердиктов">
+            <div><h2 className="text-sm font-semibold text-slate-100">История сохранённых вердиктов</h2><p className="mt-1 text-xs text-slate-500">GET /v1/verdicts · текущая организация</p></div>
+            {historyLoading && <p className="mt-5 text-sm text-slate-400" role="status">Загружаем историю…</p>}
+            {historyError && <p className="mt-5 text-sm text-rose-300" role="alert">История недоступна: {historyError}</p>}
+            {history && !historyLoading && history.items.length === 0 && <p className="mt-5 rounded-xl border border-dashed border-jamp-line p-5 text-sm text-slate-400">Сохранённых вердиктов пока нет. Это пустая история, а не ошибка проверки.</p>}
+            {history && history.items.length > 0 && <div className="mt-5 space-y-3">{history.items.map(item => <PersistedVerdictRow key={item.verdict_id} item={item} />)}<p className="text-xs text-slate-500">Показано {history.items.length} из {history.total}. CLEAN не означает VERIFIED.</p></div>}
+          </section>}
           <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {[
               { title: "Проверка утверждений", subtitle: "Claim verification", icon: "scan" as IconName, accent: "text-jamp-blue", note: "BFF endpoint · UI connected" },
