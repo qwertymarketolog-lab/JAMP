@@ -1,42 +1,119 @@
-# JAMP
+# JAMP — Trust Layer для AI
 
-## What is JAMP
+JAMP — API для независимой проверки отдельных фактических утверждений, извлечённых из текста, по внешним источникам данных. Для текущего клиентского API поддерживается ограниченная проверка цен: акции и другие инструменты MOEX в RUB, а также криптоактивы из поддерживаемого списка CoinGecko в USD.
 
-JAMP is a research mechanism for searching and transforming formal states. It studies whether controlled transformation of a state space can produce productive moves when solving problems.
+JAMP не считает ответ AI доказательством. Для поддерживаемого ценового утверждения сервис извлекает кандидата, запрашивает независимый источник, сохраняет исходный HTTP-ответ в evidence и проверяет целостность тела по SHA-256. Если утверждение нельзя однозначно извлечь или подтвердить, результат остаётся `INCONCLUSIVE`.
 
-The project treats formal states, transformations, observations, and evidence as explicit objects. Experiments are used to distinguish observed behavior from broader claims about the mechanism.
+## Quick Start
 
-Current results include reproduced Track A behavior, structural findings about the current substitution vocabulary, negative results, and controlled ablation results. The scope and evidence level of each finding are recorded separately.
+### 1. Получить API-ключ
 
-JAMP does not treat successful execution as automatic confirmation of a research hypothesis. Repository artifacts, issue comments, and session-only findings are kept distinct.
+Запросите доступ у оператора развёрнутого экземпляра JAMP. На текущий момент публичного self-service endpoint для выпуска API-ключей нет.
 
-## Current state
+Ключ передаётся отдельно от запроса. Не помещайте его в URL, JSON body, репозиторий или логи. API определяет организацию по API-ключу; передавать `org_id` в теле запроса не нужно и нельзя.
 
-Current state: see [STATUS.md](STATUS.md).
+### 2. Отправить проверку
 
-## How to read the project
+Укажите адрес вашего развёрнутого экземпляра в `JAMP_BASE_URL`, а выданный ключ — в переменной окружения `JAMP_API_KEY`.
 
-- [STATUS.md](STATUS.md) — current state
-- [docs/research/results.md](docs/research/results.md) — established findings
-- [docs/methodology/finding-ledger.md](docs/methodology/finding-ledger.md) — evidence chains (M-001..M-013)
-- [PROVENANCE.md](PROVENANCE.md) — provenance contract
+```bash
+export JAMP_BASE_URL="https://your-jamp-host"
+export JAMP_API_KEY="YOUR_API_KEY"
 
-## What JAMP does not claim
+curl --fail-with-body --silent --show-error \
+  -X POST "$JAMP_BASE_URL/v1/verify_claim" \
+  -H "Authorization: Bearer $JAMP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Цена SBER 299.26 RUB"}'
+```
 
-- universal discovery capability
-- natural-language solving
-- general theorem proving
-- scheme generation
-- substitution convergence beyond current vocabulary
-- P18.4 as closed or partially closed causal claim
+Успешная HTTP-обработка возвращает JSON с одним из вердиктов:
 
+- `VERIFIED` — источник подтвердил утверждение в пределах допуска;
+- `CONTRADICTED` — источник противоречит утверждению за пределами допуска;
+- `INCONCLUSIVE` — извлечение, источник или доказательство не позволяют вынести подтверждённый вердикт.
 
-## License and project rights
+HTTP 200 сам по себе не означает VERIFIED: всегда проверяйте поле `verdict`.
 
-JAMP source code is licensed under the **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**. See [LICENSE](LICENSE).
+## Поддерживаемые примеры
 
-The repository-level IP and licensing policy is documented in [docs/legal/JAMP-IP-LICENSING-POLICY.md](docs/legal/JAMP-IP-LICENSING-POLICY.md), with project copyright recorded in [COPYRIGHT](COPYRIGHT) and attribution/notice information in [NOTICE](NOTICE).
+### MOEX — цена в RUB
 
-The JAMP name and marks are separate from the software license. Trademark registration is a separate legal process.
+```bash
+curl --fail-with-body --silent --show-error \
+  -X POST "$JAMP_BASE_URL/v1/verify_claim" \
+  -H "Authorization: Bearer $JAMP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Цена SBER 299.26 RUB","tolerance_pct":1.0}'
+```
 
-The licensing policy does not change the Frozen Core boundary.
+### CoinGecko — цена криптоактива в USD
+
+```bash
+curl --fail-with-body --silent --show-error \
+  -X POST "$JAMP_BASE_URL/v1/verify_claim" \
+  -H "Authorization: Bearer $JAMP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Цена BTC 65000 USD","tolerance_pct":1.0}'
+```
+
+CoinGecko применяется только к тикерам, присутствующим во внутренней карте поддерживаемых криптоактивов. Это не универсальная проверка любых USD-цен.
+
+## Формат ответа
+
+Ниже — схема формы ответа, а не запись реального рыночного запроса. Конкретные значения `verdict`, `details` и `raw_evidence` зависят от ответа внешнего провайдера.
+
+```json
+{
+  "verdict": "INCONCLUSIVE",
+  "reason": "EXAMPLE_REASON",
+  "extracted_claim": {
+    "claim_id": "trace_c1",
+    "type": "price",
+    "value": 299.26,
+    "unit": "RUB",
+    "raw_text": "Цена SBER 299.26 RUB",
+    "citation_url": null,
+    "status": null,
+    "source": null,
+    "evidence": null,
+    "critical": null
+  },
+  "details": {},
+  "raw_evidence": [
+    {
+      "source": "moex.iss",
+      "url": "https://iss.moex.com/...",
+      "status_code": 200,
+      "body_complete": true,
+      "raw_body_base64": "<base64 исходного HTTP body>",
+      "sha256_body": "<64 lowercase hex characters>"
+    }
+  ],
+  "tolerance_pct": 1.0,
+  "verification_mode": "DIRECT_E4_NO_E2"
+}
+```
+
+`raw_evidence` содержит исходное тело ответа провайдера в Base64 и SHA-256 этого тела. Хеш позволяет клиенту независимо проверить, что сохранённые байты соответствуют указанному digest. При отсутствии или некорректности RAW-доказательства положительный/отрицательный вывод не повышается до `VERIFIED` или `CONTRADICTED`.
+
+## Границы текущего API
+
+- Один запрос рассчитан ровно на одно извлечённое утверждение. Если текст разбивается на ноль или несколько кандидатов, API возвращает `INCONCLUSIVE` с причиной `EXPECTED_EXACTLY_ONE_CLAIM`; пакетная проверка нескольких утверждений пока не поддерживается.
+- Извлечение детерминированное и основано на правилах/регулярных выражениях. Это не универсальный NLP-парсер и не гарантия нахождения каждого утверждения в произвольном многостраничном анализе.
+- Проверяются только поддерживаемые ценовые утверждения: RUB через MOEX и USD для криптоактивов из карты CoinGecko.
+- API не проверяет прогнозы, инвестиционные рекомендации, причинно-следственные связи, историческую динамику, рыночные доли и произвольные факты.
+- `VERIFIED` означает совпадение с полученными данными источника в рамках указанного допуска и зафиксированного ответа. Это не инвестиционная рекомендация и не гарантия будущей цены.
+- Этот endpoint выполняет прямую проверку E4 и не запускает генерацию ответа AI.
+
+## Полная спецификация
+
+См. [docs/api_spec.md](docs/api_spec.md): request/response contract, authentication, provider-specific примеры, RAW evidence и HTTP errors.
+
+## Лицензия и права
+
+Исходный код JAMP распространяется по лицензии **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**. См. [LICENSE](LICENSE).
+
+Политика интеллектуальной собственности и лицензирования проекта описана в [docs/legal/JAMP-IP-LICENSING-POLICY.md](docs/legal/JAMP-IP-LICENSING-POLICY.md); сведения об авторских правах и уведомлениях — в [COPYRIGHT](COPYRIGHT) и [NOTICE](NOTICE).
+
+Название и знаки JAMP отделены от лицензии программного обеспечения. Регистрация товарного знака является отдельной юридической процедурой.
