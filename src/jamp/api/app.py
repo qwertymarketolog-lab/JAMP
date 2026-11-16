@@ -380,7 +380,8 @@ def create_app(
             return JSONResponse(status_code=200, content={
                 "status": "NO_CLAIMS",
                 "system_warnings": [
-                    "Claim extraction failed. No claims were verified; this does not mean the text is free of claims."
+                    "Claim extraction failed. No claims were verified; "
+                    "this does not mean the text is free of claims."
                 ],
                 "claims": [],
                 "provider_errors": [],
@@ -394,7 +395,8 @@ def create_app(
             return JSONResponse(status_code=200, content={
                 "status": "NO_CLAIMS",
                 "system_warnings": [
-                    "No claims extracted. This does not mean the text is free of claims; the rule-based extractor may miss claims."
+                    "No claims extracted. This does not mean the text is free of claims; "
+                    "the rule-based extractor may miss claims."
                 ],
                 "claims": [],
                 "provider_errors": [],
@@ -517,7 +519,10 @@ def create_app(
                 provider_errors.append({
                     "provider": provider,
                     "status": error_status,
-                    "message": f"Provider could not supply a valid response ({reason or error_type or 'unknown error'}).",
+                    "message": (
+                        "Provider could not supply a valid response "
+                        f"({reason or error_type or 'unknown error'})."
+                    ),
                 })
 
             if raw_status in {E4_VERIFIED, E4_CONTRADICTED} and not raw_valid:
@@ -556,7 +561,9 @@ def create_app(
 
             if claim_result["evidence"]:
                 system_warnings.append(
-                    "timestamp_utc is the JAMP response-capture time; the current provider adapters do not expose a reliable quote timestamp, so quote age remains UNKNOWN."
+                    "timestamp_utc is the JAMP response-capture time; "
+                    "the current provider adapters do not expose a reliable quote timestamp, "
+                    "so quote age remains UNKNOWN."
                 )
             claim_result["verdict"] = verdict
             claim_result["reason"] = reason
