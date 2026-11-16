@@ -212,7 +212,7 @@ def create_app(
         request: FastAPIRequest,
         exc: HTTPException,
     ):
-        if request.url.path == "/dashboard" and exc.status_code == 401:
+        if request.url.path in {"/dashboard", "/app"} and exc.status_code == 401:
             return RedirectResponse(url="/dashboard/login", status_code=303)
         return await http_exception_handler(request, exc)
 

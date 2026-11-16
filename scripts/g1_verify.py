@@ -101,6 +101,8 @@ class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 POLL_INTERVAL_SECONDS = 10
 TERMINAL_TIMEOUT_SECONDS = 300
+DISCOVERY_MAX_ATTEMPTS = 10
+DISCOVERY_POLL_INTERVAL_SECONDS = 30
 
 
 def wait_for_terminal(
@@ -239,6 +241,46 @@ def _all_workflow_runs(api_get: Callable[[str], dict[str, Any]],
         page += 1
 
 
+
+def wait_for_research_loop_run(
+    pr_number: int,
+    head_sha: str,
+    repo: str,
+    api_get: Callable[[str], dict[str, Any]] = gh_api,
+    attempts: int = DISCOVERY_MAX_ATTEMPTS,
+    poll_interval: int = DISCOVERY_POLL_INTERVAL_SECONDS,
+) -> list[dict[str, Any]]:
+    """Wait a bounded number of times for this exact PR/head Research Loop run.
+
+    The first lookup is immediate. Missing runs are retried at a fixed interval;
+    API errors propagate and the final empty lookup fails closed.
+    """
+    if attempts < 1 or poll_interval <= 0:
+        raise ValueError("attempts must be positive and poll_interval positive")
+
+    for attempt in range(attempts):
+        runs = _all_workflow_runs(api_get, repo, head_sha)
+        pr_runs = [
+            run for run in runs
+            if run.get("event") == "pull_request"
+            and run.get("path", "").endswith(f"/{RESEARCH_LOOP_WORKFLOW}")
+            and run.get("head_sha") == head_sha
+            and any(
+                isinstance(pr, dict) and pr.get("number") == pr_number
+                for pr in run.get("pull_requests", [])
+            )
+        ]
+        if pr_runs:
+            return pr_runs
+        if attempt + 1 < attempts:
+            time.sleep(poll_interval)
+
+    raise VerificationError(
+        "no_research_loop_runs_for_pr_head: "
+        f"attempts={attempts} poll_interval_seconds={poll_interval}"
+    )
+
+
 def verify_lineage(
     pr_number: int,
     head_sha: str,
@@ -253,19 +295,12 @@ def verify_lineage(
     if pr_number < 1 or repo != "qwertymarketolog-lab/JAMP":
         raise VerificationError("repository_or_pr_invalid")
 
-    runs = _all_workflow_runs(api_get, repo, head_sha)
-    pr_runs = [
-        run for run in runs
-        if run.get("event") == "pull_request"
-        and run.get("path", "").endswith(f"/{RESEARCH_LOOP_WORKFLOW}")
-        and run.get("head_sha") == head_sha
-        and any(
-            isinstance(pr, dict) and pr.get("number") == pr_number
-            for pr in run.get("pull_requests", [])
-        )
-    ]
-    if not pr_runs:
-        raise VerificationError("no_research_loop_runs_for_pr_head")
+    pr_runs = wait_for_research_loop_run(
+        pr_number,
+        head_sha,
+        repo,
+        api_get=api_get,
+    )
 
     newest = max(
         pr_runs,

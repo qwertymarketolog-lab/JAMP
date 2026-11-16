@@ -5,11 +5,19 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "Dockerfile"
+      - "src/jamp/server/web/routes.py"
+      - "src/jamp/api/app.py"
+      - "tests/test_dashboard_web.py"
       - ".github/workflows/frontend-build.yml"
   push:
     branches: [main]
     paths:
       - "frontend/**"
+      - "Dockerfile"
+      - "src/jamp/server/web/routes.py"
+      - "src/jamp/api/app.py"
+      - "tests/test_dashboard_web.py"
       - ".github/workflows/frontend-build.yml"
 
 permissions:
@@ -32,3 +40,6 @@ jobs:
       - name: Typecheck and build
         working-directory: frontend
         run: npm run build
+
+      - name: Build production Docker image with React assets
+        run: docker build --tag jamp-dashboard-integration:test .
