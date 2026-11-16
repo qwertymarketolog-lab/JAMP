@@ -187,7 +187,7 @@ def _extract_value_and_currency(
             price_markers = ticker_markers if _has_ticker_value_pair(text) else []
         if not price_markers:
             return None, None
-        # Select the first valid value following the nearest explicit price/ticker marker.
+        # Select the first valid value after the nearest explicit marker.
         after_markers = [
             (match.start() - marker.end(), match)
             for marker in price_markers
@@ -214,7 +214,8 @@ def _has_ticker_value_pair(text: str) -> bool:
     ]
     for ticker in tickers:
         for number in _valid_number_matches(text):
-            if number.start() >= ticker.end() and not text[ticker.end():number.start()].strip(" := "):
+            gap = text[ticker.end():number.start()]
+            if number.start() >= ticker.end() and re.fullmatch(r"[ :=]*", gap):
                 return True
     return False
 

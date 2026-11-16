@@ -6,7 +6,11 @@ from jamp.runtime.claim_extractor import extract_claims
 def test_extracts_each_ticker_value_pair_from_multi_claim_sentence() -> None:
     claims = extract_claims("SBER 300, а BTC 60000.", trace_id="multi")
 
-    assert [(claim.text, claim.ticker, claim.claim_type, claim.cited_value) for claim in claims] == [
+    actual = [
+        (claim.text, claim.ticker, claim.claim_type, claim.cited_value)
+        for claim in claims
+    ]
+    assert actual == [
         ("SBER 300", "SBER", "price", 300.0),
         ("BTC 60000", "BTC", "price", 60000.0),
     ]
