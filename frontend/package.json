@@ -1,0 +1,26 @@
+{
+  "name": "jamp-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "4.7.0",
+    "autoprefixer": "10.4.21",
+    "postcss": "8.5.6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwindcss": "3.4.17",
+    "vite": "6.3.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.7",
+    "typescript": "5.8.3"
+  }
+}
