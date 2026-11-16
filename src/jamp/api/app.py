@@ -347,6 +347,242 @@ def create_app(
             "verification_mode": "DIRECT_E4_NO_E2",
         })
 
+    @app.post("/v1/verify_text", response_model=None)
+    def verify_text(
+        payload: dict[str, Any],
+        organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
+    ) -> Any:
+        """Verify each extracted claim independently through direct E4 providers."""
+        from base64 import b64decode
+        from binascii import Error as Base64Error
+
+        text = payload.get("text")
+        tolerance_pct = payload.get("tolerance_pct", 1.0)
+        if set(payload) - {"text", "tolerance_pct"}:
+            return JSONResponse(status_code=422, content={"detail": "unsupported request fields"})
+        if not isinstance(text, str) or not text.strip():
+            return JSONResponse(status_code=422, content={"detail": "text must be non-empty"})
+        if (
+            isinstance(tolerance_pct, bool)
+            or not isinstance(tolerance_pct, (int, float))
+            or not math.isfinite(float(tolerance_pct))
+            or not 0 <= float(tolerance_pct) < 100
+        ):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "tolerance_pct must be finite and in [0, 100)"},
+            )
+
+        trace_id = f"vtext_{uuid4().hex}"
+        try:
+            extracted = extract_claims(text, trace_id=trace_id)
+        except (TypeError, ValueError):
+            return JSONResponse(status_code=200, content={
+                "status": "NO_CLAIMS",
+                "system_warnings": [
+                    "Claim extraction failed. No claims were verified; "
+                    "this does not mean the text is free of claims."
+                ],
+                "claims": [],
+                "provider_errors": [],
+                "trace_id": trace_id,
+            })
+
+        # The extractor emits an "other" record for ordinary prose. It is not
+        # treated as a factual claim candidate for this bounded verification API.
+        candidates = [item for item in extracted if item.claim_type != "other"]
+        if not candidates:
+            return JSONResponse(status_code=200, content={
+                "status": "NO_CLAIMS",
+                "system_warnings": [
+                    "No claims extracted. This does not mean the text is free of claims; "
+                    "the rule-based extractor may miss claims."
+                ],
+                "claims": [],
+                "provider_errors": [],
+                "trace_id": trace_id,
+            })
+
+        claims: list[dict[str, Any]] = []
+        provider_errors: list[dict[str, str]] = []
+        system_warnings = [
+            (
+                f"Extractor обнаружил {len(candidates)} claim'ов. "
+                "Другие утверждения в тексте могли быть проигнорированы из-за ограничений парсера."
+            )
+        ]
+
+        for candidate in candidates:
+            claim_result: dict[str, Any] = {
+                "claim_id": candidate.id,
+                "raw_text": candidate.text,
+                "type": candidate.claim_type,
+                "extracted_value": candidate.cited_value,
+                "unit": candidate.currency or "UNKNOWN",
+                "verdict": "INCONCLUSIVE",
+                "reason": None,
+                "evidence": [],
+                "trace_id": trace_id,
+            }
+            if candidate.claim_type != "price":
+                claim_result["reason"] = "CLAIM_TYPE_NOT_SUPPORTED"
+                claims.append(claim_result)
+                continue
+            if (
+                not candidate.ticker
+                or candidate.cited_value is None
+                or candidate.currency not in {"RUB", "USD"}
+            ):
+                claim_result["reason"] = "MISSING_TICKER_VALUE_OR_CURRENCY"
+                claims.append(claim_result)
+                continue
+
+            provider = "MOEX" if candidate.currency == "RUB" else "CoinGecko"
+            raw_status = E4_INCONCLUSIVE
+            details: dict[str, Any] = {}
+            try:
+                if candidate.currency == "RUB":
+                    raw_status, details = verify_claim_with_moex(
+                        candidate.ticker,
+                        "price",
+                        candidate.cited_value,
+                        price_tolerance=float(tolerance_pct) / 100.0,
+                        capture_raw=True,
+                    )
+                else:
+                    coin_id = COINGECKO_TICKER_MAP.get(candidate.ticker.upper())
+                    if coin_id is None:
+                        claim_result["reason"] = "UNKNOWN_COINGECKO_TICKER"
+                        claims.append(claim_result)
+                        continue
+                    raw_status, details = verify_claim_with_coingecko(
+                        coin_id,
+                        "price",
+                        candidate.cited_value,
+                        threshold_pct=float(tolerance_pct),
+                        capture_raw=True,
+                    )
+            except Exception as exc:
+                status_code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+                if isinstance(status_code, int):
+                    error_status = f"HTTP_{status_code}"
+                elif isinstance(exc, TimeoutError):
+                    error_status = "TIMEOUT"
+                else:
+                    error_status = "PROVIDER_ERROR"
+                provider_errors.append({
+                    "provider": provider,
+                    "status": error_status,
+                    "message": f"Provider request failed ({type(exc).__name__}).",
+                })
+                claim_result["reason"] = "PROVIDER_ERROR"
+                claims.append(claim_result)
+                continue
+
+            if not isinstance(details, dict):
+                details = {}
+            raw_evidence = details.get("raw_evidence", [])
+            if not isinstance(raw_evidence, list):
+                raw_evidence = []
+            raw_valid = bool(raw_evidence)
+            for item in raw_evidence:
+                try:
+                    body = b64decode(item["raw_body_base64"], validate=True)
+                    raw_valid = raw_valid and (
+                        item.get("body_complete") is True
+                        and item.get("status_code") == 200
+                        and hashlib.sha256(body).hexdigest() == item.get("sha256_body")
+                    )
+                except (KeyError, TypeError, Base64Error):
+                    raw_valid = False
+
+            reason = details.get("reason")
+            http_status = details.get("http_status")
+            error_type = details.get("error_type")
+            if (
+                isinstance(http_status, int) and http_status >= 400
+            ) or reason in {
+                "MOEX_SOURCE_UNAVAILABLE_OR_INVALID",
+                "MOEX_MARKETDATA_UNAVAILABLE_OR_INVALID",
+                "COINGECKO_HTTP_ERROR",
+                "COINGECKO_SOURCE_UNAVAILABLE_OR_INVALID",
+                "LOCAL_RATE_LIMIT",
+            }:
+                if isinstance(http_status, int) and http_status >= 400:
+                    error_status = f"HTTP_{http_status}"
+                elif error_type == "TimeoutError":
+                    error_status = "TIMEOUT"
+                elif reason == "LOCAL_RATE_LIMIT":
+                    error_status = "RATE_LIMITED"
+                else:
+                    error_status = "PROVIDER_ERROR"
+                provider_errors.append({
+                    "provider": provider,
+                    "status": error_status,
+                    "message": (
+                        "Provider could not supply a valid response "
+                        f"({reason or error_type or 'unknown error'})."
+                    ),
+                })
+
+            if raw_status in {E4_VERIFIED, E4_CONTRADICTED} and not raw_valid:
+                verdict = "INCONCLUSIVE"
+                reason = "RAW_EVIDENCE_MISSING_OR_INVALID"
+            elif raw_status == E4_VERIFIED:
+                verdict = "VERIFIED"
+                reason = None
+            elif raw_status == E4_CONTRADICTED:
+                verdict = "CONTRADICTED"
+                reason = None
+            else:
+                verdict = "INCONCLUSIVE"
+                reason = reason or str(raw_status)
+
+            capture_time = time.time()
+            timestamp_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(capture_time))
+            actual_value = details.get("observed_last", details.get("observed_value"))
+            for raw_item in raw_evidence:
+                if not isinstance(raw_item, dict):
+                    continue
+                claim_result["evidence"].append({
+                    "source": provider,
+                    "url": raw_item.get("url"),
+                    "status_code": raw_item.get("status_code"),
+                    "body_complete": raw_item.get("body_complete"),
+                    "raw_body_base64": raw_item.get("raw_body_base64"),
+                    "actual_value": actual_value,
+                    "timestamp_utc": timestamp_utc,
+                    "timestamp_kind": "JAMP_CAPTURE_TIME",
+                    "age_seconds": round(max(0.0, time.time() - capture_time), 3),
+                    "age_basis": "since JAMP captured the response; provider quote age is UNKNOWN",
+                    "source_timestamp_utc": None,
+                    "raw_sha256": raw_item.get("sha256_body"),
+                })
+
+            if claim_result["evidence"]:
+                system_warnings.append(
+                    "timestamp_utc is the JAMP response-capture time; "
+                    "the current provider adapters do not expose a reliable quote timestamp, "
+                    "so quote age remains UNKNOWN."
+                )
+            claim_result["verdict"] = verdict
+            claim_result["reason"] = reason
+            claims.append(claim_result)
+
+        status = (
+            "COMPLETE_VERIFICATION"
+            if all(item["verdict"] in {"VERIFIED", "CONTRADICTED"} for item in claims)
+            else "PARTIAL_VERIFICATION"
+        )
+        return JSONResponse(status_code=200, content={
+            "status": status,
+            "system_warnings": list(dict.fromkeys(system_warnings)),
+            "claims": claims,
+            "provider_errors": provider_errors,
+            "trace_id": trace_id,
+            "verification_mode": "DIRECT_E4_NO_E2",
+        })
+
     @app.post("/v1/audit_response", response_model=None)
     def audit_response(
         payload: dict[str, Any],
