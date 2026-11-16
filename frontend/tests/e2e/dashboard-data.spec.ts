@@ -24,7 +24,7 @@ test("overview and history render persisted API contracts without promoting CLEA
   await page.getByRole("button", { name: "Проверка утверждений" }).click();
   await page.getByPlaceholder("Вставьте текст для проверки утверждений…").fill("Цена SBER составляет 5000 рублей.");
   await page.getByRole("button", { name: "Проверить" }).click();
-  await expect(page.getByText("Цена SBER составляет 5000 рублей.")).toBeVisible();
+  await expect(page.getByRole("article").getByText("Цена SBER составляет 5000 рублей.")).toBeVisible();
   await expect(page.getByText("CONTRADICTED", { exact: true })).toBeVisible();
 });
 
