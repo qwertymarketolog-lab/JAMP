@@ -159,8 +159,14 @@ def _extract_value_and_currency(
     else:
         price_markers = list(_PRICE_WORD_RE.finditer(text))
         if not price_markers:
+            ticker_markers = [
+                match for match in _TICKER_RE.finditer(text)
+                if match.group(0) not in _NON_TICKERS
+            ]
+            price_markers = ticker_markers if _has_ticker_value_pair(text) else []
+        if not price_markers:
             return None, None
-        # A price value is expected after the closest price-language marker.
+        # Select the first valid value following the nearest explicit price/ticker marker.
         after_markers = [
             (match.start() - marker.end(), match)
             for marker in price_markers
@@ -180,6 +186,18 @@ def _extract_value_and_currency(
         return None, None
 
 
+def _has_ticker_value_pair(text: str) -> bool:
+    tickers = [
+        match for match in _TICKER_RE.finditer(text)
+        if match.group(0) not in _NON_TICKERS
+    ]
+    for ticker in tickers:
+        for number in _valid_number_matches(text):
+            if number.start() >= ticker.end() and not text[ticker.end():number.start()].strip(" := "):
+                return True
+    return False
+
+
 def _classify(text: str) -> ClaimType:
     if _PREDICTION_MARKER_RE.search(text):
         return "prediction"
@@ -187,7 +205,11 @@ def _classify(text: str) -> ClaimType:
         return "causal"
     if _EXISTENCE_MARKER_RE.search(text):
         return "entity_existence"
-    if _PRICE_WORD_RE.search(text) or _CURRENCY_RE.search(text):
+    if (
+        _PRICE_WORD_RE.search(text)
+        or _CURRENCY_RE.search(text)
+        or _has_ticker_value_pair(text)
+    ):
         return "price"
     return "other"
 
