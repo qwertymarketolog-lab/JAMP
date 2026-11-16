@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
