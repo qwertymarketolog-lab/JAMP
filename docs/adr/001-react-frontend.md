@@ -20,7 +20,7 @@ This first increment is a static layout only. It does not call APIs, authenticat
 - Frontend dependencies and build output are isolated under `frontend/`; generated `node_modules/` and `dist/` are not committed.
 - CI must build the frontend on pull requests.
 - TypeScript API types document the observed `/v1/verify_text` response contract; they are not a runtime validator and do not activate integration.
-- The existing backend currently authenticates `/v1/verify_text` with its `require_api_key` dependency. HttpOnly-cookie authentication for this endpoint is not assumed by this ADR and must be explicitly verified/implemented in a separate API integration change. No credentials are embedded in frontend code.
+- The existing backend authenticates `/v1/verify_text` through `require_api_key`. The current signed HttpOnly dashboard cookie is read-only: `require_api_key` accepts it only for GET/HEAD and rejects POST with 403. Therefore the future POST integration cannot rely on the existing cookie session unchanged; a separate security-reviewed backend change must define write-session authorization and CSRF/origin protections. No credentials are embedded in frontend code.
 - Future marketplace, model/provider, Evidence, and Telegram screens must be backed by real backend contracts and must distinguish verified data from unavailable or planned functionality.
 
 ## Alternatives considered
