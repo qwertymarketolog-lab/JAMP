@@ -246,8 +246,12 @@ def test_ui_verify_bff_requires_authenticated_session_and_csrf(
     assert client.cookies.get(DASHBOARD_SESSION_COOKIE)
     assert csrf_value
     set_cookies = login.headers.get_list("set-cookie")
-    session_cookie = next(value for value in set_cookies if value.startswith(f"{DASHBOARD_SESSION_COOKIE}="))
-    csrf_cookie = next(value for value in set_cookies if value.startswith(f"{DASHBOARD_CSRF_COOKIE}="))
+    session_cookie = next(
+        value for value in set_cookies if value.startswith(f"{DASHBOARD_SESSION_COOKIE}=")
+    )
+    csrf_cookie = next(
+        value for value in set_cookies if value.startswith(f"{DASHBOARD_CSRF_COOKIE}=")
+    )
     assert "httponly" in session_cookie.lower()
     assert "httponly" not in csrf_cookie.lower()
     assert "samesite=strict" in session_cookie.lower()

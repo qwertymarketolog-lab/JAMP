@@ -31,8 +31,20 @@ async def login(request: Request) -> RedirectResponse:
     if form.get("api_key", [""])[0] != "e2e-test-key":
         raise HTTPException(status_code=401, detail="invalid test key")
     response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie("jamp_dashboard_session", "e2e-session", httponly=True, samesite="strict", path="/")
-    response.set_cookie("jamp_dashboard_csrf", "e2e-csrf", httponly=False, samesite="strict", path="/")
+    response.set_cookie(
+        "jamp_dashboard_session",
+        "e2e-session",
+        httponly=True,
+        samesite="strict",
+        path="/",
+    )
+    response.set_cookie(
+        "jamp_dashboard_csrf",
+        "e2e-csrf",
+        httponly=False,
+        samesite="strict",
+        path="/",
+    )
     return response
 
 
@@ -40,7 +52,10 @@ async def login(request: Request) -> RedirectResponse:
 def ui_verify(request: Request, _payload: dict[str, object]) -> dict[str, object]:
     if request.cookies.get("jamp_dashboard_session") != "e2e-session":
         raise HTTPException(status_code=401, detail="missing test session")
-    if request.cookies.get("jamp_dashboard_csrf") != "e2e-csrf" or request.headers.get("x-csrf-token") != "e2e-csrf":
+    if (
+        request.cookies.get("jamp_dashboard_csrf") != "e2e-csrf"
+        or request.headers.get("x-csrf-token") != "e2e-csrf"
+    ):
         raise HTTPException(status_code=403, detail="invalid test CSRF token")
     return {
         "status": "COMPLETE_VERIFICATION",
