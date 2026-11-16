@@ -200,6 +200,11 @@ def test_ui_verify_bff_requires_authenticated_session_and_csrf(
     monkeypatch.delenv("JAMP_API_KEY", raising=False)
     monkeypatch.setattr(
         auth_module,
+        "_lookup_by_hash",
+        lambda _digest: ("ui-org", "UI Test", False),
+    )
+    monkeypatch.setattr(
+        auth_module,
         "_lookup_by_id",
         lambda org_id: (org_id, "UI Test", False),
     )
@@ -301,10 +306,17 @@ def test_ui_verify_bff_rejects_untrusted_origin_and_tampered_csrf(
     )
     assert rejected_origin.status_code == 403
 
-    dashboard_client.cookies.set(DASHBOARD_CSRF_COOKIE, "tampered")
+    session_value = dashboard_client.cookies.get("jamp_dashboard_session", "")
     tampered_cookie = dashboard_client.post(
         "/api/ui_verify",
         json={"text": "A test statement"},
-        headers={"Origin": "http://localhost:5173", "X-CSRF-Token": csrf_value},
+        headers={
+            "Origin": "http://localhost:5173",
+            "X-CSRF-Token": csrf_value,
+            "Cookie": (
+                f"jamp_dashboard_session={session_value}; "
+                f"{DASHBOARD_CSRF_COOKIE}=tampered"
+            ),
+        },
     )
     assert tampered_cookie.status_code == 403
