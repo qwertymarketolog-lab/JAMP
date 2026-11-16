@@ -41,5 +41,17 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Setup Python for Playwright API fixture
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend dependencies for E2E fixture
+        run: python -m pip install -e .
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright E2E
+        working-directory: frontend
+        run: npm run test:e2e
       - name: Build production Docker image with React assets
         run: docker build --tag jamp-dashboard-integration:test .
