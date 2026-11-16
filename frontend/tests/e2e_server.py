@@ -43,14 +43,19 @@ def ui_verify(_payload: dict[str, object]) -> dict[str, object]:
                         "url": None,
                         "status_code": 200,
                         "body_complete": True,
-                        "raw_body_base64": "eyJmaXh0dXJlIjoiSkFNUCBQbGF5d3JpZ2h0IEUyRSIsInNvdXJjZSI6Ik1PRVggSVNTIiwiYWN0dWFsX3ZhbHVlIjoyOTkuMjZ9",
+                        "raw_body_base64": (
+                            "eyJmaXh0dXJlIjoiSkFNUCBQbGF5d3JpZ2h0IEUyRSIs"
+                            "InNvdXJjZSI6Ik1PRVggSVNTIiwiYWN0dWFsX3ZhbHVlIjoyOTkuMjZ9"
+                        ),
                         "actual_value": 299.26,
                         "timestamp_utc": "2026-11-16T00:00:00Z",
                         "timestamp_kind": "JAMP_CAPTURE_TIME",
                         "age_seconds": 0,
                         "age_basis": "deterministic E2E fixture",
                         "source_timestamp_utc": None,
-                        "raw_sha256": "98fca5e0a61077522129f476961c31cef8d8f8f18803fb63d7d67576ab409301",
+                        "raw_sha256": (
+                            "98fca5e0a61077522129f476961c31cef8d8f8f18803fb63d7d67576ab409301"
+                        ),
                     }
                 ],
             }
