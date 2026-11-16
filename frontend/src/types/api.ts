@@ -60,3 +60,21 @@ export interface VerifyTextResponse {
 export interface VerifyTextApiError {
   detail: string;
 }
+
+
+export interface DashboardStats {
+  total_checks: number;
+  hallucinations_caught: number;
+  inconclusive: number;
+  status_counts: { CLEAN: number; SUSPICIOUS: number; HALLUCINATION_CAUGHT: number; INCONCLUSIVE: number; INTEGRITY_VIOLATED: number };
+  time_window: string;
+  denominator: string;
+}
+export type PersistedVerdictStatus = "CLEAN" | "SUSPICIOUS" | "HALLUCINATION_CAUGHT" | "INCONCLUSIVE" | "INTEGRITY_VIOLATED";
+export interface PersistedVerdict { verdict_id: string; status: PersistedVerdictStatus; package: string | null; created_at: string; code_hash: string; }
+export interface VerdictListResponse { items: PersistedVerdict[]; limit: number; offset: number; total: number; }
+
+/** Persisted pipeline status is not a claim-level factual verdict. */
+export function describePersistedStatus(status: PersistedVerdictStatus): string {
+  return status === "CLEAN" ? "CLEAN · не эквивалент VERIFIED" : status;
+}
