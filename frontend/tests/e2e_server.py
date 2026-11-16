@@ -1,4 +1,4 @@
-"""Deterministic API fixture for browser rendering tests; never represents live MOEX data."""
+"""Deterministic browser fixture; it never represents live MOEX data."""
 
 from __future__ import annotations
 
@@ -31,11 +31,15 @@ def ui_verify(_payload: dict[str, object]) -> dict[str, object]:
                 "extracted_value": 5000,
                 "unit": "RUB",
                 "verdict": "CONTRADICTED",
-                "reason": "Deterministic browser fixture: fixture quote is 299.26 RUB.",
+                "reason": (
+                    "Deterministic browser fixture: fixture quote is 299.26 RUB."
+                ),
                 "trace_id": "e2e_fixture_sber_contradicted",
                 "evidence": [
                     {
-                        "source": "MOEX ISS — deterministic E2E fixture (not live data)",
+                        "source": (
+                            "MOEX ISS — deterministic E2E fixture (not live data)"
+                        ),
                         "url": None,
                         "status_code": 200,
                         "body_complete": True,
