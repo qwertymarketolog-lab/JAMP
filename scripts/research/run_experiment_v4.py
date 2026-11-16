@@ -27,6 +27,13 @@ from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
 
 DEFAULT_MODEL = "ag/claude-sonnet-4-6"
+LIVE_E4_PROMPT = (
+    "State the current price of SBER stock in RUB. "
+    "Reply strictly with: 'The price of SBER is [price] RUB'. "
+    "Do not add commentary or a timestamp."
+)
+LIVE_E4_MAX_TOKENS = 256
+LIVE_E4_MAX_BUDGET_USD = 0.01
 MOCK_ID_RE = re.compile(r"^chatcmpl-abc123$", re.IGNORECASE)
 MOCK_MODEL_IDS = {"openai/gpt-5", "gpt-5"}
 MOCK_TEXT = "i'm an ai assistant"
@@ -177,7 +184,9 @@ def _price_attestation(
     }
 
 
-def _e4_verify(content: str, trace_id: str) -> dict[str, Any]:
+def _e4_verify(
+    content: str, trace_id: str, *, moex_verifier: Any | None = None
+) -> dict[str, Any]:
     try:
         candidates = extract_claims(content, trace_id=trace_id)
     except (TypeError, ValueError):
@@ -199,7 +208,8 @@ def _e4_verify(content: str, trace_id: str) -> dict[str, Any]:
                 "extracted_claim": claim, "raw_evidence": []}
     try:
         if candidate.currency == "RUB":
-            raw_status, details = verify_claim_with_moex(
+            verifier = moex_verifier or verify_claim_with_moex
+            raw_status, details = verifier(
                 candidate.ticker, "price", candidate.cited_value,
                 price_tolerance=0.01, capture_raw=True,
             )
@@ -253,6 +263,8 @@ def run_live_cycle(
     confirmed_price_usd: float | None, full_cycle: bool = False,
     api_key: str | None = None, max_tokens: int | None = None,
     max_budget_usd: float | None = None,
+    executor_factory: Any | None = None,
+    moex_verifier: Any | None = None,
 ) -> dict[str, Any]:
     """Run one manually priced AnyModel request; E4 is downstream of preflight."""
     attestation = _price_attestation(price_confirmed, price_source, confirmed_price_usd)
@@ -290,7 +302,8 @@ def run_live_cycle(
         return {"status": "REFUSE", "reason": "PROVIDER_NOT_CONFIGURED",
                 "http_request_made": False}
     capture: dict[str, Any] = {}
-    executor = AnyModelChatExecutor(key, opener=_capturing_opener(capture))
+    executor_class = executor_factory or AnyModelChatExecutor
+    executor = executor_class(key, opener=_capturing_opener(capture))
     try:
         result = executor.execute(
             model, {"prompt": prompt}, max_tokens=max_tokens,
@@ -355,7 +368,12 @@ def run_live_cycle(
         trace_id = "v4_" + hashlib.sha256(
             str(result["content"]).encode("utf-8")
         ).hexdigest()[:16]
-        evidence["e4"] = _e4_verify(str(result["content"]), trace_id)
+        if moex_verifier is None:
+            evidence["e4"] = _e4_verify(str(result["content"]), trace_id)
+        else:
+            evidence["e4"] = _e4_verify(
+                str(result["content"]), trace_id, moex_verifier=moex_verifier
+            )
     else:
         evidence["reason"] = "PREFLIGHT_OK_PROBE_ONLY"
     return evidence
@@ -385,11 +403,83 @@ def run_mock() -> dict[str, Any]:
     }
 
 
+def run_mock_e4() -> dict[str, Any]:
+    """Exercise the real extractor/adapter/E4 path with network-free provider doubles."""
+    from email.message import Message
+    from urllib.request import Request
+
+    mock_moex_body = b'{"mock":true,"ticker":"SBER","last":300.0}'
+
+    class FakeResponse:
+        status = 200
+        reason = "OK"
+        version = 11
+        headers = Message()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self, *args: Any, **kwargs: Any) -> bytes:
+            return b'{"id":"cmpl-mock-e2e","model":"ag/claude-sonnet-4-6"}'
+
+    class FakeExecutor:
+        def __init__(self, api_key: str, *, opener: Any):
+            self.opener = opener
+
+        def execute(self, selected_model: str, payload: dict[str, Any], *,
+                    max_tokens: int, max_budget_usd: float,
+                    max_input_tokens: int) -> dict[str, Any]:
+            assert selected_model == DEFAULT_MODEL
+            assert payload == {"prompt": LIVE_E4_PROMPT}
+            assert max_tokens == LIVE_E4_MAX_TOKENS
+            assert max_budget_usd == LIVE_E4_MAX_BUDGET_USD
+            with self.opener(Request("https://anymodel.invalid/mock", data=b"{}"), 5) as response:
+                response.read()
+            return {
+                "provider_model_id": DEFAULT_MODEL,
+                "provider_response_id": "cmpl-mock-e2e",
+                "content": "The price of SBER is 300 RUB",
+            }
+
+    def mock_moex_verifier(ticker: str, claim_type: str, claimed_value: float,
+                           **kwargs: Any) -> tuple[str, dict[str, Any]]:
+        assert ticker == "SBER"
+        assert claim_type == "price"
+        assert claimed_value == 300.0
+        assert kwargs.get("capture_raw") is True
+        return E4_VERIFIED, {
+            "result": "VERIFIED",
+            "checked_source": "MOEX_MOCK",
+            "observed_last": 300.0,
+            "raw_evidence": [{
+                "status_code": 200,
+                "body_complete": True,
+                "raw_body_base64": base64.b64encode(mock_moex_body).decode("ascii"),
+                "sha256_body": hashlib.sha256(mock_moex_body).hexdigest(),
+            }],
+        }
+
+    result = run_live_cycle(
+        LIVE_E4_PROMPT, DEFAULT_MODEL, price_confirmed=True,
+        price_source="MOCK_ONLY", confirmed_price_usd=LIVE_E4_MAX_BUDGET_USD,
+        full_cycle=True, api_key="mock-key", max_tokens=LIVE_E4_MAX_TOKENS,
+        max_budget_usd=LIVE_E4_MAX_BUDGET_USD, executor_factory=FakeExecutor,
+        moex_verifier=mock_moex_verifier,
+    )
+    result["mode"] = "MOCK_E2_E4"
+    result["network"] = "DISABLED"
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--mock", action="store_true")
     modes.add_argument("--live", action="store_true")
+    modes.add_argument("--live-e4", action="store_true")
     parser.add_argument("--confirm-live", action="store_true")
     parser.add_argument("--price-confirmed", action="store_true")
     parser.add_argument("--price-source")
@@ -403,15 +493,19 @@ def main() -> int:
     args = parser.parse_args()
     if args.mock:
         result = run_mock()
+        result["e2_e4"] = run_mock_e4()
     elif not args.confirm_live:
         result = {"status": "REFUSE", "reason": "LIVE_NOT_CONFIRMED",
                   "http_request_made": False}
     else:
+        live_e4 = args.live_e4
         result = run_live_cycle(
-            args.prompt, args.model, price_confirmed=args.price_confirmed,
+            LIVE_E4_PROMPT if live_e4 else args.prompt, args.model,
+            price_confirmed=args.price_confirmed,
             price_source=args.price_source, confirmed_price_usd=args.confirmed_price_usd,
-            full_cycle=args.full_cycle, max_tokens=args.max_tokens,
-            max_budget_usd=args.max_budget_usd,
+            full_cycle=args.full_cycle or live_e4,
+            max_tokens=LIVE_E4_MAX_TOKENS if live_e4 else args.max_tokens,
+            max_budget_usd=LIVE_E4_MAX_BUDGET_USD if live_e4 else args.max_budget_usd,
         )
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -424,6 +518,14 @@ def main() -> int:
         (output / "anymodel_raw_http.bin").write_bytes(
             base64.b64decode(raw["http_representation_base64"])
         )
+    e4 = result.get("e4") if isinstance(result, dict) else None
+    if isinstance(e4, dict):
+        for index, item in enumerate(e4.get("raw_evidence", [])):
+            encoded = item.get("raw_body_base64") if isinstance(item, dict) else None
+            if isinstance(encoded, str):
+                (output / f"moex_raw_http_{index}.bin").write_bytes(
+                    base64.b64decode(encoded, validate=True)
+                )
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if result.get("status") not in {"REFUSE", "INCONCLUSIVE"} else 1
 
