@@ -183,3 +183,79 @@ def test_dashboard_static_asset_contains_no_model_or_engine_fiction(
     assert "JAMP Engine" not in response.text
     assert "AST Check" not in response.text
     assert "PyPI Check" not in response.text
+
+
+def test_ui_verify_bff_uses_server_key_and_bypasses_read_only_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from jamp.api.auth import OrganizationContext
+    from jamp.server.web import routes as web_routes
+
+    calls: list[tuple[dict, OrganizationContext]] = []
+    organization = OrganizationContext(org_id="ui-org", org_name="UI Test")
+    original_register = web_routes.register_ui_verify
+
+    def fake_verify(payload: dict, resolved_org: OrganizationContext) -> dict:
+        calls.append((payload, resolved_org))
+        return {
+            "status": "NO_CLAIMS",
+            "system_warnings": ["No claims extracted."],
+            "claims": [],
+            "provider_errors": [],
+            "trace_id": "vtext-test",
+        }
+
+    def register_with_mock(app, _verify_func) -> None:
+        original_register(app, fake_verify)
+
+    monkeypatch.setattr(web_routes, "register_ui_verify", register_with_mock)
+    monkeypatch.setattr(
+        web_routes,
+        "authenticate_api_key",
+        lambda token: organization if token == VALID_API_KEY else pytest.fail("wrong server key"),
+    )
+    monkeypatch.setenv("JAMP_API_KEY", VALID_API_KEY)
+    monkeypatch.setenv("JAMP_UI_ALLOWED_ORIGINS", "http://localhost:5173")
+
+    client = TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
+    response = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "http://localhost:5173"},
+        cookies={"jamp_dashboard_session": "invalid-read-only-cookie"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "NO_CLAIMS"
+    assert calls == [({"text": "A test statement"}, organization)]
+    assert VALID_API_KEY not in response.text
+
+
+def test_ui_verify_bff_rejects_untrusted_origin_and_missing_server_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from jamp.server.web import routes as web_routes
+
+    monkeypatch.setenv("JAMP_API_KEY", VALID_API_KEY)
+    monkeypatch.setenv("JAMP_UI_ALLOWED_ORIGINS", "http://localhost:5173")
+    monkeypatch.setattr(
+        web_routes,
+        "authenticate_api_key",
+        lambda _token: pytest.fail("authentication must not run for a rejected origin"),
+    )
+    client = TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
+
+    rejected = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "https://attacker.example"},
+    )
+    assert rejected.status_code == 403
+
+    monkeypatch.delenv("JAMP_API_KEY")
+    missing_key = client.post(
+        "/api/ui_verify",
+        json={"text": "A test statement"},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert missing_key.status_code == 503
