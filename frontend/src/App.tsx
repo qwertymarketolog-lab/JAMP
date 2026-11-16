@@ -154,7 +154,7 @@ function App() {
                     <Icon name={item.icon} className="h-[18px] w-[18px]" />
                     <span className="flex-1">{item.label}</span>
                     {item.active && active === item.label && <span className="h-1.5 w-1.5 rounded-full bg-jamp-blue shadow-[0_0_10px_#38bdf8]" />}
-                    {item.planned && <span className="rounded-md border border-jamp-line px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-slate-500">Soon</span>}
+                    {item.planned && <span className="rounded-md border border-jamp-line px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-slate-500">NOT_CONNECTED</span>}
                   </button>
                 ))}
               </div>
@@ -211,7 +211,7 @@ function App() {
               { title: "Evidence Vault", subtitle: "Источники и происхождение", icon: "archive" as IconName, accent: "text-jamp-green", note: "Экран запланирован" },
               { title: "Маркетплейс", subtitle: "Продукты и интеграции", icon: "store" as IconName, accent: "text-violet-300", note: "Продуктовый контур запланирован" },
               { title: "Telegram", subtitle: "Бот и каналы взаимодействия", icon: "telegram" as IconName, accent: "text-sky-300", note: "Интеграционный экран запланирован" },
-            ].map((card) => <div key={card.title} className="panel-card group p-5"><div className="mb-5 flex items-start justify-between"><div className={`rounded-xl border border-white/5 bg-white/[0.04] p-3 ${card.accent}`}><Icon name={card.icon} className="h-5 w-5" /></div><span className="rounded-full border border-jamp-line px-2 py-1 text-[9px] uppercase tracking-wider text-slate-500">Planned</span></div><div className="text-sm font-semibold text-slate-100">{card.title}</div><div className="mt-1 text-xs text-slate-500">{card.subtitle}</div><div className="mt-5 border-t border-jamp-line/70 pt-3 text-[11px] text-slate-500">{card.note}</div></div>)}
+            ].map((card) => <div key={card.title} className="panel-card group p-5"><div className="mb-5 flex items-start justify-between"><div className={`rounded-xl border border-white/5 bg-white/[0.04] p-3 ${card.accent}`}><Icon name={card.icon} className="h-5 w-5" /></div><span className="rounded-full border border-jamp-line px-2 py-1 text-[9px] uppercase tracking-wider text-slate-500">NOT_CONNECTED</span></div><div className="text-sm font-semibold text-slate-100">{card.title}</div><div className="mt-1 text-xs text-slate-500">{card.subtitle}</div><div className="mt-5 border-t border-jamp-line/70 pt-3 text-[11px] text-slate-500">{card.note}</div></div>)}
           </section>
 
           <section className="panel-card mt-7 p-6 md:p-7">
