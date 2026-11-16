@@ -141,7 +141,7 @@ def test_research_loop_discovery_retries_until_matching_run_appears(
         poll_interval=30,
     )
 
-    assert runs[0]["id"] == RUN_ID
+    assert max(run["id"] for run in runs) == RUN_ID
     assert calls == 3
     assert sleeps == [30, 30]
 
