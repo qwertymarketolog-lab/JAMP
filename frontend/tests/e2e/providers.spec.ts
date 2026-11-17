@@ -15,7 +15,7 @@ test("Models & Providers shows evidence-backed snapshot statuses without fake he
   await login(page);
   await page.getByRole("button", { name: "Модели и провайдеры" }).click();
 
-  await expect(page.getByRole("heading", { name: "Модели и провайдеры" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Модели и провайдеры", level: 2 })).toBeVisible();
   await expect(page.getByRole("table")).toBeVisible();
 
   const row = (name: string) => page.getByRole("row").filter({ hasText: name });
