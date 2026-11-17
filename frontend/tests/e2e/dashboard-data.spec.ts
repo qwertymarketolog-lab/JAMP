@@ -41,3 +41,22 @@ test("history renders an explicit empty state for an empty persisted result", as
   await page.getByRole("button", { name: "История" }).click();
   await expect(page.getByText("Сохранённых вердиктов пока нет. Это пустая история, а не ошибка проверки.")).toBeVisible();
 });
+
+
+test("history searches by package and renders the persisted evidence graph", async ({ page }) => {
+  const verdictId = "e2e-verdict-graph";
+  const item = { verdict_id: verdictId, status: "INCONCLUSIVE", package: "graph-fixture-package", created_at: "2026-11-17T00:00:00Z", code_hash: "a".repeat(64) };
+  await page.route("**/v1/stats", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ total_checks: 1, hallucinations_caught: 0, inconclusive: 1, status_counts: { CLEAN: 0, SUSPICIOUS: 0, HALLUCINATION_CAUGHT: 0, INCONCLUSIVE: 1, INTEGRITY_VIOLATED: 0 }, time_window: "all_time", denominator: "persisted_verdict_rows" }) }));
+  await page.route("**/v1/verdicts*", route => { const q = new URL(route.request().url()).searchParams.get("q") || ""; const match = item.package.includes(q) || item.verdict_id.includes(q); return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: match ? [item] : [], limit: 20, offset: 0, total: match ? 1 : 0 }) }); });
+  await page.route("**/v1/verdicts/*/graph", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ nodes: [{ id: "verdict:" + verdictId, type: "verdict", status: "INCONCLUSIVE", package: item.package, code_hash: item.code_hash }, { id: "evidence:e2e-1", type: "evidence", sequence_no: 0, evidence_type: "provenance", payload_hash: "b".repeat(64) }], edges: [{ id: "e2e-edge", source: "evidence:e2e-1", target: "verdict:" + verdictId, relation: "belongs_to" }] }) }));
+  await login(page);
+  await page.getByRole("button", { name: "История" }).click();
+  await page.getByRole("textbox", { name: "Поиск по verdict_id или package" }).fill("graph-fixture-package");
+  await page.getByRole("button", { name: "Найти" }).click();
+  await expect(page.getByText("graph-fixture-package")).toBeVisible();
+  await page.getByRole("button", { name: "Показать граф доказательств" }).click();
+  await expect(page.getByRole("img", { name: "Граф сохранённых доказательств" })).toBeVisible();
+  await expect(page.getByText("verdict · INCONCLUSIVE")).toBeVisible();
+  await expect(page.getByText("evidence · provenance")).toBeVisible();
+  await expect(page.getByText("b".repeat(64))).toBeVisible();
+});

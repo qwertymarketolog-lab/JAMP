@@ -78,3 +78,8 @@ export interface VerdictListResponse { items: PersistedVerdict[]; limit: number;
 export function describePersistedStatus(status: PersistedVerdictStatus): string {
   return status === "CLEAN" ? "CLEAN · не эквивалент VERIFIED" : status;
 }
+
+
+export interface EvidenceGraphNode { id: string; type: string; status?: string; package?: string | null; code_hash?: string; sequence_no?: number; evidence_type?: string; payload_hash?: string; created_at?: string; }
+export interface EvidenceGraphEdge { id: string; source: string; target: string; relation: string; }
+export interface EvidenceGraphResponse { nodes: EvidenceGraphNode[]; edges: EvidenceGraphEdge[]; }

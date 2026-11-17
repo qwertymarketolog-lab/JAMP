@@ -59,6 +59,7 @@ def list_verdicts_for_organization(
     limit: int,
     offset: int,
     status: str | None = None,
+    search: str | None = None,
 ) -> dict[str, Any]:
     """Return paginated verdict cards scoped in SQL to one organization."""
     connection = get_connection()
@@ -70,8 +71,13 @@ def list_verdicts_for_organization(
                 FROM verdicts
                 WHERE organization_id = %s
                   AND (%s IS NULL OR status = %s)
+                  AND (
+                      %s IS NULL
+                      OR strpos(lower(id::text), lower(%s)) > 0
+                      OR strpos(lower(COALESCE(result->>'package', '')), lower(%s)) > 0
+                  )
                 """,
-                (organization_id, status, status),
+                (organization_id, status, status, search, search, search),
             )
             total = cursor.fetchone()[0]
             cursor.execute(
@@ -80,10 +86,18 @@ def list_verdicts_for_organization(
                 FROM verdicts
                 WHERE organization_id = %s
                   AND (%s IS NULL OR status = %s)
+                  AND (
+                      %s IS NULL
+                      OR strpos(lower(id::text), lower(%s)) > 0
+                      OR strpos(lower(COALESCE(result->>'package', '')), lower(%s)) > 0
+                  )
                 ORDER BY created_at DESC, id DESC
                 LIMIT %s OFFSET %s
                 """,
-                (organization_id, status, status, limit, offset),
+                (
+                    organization_id, status, status,
+                    search, search, search, limit, offset,
+                ),
             )
             items = []
             for verdict_id, verdict_status, result, created_at, code_hash in cursor.fetchall():

@@ -904,6 +904,7 @@ def create_app(
         limit: int = 20,
         offset: int = 0,
         status: str | None = None,
+        q: str | None = None,
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
     ) -> Any:
         """List persisted verification verdicts for the authenticated organization."""
@@ -932,12 +933,22 @@ def create_app(
                 content={"detail": "unsupported verdict status"},
             )
 
+        search = q.strip() if q is not None else None
+        if search == "":
+            search = None
+        if search is not None and len(search) > 200:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "q must be at most 200 characters"},
+            )
+
         try:
             result = list_verdicts_for_organization(
                 organization_id=organization.org_id,
                 limit=limit,
                 offset=offset,
                 status=status,
+                search=search,
             )
         except (InterfaceError, OperationalError, RuntimeError):
             return JSONResponse(
