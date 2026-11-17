@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ClaimCard } from "./components/ClaimCard";
-import type { DashboardStats, PersistedVerdict, VerdictListResponse, VerifyTextResponse } from "./types/api";
+import type { DashboardStats, EvidenceGraphResponse, PersistedVerdict, VerdictListResponse, VerifyTextResponse } from "./types/api";
+import { EvidenceGraph } from "./components/EvidenceGraph";
 
 type IconName = "grid" | "scan" | "store" | "telegram" | "network" | "archive" | "settings";
 
@@ -28,7 +29,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function PersistedVerdictRow({ item }: { item: PersistedVerdict }) {
+function PersistedVerdictRow({ item, onShowGraph }: { item: PersistedVerdict; onShowGraph: (verdictId: string) => void }) {
   const style = item.status === "HALLUCINATION_CAUGHT" || item.status === "INTEGRITY_VIOLATED"
     ? "border-rose-400/30 text-rose-300"
     : item.status === "INCONCLUSIVE" || item.status === "SUSPICIOUS"
@@ -37,7 +38,7 @@ function PersistedVerdictRow({ item }: { item: PersistedVerdict }) {
   const label = item.status === "CLEAN" ? "CLEAN · не эквивалент VERIFIED" : item.status;
   return <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-jamp-line bg-black/10 p-4">
     <div className="min-w-0"><div className="text-sm font-medium text-slate-200">{item.package ?? "Package: UNKNOWN"}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-500">{item.verdict_id}</div><div className="mt-1 text-xs text-slate-500">{item.created_at}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-600">SHA-256 · {item.code_hash}</div></div>
-    <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${style}`}>{label}</span>
+    <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1 text-[10px] font-semibold ${style}`}>{label}</span><button type="button" onClick={() => onShowGraph(item.verdict_id)} className="rounded-lg border border-jamp-blue/30 px-3 py-2 text-xs text-sky-200 hover:bg-jamp-blue/10">Показать граф доказательств</button></div>
   </article>;
 }
 
@@ -54,6 +55,11 @@ function App() {
   const [history, setHistory] = useState<VerdictListResponse | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [selectedGraph, setSelectedGraph] = useState<EvidenceGraphResponse | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +85,9 @@ function App() {
     const load = async () => {
       setHistoryLoading(true); setHistoryError(null);
       try {
-        const response = await fetch("/v1/verdicts?limit=20&offset=0", { credentials: "same-origin" });
+        const params = new URLSearchParams({ limit: "20", offset: "0" });
+        if (historyQuery) params.set("q", historyQuery);
+        const response = await fetch(`/v1/verdicts?${params.toString()}`, { credentials: "same-origin" });
         if (response.status === 401) { window.location.assign("/dashboard/login"); return; }
         const payload = await response.json();
         if (!response.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`);
@@ -90,7 +98,20 @@ function App() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [active]);
+  }, [active, historyQuery]);
+
+  const loadEvidenceGraph = async (verdictId: string) => {
+    setSelectedGraph(null); setGraphError(null); setGraphLoading(true);
+    try {
+      const response = await fetch(`/v1/verdicts/${encodeURIComponent(verdictId)}/graph`, { credentials: "same-origin" });
+      if (response.status === 401) { window.location.assign("/dashboard/login"); return; }
+      const payload = await response.json();
+      if (!response.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`);
+      if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.edges)) throw new Error("Invalid evidence graph response");
+      setSelectedGraph(payload as EvidenceGraphResponse);
+    } catch (error) { setGraphError(error instanceof Error ? error.message : "Evidence graph request failed"); }
+    finally { setGraphLoading(false); }
+  };
 
   const readCookie = (name: string): string | null => {
     const prefix = `${name}=`;
@@ -199,11 +220,19 @@ function App() {
             </> : <div className="panel-card p-5 text-sm text-slate-400">Статистика: UNKNOWN</div>}
           </section>
           {active === "История" && <section className="panel-card mb-7 p-6" aria-label="История вердиктов">
-            <div><h2 className="text-sm font-semibold text-slate-100">История сохранённых вердиктов</h2><p className="mt-1 text-xs text-slate-500">GET /v1/verdicts · текущая организация</p></div>
+            <div><h2 className="text-sm font-semibold text-slate-100">История сохранённых вердиктов</h2><p className="mt-1 text-xs text-slate-500">GET /v1/verdicts · поиск в текущей организации</p></div>
+            <form className="mt-5 flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); setHistoryQuery(historySearch.trim()); setSelectedGraph(null); setGraphError(null); }}>
+              <input aria-label="Поиск по verdict_id или package" value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Поиск по verdict_id или package" maxLength={200} className="min-w-[240px] flex-1 rounded-xl border border-jamp-line bg-[#080d18] px-4 py-3 text-sm text-slate-200 outline-none focus:border-sky-400/50" />
+              <button type="submit" className="rounded-xl border border-jamp-blue/30 bg-jamp-blue/10 px-4 py-3 text-sm text-sky-200">Найти</button>
+              <button type="button" onClick={() => { setHistorySearch(""); setHistoryQuery(""); setSelectedGraph(null); setGraphError(null); }} className="rounded-xl border border-jamp-line px-4 py-3 text-sm text-slate-300">Сбросить</button>
+            </form>
             {historyLoading && <p className="mt-5 text-sm text-slate-400" role="status">Загружаем историю…</p>}
             {historyError && <p className="mt-5 text-sm text-rose-300" role="alert">История недоступна: {historyError}</p>}
-            {history && !historyLoading && history.items.length === 0 && <p className="mt-5 rounded-xl border border-dashed border-jamp-line p-5 text-sm text-slate-400">Сохранённых вердиктов пока нет. Это пустая история, а не ошибка проверки.</p>}
-            {history && history.items.length > 0 && <div className="mt-5 space-y-3">{history.items.map(item => <PersistedVerdictRow key={item.verdict_id} item={item} />)}<p className="text-xs text-slate-500">Показано {history.items.length} из {history.total}. CLEAN не означает VERIFIED.</p></div>}
+            {history && !historyLoading && history.items.length === 0 && <p className="mt-5 rounded-xl border border-dashed border-jamp-line p-5 text-sm text-slate-400">{historyQuery ? "По запросу ничего не найдено." : "Сохранённых вердиктов пока нет. Это пустая история, а не ошибка проверки."}</p>}
+            {history && history.items.length > 0 && <div className="mt-5 space-y-3">{history.items.map(item => <PersistedVerdictRow key={item.verdict_id} item={item} onShowGraph={loadEvidenceGraph} />)}<p className="text-xs text-slate-500">Показано {history.items.length} из {history.total}. CLEAN не означает VERIFIED.</p></div>}
+            {graphLoading && <p className="mt-5 text-sm text-slate-400" role="status">Загружаем граф доказательств…</p>}
+            {graphError && <p className="mt-5 text-sm text-rose-300" role="alert">Граф недоступен: {graphError}</p>}
+            {selectedGraph && <div className="mt-6"><h3 className="mb-3 text-sm font-semibold text-slate-200">Сохранённый граф доказательств</h3><EvidenceGraph graph={selectedGraph} /></div>}
           </section>}
           <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {[

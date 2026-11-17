@@ -57,6 +57,7 @@ def test_verdict_list_returns_tenant_scoped_cards(dashboard_client, monkeypatch)
             "limit": 20,
             "offset": 0,
             "status": None,
+            "search": None,
         }
     ]
 
@@ -185,3 +186,17 @@ def test_stats_empty_dataset_is_zero_not_missing(dashboard_client, monkeypatch):
     assert response.status_code == 200
     assert response.json()["total_checks"] == 0
     assert all(value == 0 for value in response.json()["status_counts"].values())
+
+
+def test_verdict_list_search_is_forwarded_with_tenant_scope(dashboard_client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(app_module, "list_verdicts_for_organization", lambda **kwargs: calls.append(kwargs) or {"items": [], "limit": 20, "offset": 0, "total": 0})
+    response = dashboard_client.get("/v1/verdicts?q=sample-package", headers=AUTH)
+    assert response.status_code == 200
+    assert calls == [{"organization_id": "dashboard-org", "limit": 20, "offset": 0, "status": None, "search": "sample-package"}]
+
+
+def test_verdict_list_rejects_oversized_search(dashboard_client):
+    response = dashboard_client.get("/v1/verdicts", params={"q": "x" * 201}, headers=AUTH)
+    assert response.status_code == 422
+    assert response.json()["detail"] == "q must be at most 200 characters"
