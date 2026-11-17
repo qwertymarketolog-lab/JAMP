@@ -7,7 +7,7 @@ import hmac
 import json
 import os
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import parse_qs
@@ -106,7 +106,7 @@ def dashboard_session(request: Request) -> JSONResponse:
     encoded_payload = session_value.split(".", maxsplit=1)[0]
     padded_payload = encoded_payload + "=" * (-len(encoded_payload) % 4)
     payload = json.loads(base64.urlsafe_b64decode(padded_payload).decode("utf-8"))
-    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=UTC)
     return JSONResponse(
         status_code=200,
         content={
