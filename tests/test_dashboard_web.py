@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import importlib
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -346,3 +350,77 @@ def test_ui_verify_bff_rejects_untrusted_origin_and_tampered_csrf(
         },
     )
     assert tampered_cookie.status_code == 403
+
+
+def test_api_session_returns_only_verified_public_metadata(
+    dashboard_client: TestClient,
+) -> None:
+    from uuid import UUID
+
+    from jamp.api.auth import DASHBOARD_SESSION_COOKIE, create_dashboard_session
+
+    org_id = str(UUID("12345678-1234-5678-1234-567812345678"))
+    session_value = create_dashboard_session(org_id)
+    dashboard_client.cookies.set(DASHBOARD_SESSION_COOKIE, session_value)
+
+    response = dashboard_client.get("/api/session")
+
+    assert response.status_code == 200
+    assert response.json()["authenticated"] is True
+    assert response.json()["org_id"] == org_id
+    assert set(response.json()) == {"authenticated", "org_id", "session_expires_at"}
+    assert "csrf_token" not in response.json()
+    assert "csrf" not in response.text.lower()
+    assert VALID_API_KEY not in response.text
+    assert session_value not in response.text
+    assert response.headers.get_list("set-cookie") == []
+
+
+def test_api_session_rejects_missing_cookie(dashboard_client: TestClient) -> None:
+    response = dashboard_client.get("/api/session")
+
+    assert response.status_code == 401
+    assert response.json() == {"authenticated": False}
+
+
+def test_api_session_rejects_tampered_signature(
+    dashboard_client: TestClient,
+) -> None:
+    from jamp.api.auth import DASHBOARD_SESSION_COOKIE, create_dashboard_session
+
+    valid_session = create_dashboard_session("dashboard-org")
+    encoded_payload, signature = valid_session.split(".", maxsplit=1)
+    replacement = "0" if signature[0] != "0" else "1"
+    tampered_session = f"{encoded_payload}.{replacement}{signature[1:]}"
+    dashboard_client.cookies.set(DASHBOARD_SESSION_COOKIE, tampered_session)
+
+    response = dashboard_client.get("/api/session")
+
+    assert response.status_code == 401
+    assert response.json() == {"authenticated": False}
+
+
+def test_api_session_rejects_expired_signed_cookie(
+    dashboard_client: TestClient,
+) -> None:
+    from jamp.api.auth import DASHBOARD_SESSION_COOKIE
+
+    payload = json.dumps(
+        {"org_id": "dashboard-org", "exp": 1},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    secret = b"dashboard-web-test-secret"
+    signature = hmac.new(
+        secret,
+        encoded_payload.encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+    expired_session = f"{encoded_payload}.{signature}"
+    dashboard_client.cookies.set(DASHBOARD_SESSION_COOKIE, expired_session)
+
+    response = dashboard_client.get("/api/session")
+
+    assert response.status_code == 401
+    assert response.json() == {"authenticated": False}
