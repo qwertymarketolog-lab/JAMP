@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from io import BytesIO
+import json
 from urllib.error import HTTPError
 
 import pytest
@@ -81,7 +81,11 @@ def test_beget_http_401_returns_safe_error_and_raw_body(tmp_path) -> None:
     def unauthorized(request, timeout):
         raise HTTPError(request.full_url, 401, "Unauthorized", {}, BytesIO(raw))
 
-    executor = BegetChatExecutor("test-secret", opener=unauthorized, pricing_path=pricing_file(tmp_path))
+    executor = BegetChatExecutor(
+        "test-secret",
+        opener=unauthorized,
+        pricing_path=pricing_file(tmp_path),
+    )
     result = executor.execute("catalog/model-a", [{"role": "user", "content": "hello"}], 64)
 
     assert result["error"] == {
@@ -109,7 +113,10 @@ def test_beget_timeout_is_fail_closed_and_never_reports_zero_cost(tmp_path) -> N
 
 
 def test_beget_unknown_model_id_or_missing_usage_has_unknown_cost(tmp_path) -> None:
-    raw = b'{"model":"unmapped/model","choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":1,"completion_tokens":1}}'
+    raw = (
+        b'{"model":"unmapped/model","choices":[{"message":{"content":"ok"}}],'
+        b'"usage":{"prompt_tokens":1,"completion_tokens":1}}'
+    )
     executor = BegetChatExecutor(
         "test-secret",
         opener=lambda request, timeout: FakeResponse(raw),
