@@ -5,11 +5,11 @@ read from a dated JSON snapshot and matched only by the provider-returned model 
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import hashlib
 import json
 import os
-from collections.abc import Callable
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -188,7 +188,11 @@ class BegetChatExecutor:
                 "model_id": None,
                 "usage": None,
                 "cost_estimate_rub": "UNKNOWN",
-                "error": self._error(error_type, code, "Beget request failed before a response body was received"),
+                "error": self._error(
+                    error_type,
+                    code,
+                    "Beget request failed before a response body was received",
+                ),
             }
 
         raw_text = raw.decode("utf-8", errors="replace")
@@ -202,7 +206,12 @@ class BegetChatExecutor:
                 "model_id": None,
                 "usage": None,
                 "cost_estimate_rub": "UNKNOWN",
-                "error": self._error("InvalidResponse", "INVALID_JSON", "Beget returned invalid JSON", status=status),
+                "error": self._error(
+                    "InvalidResponse",
+                    "INVALID_JSON",
+                    "Beget returned invalid JSON",
+                    status=status,
+                ),
             }
         if not isinstance(decoded, dict):
             return {
@@ -211,7 +220,12 @@ class BegetChatExecutor:
                 "model_id": None,
                 "usage": None,
                 "cost_estimate_rub": "UNKNOWN",
-                "error": self._error("InvalidResponse", "INVALID_BODY", "Beget response must be a JSON object", status=status),
+                "error": self._error(
+                    "InvalidResponse",
+                    "INVALID_BODY",
+                    "Beget response must be a JSON object",
+                    status=status,
+                ),
             }
 
         model_id = decoded.get("model")
@@ -228,13 +242,20 @@ class BegetChatExecutor:
                 content = message["content"]
         error = None
         if content is None:
-            error = self._error("InvalidResponse", "CONTENT_MISSING", "Beget response has no text completion", status=status)
+            error = self._error(
+                "InvalidResponse",
+                "CONTENT_MISSING",
+                "Beget response has no text completion",
+                status=status,
+            )
 
         return {
             "raw_body": raw_text,
             "raw_body_sha256": raw_hash,
             "model_id": model_id,
-            "provider_response_id": decoded.get("id") if isinstance(decoded.get("id"), str) else None,
+            "provider_response_id": (
+                decoded.get("id") if isinstance(decoded.get("id"), str) else None
+            ),
             "content": content,
             "usage": usage,
             "cost_estimate_rub": self._estimate_cost(model_id, usage),
