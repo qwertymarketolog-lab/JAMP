@@ -937,7 +937,10 @@ def create_app(
         if search == "":
             search = None
         if search is not None and len(search) > 200:
-            return JSONResponse(status_code=422, content={"detail": "q must be at most 200 characters"})
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "q must be at most 200 characters"},
+            )
 
         try:
             result = list_verdicts_for_organization(

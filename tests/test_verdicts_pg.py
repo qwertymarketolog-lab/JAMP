@@ -185,10 +185,21 @@ def test_dashboard_list_graph_and_stats_are_tenant_scoped(organization_id: str) 
         "sample-package", "missing-package", "uncertain-package"
     }
 
-    searched = list_verdicts_for_organization(organization_id=organization_id, limit=20, offset=0, search="missing")
+    searched = list_verdicts_for_organization(
+        organization_id=organization_id,
+        limit=20,
+        offset=0,
+        search="missing",
+    )
     assert searched["total"] == 1
     assert searched["items"][0]["package"] == "missing-package"
-    assert list_verdicts_for_organization(organization_id=organization_id, limit=20, offset=0, search="not-present")["total"] == 0
+    absent = list_verdicts_for_organization(
+        organization_id=organization_id,
+        limit=20,
+        offset=0,
+        search="not-present",
+    )
+    assert absent["total"] == 0
 
     filtered = list_verdicts_for_organization(
         organization_id=organization_id,

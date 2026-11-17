@@ -94,7 +94,10 @@ def list_verdicts_for_organization(
                 ORDER BY created_at DESC, id DESC
                 LIMIT %s OFFSET %s
                 """,
-                (organization_id, status, status, search, search, search, limit, offset),
+                (
+                    organization_id, status, status,
+                    search, search, search, limit, offset,
+                ),
             )
             items = []
             for verdict_id, verdict_status, result, created_at, code_hash in cursor.fetchall():
