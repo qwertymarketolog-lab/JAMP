@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import importlib
 import base64
 import hashlib
 import hmac
+import importlib
 import json
 
 import pytest
@@ -352,7 +352,6 @@ def test_ui_verify_bff_rejects_untrusted_origin_and_tampered_csrf(
     assert tampered_cookie.status_code == 403
 
 
-
 def test_api_session_returns_only_verified_public_metadata(
     dashboard_client: TestClient,
 ) -> None:
@@ -403,7 +402,6 @@ def test_api_session_rejects_tampered_signature(
 
 def test_api_session_rejects_expired_signed_cookie(
     dashboard_client: TestClient,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from jamp.api.auth import DASHBOARD_SESSION_COOKIE
 
