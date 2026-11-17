@@ -42,7 +42,8 @@ test("Anomalies shows only persisted INCONCLUSIVE and SUSPICIOUS verdicts", asyn
   await page.getByRole("button", { name: "Аномалии" }).click();
   await expect(page.getByRole("heading", { name: "Аномалии", level: 2 })).toBeVisible();
   await expect(page.getByText("Total INCONCLUSIVE · /v1/stats")).toBeVisible();
-  await expect(page.getByText("1", { exact: true })).toHaveCount(2);
+  const anomalySection = page.locator('section[aria-label="Аномалии"]');
+  await expect(anomalySection.getByText("1", { exact: true })).toHaveCount(2);
   await expect(page.getByText("Total SUSPICIOUS · /v1/verdicts")).toBeVisible();
   await expect(page.getByText("persisted-inconclusive-1")).toBeVisible();
   await expect(page.getByText("persisted-suspicious-1")).toBeVisible();
