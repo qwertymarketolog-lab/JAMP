@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import hashlib
-from io import BytesIO
 import json
+from io import BytesIO
 from urllib.error import HTTPError
 
 import pytest
 
-from jamp.provider.beget import BegetChatExecutor, DEFAULT_BASE_URL
+from jamp.provider.beget import DEFAULT_BASE_URL, BegetChatExecutor
 
 
 class FakeResponse:
