@@ -3,6 +3,8 @@ import { ClaimCard } from "./components/ClaimCard";
 import type { DashboardStats, EvidenceGraphResponse, PersistedVerdict, VerdictListResponse, VerifyTextResponse } from "./types/api";
 import { EvidenceGraph } from "./components/EvidenceGraph";
 import { Providers } from "./components/Providers";
+import { Anomalies } from "./components/Anomalies";
+import { Settings } from "./components/Settings";
 
 type IconName = "grid" | "scan" | "store" | "telegram" | "network" | "archive" | "settings";
 
@@ -10,11 +12,12 @@ const navigation: { label: string; icon: IconName; section: string; active?: boo
   { label: "Обзор", icon: "grid", section: "Рабочее пространство", active: true },
   { label: "Проверка утверждений", icon: "scan", section: "Рабочее пространство" },
   { label: "История", icon: "archive", section: "Рабочее пространство" },
+  { label: "Аномалии", icon: "scan", section: "Рабочее пространство" },
   { label: "Маркетплейс", icon: "store", section: "Экосистема", planned: true },
   { label: "Telegram", icon: "telegram", section: "Экосистема", planned: true },
   { label: "Модели и провайдеры", icon: "network", section: "Инфраструктура" },
   { label: "Evidence Vault", icon: "archive", section: "Инфраструктура", planned: true },
-  { label: "Настройки", icon: "settings", section: "Система", planned: true },
+  { label: "Настройки", icon: "settings", section: "Система" },
 ];
 
 function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
@@ -204,7 +207,7 @@ function App() {
           </div>
         </header>
 
-        <div className={`mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10 ${active === "Модели и провайдеры" ? "hidden" : ""}`}>
+        <div className={`mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10 ${["Модели и провайдеры", "Аномалии", "Настройки"].includes(active) ? "hidden" : ""}`}>
           <div className="mb-8 flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
             <div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-jamp-blue/20 bg-jamp-blue/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300"><span className="h-1.5 w-1.5 rounded-full bg-jamp-blue" /> Evidence Infrastructure</div><h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-white md:text-4xl">От утверждения —<br className="hidden sm:block" /> к проверяемому доказательству.</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Единое рабочее пространство для проверки фактов, происхождения данных и будущих продуктов экосистемы JAMP.</p></div>
             <div className="rounded-xl border border-jamp-line bg-jamp-panel/70 px-4 py-3"><div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Состояние интерфейса</div><div className="mt-1 flex items-center gap-2 text-sm font-medium text-jamp-amber"><span className="h-2 w-2 rounded-full bg-jamp-amber" /> BFF · API integration</div></div>
@@ -338,6 +341,8 @@ function App() {
           <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-jamp-line/50 py-5 text-[10px] uppercase tracking-[0.13em] text-slate-600 sm:flex-row"><span>JAMP · Trust Layer</span><span>BFF integration · API responses rendered from server evidence</span></footer>
         </div>
         {active === "Модели и провайдеры" && <div className="mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10"><Providers /></div>}
+        {active === "Аномалии" && <div className="mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10"><Anomalies /></div>}
+        {active === "Настройки" && <div className="mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10"><Settings /></div>}
       </main>
     </div>
   );

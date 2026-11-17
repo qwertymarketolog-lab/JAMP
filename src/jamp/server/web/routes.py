@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import base64
 import hmac
+import json
 import os
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -81,6 +84,37 @@ async def dashboard_login(request: Request) -> RedirectResponse:
         path="/",
     )
     return response
+
+
+@router.get("/api/session", response_model=None)
+def dashboard_session(request: Request) -> JSONResponse:
+    """Return public metadata for the currently authenticated dashboard session."""
+    session_value = request.cookies.get(DASHBOARD_SESSION_COOKIE)
+    if not session_value:
+        return JSONResponse(status_code=401, content={"authenticated": False})
+
+    try:
+        organization = authenticate_dashboard_session(session_value)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return JSONResponse(status_code=401, content={"authenticated": False})
+        raise
+
+    # authenticate_dashboard_session has already validated the HMAC, expiry,
+    # and current organization state. Decode only the verified payload to
+    # expose its public expiration timestamp; never return the cookie itself.
+    encoded_payload = session_value.split(".", maxsplit=1)[0]
+    padded_payload = encoded_payload + "=" * (-len(encoded_payload) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(padded_payload).decode("utf-8"))
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "authenticated": True,
+            "org_id": organization.org_id,
+            "session_expires_at": expires_at.isoformat(timespec="seconds").replace("+00:00", "Z"),
+        },
+    )
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
