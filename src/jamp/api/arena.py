@@ -128,12 +128,16 @@ def create_arena_router(
             response = item.get("response")
             response = response if isinstance(response, dict) else {}
             error = item.get("error")
+            content = response.get("content")
+            failed = error is not None or not isinstance(content, str)
+            if failed and error is None:
+                error = {"type": "InvalidResponse", "message": "Provider returned no text response"}
             results.append(
                 {
                     "model": item["model"],
-                    "execution_status": "FAILED" if error else "COMPLETED",
+                    "execution_status": "FAILED" if failed else "COMPLETED",
                     "evidence_verdict": "UNKNOWN",
-                    "raw_response": response.get("content"),
+                    "raw_response": content,
                     "raw_response_sha256": response.get("raw_body_sha256"),
                     "trace_id": item["trace_id"],
                     "cost_estimate_rub": item.get("cost", "UNKNOWN"),

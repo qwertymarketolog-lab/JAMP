@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from jamp.api.auth import OrganizationContext, require_api_key
 from jamp.api.app import create_app
+from jamp.api.auth import OrganizationContext, require_api_key
 
 
 class FakeExecutor:

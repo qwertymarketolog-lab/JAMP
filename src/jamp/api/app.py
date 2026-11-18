@@ -46,10 +46,10 @@ from jamp.runtime import (
     ProvenanceTracker,
     TaskClassifier,
 )
-from jamp.runtime.orchestrator import MultiModelOrchestrator
 from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
 from jamp.runtime.independent_verifier import report_to_dict, verify_chain
+from jamp.runtime.orchestrator import MultiModelOrchestrator
 from jamp.runtime.persistence import AuditPersistence, ChainIntegrityError
 from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.runtime.universal_verdict import (
