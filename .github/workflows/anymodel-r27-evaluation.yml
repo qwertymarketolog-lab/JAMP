@@ -1,0 +1,30 @@
+name: AnyModel R27 Evaluation Harness
+on:
+  pull_request:
+    paths:
+      - "scripts/research/r27_evaluation_harness.py"
+      - "tests/research/test_r27_evaluation_harness.py"
+      - ".github/workflows/anymodel-r27-evaluation.yml"
+      - "artifacts/research/r27_provenance_probe.json"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r27-evaluation-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install "pytest>=8,<9" "ruff>=0.6,<1"
+      - name: Ruff
+        run: python -m ruff check scripts/research/r27_evaluation_harness.py tests/research/test_r27_evaluation_harness.py
+      - name: R27 deterministic contract tests
+        run: python -m pytest tests/research/test_r27_evaluation_harness.py -q
+      - name: Static harness execution
+        run: python scripts/research/r27_evaluation_harness.py
