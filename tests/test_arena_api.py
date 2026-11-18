@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import uuid
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -9,6 +12,12 @@ from fastapi.testclient import TestClient
 
 from jamp.api.app import create_app
 from jamp.api.auth import OrganizationContext, require_api_key
+from jamp.db import get_connection, init_schema, release_connection
+from jamp.db.arena import (
+    ArenaIdempotencyConflict,
+    complete_arena_run,
+    reserve_arena_run,
+)
 
 
 class FakeExecutor:
@@ -178,3 +187,145 @@ def test_arena_rejects_tenant_supplied_in_request_body(monkeypatch, arena_store)
     assert response.status_code == 422
     assert executor.calls == []
     assert arena_store == {}
+
+@pytest.fixture
+def postgres_arena_organizations() -> Iterator[tuple[str, str]]:
+    if not os.environ.get("JAMP_DATABASE_URL"):
+        pytest.skip("Arena PostgreSQL integration tests require JAMP_DATABASE_URL")
+    init_schema()
+    organization_ids = (str(uuid.uuid4()), str(uuid.uuid4()))
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            for organization_id in organization_ids:
+                cursor.execute(
+                    """
+                    INSERT INTO organizations (id, name, api_key_hash)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (organization_id, "arena-integration", f"arena:{organization_id}"),
+                )
+        connection.commit()
+        yield organization_ids
+    finally:
+        connection.rollback()
+        with connection.cursor() as cursor:
+            for organization_id in organization_ids:
+                cursor.execute(
+                    "DELETE FROM arena_runs WHERE organization_id = %s",
+                    (organization_id,),
+                )
+                cursor.execute(
+                    "DELETE FROM organizations WHERE id = %s",
+                    (organization_id,),
+                )
+        connection.commit()
+        release_connection(connection)
+
+
+def test_postgres_arena_idempotency_and_tenant_isolation(
+    postgres_arena_organizations: tuple[str, str],
+):
+    organization_a, organization_b = postgres_arena_organizations
+    first, created = reserve_arena_run(
+        organization_id=organization_a,
+        idempotency_key="shared-client-key",
+        prompt="same prompt",
+        models=["model_a", "model_b"],
+    )
+    assert created is True
+    persisted_results = [
+        {
+            "model": "model_a",
+            "execution_status": "COMPLETED",
+            "evidence_verdict": "UNKNOWN",
+            "raw_response": "answer A",
+            "trace_id": f"{first['run_id']}_model-a",
+            "cost_estimate_rub": "UNKNOWN",
+            "error": None,
+        },
+        {
+            "model": "model_b",
+            "execution_status": "FAILED",
+            "evidence_verdict": "UNKNOWN",
+            "raw_response": None,
+            "trace_id": f"{first['run_id']}_model-b",
+            "cost_estimate_rub": "UNKNOWN",
+            "error": {"type": "TimeoutError"},
+        },
+    ]
+    complete_arena_run(
+        organization_id=organization_a,
+        run_id=first["run_id"],
+        status="PARTIAL",
+        results=persisted_results,
+    )
+
+    replay, replayed = reserve_arena_run(
+        organization_id=organization_a,
+        idempotency_key="shared-client-key",
+        prompt="same prompt",
+        models=["model_a", "model_b"],
+    )
+    assert replayed is False
+    assert replay == {
+        "run_id": first["run_id"],
+        "status": "PARTIAL",
+        "results": persisted_results,
+    }
+
+    other_tenant, other_created = reserve_arena_run(
+        organization_id=organization_b,
+        idempotency_key="shared-client-key",
+        prompt="same prompt",
+        models=["model_a", "model_b"],
+    )
+    assert other_created is True
+    assert other_tenant["run_id"] != first["run_id"]
+
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM arena_results AS results
+                JOIN arena_runs AS runs ON runs.id = results.run_id
+                WHERE runs.organization_id = %s
+                """,
+                (organization_a,),
+            )
+            result_count = cursor.fetchone()[0]
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM arena_runs
+                WHERE organization_id = %s AND idempotency_key = %s
+                """,
+                (organization_b, "shared-client-key"),
+            )
+            other_tenant_count = cursor.fetchone()[0]
+        connection.commit()
+    finally:
+        release_connection(connection)
+    assert result_count == 2
+    assert other_tenant_count == 1
+
+
+def test_postgres_arena_rejects_idempotency_key_payload_conflict(
+    postgres_arena_organizations: tuple[str, str],
+):
+    organization_a, _ = postgres_arena_organizations
+    reserve_arena_run(
+        organization_id=organization_a,
+        idempotency_key="conflicting-key",
+        prompt="original",
+        models=["model_a"],
+    )
+    with pytest.raises(ArenaIdempotencyConflict):
+        reserve_arena_run(
+            organization_id=organization_a,
+            idempotency_key="conflicting-key",
+            prompt="changed",
+            models=["model_a"],
+        )
