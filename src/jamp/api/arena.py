@@ -25,7 +25,7 @@ def create_arena_router(
     async def run_arena(
         payload: dict[str, Any],
         organization: OrganizationContext = Depends(require_api_key),  # noqa: B008
-    ) -> dict[str, Any] | JSONResponse:
+    ) -> Any:
         """Run a bounded model comparison; agreement is not an evidence verdict."""
         if set(payload) != {"prompt", "models", "idempotency_key"}:
             return JSONResponse(
