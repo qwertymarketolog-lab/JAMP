@@ -1,0 +1,91 @@
+name: Ephemeral PR214 AnyModel 30-check Audit v1
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout current PR #214 audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/anymodel-exclude-kimi-v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install audit dependency
+        run: python -m pip install requests
+
+      - name: Diagnose live catalog against frozen N3 evidence
+        env:
+          ANYMODEL_API_KEY: \${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import requests
+          saved = json.loads(Path("artifacts/research/anymodel_availability_n3.json").read_text())
+          saved_ids = {x["model"] for x in saved["results"]}
+          key = os.environ["ANYMODEL_API_KEY"]
+          headers = {"Authorization": f"Bearer {key}", "x-api-key": key}
+          r = requests.get("https://anymodel.org/v1/models", headers=headers, timeout=30)
+          r.raise_for_status()
+          data = r.json()
+          rows = data.get("data", data)
+          live_ids = {x["id"] for x in rows if isinstance(x, dict) and isinstance(x.get("id"), str)}
+          missing = sorted(saved_ids - live_ids)
+          added = sorted(live_ids - saved_ids)
+          print(f"FROZEN_N3_IDS={len(saved_ids)}")
+          print(f"LIVE_CATALOG_IDS={len(live_ids)}")
+          print(f"MISSING_FROM_LIVE={len(missing)}")
+          print("\\n".join(missing) if missing else "(none)")
+          print(f"ADDED_TO_LIVE={len(added)}")
+          print("\\n".join(added) if added else "(none)")
+          PY
+
+      - name: Run AnyModel 30-check audit
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+        run: |
+          python anymodel_audit.py \
+            --availability artifacts/research/anymodel_availability_n3.json \
+            --output artifacts/research/anymodel_identity_capability_audit_v3.json
+
+      - name: Validate 86 x 30 and Kimi exclusion
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("artifacts/research/anymodel_identity_capability_audit_v3.json")
+          x = json.loads(p.read_text())
+          models = x["models"]
+          assert x["catalog_count"] == 86, x["catalog_count"]
+          assert x["checks_per_model"] == 30, x["checks_per_model"]
+          assert len(models) == 86, len(models)
+          ids = [m["model_id"] for m in models]
+          assert "am/kimi-k3" not in ids
+          assert len(set(ids)) == 86
+          assert all(len(m["checks"]) == 30 for m in models)
+          print("VERIFIED catalog_count=86")
+          print("VERIFIED models=86")
+          print("VERIFIED checks_per_model=30")
+          print("VERIFIED total_checks=2580")
+          print("VERIFIED am/kimi-k3 absent")
+          PY
+
+      - name: Upload terminal audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr214-anymodel-30-check-audit-v1
+          path: artifacts/research/anymodel_identity_capability_audit_v3.json
+          if-no-files-found: error
