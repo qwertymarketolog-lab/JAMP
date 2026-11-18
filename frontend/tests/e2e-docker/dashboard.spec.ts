@@ -51,7 +51,7 @@ test("Docker dashboard: root, real organization login, session, navigation and B
   const evidenceDir = resolve(process.cwd(), process.env.MOEX_EVIDENCE_DIR ?? "../artifacts/e2e-moex");
   mkdirSync(evidenceDir, { recursive: true });
   writeFileSync(resolve(evidenceDir, "response.json"), JSON.stringify(payload, null, 2));
-  writeFileSync(resolve(evidenceDir, "http-status.txt"), `${verifyResponse.status()}\\n`);
+  writeFileSync(resolve(evidenceDir, "http-status.txt"), `${verifyResponse.status()}\n`);
   writeFileSync(resolve(evidenceDir, "summary.json"), JSON.stringify({
     status: payload.status,
     trace_id: payload.trace_id,
@@ -97,7 +97,7 @@ test("Docker dashboard: root, real organization login, session, navigation and B
   await expect(page.getByText("MOEX", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(moexEvidence[0].raw_sha256!, { exact: true })).toBeVisible();
 
-  writeFileSync(resolve(evidenceDir, "result.txt"), "MOEX_E2E=PASS\\n");
+  writeFileSync(resolve(evidenceDir, "result.txt"), "MOEX_E2E=PASS\n");
   writeFileSync(resolve(evidenceDir, "summary.json"), JSON.stringify({
     status: payload.status,
     trace_id: payload.trace_id,
