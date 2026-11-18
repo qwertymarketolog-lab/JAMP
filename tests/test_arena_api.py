@@ -145,7 +145,7 @@ def test_arena_idempotency_replays_cached_result_without_provider_calls(monkeypa
 def test_arena_idempotency_rejects_key_reuse_with_different_payload(monkeypatch, arena_store):
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor = FakeExecutor()
-    with make_client(executor) as client:
+    with make_client(executor, monkeypatch=monkeypatch) as client:
         first = client.post("/v1/arena/run", json=request_body())
         changed = request_body()
         changed["prompt"] = "A different prompt"
@@ -175,7 +175,7 @@ def test_arena_tenant_isolation_uses_authenticated_organization(monkeypatch, are
 def test_arena_partial_failure_is_visible_per_model(monkeypatch, arena_store):
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor = FakeExecutor(failing_models={"model_b"})
-    with make_client(executor) as client:
+    with make_client(executor, monkeypatch=monkeypatch) as client:
         response = client.post("/v1/arena/run", json=request_body())
 
     assert response.status_code == 200
@@ -191,7 +191,7 @@ def test_arena_rejects_tenant_supplied_in_request_body(monkeypatch, arena_store)
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor = FakeExecutor()
     payload = {**request_body(), "organization_id": "org-victim"}
-    with make_client(executor) as client:
+    with make_client(executor, monkeypatch=monkeypatch) as client:
         response = client.post("/v1/arena/run", json=payload)
 
     assert response.status_code == 422
