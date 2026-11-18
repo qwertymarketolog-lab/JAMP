@@ -1,0 +1,61 @@
+name: AnyModel R27 Runtime Execution
+
+on:
+  pull_request:
+    paths:
+      - "scripts/research/r27_evaluation_harness.py"
+      - "artifacts/research/r27_provenance_probe.json"
+      - ".github/workflows/anymodel-r27-runtime.yml"
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Space-separated R27 model IDs to execute"
+        required: true
+        default: "cx/gpt-6-sol cx/gpt-6-sol-review cx/gpt-image-1.5 cx/gpt-image-2 ds/deepseek-v4-flash ds/deepseek-v4-pro glm/glm-5.2"
+      tests:
+        description: "Space-separated R27 test IDs to execute"
+        required: true
+        default: "E01 E02 E03 E04 E05 E06 E07"
+
+permissions:
+  contents: read
+
+jobs:
+  r27-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime dependency
+        run: python -m pip install requests
+
+      - name: Execute R27 runtime evaluation
+        env:
+          ANYMODEL_API_KEY: ${{ secrets.ANYMODEL_API_KEY }}
+          R27_MODELS: ${{ inputs.models }}
+          R27_TESTS: ${{ inputs.tests }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python scripts/research/r27_evaluation_harness.py --execute --models $R27_MODELS --tests $R27_TESTS
+          else
+            python scripts/research/r27_evaluation_harness.py --execute --models cx/gpt-6-sol --tests E01
+          fi
+
+      - name: Upload R27 evaluation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r27-evaluation-v1
+          path: |
+            artifacts/research/r27_evaluation_v1.json
+            artifacts/research/r27_raw_http_trace.json
+          if-no-files-found: warn
