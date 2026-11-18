@@ -16,6 +16,7 @@ from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 from uuid import UUID, uuid4
 
+from jamp.api.arena import create_arena_router
 from jamp.api.auth import OrganizationContext, require_api_key, verify_auth_config
 from jamp.db.verdicts import (
     IdempotencyConflict,
@@ -26,6 +27,7 @@ from jamp.db.verdicts import (
     persist_or_get_verdict,
 )
 from jamp.provider.anymodel import AnyModelBudgetError, AnyModelChatExecutor, AnyModelError
+from jamp.provider.beget import BegetChatExecutor
 from jamp.provider.coingecko_verify import verify_claim_with_coingecko
 from jamp.provider.e2_verify import verify_generation
 from jamp.provider.fallback import FallbackChainExecutor
@@ -47,6 +49,7 @@ from jamp.runtime import (
 from jamp.runtime.claim_adapter import to_verdict_claim
 from jamp.runtime.claim_extractor import extract_claims
 from jamp.runtime.independent_verifier import report_to_dict, verify_chain
+from jamp.runtime.orchestrator import MultiModelOrchestrator
 from jamp.runtime.persistence import AuditPersistence, ChainIntegrityError
 from jamp.runtime.qualification import evaluate_model_qualification
 from jamp.runtime.universal_verdict import (
@@ -159,6 +162,7 @@ def create_app(
     executor: Callable[[str, dict[str, Any]], Any] | None = None,
     audit_storage_path: str | Path | None = None,
     telegram_update_db_path: str | Path | None = None,
+    arena_executor: Any | None = None,
 ):
     try:
         from fastapi import Depends, FastAPI, Header, HTTPException
@@ -200,7 +204,17 @@ def create_app(
             else None
         )
 
+    configured_arena_executor = (
+        arena_executor if arena_executor is not None else BegetChatExecutor.from_env()
+    )
+    arena_orchestrator = (
+        MultiModelOrchestrator(configured_arena_executor)
+        if configured_arena_executor is not None
+        else None
+    )
+
     app = FastAPI(title="JAMP API", version="v1")
+    app.include_router(create_arena_router(arena_orchestrator))
     app.openapi_version = "3.0.3"
 
     from jamp.server.web.routes import register_dashboard, register_ui_verify

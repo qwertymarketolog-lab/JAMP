@@ -113,6 +113,25 @@ def two_orgs() -> dict[str, dict[str, str]]:
             connection = get_connection()
             try:
                 with connection.cursor() as cursor:
+                    # Remove dependent evidence records before their organizations.
+                    cursor.execute(
+                        """
+                        DELETE FROM evidence_chain
+                        USING verdicts
+                        WHERE evidence_chain.verdict_id = verdicts.id
+                          AND verdicts.organization_id = ANY(%s)
+                        """,
+                        (created_ids,),
+                    )
+                    cursor.execute(
+                        "DELETE FROM verdicts WHERE organization_id = ANY(%s)",
+                        (created_ids,),
+                    )
+                    # Arena results cascade from arena_runs.
+                    cursor.execute(
+                        "DELETE FROM arena_runs WHERE organization_id = ANY(%s)",
+                        (created_ids,),
+                    )
                     cursor.execute(
                         "DELETE FROM organizations WHERE id = ANY(%s)",
                         (created_ids,),

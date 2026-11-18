@@ -52,3 +52,37 @@ CREATE TABLE IF NOT EXISTS evidence_chain (
 );
 CREATE INDEX IF NOT EXISTS idx_evidence_chain_verdict_sequence
     ON evidence_chain (verdict_id, sequence_no);
+
+-- Arena execution history is tenant-scoped and separate from evidence verdicts.
+CREATE TABLE IF NOT EXISTS arena_runs (
+    id              UUID PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_hash    CHAR(64) NOT NULL,
+    prompt          TEXT NOT NULL,
+    status          VARCHAR(16) NOT NULL CHECK (status IN ('RUNNING', 'COMPLETED', 'PARTIAL')),
+    results         JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_arena_runs_org_idempotency UNIQUE (organization_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_arena_runs_org_created
+    ON arena_runs (organization_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS arena_results (
+    id                  UUID PRIMARY KEY,
+    run_id              UUID NOT NULL REFERENCES arena_runs(id) ON DELETE CASCADE,
+    model_id            TEXT NOT NULL,
+    execution_status    VARCHAR(16) NOT NULL CHECK (execution_status IN ('COMPLETED', 'FAILED')),
+    evidence_verdict    VARCHAR(16) NOT NULL DEFAULT 'UNKNOWN'
+                        CHECK (evidence_verdict = 'UNKNOWN'),
+    raw_response        TEXT,
+    trace_id            TEXT NOT NULL,
+    cost_estimate_rub   TEXT NOT NULL DEFAULT 'UNKNOWN',
+    error               JSONB,
+    result              JSONB NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_arena_results_run_model UNIQUE (run_id, model_id)
+);
+CREATE INDEX IF NOT EXISTS idx_arena_results_run
+    ON arena_results (run_id, created_at);
