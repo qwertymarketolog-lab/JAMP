@@ -40,7 +40,7 @@ services:
       JAMP_API_KEY_HASH_SECRET: dev-secret-change-me
       JAMP_AUDIT_PATH: /tmp/jamp/audit/provenance_traces.jsonl
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8002:8000"
     command: ["uvicorn", "jamp.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
     healthcheck:
       test:

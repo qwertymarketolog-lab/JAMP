@@ -118,6 +118,18 @@ def dashboard_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> TestClient:
     return TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
 
 
+def test_dashboard_root_redirects_to_authenticated_app_entry(
+    dashboard_client: TestClient,
+) -> None:
+    response = dashboard_client.get("/", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/app"
+
+    followed = dashboard_client.get("/", follow_redirects=True)
+    assert followed.url.path == "/dashboard/login"
+    assert followed.status_code == 200
+
+
 def test_dashboard_requires_auth_and_exposes_login_page(
     dashboard_client: TestClient,
 ) -> None:
@@ -186,6 +198,9 @@ def test_login_rejects_unknown_or_disabled_api_keys(
         follow_redirects=False,
     )
     assert unknown.status_code == 401
+    assert unknown.headers["content-type"].startswith("text/html")
+    assert 'role="alert"' in unknown.text
+    assert "Не удалось войти" in unknown.text
 
     monkeypatch.setattr(
         auth_module,
@@ -198,6 +213,8 @@ def test_login_rejects_unknown_or_disabled_api_keys(
         follow_redirects=False,
     )
     assert disabled.status_code == 403
+    assert disabled.headers["content-type"].startswith("text/html")
+    assert "Не удалось войти" in disabled.text
 
 
 def test_dashboard_static_asset_contains_no_model_or_engine_fiction(
@@ -309,7 +326,18 @@ def test_ui_verify_bff_requires_authenticated_session_and_csrf(
     )
     assert accepted.status_code == 200
     assert accepted.json()["status"] == "NO_CLAIMS"
-    assert calls == [({"text": "A test statement"}, organization)]
+
+    same_origin = client.post(
+        "/api/ui_verify",
+        json={"text": "A production-origin statement"},
+        headers={"Origin": "http://testserver", "X-CSRF-Token": csrf_value},
+    )
+    assert same_origin.status_code == 200
+    assert same_origin.json()["status"] == "NO_CLAIMS"
+    assert calls == [
+        ({"text": "A test statement"}, organization),
+        ({"text": "A production-origin statement"}, organization),
+    ]
     assert VALID_API_KEY not in accepted.text
 
 

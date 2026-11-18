@@ -6,7 +6,9 @@ on:
       - ".github/workflows/docker-smoke.yml"
       - "docker-compose.yml"
       - "Dockerfile"
+      - "frontend/**"
       - "src/jamp/api/**"
+      - "src/jamp/server/web/**"
       - "src/jamp/provider/moex_verify.py"
       - "src/jamp/runtime/claim_extractor.py"
   workflow_dispatch:
@@ -16,11 +18,24 @@ permissions:
 
 jobs:
   docker-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend and Playwright browser
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
 
       - name: Build and smoke-test Compose stack
         shell: bash
@@ -33,7 +48,7 @@ jobs:
 
           ready=0
           for attempt in $(seq 1 25); do
-            if curl --fail --silent --show-error http://127.0.0.1:8000/health \
+            if curl --fail --silent --show-error http://127.0.0.1:8002/health \
               > artifacts/docker-smoke/health.json; then
               ready=1
               break
@@ -52,6 +67,60 @@ jobs:
           docker compose ps --all | tee artifacts/docker-smoke/compose-ps.txt
           docker compose logs --no-color | tee artifacts/docker-smoke/compose.log
           echo "DOCKER_SMOKE=PASS" | tee artifacts/docker-smoke/result.txt
+
+      - name: Verify Docker image provenance
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/docker-smoke
+
+          # Persist non-secret GitHub context and raw Git metadata before assertions.
+          {
+            printf '%s\n' "=== GitHub context (non-secret) ==="
+            for name in GITHUB_SHA GITHUB_REF GITHUB_EVENT_NAME GITHUB_RUN_ID GITHUB_RUN_ATTEMPT PR_HEAD_SHA; do
+              printf '%s=%s\n' "$name" "${!name-<unset>}"
+            done
+            printf '%s\n' "=== Checked-out commit ==="
+            git rev-parse HEAD 2>&1 || true
+            printf '%s\n' "=== git log -1 --pretty=format:%p ==="
+            git log -1 --pretty=format:%p HEAD 2>&1 || true
+            printf '\n%s\n' "=== Full commit object ==="
+            git cat-file -p HEAD 2>&1 || true
+            printf '%s\n' "=== git status --short ==="
+            git status --short 2>&1 || true
+          } | tee artifacts/docker-smoke/provenance-diagnostics.txt
+
+          checked_out_sha="$(git rev-parse HEAD)"
+          mapfile -t commit_parents < <(git cat-file -p "$checked_out_sha" | awk '$1 == "parent" {print $2}')
+          merge_parents="$(printf '%s ' "${commit_parents[@]}")"
+          second_parent="${commit_parents[1]-}"
+          printf '%s\n' "$checked_out_sha" > artifacts/docker-smoke/checked-out-sha.txt
+          printf '%s\n' "$GITHUB_SHA" > artifacts/docker-smoke/github-sha.txt
+          printf '%s\n' "$PR_HEAD_SHA" > artifacts/docker-smoke/pr-head-sha.txt
+          printf '%s\n' "$merge_parents" > artifacts/docker-smoke/merge-parents.txt
+          printf '%s\n' "${#commit_parents[@]}" > artifacts/docker-smoke/merge-parent-count.txt
+          printf '%s\n' "$second_parent" > artifacts/docker-smoke/second-parent-sha.txt
+
+          # Keep provenance assertions strict: for PR merge refs, PR_HEAD_SHA must be parent 2.
+          test "$checked_out_sha" = "$GITHUB_SHA"
+          if [[ "$PR_HEAD_SHA" != "$checked_out_sha" ]]; then
+            test "${#commit_parents[@]}" -eq 2
+            if [[ "$second_parent" != "$PR_HEAD_SHA" ]]; then
+              echo "PR_HEAD_SHA does not equal the second parent of the checked-out merge commit" >&2
+              exit 1
+            fi
+          fi
+
+          api_container_id="$(docker compose ps -q api)"
+          test -n "$api_container_id"
+          image_id="$(docker image inspect jamp-api --format '{{.Id}}')"
+          container_image_id="$(docker inspect "$api_container_id" --format '{{.Image}}')"
+          printf '%s\n' "$image_id" > artifacts/docker-smoke/image-id.txt
+          printf '%s\n' "$container_image_id" > artifacts/docker-smoke/container-image-id.txt
+          test "$container_image_id" = "$image_id"
+          printf '%s\n' "IMAGE_PROVENANCE=PASS" | tee artifacts/docker-smoke/image-provenance.txt
 
       - name: Run live SBER to MOEX verification
         shell: bash
@@ -83,84 +152,19 @@ jobs:
                           INSERT INTO organizations (id, name, api_key_hash)
                           VALUES (%s, %s, %s)
                           """,
-                          ("ci-remote-e2e", "CI Remote E2E", api_key_hash),
+                          ("ci-dashboard-e2e", "CI Dashboard E2E", api_key_hash),
                       )
           finally:
               connection.close()
           PY
 
-          if ! http_code="$(curl --silent --show-error \
-            --output artifacts/e2e-moex/response.json \
-            --write-out '%{http_code}' \
-            --connect-timeout 5 --max-time 45 \
-            --request POST http://127.0.0.1:8000/v1/verify_text \
-            --header "Authorization: Bearer $api_key" \
-            --header "Content-Type: application/json" \
-            --data-binary '{"text":"Цена SBER составляет 5000 рублей."}')"; then
-            echo "JAMP request failed before an HTTP response was received." \
-              | tee artifacts/e2e-moex/result.txt
-            exit 1
-          fi
-          printf '%s\n' "$http_code" > artifacts/e2e-moex/http-status.txt
-
-          python - "$http_code" artifacts/e2e-moex/response.json <<'PY'
-          import base64
-          import hashlib
-          import json
-          import re
-          import sys
-
-          http_code, response_path = sys.argv[1:]
-          assert http_code == "200", f"Expected HTTP 200, got {http_code}"
-          with open(response_path, encoding="utf-8") as response_file:
-              payload = json.load(response_file)
-
-          assert payload.get("status") == "COMPLETE_VERIFICATION", payload.get("status")
-          claims = payload.get("claims")
-          assert isinstance(claims, list) and claims, "No extracted claims returned"
-
-          contradicted = [
-              claim for claim in claims
-              if claim.get("verdict") == "CONTRADICTED"
-              and "SBER" in str(claim.get("raw_text", "")).upper()
-          ]
-          assert contradicted, "No SBER claim received CONTRADICTED verdict"
-
-          evidence_items = [
-              evidence
-              for claim in contradicted
-              for evidence in claim.get("evidence", [])
-              if evidence.get("source") == "MOEX"
-          ]
-          assert evidence_items, "No MOEX evidence attached to contradicted SBER claim"
-
-          verified_hashes = 0
-          for evidence in evidence_items:
-              digest = evidence.get("raw_sha256")
-              encoded_body = evidence.get("raw_body_base64")
-              assert isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest), (
-                  "MOEX raw_sha256 must be 64 lowercase hex characters"
-              )
-              assert evidence.get("status_code") == 200, "MOEX evidence HTTP status is not 200"
-              assert evidence.get("body_complete") is True, "MOEX response body is incomplete"
-              assert isinstance(encoded_body, str) and encoded_body, "Raw MOEX body is missing"
-              body = base64.b64decode(encoded_body, validate=True)
-              assert hashlib.sha256(body).hexdigest() == digest, "MOEX raw_sha256 mismatch"
-              assert str(evidence.get("url", "")).startswith("https://iss.moex.com/iss/"), (
-                  "Evidence URL is not the official MOEX ISS endpoint"
-              )
-              verified_hashes += 1
-
-          print(json.dumps({
-              "status": payload["status"],
-              "trace_id": payload.get("trace_id"),
-              "sber_verdict": contradicted[0]["verdict"],
-              "moex_evidence_items": len(evidence_items),
-              "raw_hashes_recomputed": verified_hashes,
-          }, ensure_ascii=False))
-          PY
-
-          echo "MOEX_E2E=PASS" | tee artifacts/e2e-moex/result.txt
+          # The browser's real Verify button now drives the live SBER → MOEX check through the BFF.
+          (
+            cd frontend
+            DASHBOARD_E2E_API_KEY="$api_key" \
+            MOEX_EVIDENCE_DIR="../artifacts/e2e-moex" \
+              npx playwright test --config=playwright.docker.config.ts
+          )
 
       - name: Capture diagnostics
         if: always()
@@ -187,6 +191,17 @@ jobs:
           name: docker-smoke-evidence
           path: artifacts/docker-smoke/
           if-no-files-found: error
+
+      - name: Upload Docker dashboard browser E2E
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-dashboard-playwright-e2e
+          path: |
+            frontend/test-results-docker/
+            frontend/playwright-report-docker/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Stop Compose stack
         if: always()
