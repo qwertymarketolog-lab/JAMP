@@ -93,22 +93,24 @@ jobs:
           } | tee artifacts/docker-smoke/provenance-diagnostics.txt
 
           checked_out_sha="$(git rev-parse HEAD)"
-          merge_parents="$(git log -1 --pretty=format:%p HEAD)"
+          mapfile -t commit_parents < <(git cat-file -p "$checked_out_sha" | awk '$1 == "parent" {print $2}')
+          merge_parents="$(printf '%s ' "${commit_parents[@]}")"
+          second_parent="${commit_parents[1]-}"
           printf '%s\n' "$checked_out_sha" > artifacts/docker-smoke/checked-out-sha.txt
           printf '%s\n' "$GITHUB_SHA" > artifacts/docker-smoke/github-sha.txt
           printf '%s\n' "$PR_HEAD_SHA" > artifacts/docker-smoke/pr-head-sha.txt
           printf '%s\n' "$merge_parents" > artifacts/docker-smoke/merge-parents.txt
+          printf '%s\n' "${#commit_parents[@]}" > artifacts/docker-smoke/merge-parent-count.txt
+          printf '%s\n' "$second_parent" > artifacts/docker-smoke/second-parent-sha.txt
 
-          # Keep all provenance assertions strict; diagnostics are already persisted.
+          # Keep provenance assertions strict: for PR merge refs, PR_HEAD_SHA must be parent 2.
           test "$checked_out_sha" = "$GITHUB_SHA"
           if [[ "$PR_HEAD_SHA" != "$checked_out_sha" ]]; then
-            case " $merge_parents " in
-              *" $PR_HEAD_SHA "*) ;;
-              *)
-                echo "PR_HEAD_SHA is not a parent of the checked-out merge commit" >&2
-                exit 1
-                ;;
-            esac
+            test "${#commit_parents[@]}" -eq 2
+            if [[ "$second_parent" != "$PR_HEAD_SHA" ]]; then
+              echo "PR_HEAD_SHA does not equal the second parent of the checked-out merge commit" >&2
+              exit 1
+            fi
           fi
 
           api_container_id="$(docker compose ps -q api)"
