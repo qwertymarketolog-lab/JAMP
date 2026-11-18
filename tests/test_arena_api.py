@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jamp.api.app import create_app
-from jamp.api.auth import OrganizationContext, require_api_key
+from jamp.api.auth import OrganizationContext
 from jamp.db import get_connection, init_schema, release_connection
 from jamp.db.arena import (
     ArenaIdempotencyConflict,
@@ -64,7 +64,7 @@ def arena_store(monkeypatch):
                 "results": current["results"],
             }, False
         record = {
-            "run_id": f"run-{len(records) + 1}",
+            "run_id": str(uuid.uuid4()),
             "prompt": prompt,
             "models": list(models),
             "status": "RUNNING",
@@ -87,8 +87,11 @@ def arena_store(monkeypatch):
 
 
 def make_client(executor: FakeExecutor, organization_id: str = "org-a") -> TestClient:
+    from jamp.api import arena as arena_module
+
     app = create_app(arena_executor=executor)
-    app.dependency_overrides[require_api_key] = lambda: OrganizationContext(
+    # Override the exact dependency object captured by the Arena route.
+    app.dependency_overrides[arena_module.require_api_key] = lambda: OrganizationContext(
         org_id=organization_id,
         org_name=organization_id,
     )
@@ -211,6 +214,21 @@ def postgres_arena_organizations() -> Iterator[tuple[str, str]]:
         connection.rollback()
         with connection.cursor() as cursor:
             for organization_id in organization_ids:
+                # Respect the existing RESTRICT foreign keys in the shared test schema.
+                cursor.execute(
+                    """
+                    DELETE FROM evidence_chain
+                    USING verdicts
+                    WHERE evidence_chain.verdict_id = verdicts.id
+                      AND verdicts.organization_id = %s
+                    """,
+                    (organization_id,),
+                )
+                cursor.execute(
+                    "DELETE FROM verdicts WHERE organization_id = %s",
+                    (organization_id,),
+                )
+                # arena_results are removed by arena_runs ON DELETE CASCADE.
                 cursor.execute(
                     "DELETE FROM arena_runs WHERE organization_id = %s",
                     (organization_id,),
