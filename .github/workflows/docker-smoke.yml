@@ -71,7 +71,7 @@ jobs:
       - name: Verify Docker image provenance
         shell: bash
         env:
-          PR_HEAD_SHA: \${{ github.event.pull_request.head.sha || github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           mkdir -p artifacts/docker-smoke
@@ -80,7 +80,7 @@ jobs:
           {
             printf '%s\n' "=== GitHub context (non-secret) ==="
             for name in GITHUB_SHA GITHUB_REF GITHUB_EVENT_NAME GITHUB_RUN_ID GITHUB_RUN_ATTEMPT PR_HEAD_SHA; do
-              printf '%s=%s\n' "$name" "\${!name-<unset>}"
+              printf '%s=%s\n' "$name" "${!name-<unset>}"
             done
             printf '%s\n' "=== Checked-out commit ==="
             git rev-parse HEAD 2>&1 || true
