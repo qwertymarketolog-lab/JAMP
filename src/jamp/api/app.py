@@ -221,6 +221,11 @@ def create_app(
 
     register_dashboard(app)
 
+    @app.get("/", include_in_schema=False)
+    def dashboard_root() -> RedirectResponse:
+        """Send browser visits to the authenticated dashboard entry point."""
+        return RedirectResponse(url="/app", status_code=302)
+
     @app.exception_handler(HTTPException)
     async def _dashboard_login_redirect(
         request: FastAPIRequest,
