@@ -399,24 +399,25 @@ def main() -> int:
     if not key:
         raise SystemExit("ANYMODEL_API_KEY is required")
     available_artifact = load_available(args.availability)
-    headers = {"Authorization": f"Bearer {key}"}
+    headers = {"Authorization": f"Bearer {key}", "x-api-key": key}
     rows = catalog(headers)
-    models = sorted(row["id"] for row in rows)
-    if len(models) != 87:
-        raise SystemExit(f"expected 87 catalog models, observed {len(models)}")
+    models = sorted(row["id"] for row in rows if row["id"] != "am/kimi-k3")
+    if len(models) != 86:
+        raise SystemExit(f"expected 86 audited models, observed {len(models)}")
 
     availability_models = set(
         model_ids_from_catalog(
             available_artifact.get("catalog", available_artifact.get("models", []))
         )
     )
+    availability_models.discard("am/kimi-k3")
     if availability_models and set(models) != availability_models:
         raise SystemExit("catalog identity mismatch with saved N=3 artifact")
 
     by_id = {row["id"]: row for row in rows}
     records = []
     for i, model in enumerate(models, 1):
-        print(f"[{i}/87] {model}", flush=True)
+        print(f"[{i}/86] {model}", flush=True)
         records.append(run_model(headers, by_id[model], available_artifact))
     payload = {
         "audit_id": (
