@@ -49,7 +49,7 @@ def dashboard_login_page(request: Request) -> HTMLResponse:
     )
 
 
-@router.post("/dashboard/login")
+@router.post("/dashboard/login", response_model=None)
 async def dashboard_login(request: Request) -> HTMLResponse | RedirectResponse:
     """Exchange a submitted API key for a short-lived HttpOnly browser session."""
     try:
