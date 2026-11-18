@@ -93,7 +93,7 @@ test("Docker dashboard: root, real organization login, session, navigation and B
   }
 
   await expect(page.getByText("CONTRADICTED", { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: /Evidence/ }).first().click();
+  await page.getByRole("article").first().getByRole("button", { name: /Evidence/ }).click();
   await expect(page.getByText("MOEX", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(moexEvidence[0].raw_sha256!, { exact: true })).toBeVisible();
 
