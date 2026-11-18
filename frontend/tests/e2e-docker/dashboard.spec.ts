@@ -27,7 +27,7 @@ test("Docker dashboard: root, real organization login, session, navigation and B
   await expect(page.getByText("Сохранённых вердиктов пока нет. Это пустая история, а не ошибка проверки.")).toBeVisible();
 
   await page.getByRole("button", { name: "Аномалии" }).click();
-  await expect(page.getByRole("heading", { name: "Аномалии" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Аномалии", level: 2 })).toBeVisible();
   await expect(page.getByText("Аномалий не обнаружено.")).toBeVisible();
 
   await page.getByRole("button", { name: "Модели и провайдеры" }).click();
