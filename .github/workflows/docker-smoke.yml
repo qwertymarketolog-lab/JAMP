@@ -127,83 +127,12 @@ jobs:
               connection.close()
           PY
 
-          if ! http_code="$(curl --silent --show-error \
-            --output artifacts/e2e-moex/response.json \
-            --write-out '%{http_code}' \
-            --connect-timeout 5 --max-time 45 \
-            --request POST http://127.0.0.1:8000/v1/verify_text \
-            --header "Authorization: Bearer $api_key" \
-            --header "Content-Type: application/json" \
-            --data-binary '{"text":"Цена SBER составляет 5000 рублей."}')"; then
-            echo "JAMP request failed before an HTTP response was received." \
-              | tee artifacts/e2e-moex/result.txt
-            exit 1
-          fi
-          printf '%s\n' "$http_code" > artifacts/e2e-moex/http-status.txt
-
-          python - "$http_code" artifacts/e2e-moex/response.json <<'PY'
-          import base64
-          import hashlib
-          import json
-          import re
-          import sys
-
-          http_code, response_path = sys.argv[1:]
-          assert http_code == "200", f"Expected HTTP 200, got {http_code}"
-          with open(response_path, encoding="utf-8") as response_file:
-              payload = json.load(response_file)
-
-          assert payload.get("status") == "COMPLETE_VERIFICATION", payload.get("status")
-          claims = payload.get("claims")
-          assert isinstance(claims, list) and claims, "No extracted claims returned"
-
-          contradicted = [
-              claim for claim in claims
-              if claim.get("verdict") == "CONTRADICTED"
-              and "SBER" in str(claim.get("raw_text", "")).upper()
-          ]
-          assert contradicted, "No SBER claim received CONTRADICTED verdict"
-
-          evidence_items = [
-              evidence
-              for claim in contradicted
-              for evidence in claim.get("evidence", [])
-              if evidence.get("source") == "MOEX"
-          ]
-          assert evidence_items, "No MOEX evidence attached to contradicted SBER claim"
-
-          verified_hashes = 0
-          for evidence in evidence_items:
-              digest = evidence.get("raw_sha256")
-              encoded_body = evidence.get("raw_body_base64")
-              assert isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest), (
-                  "MOEX raw_sha256 must be 64 lowercase hex characters"
-              )
-              assert evidence.get("status_code") == 200, "MOEX evidence HTTP status is not 200"
-              assert evidence.get("body_complete") is True, "MOEX response body is incomplete"
-              assert isinstance(encoded_body, str) and encoded_body, "Raw MOEX body is missing"
-              body = base64.b64decode(encoded_body, validate=True)
-              assert hashlib.sha256(body).hexdigest() == digest, "MOEX raw_sha256 mismatch"
-              assert str(evidence.get("url", "")).startswith("https://iss.moex.com/iss/"), (
-                  "Evidence URL is not the official MOEX ISS endpoint"
-              )
-              verified_hashes += 1
-
-          print(json.dumps({
-              "status": payload["status"],
-              "trace_id": payload.get("trace_id"),
-              "sber_verdict": contradicted[0]["verdict"],
-              "moex_evidence_items": len(evidence_items),
-              "raw_hashes_recomputed": verified_hashes,
-          }, ensure_ascii=False))
-          PY
-
-          echo "MOEX_E2E=PASS" | tee artifacts/e2e-moex/result.txt
-
-          # Exercise the real Docker-served login, session, React UI, and same-origin BFF.
+          # The browser's real Verify button now drives the live SBER → MOEX check through the BFF.
           (
             cd frontend
-            DASHBOARD_E2E_API_KEY="$api_key" npx playwright test --config=playwright.docker.config.ts
+            DASHBOARD_E2E_API_KEY="$api_key" \
+            MOEX_EVIDENCE_DIR="../artifacts/e2e-moex" \
+              npx playwright test --config=playwright.docker.config.ts
           )
 
       - name: Capture diagnostics
