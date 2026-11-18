@@ -85,11 +85,11 @@ jobs:
           container_image_id="$(docker inspect "$api_container_id" --format '{{.Image}}')"
           test "$container_image_id" = "$image_id"
 
-          printf '%s\\n' "$checked_out_sha" > artifacts/docker-smoke/checked-out-sha.txt
-          printf '%s\\n' "$PR_HEAD_SHA" > artifacts/docker-smoke/pr-head-sha.txt
-          printf '%s\\n' "$image_id" > artifacts/docker-smoke/image-id.txt
-          printf '%s\\n' "$container_image_id" > artifacts/docker-smoke/container-image-id.txt
-          printf '%s\\n' "IMAGE_PROVENANCE=PASS" | tee artifacts/docker-smoke/image-provenance.txt
+          printf '%s\n' "$checked_out_sha" > artifacts/docker-smoke/checked-out-sha.txt
+          printf '%s\n' "$PR_HEAD_SHA" > artifacts/docker-smoke/pr-head-sha.txt
+          printf '%s\n' "$image_id" > artifacts/docker-smoke/image-id.txt
+          printf '%s\n' "$container_image_id" > artifacts/docker-smoke/container-image-id.txt
+          printf '%s\n' "IMAGE_PROVENANCE=PASS" | tee artifacts/docker-smoke/image-provenance.txt
 
       - name: Run live SBER to MOEX verification
         shell: bash
