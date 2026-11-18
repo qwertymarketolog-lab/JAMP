@@ -1,0 +1,118 @@
+{
+  "experiment_id": "EXP-MULTI-AI-V0",
+  "experiment_version": "v0",
+  "provider": "AnyModel",
+  "endpoint": "https://anymodel.org/v1/chat/completions",
+  "models": [
+    "am/diffusiongemma-26b-a4b-it",
+    "am/gpt-oss-20b",
+    "am/laguna-xs-2.1",
+    "am/llama-3.2-11b-vision-instruct",
+    "am/mistral-nemotron"
+  ],
+  "question": "Is Pluto a planet? Answer under the International Astronomical Union (IAU) 2006 definition.",
+  "question_hash": "67e7aa940c13103466a3762acb143b825851b93bda9078eb5589685ef3d6092c",
+  "system_prompt_hash": "48bee322b6bf2a5c6048b20f3effde6d17d275294f99d0517e64c3178362337d",
+  "temperature": 0,
+  "observations": [
+    {
+      "model": "am/diffusiongemma-26b-a4b-it",
+      "status": "OBSERVED",
+      "elapsed_ms": 2553.94,
+      "raw_response": "{\n  \"answer\": \"no\",\n  \"evidence\": \"Under the IAU 2006 definition, Pluto fails the third criterion of 'clearing the neighborhood around its orbit,' classifying it as a dwarf planet.\",\n  \"uncertainty\": \"low\"\n}",
+      "parsed": {
+        "answer": "no",
+        "evidence": "Under the IAU 2006 definition, Pluto fails the third criterion of 'clearing the neighborhood around its orbit,' classifying it as a dwarf planet.",
+        "uncertainty": "low"
+      },
+      "normalized_answer": "no"
+    },
+    {
+      "model": "am/gpt-oss-20b",
+      "status": "OBSERVED",
+      "elapsed_ms": 43748.486,
+      "raw_response": "{\"answer\":\"no\",\"evidence\":\"Under the IAU 2006 definition, a planet must orbit the Sun, be spherical, and have cleared its orbit of other debris. Pluto does not meet the third criterion, so it is not classified as a planet.\",\"uncertainty\":\"low\"}",
+      "parsed": {
+        "answer": "no",
+        "evidence": "Under the IAU 2006 definition, a planet must orbit the Sun, be spherical, and have cleared its orbit of other debris. Pluto does not meet the third criterion, so it is not classified as a planet.",
+        "uncertainty": "low"
+      },
+      "normalized_answer": "no"
+    },
+    {
+      "model": "am/laguna-xs-2.1",
+      "status": "OBSERVED",
+      "elapsed_ms": 3154.388,
+      "raw_response": "{\n  \"answer\": \"no\",\n  \"evidence\": \"The International Astronomical Union (IAU) 2006 definition of a planet requires: 1) orbiting the Sun, 2) sufficient mass for hydrostatic equilibrium (nearly round), 3) clearing the neighborhood around its orbit. Pluto fails criterion 3 - it shares its orbital zone with other objects in the Kuiper Belt and has not cleared its neighborhood. Therefore, under the IAU 2006 definition, Pluto is classified as a dwarf planet, not a planet.\",\n  \"uncertainty\": \"low\"\n}",
+      "parsed": {
+        "answer": "no",
+        "evidence": "The International Astronomical Union (IAU) 2006 definition of a planet requires: 1) orbiting the Sun, 2) sufficient mass for hydrostatic equilibrium (nearly round), 3) clearing the neighborhood around its orbit. Pluto fails criterion 3 - it shares its orbital zone with other objects in the Kuiper Belt and has not cleared its neighborhood. Therefore, under the IAU 2006 definition, Pluto is classified as a dwarf planet, not a planet.",
+        "uncertainty": "low"
+      },
+      "normalized_answer": "no"
+    },
+    {
+      "model": "am/llama-3.2-11b-vision-instruct",
+      "status": "OBSERVED",
+      "elapsed_ms": 3012.43,
+      "raw_response": "{\n  \"answer\": \"no\",\n  \"evidence\": \"Pluto does not meet the IAU's definition of a planet, which requires a celestial body to 'clear the neighborhood around its orbit'. Pluto's orbit overlaps with other celestial bodies in the Kuiper Belt.\",\n  \"uncertainty\": \"None, based on IAU definition\"\n}",
+      "parsed": {
+        "answer": "no",
+        "evidence": "Pluto does not meet the IAU's definition of a planet, which requires a celestial body to 'clear the neighborhood around its orbit'. Pluto's orbit overlaps with other celestial bodies in the Kuiper Belt.",
+        "uncertainty": "None, based on IAU definition"
+      },
+      "normalized_answer": "no"
+    },
+    {
+      "model": "am/mistral-nemotron",
+      "status": "ERROR",
+      "elapsed_ms": 9235.19,
+      "error": "HTTPError: Internal Server Error"
+    }
+  ],
+  "matrix_rule": "AGREEMENT iff normalized_answer strings are equal; CONFLICT iff both observed and non-equal; otherwise UNKNOWN.",
+  "conflict_matrix": {
+    "am/diffusiongemma-26b-a4b-it": {
+      "am/diffusiongemma-26b-a4b-it": "AGREEMENT",
+      "am/gpt-oss-20b": "AGREEMENT",
+      "am/laguna-xs-2.1": "AGREEMENT",
+      "am/llama-3.2-11b-vision-instruct": "AGREEMENT",
+      "am/mistral-nemotron": "UNKNOWN"
+    },
+    "am/gpt-oss-20b": {
+      "am/diffusiongemma-26b-a4b-it": "AGREEMENT",
+      "am/gpt-oss-20b": "AGREEMENT",
+      "am/laguna-xs-2.1": "AGREEMENT",
+      "am/llama-3.2-11b-vision-instruct": "AGREEMENT",
+      "am/mistral-nemotron": "UNKNOWN"
+    },
+    "am/laguna-xs-2.1": {
+      "am/diffusiongemma-26b-a4b-it": "AGREEMENT",
+      "am/gpt-oss-20b": "AGREEMENT",
+      "am/laguna-xs-2.1": "AGREEMENT",
+      "am/llama-3.2-11b-vision-instruct": "AGREEMENT",
+      "am/mistral-nemotron": "UNKNOWN"
+    },
+    "am/llama-3.2-11b-vision-instruct": {
+      "am/diffusiongemma-26b-a4b-it": "AGREEMENT",
+      "am/gpt-oss-20b": "AGREEMENT",
+      "am/laguna-xs-2.1": "AGREEMENT",
+      "am/llama-3.2-11b-vision-instruct": "AGREEMENT",
+      "am/mistral-nemotron": "UNKNOWN"
+    },
+    "am/mistral-nemotron": {
+      "am/diffusiongemma-26b-a4b-it": "UNKNOWN",
+      "am/gpt-oss-20b": "UNKNOWN",
+      "am/laguna-xs-2.1": "UNKNOWN",
+      "am/llama-3.2-11b-vision-instruct": "UNKNOWN",
+      "am/mistral-nemotron": "UNKNOWN"
+    }
+  },
+  "summary": {
+    "observed": 4,
+    "errors": 1,
+    "answers": [
+      "no"
+    ]
+  }
+}
