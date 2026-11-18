@@ -86,15 +86,22 @@ def arena_store(monkeypatch):
     return records
 
 
-def make_client(executor: FakeExecutor, organization_id: str = "org-a") -> TestClient:
+def make_client(
+    executor: FakeExecutor,
+    organization_id: str = "org-a",
+    monkeypatch: pytest.MonkeyPatch | None = None,
+) -> TestClient:
     from jamp.api import arena as arena_module
 
+    async def authenticated_organization() -> OrganizationContext:
+        return OrganizationContext(org_id=organization_id, org_name=organization_id)
+
+    # Patch the dependency before create_app builds the Arena route; this makes
+    # the route capture the deterministic tenant context used by this test.
+    if monkeypatch is None:
+        raise AssertionError("make_client requires pytest monkeypatch")
+    monkeypatch.setattr(arena_module, "require_api_key", authenticated_organization)
     app = create_app(arena_executor=executor)
-    # Override the exact dependency object captured by the Arena route.
-    app.dependency_overrides[arena_module.require_api_key] = lambda: OrganizationContext(
-        org_id=organization_id,
-        org_name=organization_id,
-    )
     return TestClient(app)
 
 
@@ -109,7 +116,7 @@ def request_body(key: str = "client-uuid-123") -> dict[str, Any]:
 def test_arena_returns_separate_execution_and_evidence_statuses(monkeypatch, arena_store):
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor = FakeExecutor()
-    with make_client(executor) as client:
+    with make_client(executor, monkeypatch=monkeypatch) as client:
         response = client.post("/v1/arena/run", json=request_body())
 
     assert response.status_code == 200
@@ -126,7 +133,7 @@ def test_arena_returns_separate_execution_and_evidence_statuses(monkeypatch, are
 def test_arena_idempotency_replays_cached_result_without_provider_calls(monkeypatch, arena_store):
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor = FakeExecutor()
-    with make_client(executor) as client:
+    with make_client(executor, monkeypatch=monkeypatch) as client:
         first = client.post("/v1/arena/run", json=request_body())
         second = client.post("/v1/arena/run", json=request_body())
 
@@ -153,9 +160,9 @@ def test_arena_tenant_isolation_uses_authenticated_organization(monkeypatch, are
     monkeypatch.setenv("JAMP_API_KEY_HASH_SECRET", "arena-test-secret")
     executor_a = FakeExecutor()
     executor_b = FakeExecutor()
-    with make_client(executor_a, "org-a") as client_a:
+    with make_client(executor_a, "org-a", monkeypatch=monkeypatch) as client_a:
         response_a = client_a.post("/v1/arena/run", json=request_body("same-key"))
-    with make_client(executor_b, "org-b") as client_b:
+    with make_client(executor_b, "org-b", monkeypatch=monkeypatch) as client_b:
         response_b = client_b.post("/v1/arena/run", json=request_body("same-key"))
 
     assert response_a.status_code == response_b.status_code == 200
