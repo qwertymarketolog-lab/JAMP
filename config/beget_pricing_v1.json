@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "snapshot_date": "2026-11-18",
+  "currency": "RUB",
+  "unit": "per_1m_tokens",
+  "source": {
+    "publisher": "Beget",
+    "url": "https://beget.ru/ru/cloud/ai-gateway",
+    "description": "Official public AI Gateway model pricing page, observed 2026-11-18.",
+    "catalog_api": "https://api-llm.beget.com/v1/models",
+    "catalog_api_captured": false
+  },
+  "snapshot_status": "DISPLAY_PRICES_ONLY_API_IDS_UNVERIFIED",
+  "models": {},
+  "unmapped_display_prices": [
+    {
+      "display_name": "GPT-6.1 Sol",
+      "input_rub_per_million": 238,
+      "output_rub_per_million": 1190,
+      "api_model_id": null
+    },
+    {
+      "display_name": "Claude Sonnet 5.5",
+      "input_rub_per_million": 238,
+      "output_rub_per_million": 1190,
+      "api_model_id": null
+    },
+    {
+      "display_name": "Gemini 3.1 Pro Preview",
+      "input_rub_per_million": 238,
+      "output_rub_per_million": 1428,
+      "api_model_id": null
+    },
+    {
+      "display_name": "DeepSeek V4 Pro",
+      "input_rub_per_million": 80,
+      "output_rub_per_million": 238,
+      "api_model_id": null
+    },
+    {
+      "display_name": "GLM 5.3",
+      "input_rub_per_million": 167,
+      "output_rub_per_million": 524,
+      "api_model_id": null
+    }
+  ],
+  "pricing_match_policy": "Exact provider-returned model ID only. No display-name, slug, or alias inference. Populate models only after capturing and hashing GET /v1/models and reconciling exact IDs with this dated price snapshot.",
+  "cost_formula": "(prompt_tokens / 1000000 * input_rub_per_million) + (completion_tokens / 1000000 * output_rub_per_million)"
+}
