@@ -68,6 +68,29 @@ jobs:
           docker compose logs --no-color | tee artifacts/docker-smoke/compose.log
           echo "DOCKER_SMOKE=PASS" | tee artifacts/docker-smoke/result.txt
 
+      - name: Verify Docker image provenance
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/docker-smoke
+          checked_out_sha="$(git rev-parse HEAD)"
+          test "$checked_out_sha" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$PR_HEAD_SHA" "$checked_out_sha"
+
+          api_container_id="$(docker compose ps -q api)"
+          test -n "$api_container_id"
+          image_id="$(docker image inspect jamp-api --format '{{.Id}}')"
+          container_image_id="$(docker inspect "$api_container_id" --format '{{.Image}}')"
+          test "$container_image_id" = "$image_id"
+
+          printf '%s\\n' "$checked_out_sha" > artifacts/docker-smoke/checked-out-sha.txt
+          printf '%s\\n' "$PR_HEAD_SHA" > artifacts/docker-smoke/pr-head-sha.txt
+          printf '%s\\n' "$image_id" > artifacts/docker-smoke/image-id.txt
+          printf '%s\\n' "$container_image_id" > artifacts/docker-smoke/container-image-id.txt
+          printf '%s\\n' "IMAGE_PROVENANCE=PASS" | tee artifacts/docker-smoke/image-provenance.txt
+
       - name: Run live SBER to MOEX verification
         shell: bash
         run: |
