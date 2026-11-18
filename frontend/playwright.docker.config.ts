@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { outputFolder: "playwright-report-docker", open: "never" }]],
   outputDir: "test-results-docker",
   use: {
-    baseURL: "http://127.0.0.1:8000",
+    baseURL: "http://127.0.0.1:8002",
     trace: "off",
     ...devices["Desktop Chrome"],
   },
