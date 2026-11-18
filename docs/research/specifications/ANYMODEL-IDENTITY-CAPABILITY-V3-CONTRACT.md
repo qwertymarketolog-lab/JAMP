@@ -1,7 +1,7 @@
 # AnyModel Identity & Capability Audit v3 — Contract
 
 **Status:** DESIGN / EXECUTION CONTRACT v3  
-**Scope:** all 87 models from the AnyModel catalog  
+**Scope:** 86 models from the AnyModel catalog, excluding `am/kimi-k3`  
 **Availability prerequisite:** `artifacts/research/anymodel_availability_n3.json`  
 **N=3 reuse:** mandatory; this audit MUST NOT repeat the availability probes.
 
