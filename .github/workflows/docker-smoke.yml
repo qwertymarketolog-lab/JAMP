@@ -6,7 +6,9 @@ on:
       - ".github/workflows/docker-smoke.yml"
       - "docker-compose.yml"
       - "Dockerfile"
+      - "frontend/**"
       - "src/jamp/api/**"
+      - "src/jamp/server/web/**"
       - "src/jamp/provider/moex_verify.py"
       - "src/jamp/runtime/claim_extractor.py"
   workflow_dispatch:
@@ -21,6 +23,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend and Playwright browser
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
 
       - name: Build and smoke-test Compose stack
         shell: bash
@@ -83,7 +98,7 @@ jobs:
                           INSERT INTO organizations (id, name, api_key_hash)
                           VALUES (%s, %s, %s)
                           """,
-                          ("ci-remote-e2e", "CI Remote E2E", api_key_hash),
+                          ("ci-dashboard-e2e", "CI Dashboard E2E", api_key_hash),
                       )
           finally:
               connection.close()
@@ -162,6 +177,12 @@ jobs:
 
           echo "MOEX_E2E=PASS" | tee artifacts/e2e-moex/result.txt
 
+          # Exercise the real Docker-served login, session, React UI, and same-origin BFF.
+          (
+            cd frontend
+            DASHBOARD_E2E_API_KEY="$api_key" npx playwright test --config=playwright.docker.config.ts
+          )
+
       - name: Capture diagnostics
         if: always()
         shell: bash
@@ -187,6 +208,17 @@ jobs:
           name: docker-smoke-evidence
           path: artifacts/docker-smoke/
           if-no-files-found: error
+
+      - name: Upload Docker dashboard browser E2E
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-dashboard-playwright-e2e
+          path: |
+            frontend/test-results-docker/
+            frontend/playwright-report-docker/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Stop Compose stack
         if: always()

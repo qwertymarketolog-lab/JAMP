@@ -50,7 +50,7 @@ def dashboard_login_page(request: Request) -> HTMLResponse:
 
 
 @router.post("/dashboard/login")
-async def dashboard_login(request: Request) -> RedirectResponse:
+async def dashboard_login(request: Request) -> HTMLResponse | RedirectResponse:
     """Exchange a submitted API key for a short-lived HttpOnly browser session."""
     try:
         body = (await request.body()).decode("utf-8")
@@ -62,7 +62,20 @@ async def dashboard_login(request: Request) -> RedirectResponse:
     if not api_key:
         raise HTTPException(status_code=400, detail="API key required")
 
-    organization = authenticate_api_key(api_key)
+    try:
+        organization = authenticate_api_key(api_key)
+    except HTTPException as exc:
+        if exc.status_code not in {401, 403}:
+            raise
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "error": "Не удалось войти. Проверьте API key или обратитесь к администратору."
+            },
+            status_code=exc.status_code,
+        )
+
     response = RedirectResponse(url="/app", status_code=303)
     session_value = create_dashboard_session(organization.org_id)
     response.set_cookie(
@@ -191,8 +204,9 @@ def register_ui_verify(
     """Register a same-origin BFF route authenticated by a tenant dashboard session.
 
     The Vite /api proxy strips the /api prefix in development, so both paths
-    are registered. Browser requests require an allowlisted Origin, a valid
-    signed session cookie, and a session-bound double-submit CSRF token.
+    are registered. Browser requests require a same-origin or explicitly
+    allowlisted Origin, a valid signed session cookie, and a session-bound
+    double-submit CSRF token.
     """
     configured_origins = os.environ.get("JAMP_UI_ALLOWED_ORIGINS")
     if configured_origins is None:
@@ -213,7 +227,8 @@ def register_ui_verify(
     @app.post("/api/ui_verify", response_model=None)
     def ui_verify(request: Request, payload: dict[str, Any]) -> Any:
         """Verify browser-submitted text without exposing server credentials."""
-        if request.headers.get("origin") not in allowed_origins:
+        request_origin = f"{request.url.scheme}://{request.url.netloc}"
+        if request.headers.get("origin") not in {*allowed_origins, request_origin}:
             raise HTTPException(status_code=403, detail="origin not allowed")
 
         session_value = request.cookies.get(DASHBOARD_SESSION_COOKIE)

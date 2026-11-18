@@ -11,6 +11,9 @@
     <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-400">JAMP / Trust Layer</p>
     <h1 class="mt-3 text-2xl font-semibold">Вход в Станцию доверия</h1>
     <p class="mt-2 text-sm leading-6 text-slate-400">Введите API key вашей организации. Ключ проверяется сервером и не сохраняется в браузерном хранилище.</p>
+    {% if error %}
+    <p class="mt-4 rounded-lg border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200" role="alert">{{ error }}</p>
+    {% endif %}
     <form class="mt-6 space-y-4" method="post" action="/dashboard/login">
       <label class="block text-sm text-slate-300" for="api_key">API key</label>
       <input class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm outline-none focus:border-amber-400" id="api_key" name="api_key" type="password" autocomplete="current-password" required>

@@ -175,7 +175,7 @@ function App() {
               <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">{section}</div>
               <div className="space-y-1">
                 {navigation.filter((item) => item.section === section).map((item) => (
-                  <button key={item.label} onClick={() => !item.planned && setActive(item.label)} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${active === item.label ? "border border-jamp-blue/20 bg-jamp-blue/10 text-sky-300" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"} ${item.planned ? "cursor-default opacity-60" : ""}`}>
+                  <button key={item.label} disabled={item.planned} onClick={() => setActive(item.label)} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${active === item.label ? "border border-jamp-blue/20 bg-jamp-blue/10 text-sky-300" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"} ${item.planned ? "cursor-not-allowed opacity-60" : ""}`}>
                     <Icon name={item.icon} className="h-[18px] w-[18px]" />
                     <span className="flex-1">{item.label}</span>
                     {item.active && active === item.label && <span className="h-1.5 w-1.5 rounded-full bg-jamp-blue shadow-[0_0_10px_#38bdf8]" />}
@@ -189,7 +189,7 @@ function App() {
         <div className="mt-auto p-5">
           <div className="rounded-2xl border border-jamp-line bg-jamp-panel/70 p-4">
             <div className="mb-2 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-jamp-amber" /><span className="text-xs font-semibold text-slate-300">Режим разработки</span></div>
-            <p className="text-xs leading-5 text-slate-500">Интерфейсный каркас. Источники данных пока не подключены.</p>
+            <p className="text-xs leading-5 text-slate-500">Статистика, история и проверка утверждений подключены к API. Остальные разделы отмечены NOT_CONNECTED.</p>
           </div>
           <div className="mt-4 flex items-center gap-3 px-1">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/30 to-emerald-400/20 text-xs font-bold text-sky-200">JL</div>
@@ -203,7 +203,7 @@ function App() {
           <div><div className="text-xs text-slate-500">JAMP / Workspace</div><h1 className="mt-1 text-lg font-semibold tracking-tight">{active}</h1></div>
           <div className="flex items-center gap-3">
             <span className="hidden rounded-full border border-jamp-amber/20 bg-jamp-amber/5 px-3 py-1.5 text-[11px] text-jamp-amber sm:inline-flex">BFF API · SERVER-SIDE AUTH</span>
-            <button className="rounded-xl border border-jamp-line bg-jamp-panel px-3 py-2 text-xs text-slate-300">RU <span className="ml-1 text-slate-500">⌄</span></button>
+            <span aria-label="Язык интерфейса: русский" className="rounded-xl border border-jamp-line bg-jamp-panel px-3 py-2 text-xs text-slate-300">RU</span>
           </div>
         </header>
 
