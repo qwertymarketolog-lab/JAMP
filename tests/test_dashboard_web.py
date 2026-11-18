@@ -118,6 +118,18 @@ def dashboard_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> TestClient:
     return TestClient(app_module.create_app(executor=lambda _model, _payload: {}))
 
 
+def test_dashboard_root_redirects_to_authenticated_app_entry(
+    dashboard_client: TestClient,
+) -> None:
+    response = dashboard_client.get("/", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/app"
+
+    followed = dashboard_client.get("/", follow_redirects=True)
+    assert followed.url.path == "/dashboard/login"
+    assert followed.status_code == 200
+
+
 def test_dashboard_requires_auth_and_exposes_login_page(
     dashboard_client: TestClient,
 ) -> None:
