@@ -77,7 +77,17 @@ jobs:
           mkdir -p artifacts/docker-smoke
           checked_out_sha="$(git rev-parse HEAD)"
           test "$checked_out_sha" = "$GITHUB_SHA"
-          git merge-base --is-ancestor "$PR_HEAD_SHA" "$checked_out_sha"
+          merge_parents="$(git show -s --format=%P "$checked_out_sha")"
+          if [[ "$PR_HEAD_SHA" != "$checked_out_sha" ]]; then
+            case " $merge_parents " in
+              *" $PR_HEAD_SHA "*) ;;
+              *)
+                printf '%s\\n' "PR_HEAD_SHA is not a parent of the checked-out merge commit" >&2
+                exit 1
+                ;;
+            esac
+          fi
+          printf '%s\\n' "$merge_parents" > artifacts/docker-smoke/merge-parents.txt
 
           api_container_id="$(docker compose ps -q api)"
           test -n "$api_container_id"
