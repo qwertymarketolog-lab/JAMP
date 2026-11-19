@@ -1,0 +1,225 @@
+{
+  "version": "1.0.0",
+  "baseline_main_sha": "3996ac81738403be0fd70d5fa4654b871dd65068",
+  "epistemic_rules": [
+    "integrity_is_not_truth",
+    "transport_success_is_not_verification",
+    "unknown_is_not_false",
+    "scope_is_bounded",
+    "freshness_is_not_guaranteed",
+    "no_global_source_precedence"
+  ],
+  "claim_level": {
+    "VERIFIED": {
+      "description": "The bounded verdict producer reports that the checked claim met its verification rule.",
+      "requires": ["supported_claim", "usable_source_observation", "entity_and_field_match", "source_specific_comparison_pass"],
+      "does_not_mean": ["source_is_current_indefinitely", "claim_is_universally_true", "model_did_not_lie_intentionally"],
+      "implementation_note": "JampVerdict.from_dict accepts this label; the label alone does not enforce or prove the listed evidence requirements."
+    },
+    "CONTRADICTED": {
+      "description": "The bounded verdict producer reports that the checked claim conflicts with usable source evidence.",
+      "requires": ["supported_claim", "usable_source_observation", "entity_and_field_match", "source_specific_comparison_fail"],
+      "does_not_mean": ["model_lied", "entire_response_is_false", "unrelated_claims_are_false"],
+      "implementation_note": "JampVerdict.from_dict accepts this label; source evidence and comparison must be inspected separately."
+    },
+    "INCONCLUSIVE": {
+      "description": "The available evidence is insufficient to establish truth or contradiction.",
+      "requires": ["missing_or_invalid_input_or_unavailable_or_unusable_source"],
+      "does_not_mean": ["assertion_is_false", "assertion_is_true"],
+      "implementation_note": "JampVerdict.from_dict accepts this label; this is not a negative finding."
+    }
+  },
+  "provider_e4": {
+    "E4_VERIFIED": {
+      "description": "The provider adapter found a supported fact and the source-specific rule passed.",
+      "implementation": "Both MOEX ISS and CoinGecko adapters define this constant."
+    },
+    "E4_CONTRADICTED": {
+      "description": "The provider adapter found usable source evidence that contradicts the bounded claim.",
+      "implementation": "Both adapters define this constant; exact trigger differs by claim type."
+    },
+    "E4_OUT_OF_SCOPE": {
+      "description": "The adapter cannot treat this request or missing item as a contradiction.",
+      "implementation": "Both adapters define this constant; examples include unlisted MOEX tickers and unsupported CoinGecko predictions."
+    },
+    "E4_INCONCLUSIVE": {
+      "description": "The adapter cannot safely establish truth or contradiction.",
+      "implementation": "Both adapters define this constant."
+    }
+  },
+  "aggregate_level": {
+    "VERIFIED": {
+      "description": "Every claim is VERIFIED or E4_VERIFIED.",
+      "trigger": "all_claims_verified",
+      "implementation": "aggregate_verdict"
+    },
+    "CONTRADICTED": {
+      "description": "At least one claim is CONTRADICTED or E4_CONTRADICTED; this has precedence.",
+      "trigger": "any_claim_contradicted",
+      "implementation": "aggregate_verdict"
+    },
+    "INCONCLUSIVE": {
+      "description": "No contradiction matched and at least one critical claim is not verified.",
+      "trigger": "critical_claim_unverified_without_contradiction",
+      "implementation": "aggregate_verdict"
+    },
+    "PARTIAL": {
+      "description": "All remaining cases, including empty claims or non-critical unresolved claims.",
+      "trigger": "otherwise",
+      "implementation": "aggregate_verdict"
+    }
+  },
+  "persisted_verdict_level": {
+    "CLEAN": {
+      "description": "Intended meaning: all required critical claims in the packet are verified.",
+      "trigger": "all_required_critical_claims_verified_and_no_integrity_failure",
+      "implementation_status": "MAPPING_NOT_ESTABLISHED"
+    },
+    "SUSPICIOUS": {
+      "description": "Intended meaning: unresolved claims exist, without an established critical contradiction.",
+      "trigger": "has_unresolved_claim_and_no_critical_contradiction_or_integrity_failure",
+      "implementation_status": "MAPPING_NOT_ESTABLISHED"
+    },
+    "HALLUCINATION_CAUGHT": {
+      "description": "Intended meaning: at least one critical claim is contradicted by bounded source evidence.",
+      "trigger": "has_critical_contradicted_claim_with_source_evidence",
+      "implementation_status": "MAPPING_NOT_ESTABLISHED"
+    },
+    "INTEGRITY_VIOLATED": {
+      "description": "Intended meaning: a reproducible evidence digest, signature, or chain-integrity check failed.",
+      "trigger": "evidence_integrity_check_failed",
+      "implementation_status": "MAPPING_NOT_ESTABLISHED"
+    },
+    "INCONCLUSIVE": {
+      "description": "Intended meaning: no in-scope claim could be independently resolved.",
+      "trigger": "all_in_scope_claims_unresolved_or_out_of_scope_without_contradiction_or_integrity_failure",
+      "implementation_status": "MAPPING_NOT_ESTABLISHED"
+    }
+  },
+  "tolerance_defaults": {
+    "MOEX_ISS": {
+      "price": {
+        "value": 0.05,
+        "unit": "relative_fraction",
+        "code_default": "src/jamp/provider/moex_verify.py::_verify_claim_with_moex.price_tolerance"
+      }
+    },
+    "COINGECKO": {
+      "price": {
+        "value": 10.0,
+        "unit": "percent",
+        "code_default": "src/jamp/provider/coingecko_verify.py::_DEFAULT_THRESHOLDS"
+      },
+      "market_cap": {
+        "value": 20.0,
+        "unit": "percent",
+        "code_default": "src/jamp/provider/coingecko_verify.py::_DEFAULT_THRESHOLDS"
+      }
+    }
+  },
+  "source_hierarchy": {
+    "MOEX_ISS": "Primary adapter for supported MOEX securities and share-price claims.",
+    "COINGECKO": "Primary adapter for supported crypto existence, USD price, and USD market-cap claims.",
+    "global_precedence": null,
+    "conflict_policy": "Preserve conflicting observations; report AMBIGUOUS or HOLD until a domain-specific rule exists."
+  },
+  "json_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["version", "baseline_main_sha", "claim_level", "provider_e4", "aggregate_level", "persisted_verdict_level", "tolerance_defaults", "source_hierarchy"],
+    "properties": {
+      "version": {"type": "string"},
+      "baseline_main_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+      "epistemic_rules": {"type": "array", "items": {"type": "string"}},
+      "claim_level": {
+        "type": "object",
+        "required": ["VERIFIED", "CONTRADICTED", "INCONCLUSIVE"],
+        "additionalProperties": false,
+        "properties": {
+          "VERIFIED": {"$ref": "#/$defs/status_definition"},
+          "CONTRADICTED": {"$ref": "#/$defs/status_definition"},
+          "INCONCLUSIVE": {"$ref": "#/$defs/status_definition"}
+        }
+      },
+      "provider_e4": {
+        "type": "object",
+        "required": ["E4_VERIFIED", "E4_CONTRADICTED", "E4_OUT_OF_SCOPE", "E4_INCONCLUSIVE"],
+        "additionalProperties": false,
+        "properties": {
+          "E4_VERIFIED": {"$ref": "#/$defs/provider_definition"},
+          "E4_CONTRADICTED": {"$ref": "#/$defs/provider_definition"},
+          "E4_OUT_OF_SCOPE": {"$ref": "#/$defs/provider_definition"},
+          "E4_INCONCLUSIVE": {"$ref": "#/$defs/provider_definition"}
+        }
+      },
+      "aggregate_level": {
+        "type": "object",
+        "required": ["VERIFIED", "CONTRADICTED", "INCONCLUSIVE", "PARTIAL"],
+        "additionalProperties": false,
+        "properties": {
+          "VERIFIED": {"$ref": "#/$defs/aggregate_definition"},
+          "CONTRADICTED": {"$ref": "#/$defs/aggregate_definition"},
+          "INCONCLUSIVE": {"$ref": "#/$defs/aggregate_definition"},
+          "PARTIAL": {"$ref": "#/$defs/aggregate_definition"}
+        }
+      },
+      "persisted_verdict_level": {
+        "type": "object",
+        "required": ["CLEAN", "SUSPICIOUS", "HALLUCINATION_CAUGHT", "INCONCLUSIVE", "INTEGRITY_VIOLATED"],
+        "additionalProperties": false,
+        "properties": {
+          "CLEAN": {"$ref": "#/$defs/persisted_definition"},
+          "SUSPICIOUS": {"$ref": "#/$defs/persisted_definition"},
+          "HALLUCINATION_CAUGHT": {"$ref": "#/$defs/persisted_definition"},
+          "INCONCLUSIVE": {"$ref": "#/$defs/persisted_definition"},
+          "INTEGRITY_VIOLATED": {"$ref": "#/$defs/persisted_definition"}
+        }
+      },
+      "tolerance_defaults": {"type": "object"},
+      "source_hierarchy": {"type": "object"}
+    },
+    "$defs": {
+      "status_definition": {
+        "type": "object",
+        "required": ["description", "requires", "does_not_mean", "implementation_note"],
+        "properties": {
+          "description": {"type": "string"},
+          "requires": {"type": "array", "items": {"type": "string"}},
+          "does_not_mean": {"type": "array", "items": {"type": "string"}},
+          "implementation_note": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "provider_definition": {
+        "type": "object",
+        "required": ["description", "implementation"],
+        "properties": {
+          "description": {"type": "string"},
+          "implementation": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "aggregate_definition": {
+        "type": "object",
+        "required": ["description", "trigger", "implementation"],
+        "properties": {
+          "description": {"type": "string"},
+          "trigger": {"type": "string"},
+          "implementation": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "persisted_definition": {
+        "type": "object",
+        "required": ["description", "trigger", "implementation_status"],
+        "properties": {
+          "description": {"type": "string"},
+          "trigger": {"type": "string"},
+          "implementation_status": {"type": "string", "const": "MAPPING_NOT_ESTABLISHED"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+}
