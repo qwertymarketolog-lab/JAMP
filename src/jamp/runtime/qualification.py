@@ -42,10 +42,11 @@ def _measured_benchmark_qualifies(
     digest = result.get("benchmark_data_sha256")
     timestamp = result.get("timestamp")
 
-    # Do not trust the status label alone. Require a complete, exact-model,
-    # version-matched, all-cases-passed record with E2 verification and a dataset digest.
+    # A qualification label is not proof that a live measurement was performed.
+    # Require the explicit harness measurement marker as well as complete evidence.
     return (
-        result.get("benchmark_version") == required_benchmark_version
+        result.get("measurement_status") == "MEASURED"
+        and result.get("benchmark_version") == required_benchmark_version
         and result.get("status") == "QUALIFIED"
         and isinstance(score, (int, float))
         and not isinstance(score, bool)
