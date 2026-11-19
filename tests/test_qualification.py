@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 
-import jamp.api.app as app_module
 from fastapi.testclient import TestClient
+
+import jamp.api.app as app_module
 from jamp.runtime import qualification
 
 
