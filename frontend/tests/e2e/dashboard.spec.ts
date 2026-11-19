@@ -81,6 +81,6 @@ test("UNKNOWN claim verdict uses neutral styling", async ({ page }) => {
 
   const claim = page.getByRole("article").filter({ hasText: "Claim with an unknown verdict" });
   await expect(claim).toBeVisible();
-  await expect(claim.getByText("UNKNOWN", { exact: true })).toHaveClass(/border-slate-400\/40/);
+  await expect(claim).toHaveClass(/border-slate-400\\/40/);
   await expect(claim).not.toHaveClass(/emerald|green/);
 });
