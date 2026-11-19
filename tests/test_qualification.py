@@ -5,7 +5,10 @@ import json
 from jamp.runtime import qualification
 
 
-ARTIFACT_SHA256 = ARTIFACT_SHA256
+ARTIFACT_SHA256 = (
+    "4ebab6674dba08c19c7d6b12b6896d4df18c514f"
+    "1329e0c0342bd629e0254cfa"
+)
 
 
 def test_registered_benchmark_qualification_is_returned(monkeypatch):
