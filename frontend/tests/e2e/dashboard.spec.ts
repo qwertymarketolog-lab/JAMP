@@ -51,3 +51,36 @@ test("unknown persisted verdict statuses use neutral styling, never success gree
   await expect(status).toHaveClass(/text-slate-400/);
   await expect(status).not.toHaveClass(/emerald|green/);
 });
+
+
+test("UNKNOWN claim verdict uses neutral styling", async ({ page }) => {
+  await login(page);
+  await page.route("**/api/ui_verify", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      status: "PARTIAL_VERIFICATION",
+      system_warnings: [],
+      provider_errors: [],
+      trace_id: "e2e_unknown_claim",
+      claims: [{
+        claim_id: "e2e-unknown-claim",
+        raw_text: "Claim with an unknown verdict",
+        type: "unknown",
+        extracted_value: null,
+        unit: "",
+        verdict: "UNKNOWN",
+        reason: null,
+        evidence: [],
+        trace_id: "e2e_unknown_claim",
+      }],
+    }),
+  }));
+  await page.getByPlaceholder("Вставьте текст для проверки утверждений…").fill("Claim with an unknown verdict");
+  await page.getByRole("button", { name: "Проверить" }).click();
+
+  const claim = page.getByRole("article").filter({ hasText: "Claim with an unknown verdict" });
+  await expect(claim).toBeVisible();
+  await expect(claim.getByText("UNKNOWN", { exact: true })).toHaveClass(/border-slate-400\/40/);
+  await expect(claim).not.toHaveClass(/emerald|green/);
+});

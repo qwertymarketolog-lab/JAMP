@@ -8,11 +8,12 @@ const verdictStyles = {
     "border-rose-400/40 bg-rose-400/[0.06] text-rose-300 shadow-[0_0_24px_rgba(251,113,133,0.10)]",
   INCONCLUSIVE:
     "border-amber-400/40 bg-amber-400/[0.06] text-amber-200 shadow-[0_0_24px_rgba(251,191,36,0.08)]",
+  UNKNOWN: "border-slate-400/40 bg-slate-400/[0.04] text-slate-300",
 } as const;
 
 export function ClaimCard({ claim }: { claim: VerifiedClaim }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const style = verdictStyles[claim.verdict] ?? verdictStyles.INCONCLUSIVE;
+  const style = verdictStyles[claim.verdict] ?? "border-slate-400/40 bg-slate-400/[0.04] text-slate-300";
 
   return (
     <article className={`rounded-xl border bg-[#0b1220] p-4 ${style}`}>
