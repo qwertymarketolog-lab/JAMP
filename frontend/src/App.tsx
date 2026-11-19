@@ -33,12 +33,15 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
+const getStatusStyle = (status: string): string => {
+  if (status === "CLEAN" || status === "VERIFIED") return "border-emerald-400/30 text-emerald-300";
+  if (status === "HALLUCINATION_CAUGHT" || status === "CONTRADICTED" || status === "INTEGRITY_VIOLATED") return "border-rose-400/30 text-rose-300";
+  if (status === "INCONCLUSIVE" || status === "SUSPICIOUS") return "border-amber-400/30 text-amber-200";
+  return "border-slate-500/50 text-slate-400";
+};
+
 function PersistedVerdictRow({ item, onShowGraph }: { item: PersistedVerdict; onShowGraph: (verdictId: string) => void }) {
-  const style = item.status === "HALLUCINATION_CAUGHT" || item.status === "INTEGRITY_VIOLATED"
-    ? "border-rose-400/30 text-rose-300"
-    : item.status === "INCONCLUSIVE" || item.status === "SUSPICIOUS"
-      ? "border-amber-400/30 text-amber-200"
-      : "border-emerald-400/30 text-emerald-300";
+  const style = getStatusStyle(item.status);
   const label = item.status === "CLEAN" ? "CLEAN · не эквивалент VERIFIED" : item.status;
   return <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-jamp-line bg-black/10 p-4">
     <div className="min-w-0"><div className="text-sm font-medium text-slate-200">{item.package ?? "Package: UNKNOWN"}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-500">{item.verdict_id}</div><div className="mt-1 text-xs text-slate-500">{item.created_at}</div><div className="mt-1 break-all font-mono text-[10px] text-slate-600">SHA-256 · {item.code_hash}</div></div>

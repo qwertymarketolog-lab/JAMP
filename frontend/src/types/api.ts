@@ -3,7 +3,7 @@
  * These types document the observed backend contract; runtime JSON remains untrusted.
  */
 
-export type ClaimVerdict = "VERIFIED" | "CONTRADICTED" | "INCONCLUSIVE";
+export type ClaimVerdict = "VERIFIED" | "CONTRADICTED" | "INCONCLUSIVE" | "UNKNOWN";
 
 export type VerifyTextStatus =
   | "COMPLETE_VERIFICATION"
@@ -70,7 +70,7 @@ export interface DashboardStats {
   time_window: string;
   denominator: string;
 }
-export type PersistedVerdictStatus = "CLEAN" | "SUSPICIOUS" | "HALLUCINATION_CAUGHT" | "INCONCLUSIVE" | "INTEGRITY_VIOLATED";
+export type PersistedVerdictStatus = "CLEAN" | "SUSPICIOUS" | "HALLUCINATION_CAUGHT" | "INCONCLUSIVE" | "INTEGRITY_VIOLATED" | "UNKNOWN" | (string & {});
 export interface PersistedVerdict { verdict_id: string; status: PersistedVerdictStatus; package: string | null; created_at: string; code_hash: string; }
 export interface VerdictListResponse { items: PersistedVerdict[]; limit: number; offset: number; total: number; }
 
