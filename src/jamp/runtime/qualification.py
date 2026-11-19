@@ -32,6 +32,21 @@ def _load_measured_benchmark_result(model_id: str, task_type: str) -> dict[str, 
     return result if isinstance(result, dict) else None
 
 
+def _has_valid_provenance(result: dict[str, Any]) -> bool:
+    provenance = result.get("provenance")
+    if not isinstance(provenance, dict):
+        return False
+    for key in ("run_id", "job_id", "artifact_id"):
+        value = provenance.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            return False
+    artifact_sha256 = provenance.get("artifact_sha256")
+    return (
+        isinstance(artifact_sha256, str)
+        and re.fullmatch(r"[0-9a-f]{64}", artifact_sha256) is not None
+    )
+
+
 def _measured_benchmark_qualifies(
     result: dict[str, Any], model_id: str, required_benchmark_version: str
 ) -> bool:
@@ -46,6 +61,7 @@ def _measured_benchmark_qualifies(
     # Require the explicit harness measurement marker as well as complete evidence.
     return (
         result.get("measurement_status") == "MEASURED"
+        and _has_valid_provenance(result)
         and result.get("benchmark_version") == required_benchmark_version
         and result.get("status") == "QUALIFIED"
         and isinstance(score, (int, float))
