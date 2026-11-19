@@ -30,6 +30,7 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
                         "score": 1.0,
                         "benchmark_version": "v1",
                         "status": "QUALIFIED",
+                        "measurement_status": "MEASURED",
                         "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
@@ -60,6 +61,7 @@ def test_measured_benchmark_version_mismatch_fails_closed_to_unknown(tmp_path, m
                         "score": 1.0,
                         "benchmark_version": "v1",
                         "status": "QUALIFIED",
+                        "measurement_status": "MEASURED",
                         "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
@@ -94,6 +96,7 @@ def test_measured_benchmark_v1_qualifies_when_v1_is_required(tmp_path, monkeypat
                         "score": 1.0,
                         "benchmark_version": "v1",
                         "status": "QUALIFIED",
+                        "measurement_status": "MEASURED",
                         "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
@@ -126,6 +129,7 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
                         "score": 1.0,
                         "benchmark_version": "v1",
                         "status": "QUALIFIED",
+                        "measurement_status": "MEASURED",
                         "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["some-other-model"] * 5,
@@ -146,6 +150,40 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
     )
 
 
+
+def test_unverified_measurement_status_fails_closed_to_unknown(tmp_path, monkeypatch):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "benchmark_version": "v1",
+                        "status": "QUALIFIED",
+                        "measurement_status": "UNVERIFIED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification(
+            "z-ai/glm-5.3-flash", "search_and_extraction"
+        )
+        == "UNKNOWN"
+    )
+
+
 def test_unknown_model_fails_closed_to_unknown():
     assert (
         qualification.evaluate_model_qualification("unknown/model", "search_and_extraction")
@@ -153,10 +191,10 @@ def test_unknown_model_fails_closed_to_unknown():
     )
 
 
-def test_successful_financial_audit_qualifies_glm():
+def test_unverified_glm_benchmark_fails_closed_to_unknown():
     assert (
         qualification.evaluate_model_qualification("z-ai/glm-5.3-flash", "search_and_extraction")
-        == "QUALIFIED"
+        == "UNKNOWN"
     )
 
 
@@ -196,6 +234,6 @@ def test_execute_returns_qualification_and_records_it_in_trace(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["evidence_status"] == "VERIFIED"
-    assert body["qualification"] == "QUALIFIED"
+    assert body["qualification"] == "UNKNOWN"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
-    assert trace["execution_details"]["qualification"] == "QUALIFIED"
+    assert trace["execution_details"]["qualification"] == "UNKNOWN"
