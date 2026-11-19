@@ -5,6 +5,9 @@ import json
 from jamp.runtime import qualification
 
 
+ARTIFACT_SHA256 = ARTIFACT_SHA256
+
+
 def test_registered_benchmark_qualification_is_returned(monkeypatch):
     monkeypatch.setitem(
         qualification.QUALIFICATION_REGISTRY,
@@ -35,7 +38,7 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                         "case_count": 5,
                         "passed_cases": 5,
@@ -72,7 +75,7 @@ def test_measured_benchmark_version_mismatch_fails_closed_to_unknown(tmp_path, m
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                         "case_count": 5,
                         "passed_cases": 5,
@@ -113,7 +116,7 @@ def test_measured_benchmark_v1_qualifies_when_v1_is_required(tmp_path, monkeypat
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                         "case_count": 5,
                         "passed_cases": 5,
@@ -152,7 +155,7 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                         "case_count": 5,
                         "passed_cases": 5,
@@ -189,7 +192,7 @@ def test_unverified_measurement_status_fails_closed_to_unknown(tmp_path, monkeyp
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                         "case_count": 5,
                         "passed_cases": 5,
@@ -234,7 +237,7 @@ def test_missing_measurement_status_fails_closed_to_unknown(tmp_path, monkeypatc
                             "run_id": 40224203624,
                             "job_id": 121262016244,
                             "artifact_id": 12609974893,
-                            "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+                            "artifact_sha256": ARTIFACT_SHA256,
                         },
                     }
                 }
@@ -295,7 +298,7 @@ def test_committed_glm_measurement_with_primary_artifact_provenance_qualifies():
         "run_id": 40224203624,
         "job_id": 121262016244,
         "artifact_id": 12609974893,
-        "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
+        "artifact_sha256": ARTIFACT_SHA256,
     }
     assert (
         qualification.evaluate_model_qualification(
