@@ -37,7 +37,7 @@ def test_measured_complete_benchmark_qualifies_exact_model(tmp_path, monkeypatch
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
-                                                "case_count": 5,
+                        "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
                         "all_e2_verified": True,
@@ -74,7 +74,7 @@ def test_measured_benchmark_version_mismatch_fails_closed_to_unknown(tmp_path, m
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
-                                                "case_count": 5,
+                        "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
                         "all_e2_verified": True,
@@ -115,7 +115,7 @@ def test_measured_benchmark_v1_qualifies_when_v1_is_required(tmp_path, monkeypat
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
-                                                "case_count": 5,
+                        "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
                         "all_e2_verified": True,
@@ -154,7 +154,7 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
-                                                "case_count": 5,
+                        "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["some-other-model"] * 5,
                         "all_e2_verified": True,
@@ -191,7 +191,7 @@ def test_unverified_measurement_status_fails_closed_to_unknown(tmp_path, monkeyp
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
-                                                "case_count": 5,
+                        "case_count": 5,
                         "passed_cases": 5,
                         "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
                         "all_e2_verified": True,
@@ -236,6 +236,40 @@ def test_missing_measurement_status_fails_closed_to_unknown(tmp_path, monkeypatc
                             "artifact_id": 12609974893,
                             "artifact_sha256": "4ebab6674dba08c19c7d6b12b6896d4df18c514f1329e0c0342bd629e0254cfa",
                         },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(qualification, "MEASURED_BENCHMARKS_PATH", measured_path)
+
+    assert (
+        qualification.evaluate_model_qualification(
+            "z-ai/glm-5.3-flash", "search_and_extraction"
+        )
+        == "UNKNOWN"
+    )
+
+
+
+def test_missing_provenance_fails_closed_to_unknown(tmp_path, monkeypatch):
+    measured_path = tmp_path / "measured_benchmarks.json"
+    measured_path.write_text(
+        json.dumps(
+            {
+                "z-ai/glm-5.3-flash": {
+                    "search_and_extraction": {
+                        "score": 1.0,
+                        "benchmark_version": "v1",
+                        "status": "QUALIFIED",
+                        "measurement_status": "MEASURED",
+                        "case_count": 5,
+                        "passed_cases": 5,
+                        "actual_provider_model_ids": ["z-ai/glm-5.3-flash"] * 5,
+                        "all_e2_verified": True,
+                        "benchmark_data_sha256": "a" * 64,
+                        "timestamp": "2026-10-25T17:00:00+00:00",
                     }
                 }
             }
@@ -321,6 +355,6 @@ def test_execute_returns_qualification_and_records_it_in_trace(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["evidence_status"] == "VERIFIED"
-    assert body["qualification"] == "UNKNOWN"
+    assert body["qualification"] == "QUALIFIED"
     trace = client.get(f"/v1/provenance/{body['trace_id']}").json()
-    assert trace["execution_details"]["qualification"] == "UNKNOWN"
+    assert trace["execution_details"]["qualification"] == "QUALIFIED"
