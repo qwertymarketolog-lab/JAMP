@@ -112,10 +112,12 @@ def test_source_specific_tolerance_defaults_match_runtime() -> None:
         "price_tolerance"
     ].default
     assert moex_default == contract["tolerance_defaults"]["MOEX_ISS"]["price"]["value"]
-    assert coingecko_verify._DEFAULT_THRESHOLDS == {
+    actual_coingecko_thresholds = coingecko_verify._DEFAULT_THRESHOLDS
+    expected_coingecko_thresholds = {
         key: value["value"]
         for key, value in contract["tolerance_defaults"]["COINGECKO"].items()
     }
+    assert actual_coingecko_thresholds == expected_coingecko_thresholds
 
 
 def test_persisted_labels_are_explicitly_not_claimed_as_runtime_mappings() -> None:
