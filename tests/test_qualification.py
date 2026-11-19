@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 from fastapi.testclient import TestClient
+
 import jamp.api.app as app_module
 from jamp.runtime import qualification
-
 
 ARTIFACT_SHA256 = (
     "4ebab6674dba08c19c7d6b12b6896d4df18c514f"
