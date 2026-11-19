@@ -150,7 +150,6 @@ def test_measured_benchmark_with_incomplete_or_wrong_model_evidence_stays_unknow
     )
 
 
-
 def test_unverified_measurement_status_fails_closed_to_unknown(tmp_path, monkeypatch):
     measured_path = tmp_path / "measured_benchmarks.json"
     measured_path.write_text(
