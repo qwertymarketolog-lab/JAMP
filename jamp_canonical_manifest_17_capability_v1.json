@@ -1,0 +1,30 @@
+{
+  "contract_version": "jamp-17-capability-v1",
+  "expected_models": 17,
+  "cohort_hierarchy": "17 ⊂ 36 ⊂ 87",
+  "source_manifest": "artifacts/research/jamp_canonical_manifest_87_36_17_v1.json",
+  "timeout_config": {
+    "connect_timeout_sec": 5.0,
+    "request_timeout_sec": 30.0,
+    "validation_timeout_sec": 5.0
+  },
+  "models": [
+    {"ordinal": 1, "model_id": "ag/claude-sonnet-4-6"},
+    {"ordinal": 2, "model_id": "ag/gemini-3-flash"},
+    {"ordinal": 3, "model_id": "ag/gemini-3.7-flash-low"},
+    {"ordinal": 4, "model_id": "ag/gemini-3.7-flash-medium"},
+    {"ordinal": 5, "model_id": "am/nemotron-3-super-120b-a12b"},
+    {"ordinal": 6, "model_id": "cc/claude-sonnet-5"},
+    {"ordinal": 7, "model_id": "cx/gpt-6-luna"},
+    {"ordinal": 8, "model_id": "cx/gpt-6-luna-review"},
+    {"ordinal": 9, "model_id": "cx/gpt-6-sol"},
+    {"ordinal": 10, "model_id": "cx/gpt-6-sol-review"},
+    {"ordinal": 11, "model_id": "cx/gpt-image-1.5"},
+    {"ordinal": 12, "model_id": "cx/gpt-image-2"},
+    {"ordinal": 13, "model_id": "ds/deepseek-v4-flash"},
+    {"ordinal": 14, "model_id": "ds/deepseek-v4-pro"},
+    {"ordinal": 15, "model_id": "glm/glm-5.2"},
+    {"ordinal": 16, "model_id": "glm/glm-5.3-flash"},
+    {"ordinal": 17, "model_id": "qwen/qwen3.7-max"}
+  ]
+}
