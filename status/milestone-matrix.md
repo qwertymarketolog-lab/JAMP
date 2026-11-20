@@ -12,8 +12,8 @@ Status is evidence-based. A milestone is not declared GREEN without actual telem
 | P17.5 | 🟢 CLOSED | Search boundary consumes policy without recalculating it; deterministic trajectory generation, causal attribution, replay verification and exploration floor. CI Run #108. |
 | P17.6 | 🟢 CLOSED | Closed-loop deterministic experiment, canonical report, SHA-256 report digest, policy differentiation and replay verification. |
 | P18.1.2 | 🟢 CLOSED | Experiment Registry bridge. Commit `aa27c651e56d1b56c451dbf41b024f0f81bf0041`, CI Run #135. |
-| P18.2 | 🟢 CLOSED | Task-family isolation and zero-transfer default. 125+ tests and adversarial isolation vectors validated. |
-| P18.3 | 🟢 CLOSED | Controlled cross-task pattern transfer with explicit authorization, source/target integrity, no shared references and provenance. Production commit `a68bd08b...`, CI Run #141: 134 passed + P17.6 report success. |
+| P18.2 | CLOSED (unverified, evidence missing) | Historical documentation claims task-family isolation and zero-transfer default, with 125+ tests. The cited production implementation/terminal CI evidence is not available in the current repository state; see `docs/MISSION_RECONCILIATION.md`. |
+| P18.3 | CLOSED (unverified, evidence missing) | Historical documentation claims controlled cross-task transfer. Production commit prefix `a68bd08b` is not resolvable in the current repository state; operator-reported local object-database checks were empty and GitHub API lookup returned 422. CI Run #141 lacks workflow identity and terminal Run→Job→Artifact evidence. See `docs/MISSION_RECONCILIATION.md`. |
 | **P18.4** | **🔴 PENDING VERIFIED CI** | Causal-necessity ablation. Production guardrail is locked. Exact target SHA `7b717a8dea269bc5c33d9c128634f55c0bad27b0`. Original target CI Run #165 (`34212659566`) had 139 passed / 1 failed because the test fixture used a mismatched authorization source family and never reached the intended PermissionError branch. Test-only correction must be pushed and revalidated. |
 
 ## P18.4 required evidence
