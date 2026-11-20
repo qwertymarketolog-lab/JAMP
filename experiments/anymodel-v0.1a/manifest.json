@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "run_id": "8c98ea38-cb30-454d-89cb-ee0fa830c9ba",
+  "experiment_name": "v0.1a-nemotron-only",
+  "stage": "A_of_2",
+  "repository": "qwertymarketolog-lab/JAMP",
+  "prepared_from_commit": "85b243052e2dd934b7517f818939fe5b65751317",
+  "catalog_snapshot": {
+    "sha256": "0bcf1c8d7ac01f1403b9360830cf54cf0bcbd366eced0b3f75f0ca806bc16437",
+    "model_id": "am/nemotron-3-ultra-550b-a55b",
+    "coefficient_input": 0,
+    "coefficient_output": 0,
+    "source_class": "OPERATOR_REPORTED_PRIOR_AUTHENTICATED_CATALOG_RESPONSE"
+  },
+  "operator_supplied_hash_claims": {
+    "anymodel_faq_html": {
+      "value": "60db9f08993a88ae7947acbacb99e0fc85f42dd9959ec1fec231f55fa1a84732",
+      "length": 64,
+      "format_valid": true,
+      "independently_verified": false
+    },
+    "anymodel_pricing_html": {
+      "value": "bd2d446aaca3fe695ce079f8bfd34f4b38f793e5f9f2dd207041a9cdc8786af",
+      "length": 63,
+      "format_valid": false,
+      "independently_verified": false
+    },
+    "balance_snapshot_txt": {
+      "value": "4b9a687fc50186c9c5f436304a98a16ef3f1954bf65957cae021c74d956a3a",
+      "length": 62,
+      "format_valid": false,
+      "independently_verified": false
+    }
+  },
+  "balance_before": {
+    "reported_usd": 1.05,
+    "reported_tokens": 20932851,
+    "snapshot_type": "TEXT_REPRESENTATION",
+    "content_reported": "balance_usd: 1.05, tokens: 20932851, timestamp: 2026-11-12",
+    "integrity_status": "HASH_CLAIM_INVALID"
+  },
+  "pricing_resolution": {
+    "formula_source": "https://anymodel.org/en/faq",
+    "formula_reported": "(input_tokens + output_tokens) * coefficient",
+    "nemotron_coefficient_reported": 0,
+    "computed_cost_usd": 0.0,
+    "verification_status": "DOCUMENTED_OBSERVED_NOT_EMPIRICALLY_CONFIRMED"
+  },
+  "tasks_included": ["task1", "task2", "task5"],
+  "planned_attempts": 3,
+  "attempted": 0,
+  "retry_policy": "NO_AUTOMATIC_RETRY",
+  "sequential_only": true,
+  "request_spacing_seconds": 60,
+  "max_output_tokens_per_request": 2048,
+  "allowed_balance_decrease_tokens": 0,
+  "stop_on_any_debit": true,
+  "operator_authorized_to_launch": true,
+  "execution_status": "BLOCKED_PENDING_EVIDENCE_INTEGRITY",
+  "launch_blockers": [
+    "Pricing HTML SHA-256 supplied in chat is 63 characters, not 64.",
+    "Balance snapshot SHA-256 supplied in chat is 62 characters, not 64.",
+    "The claimed FAQ hash has not been independently recomputed from the source bytes in this run.",
+    "The account balance cannot be automatically checked through the tested AnyModel billing endpoints; manual operator observation is required after each request.",
+    "No AnyModel API credential is available to this assistant session; execution must use a secured GitHub Actions secret or operator-controlled environment."
+  ],
+  "frozen_core": {
+    "path": "src/jamp/run.py",
+    "expected_blob": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "observed_blob_on_preparation_base": "0fee0e1c5c1a1548361965ac51eacdeba62bfe8a",
+    "delta_zero": true
+  }
+}
