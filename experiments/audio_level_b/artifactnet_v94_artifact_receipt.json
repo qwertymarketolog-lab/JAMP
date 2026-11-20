@@ -1,0 +1,24 @@
+{
+  "artifact_set": "ArtifactNet v94_full",
+  "upstream_repository": "intrect/artifactnet",
+  "upstream_revision": "d4f62684ac703b671c43795f3c9eafc6bd5365cd",
+  "upstream_url": "https://huggingface.co/intrect/artifactnet/tree/d4f62684ac703b671c43795f3c9eafc6bd5365cd",
+  "license": "CC BY-NC 4.0",
+  "files": [
+    {
+      "file_name": "artifactnet_v94_full.onnx",
+      "size_bytes": 226020,
+      "sha256": "a923b53899fbb01fcf4436cc5e1837628516de6044c9f238b31b4b02ed601a19",
+      "uploaded_file_hash_verified": true
+    },
+    {
+      "file_name": "artifactnet_v94_full.onnx.data",
+      "size_bytes": 16973824,
+      "sha256": "d3f291b4f531e22e5c17dff8b3888050033d301c7b7f3cb24bf4741cdaabbc05",
+      "uploaded_file_hash_verified": true
+    }
+  ],
+  "repository_storage_status": "BINARY_PAYLOADS_NOT_COMMITTED",
+  "storage_note": "This receipt preserves exact identity and the pinned upstream recovery location. The two binary payloads were verified from conversation-uploaded files, but this Git commit does not contain their bytes. Do not treat this receipt as proof that the binaries are stored in this repository.",
+  "diagnostic_status": "HOLD_ROOT_CAUSE_UNRESOLVED"
+}
